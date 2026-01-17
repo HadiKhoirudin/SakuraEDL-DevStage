@@ -1,0 +1,29 @@
+# Build results
+bin/
+obj/
+packages/
+
+# User files
+*.user
+*.suo
+*.cache
+
+# IDE
+.vs/
+*.rsuser
+
+# Temporary files
+*.tmp
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Exclude entire directories
+edl-master/
+gpttool/
+tools/
+
+# 7z archives
+*.7z
