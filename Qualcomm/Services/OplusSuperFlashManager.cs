@@ -60,10 +60,6 @@ namespace LoveAlways.Qualcomm.Services
                 if (!string.IsNullOrEmpty(superMetaPath) && string.IsNullOrEmpty(nvId))
                 {
                     nvId = ExtractNvIdFromFilename(superMetaPath);
-                    if (!string.IsNullOrEmpty(nvId))
-                    {
-                        _log(string.Format("[OPLUS] 从固件包自动提取 NV_ID: {0}", nvId));
-                    }
                 }
             }
 
@@ -84,7 +80,7 @@ namespace LoveAlways.Qualcomm.Services
                 string fullSuperPath = Path.Combine(imagesDir, "super.img");
                 if (File.Exists(fullSuperPath))
                 {
-                    _log("[OPLUS] 发现全量 super.img，将执行标准写入");
+                    _log("发现全量 super.img");
                     tasks.Add(new FlashTask { 
                         PartitionName = "super", 
                         FilePath = fullSuperPath, 
@@ -94,83 +90,50 @@ namespace LoveAlways.Qualcomm.Services
                     return tasks;
                 }
                 
-                _log("[OPLUS] 未找到 super_meta.raw 或 super.img");
+                _log("未找到 super_meta.raw 或 super.img");
                 return tasks;
             }
-
-            _log(string.Format("[OPLUS] 深度分析布局: {0} (NV_ID: {1})", Path.GetFileName(superMetaPath), string.IsNullOrEmpty(nvId) ? "默认" : nvId));
 
             // 2. 解析 LP Metadata
             byte[] metaData = File.ReadAllBytes(superMetaPath);
             var lpPartitions = _lpParser.ParseMetadata(metaData);
-            _log(string.Format("[OPLUS] LP Metadata 解析成功，共 {0} 个逻辑卷", lpPartitions.Count));
+            _log(string.Format("解析 Super 布局: {0} 个逻辑卷{1}", lpPartitions.Count, string.IsNullOrEmpty(nvId) ? "" : string.Format(" (NV: {0})", nvId)));
 
             // 3. 读取映射
             Dictionary<string, string> nameToPathMap = LoadPartitionMapManual(superDefPath, imagesDir);
 
-            // 4. 构建任务
-            // [官方协议] LP Metadata 写入 super 分区内偏移 1 扇区（主副本）和 2 扇区（备份副本）
-            // 主副本 (Primary) - super + 1 扇区
+            // 4. 构建任务 - LP Metadata 写入 super+1 (主) 和 super+2 (备)
             tasks.Add(new FlashTask
             {
-                PartitionName = "super",  // 官方使用 label = super
+                PartitionName = "super",
                 FilePath = superMetaPath,
-                PhysicalSector = superStartSector + 1,  // 偏移 1 扇区
+                PhysicalSector = superStartSector + 1,
                 SizeInBytes = metaData.Length
             });
-            _log(string.Format("[OPLUS] LP Metadata 主副本将写入: 扇区 {0} (super+1)", superStartSector + 1));
-            
-            // 备份副本 (Backup) - super + 2 扇区
             tasks.Add(new FlashTask
             {
-                PartitionName = "super",  // 官方使用 label = super  
+                PartitionName = "super",
                 FilePath = superMetaPath,
-                PhysicalSector = superStartSector + 2,  // 偏移 2 扇区
+                PhysicalSector = superStartSector + 2,
                 SizeInBytes = metaData.Length
             });
-            _log(string.Format("[OPLUS] LP Metadata 备份副本将写入: 扇区 {0} (super+2)", superStartSector + 2));
 
             string suffix = "_" + activeSlot.ToLower();
             foreach (var lp in lpPartitions)
             {
-                // 跳过没有 LINEAR Extent 的分区（如空分区或 ZERO 类型）
-                if (!lp.HasLinearExtent) 
-                {
-                    _log(string.Format("[OPLUS] 跳过非 LINEAR 分区: {0}", lp.Name));
-                    continue;
-                }
-
-                // 跳过非当前槽位的分区
-                if ((lp.Name.EndsWith("_a") || lp.Name.EndsWith("_b")) && !lp.Name.EndsWith(suffix))
-                {
-                    continue;
-                }
+                // 跳过没有 LINEAR Extent 的分区或非当前槽位
+                if (!lp.HasLinearExtent) continue;
+                if ((lp.Name.EndsWith("_a") || lp.Name.EndsWith("_b")) && !lp.Name.EndsWith(suffix)) continue;
 
                 string imgPath = FindImagePath(lp.Name, nameToPathMap, imagesDir, nvId);
 
                 if (imgPath != null)
                 {
                     long realSize = GetImageRealSize(imgPath);
-                    
-                    // [关键修复] 正确计算设备扇区偏移
-                    // LP Metadata 使用 512B 扇区，设备可能使用 4096B 扇区
                     long deviceSectorOffset = lp.GetDeviceSectorOffset(sectorSize);
-                    if (deviceSectorOffset < 0)
-                    {
-                        _log(string.Format("[OPLUS] 警告: {0} 无法计算偏移，跳过", lp.Name));
-                        continue;
-                    }
+                    if (deviceSectorOffset < 0) continue;
                     
                     long physicalSector = superStartSector + deviceSectorOffset;
-                    long offsetInBytes = deviceSectorOffset * sectorSize;
-                    
-                    // 验证展开大小不超过分区容量
-                    long lpCapacityBytes = lp.TotalSizeBytes;
-                    if (realSize > lpCapacityBytes && lpCapacityBytes > 0)
-                    {
-                        _log(string.Format("[OPLUS] 警告: {0} 镜像大小 ({1} MB) 超过分区容量 ({2} MB)", 
-                            lp.Name, realSize / 1024 / 1024, lpCapacityBytes / 1024 / 1024));
-                    }
                     
                     tasks.Add(new FlashTask
                     {
@@ -179,8 +142,7 @@ namespace LoveAlways.Qualcomm.Services
                         PhysicalSector = physicalSector,
                         SizeInBytes = realSize
                     });
-                    _log(string.Format("[OPLUS] 映射逻辑卷: {0,-15} -> {1,-25} | 物理扇区: {2} | 偏移: 0x{3:X10} ({4} MB)", 
-                        lp.Name, Path.GetFileName(imgPath), physicalSector, offsetInBytes, realSize / 1024 / 1024));
+                    _log(string.Format("  {0} -> 扇区 {1} ({2} MB)", lp.Name, physicalSector, realSize / 1024 / 1024));
                 }
             }
 
