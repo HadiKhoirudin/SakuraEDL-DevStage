@@ -1,0 +1,171 @@
+NON-COMMERCIAL LICENSE AGREEMENT
+非商业使用许可协议
+
+Version 1.0, January 2026
+版本 1.0，2026年1月
+
+================================================================================
+
+Copyright (c) 2026 LoveAlways Project
+版权所有 (c) 2026 LoveAlways 项目组
+
+================================================================================
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+使用、复制和分发的条款和条件
+
+--------------------------------------------------------------------------------
+
+1. DEFINITIONS (定义)
+
+   "Software" refers to the LoveAlways EDL flashing tool and all associated 
+   source code, documentation, and resources.
+   
+   "软件"是指 LoveAlways EDL 刷机工具及其所有相关源代码、文档和资源。
+
+   "Commercial Use" means any use intended for or directed toward commercial 
+   advantage or monetary compensation.
+   
+   "商业使用"是指任何旨在或针对商业利益或金钱补偿的使用。
+
+   "Non-Commercial Use" means any use that is NOT primarily intended for or 
+   directed toward commercial advantage or monetary compensation.
+   
+   "非商业使用"是指任何非主要旨在或针对商业利益或金钱补偿的使用。
+
+--------------------------------------------------------------------------------
+
+2. GRANT OF LICENSE (许可授权)
+
+   Subject to the terms and conditions of this License, the copyright holder 
+   hereby grants you a worldwide, royalty-free, non-exclusive license to:
+   
+   根据本许可的条款和条件，版权持有人特此授予您全球性的、免版税的、非独占的许可：
+
+   a) Use the Software for personal, educational, or research purposes.
+      将软件用于个人、教育或研究目的。
+
+   b) Modify and create derivative works of the Software for Non-Commercial Use.
+      为非商业使用目的修改软件并创建衍生作品。
+
+   c) Share and redistribute the Software for Non-Commercial purposes, provided 
+      that all copyright notices and this license are included.
+      为非商业目的共享和重新分发软件，前提是包含所有版权声明和本许可。
+
+--------------------------------------------------------------------------------
+
+3. RESTRICTIONS (限制)
+
+   The following activities are STRICTLY PROHIBITED:
+   以下活动被严格禁止：
+
+   a) COMMERCIAL USE: You may NOT use this Software or any derivative works 
+      for commercial purposes, including but not limited to:
+      商业使用：您不得将本软件或任何衍生作品用于商业目的，包括但不限于：
+
+      - Selling or licensing the Software or derivative works
+        出售或许可软件或衍生作品
+      
+      - Incorporating the Software into commercial products or services
+        将软件纳入商业产品或服务
+      
+      - Using the Software to provide paid services
+        使用软件提供付费服务
+      
+      - Generating revenue directly or indirectly from the Software
+        直接或间接从软件中获取收入
+
+   b) MALICIOUS USE: You may NOT use this Software for any illegal, harmful, 
+      or malicious purposes.
+      恶意使用：您不得将本软件用于任何非法、有害或恶意目的。
+
+   c) REMOVAL OF NOTICES: You may NOT remove or alter any copyright notices, 
+      trademark notices, or this license from the Software.
+      移除声明：您不得从软件中移除或更改任何版权声明、商标声明或本许可。
+
+   d) PATENT CLAIMS: You may NOT use this Software in a manner that would 
+      infringe any patents.
+      专利主张：您不得以任何侵犯专利的方式使用本软件。
+
+--------------------------------------------------------------------------------
+
+4. DISCLAIMER OF WARRANTY (免责声明)
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+   
+   本软件按"原样"提供，不提供任何明示或暗示的保证，包括但不限于对适销性、
+   特定用途适用性和非侵权的保证。
+
+--------------------------------------------------------------------------------
+
+5. LIMITATION OF LIABILITY (责任限制)
+
+   IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY 
+   DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
+   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND 
+   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
+   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+   
+   在任何情况下，版权持有人或贡献者均不对任何直接、间接、偶然、特殊、惩戒性
+   或后果性损害承担责任（包括但不限于替代商品或服务的采购；使用、数据或利润
+   的损失；或业务中断），无论是在合同、严格责任或侵权行为（包括疏忽或其他）
+   的任何责任理论下，即使已被告知可能发生此类损害。
+
+--------------------------------------------------------------------------------
+
+6. DEVICE FLASHING RISK WARNING (设备刷机风险警告)
+
+   Flashing devices carries inherent risks including but not limited to:
+   刷写设备存在固有风险，包括但不限于：
+
+   - Permanent device damage ("bricking")
+     永久性设备损坏（"变砖"）
+   
+   - Loss of data
+     数据丢失
+   
+   - Voiding device warranty
+     使设备保修失效
+   
+   - Security vulnerabilities
+     安全漏洞
+
+   THE USER ASSUMES ALL RISKS ASSOCIATED WITH USING THIS SOFTWARE TO FLASH 
+   OR MODIFY DEVICES. THE COPYRIGHT HOLDERS SHALL NOT BE HELD RESPONSIBLE 
+   FOR ANY DEVICE DAMAGE OR DATA LOSS.
+   
+   用户承担使用本软件刷写或修改设备相关的所有风险。版权持有人不对任何设备
+   损坏或数据丢失负责。
+
+--------------------------------------------------------------------------------
+
+7. TERMINATION (终止)
+
+   This License and the rights granted hereunder will terminate automatically 
+   upon any breach by you of the terms of this License. Upon termination, you 
+   must cease all use and destroy all copies of the Software.
+   
+   如果您违反本许可的任何条款，本许可及其授予的权利将自动终止。终止后，
+   您必须停止所有使用并销毁软件的所有副本。
+
+--------------------------------------------------------------------------------
+
+8. COMMERCIAL LICENSING (商业授权)
+
+   For commercial use or licensing inquiries, please contact the project 
+   maintainers. Commercial licenses may be available under separate terms.
+   
+   如需商业使用或许可咨询，请联系项目维护者。商业许可可能在单独的条款下提供。
+
+================================================================================
+
+BY USING THIS SOFTWARE, YOU ACKNOWLEDGE THAT YOU HAVE READ THIS LICENSE, 
+UNDERSTAND IT, AND AGREE TO BE BOUND BY ITS TERMS AND CONDITIONS.
+
+使用本软件即表示您确认已阅读本许可、理解本许可并同意受其条款和条件的约束。
+
+================================================================================
