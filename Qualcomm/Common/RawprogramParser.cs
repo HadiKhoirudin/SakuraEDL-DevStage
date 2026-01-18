@@ -129,7 +129,14 @@ namespace LoveAlways.Qualcomm.Common
             foreach (var file in rawprogramFiles)
             {
                 var tasks = ParseRawprogramXml(file);
-                info.Tasks.AddRange(tasks);
+                // 仅添加尚未存在的任务 (按 LUN + StartSector + Label 判定)
+                foreach (var task in tasks)
+                {
+                    if (!info.Tasks.Any(t => t.Lun == task.Lun && t.StartSector == task.StartSector && t.Label == task.Label))
+                    {
+                        info.Tasks.Add(task);
+                    }
+                }
             }
 
             // 自动查找并加载 patch 文件
@@ -162,20 +169,39 @@ namespace LoveAlways.Qualcomm.Common
                 foreach (var elem in root.Elements("program"))
                 {
                     string filename = GetAttr(elem, "filename", "");
-                    if (string.IsNullOrWhiteSpace(filename) || filename.StartsWith("0:")) continue;
+                    string label = GetAttr(elem, "label", "");
+                    
+                    // 特殊过滤：跳过 0: 开头的虚拟文件名（常见于一些特殊 XML）
+                    if (!string.IsNullOrEmpty(filename) && filename.StartsWith("0:")) continue;
 
+                    // 即使没有 filename 也解析，标记为 Zeroout 或空分区
                     var task = new FlashTask
                     {
-                        Type = TaskType.Program,
-                        Label = GetAttr(elem, "label", Path.GetFileNameWithoutExtension(filename)),
+                        Type = string.IsNullOrEmpty(filename) ? TaskType.Zeroout : TaskType.Program,
+                        Label = string.IsNullOrEmpty(label) ? Path.GetFileNameWithoutExtension(filename) : label,
                         Filename = filename,
-                        FilePath = FindFile(filename, filePath),
+                        FilePath = string.IsNullOrEmpty(filename) ? "" : FindFile(filename, filePath),
                         Lun = GetIntAttr(elem, "physical_partition_number", 0),
                         StartSector = GetLongAttr(elem, "start_sector", 0),
                         NumSectors = GetLongAttr(elem, "num_partition_sectors", 0),
                         SectorSize = GetIntAttr(elem, "SECTOR_SIZE_IN_BYTES", 4096),
                         IsSparse = GetAttr(elem, "sparse", "false").ToLowerInvariant() == "true"
                     };
+
+                    // 如果 NumSectors 为 0，尝试从 size_in_KB 换算
+                    if (task.NumSectors == 0)
+                    {
+                        double sizeInKb;
+                        string sizeStr = GetAttr(elem, "size_in_KB", "0");
+                        if (double.TryParse(sizeStr, out sizeInKb) && sizeInKb > 0)
+                        {
+                            task.NumSectors = (long)(sizeInKb * 1024 / task.SectorSize);
+                        }
+                    }
+
+                    // 如果 StartSector 为 0 且 Label 为 PrimaryGPT，则 NumSectors 默认为 6 (常规 GPT 大小)
+                    if (task.Label == "PrimaryGPT" && task.StartSector == 0 && task.NumSectors == 0)
+                        task.NumSectors = 6;
 
                     tasks.Add(task);
                 }
@@ -270,6 +296,15 @@ namespace LoveAlways.Qualcomm.Common
             return tasks.Where(t => !SensitivePartitions.Contains(t.Label)).ToList();
         }
 
+        /// <summary>
+        /// 获取分区的绝对物理偏移 (字节)
+        /// </summary>
+        public static long GetAbsoluteOffset(FlashTask task)
+        {
+            if (task == null) return -1;
+            return task.StartSector * task.SectorSize;
+        }
+
         private static string GetAttr(XElement elem, string name, string defaultValue)
         {
             var attr = elem.Attribute(name);
@@ -290,8 +325,27 @@ namespace LoveAlways.Qualcomm.Common
             if (attr == null) return defaultValue;
             string value = attr.Value;
             long result;
+
+            // 处理公式，例如 "NUM_DISK_SECTORS-5."
+            if (value.Contains("NUM_DISK_SECTORS"))
+            {
+                // 这是一个动态值，取决于物理磁盘大小。
+                // 我们暂时将其记为 -1 或一个特殊标记值，或者尝试解析其中的偏移
+                if (value.Contains("-"))
+                {
+                    string offsetStr = value.Split('-')[1].TrimEnd('.');
+                    if (long.TryParse(offsetStr, out result))
+                        return -result; // 用负数表示从末尾倒数
+                }
+                return -1; 
+            }
+
             if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 return long.TryParse(value.Substring(2), System.Globalization.NumberStyles.HexNumber, null, out result) ? result : defaultValue;
+            
+            // 移除可能存在的点号 (例如 "5.")
+            if (value.EndsWith(".")) value = value.Substring(0, value.Length - 1);
+
             return long.TryParse(value, out result) ? result : defaultValue;
         }
     }

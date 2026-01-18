@@ -86,6 +86,11 @@ namespace LoveAlways.Qualcomm.Database
             { 0x0008C0E1, "SDM660 (Snapdragon 660)" },
             { 0x000BA0E1, "SDM632 (Snapdragon 632)" },
             { 0x000950E1, "SM6150 (Snapdragon 675)" },
+            { 0x0010E0E1, "SM6125 (Snapdragon 665)" },
+            { 0x0013E0E1, "SM6115 (Snapdragon 662)" },
+            { 0x0015E0E1, "SM6350 (Snapdragon 690)" },
+            { 0x0019E0E1, "SM6375 (Snapdragon 695)" },
+            { 0x0021E0E1, "SM6450 (Snapdragon 6 Gen 1)" },
             
             // Snapdragon 7xx
             { 0x000910E1, "SDM670 (Snapdragon 670)" },
@@ -94,6 +99,10 @@ namespace LoveAlways.Qualcomm.Database
             { 0x0011E0E1, "SM7250 (Snapdragon 765G)" },
             { 0x001920E1, "SM7325 (Snapdragon 778G)" },
             { 0x001630E1, "SM7350 (Snapdragon 780G)" },
+            { 0x001CE0E1, "SM7435 (Snapdragon 7s Gen 2)" },
+            { 0x001DE0E1, "SM7450 (Snapdragon 7 Gen 1)" },
+            { 0x0023E0E1, "SM7550 (Snapdragon 7 Gen 3)" },
+            { 0x0025E0E1, "SM7675 (Snapdragon 7+ Gen 3)" },
             
             // Snapdragon 8xx (旗舰)
             { 0x007B00E1, "MSM8974 (Snapdragon 800)" },
@@ -110,9 +119,11 @@ namespace LoveAlways.Qualcomm.Database
             { 0x001350E1, "SM8350 (Snapdragon 888)" },
             { 0x001620E1, "SM8450 (Snapdragon 8 Gen 1)" },
             { 0x001900E1, "SM8475 (Snapdragon 8+ Gen 1)" },
+            { 0x001E00E1, "SM8475 (Snapdragon 8+ Gen 1)" },
             { 0x001CA0E1, "SM8550 (Snapdragon 8 Gen 2)" },
             { 0x0022A0E1, "SM8650 (Snapdragon 8 Gen 3)" },
             { 0x002280E1, "SM8650-AB (Snapdragon 8 Gen 3)" },
+            { 0x0026A0E1, "SM8635 (Snapdragon 8s Gen 3)" },
             { 0x0028C0E1, "SM8750 (Snapdragon 8 Elite)" },
             { 0x0028C0E2, "SM8750-AB (Snapdragon 8 Elite)" },
             
@@ -318,6 +329,7 @@ namespace LoveAlways.Qualcomm.Database
         public uint SerialDec { get; set; }
         public string HwIdHex { get; set; }
         public uint MsmId { get; set; }
+        public ushort ModelId { get; set; }
         public ushort OemId { get; set; }
         public string ChipName { get; set; }
         public string Vendor { get; set; }

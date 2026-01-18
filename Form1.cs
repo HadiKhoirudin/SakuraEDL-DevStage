@@ -52,13 +52,10 @@ namespace LoveAlways
         public Form1()
         {
             InitializeComponent();
-            string logFolderPath = "C:\\Tool_Log";
-            if (!Directory.Exists(logFolderPath))
-            {
-                Directory.CreateDirectory(logFolderPath);
-            }
-            string logFileName = $"{DateTime.Now:yyyy-MM-dd_HH.mm.ss}_log.txt";
-            logFilePath = Path.Combine(logFolderPath, logFileName);
+            
+            // 初始化日志系统
+            InitializeLogSystem();
+            
             checkbox14.Checked = true;
             radio3.Checked = true;
             // 加载系统信息
@@ -66,7 +63,11 @@ namespace LoveAlways
             {
                 try
                 {
-                    uiLabel4.Text = $"计算机：{await WindowsInfo.GetSystemInfoAsync()}";
+                    string sysInfo = await WindowsInfo.GetSystemInfoAsync();
+                    uiLabel4.Text = $"计算机：{sysInfo}";
+                    
+                    // 写入系统信息到日志头部
+                    WriteLogHeader(sysInfo);
                     AppendLog("加载中...OK", Color.Green);
                 }
                 catch (Exception ex)
@@ -187,8 +188,14 @@ namespace LoveAlways
 
                 // ========== checkbox11 生成XML按钮 ==========
                 checkbox11.CheckedChanged += (s, e) => {
-                    if (checkbox11.Checked && _qualcommController.Partitions.Count > 0)
+                    if (checkbox11.Checked)
                     {
+                        if (_qualcommController.Partitions == null || _qualcommController.Partitions.Count == 0)
+                        {
+                            AppendLog("请先读取分区表再生成 XML", Color.Orange);
+                            checkbox11.Checked = false;
+                            return;
+                        }
                         GeneratePartitionXml();
                         checkbox11.Checked = false; // 生成完成后取消勾选
                     }
@@ -299,7 +306,7 @@ namespace LoveAlways
             }
         }
 
-        private void QualcommSelectDigest()
+        private async void QualcommSelectDigest()
         {
             using (var ofd = new OpenFileDialog())
             {
@@ -309,6 +316,17 @@ namespace LoveAlways
                 {
                     input9.Text = ofd.FileName;
                     AppendLog($"已选择 Digest: {Path.GetFileName(ofd.FileName)}", Color.Green);
+
+                    // 如果已连接设备且已选择 Signature，自动执行 VIP 认证
+                    if (_qualcommController != null && _qualcommController.IsConnected)
+                    {
+                        string signaturePath = input7.Text;
+                        if (!string.IsNullOrEmpty(signaturePath) && File.Exists(signaturePath))
+                        {
+                            AppendLog("已选择完整 VIP 认证文件，开始认证...", Color.Blue);
+                            await QualcommPerformVipAuthAsync();
+                        }
+                    }
                 }
             }
         }
@@ -405,36 +423,60 @@ namespace LoveAlways
         {
             var allTasks = new List<Qualcomm.Common.FlashTask>();
             string programmerPath = "";
-            
-            foreach (var xmlPath in xmlPaths)
-        {
-            try
+            string[] filesToLoad = xmlPaths;
+
+            // 如果用户只选择了一个文件，且文件名包含 rawprogram，则自动搜索同目录下的其他 LUN
+            if (xmlPaths.Length == 1 && Path.GetFileName(xmlPaths[0]).Contains("rawprogram"))
             {
-                string dir = Path.GetDirectoryName(xmlPath);
-                var parser = new Qualcomm.Common.RawprogramParser(dir, msg => AppendLog(msg, Color.Blue));
+                string dir = Path.GetDirectoryName(xmlPaths[0]);
+                var siblingFiles = Directory.GetFiles(dir, "rawprogram*.xml")
+                    .OrderBy(f => f).ToArray();
+                
+                if (siblingFiles.Length > 1)
+                {
+                    filesToLoad = siblingFiles;
+                    AppendLog($"检测到多个 LUN，已自动加载同目录下的 {siblingFiles.Length} 个 XML 文件", Color.Blue);
+                }
+            }
+            
+            foreach (var xmlPath in filesToLoad)
+            {
+                try
+                {
+                    string dir = Path.GetDirectoryName(xmlPath);
+                    var parser = new Qualcomm.Common.RawprogramParser(dir, msg => { /* 避免过多冗余日志 */ });
                     
                     // 解析当前 XML 文件
                     var tasks = parser.ParseRawprogramXml(xmlPath);
-                    AppendLog($"解析 {Path.GetFileName(xmlPath)}: {tasks.Count} 个任务", Color.Blue);
-                    allTasks.AddRange(tasks);
+                    
+                    // 仅添加尚未存在的任务 (按 LUN + StartSector + Label 判定)
+                    foreach (var task in tasks)
+                    {
+                        if (!allTasks.Any(t => t.Lun == task.Lun && t.StartSector == task.StartSector && t.Label == task.Label))
+                        {
+                            allTasks.Add(task);
+                        }
+                    }
+
+                    AppendLog($"解析 {Path.GetFileName(xmlPath)}: {tasks.Count} 个任务 (当前累计: {allTasks.Count})", Color.Blue);
                     
                     // 自动识别对应的 patch 文件
                     string patchPath = FindMatchingPatchFile(xmlPath);
                     if (!string.IsNullOrEmpty(patchPath))
                     {
-                        AppendLog($"自动识别 Patch: {Path.GetFileName(patchPath)}", Color.Blue);
+                        // 记录到全局变量或后续处理中
                     }
                     
                     // 自动识别 programmer 文件（只识别一次）
                     if (string.IsNullOrEmpty(programmerPath))
                     {
                         programmerPath = parser.FindProgrammer();
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
+                catch (Exception ex)
+                {
                     AppendLog($"解析 {Path.GetFileName(xmlPath)} 失败: {ex.Message}", Color.Red);
-            }
+                }
             }
             
             if (allTasks.Count > 0)
@@ -556,12 +598,6 @@ namespace LoveAlways
             }
 
             await _qualcommController.ReadPartitionTableAsync();
-
-            // 生成XML (checkbox11)
-            if (checkbox11.Checked && _qualcommController.Partitions.Count > 0)
-            {
-                GeneratePartitionXml();
-            }
         }
 
         private async Task<bool> QualcommConnectAsync()
@@ -583,7 +619,9 @@ namespace LoveAlways
                 programmerPath, 
                 _storageType, 
                 skipSahara,
-                _authMode
+                _authMode,
+                input9.Text?.Trim() ?? "",
+                input7.Text?.Trim() ?? ""
             );
         }
 
@@ -597,34 +635,43 @@ namespace LoveAlways
                     return;
                 }
 
-                using (var sfd = new SaveFileDialog())
+                // 选择保存目录，因为我们要生成多个文件 (rawprogram0.xml, patch0.xml 等)
+                using (var fbd = new FolderBrowserDialog())
                 {
-                    sfd.Title = "保存分区表 XML";
-                    sfd.FileName = "rawprogram_generated.xml";
-                    sfd.Filter = "rawprogram XML|*.xml|partition XML|*.xml|所有文件|*.*";
-
-                    if (sfd.ShowDialog() == DialogResult.OK)
+                    fbd.Description = "选择 XML 保存目录 (将根据 LUN 生成多个 rawprogram 和 patch 文件)";
+                    
+                    if (fbd.ShowDialog() == DialogResult.OK)
                     {
-                        // 使用 GptParser 生成标准格式 XML
+                        string saveDir = fbd.SelectedPath;
                         var parser = new LoveAlways.Qualcomm.Common.GptParser();
                         int sectorSize = _qualcommController.Partitions.Count > 0 
                             ? _qualcommController.Partitions[0].SectorSize 
                             : 4096;
 
-                        string xmlContent;
-                        if (sfd.FilterIndex == 2)
+                        // 1. 生成 rawprogramX.xml
+                        var rawprogramDict = parser.GenerateRawprogramXmls(_qualcommController.Partitions, sectorSize);
+                        foreach (var kv in rawprogramDict)
                         {
-                            // partition.xml 格式
-                            xmlContent = parser.GeneratePartitionXml(_qualcommController.Partitions, sectorSize);
-                        }
-                        else
-                        {
-                            // rawprogram.xml 格式
-                            xmlContent = parser.GenerateRawprogramXml(_qualcommController.Partitions, sectorSize);
+                            string fileName = Path.Combine(saveDir, $"rawprogram{kv.Key}.xml");
+                            File.WriteAllText(fileName, kv.Value);
+                            AppendLog($"已生成: {Path.GetFileName(fileName)}", Color.Blue);
                         }
 
-                        File.WriteAllText(sfd.FileName, xmlContent);
-                        AppendLog($"分区表 XML 已保存: {sfd.FileName}", Color.Green);
+                        // 2. 生成 patchX.xml
+                        var patchDict = parser.GeneratePatchXmls(_qualcommController.Partitions, sectorSize);
+                        foreach (var kv in patchDict)
+                        {
+                            string fileName = Path.Combine(saveDir, $"patch{kv.Key}.xml");
+                            File.WriteAllText(fileName, kv.Value);
+                            AppendLog($"已生成: {Path.GetFileName(fileName)}", Color.Blue);
+                        }
+
+                        // 3. 生成单个合并的 partition.xml (可选)
+                        string partitionXml = parser.GeneratePartitionXml(_qualcommController.Partitions, sectorSize);
+                        string pFileName = Path.Combine(saveDir, "partition.xml");
+                        File.WriteAllText(pFileName, partitionXml);
+                        
+                        AppendLog($"XML 集合已成功保存到: {saveDir}", Color.Green);
                         
                         // 显示槽位信息
                         string currentSlot = _qualcommController.GetCurrentSlot();
@@ -676,11 +723,17 @@ namespace LoveAlways
                         // 批量读取
                         var partitionsToRead = new List<Tuple<string, string>>();
                         foreach (var p in checkedItems)
-            {
+                        {
                             string savePath = Path.Combine(fbd.SelectedPath, p.Name + ".img");
                             partitionsToRead.Add(Tuple.Create(p.Name, savePath));
                         }
                         await _qualcommController.ReadPartitionsBatchAsync(partitionsToRead);
+                    }
+                    
+                    // 回读完成后，如果勾选了生成XML，则生成
+                    if (checkbox11.Checked && _qualcommController.Partitions != null && _qualcommController.Partitions.Count > 0)
+                    {
+                        GeneratePartitionXml();
                     }
                 }
             }
@@ -746,15 +799,56 @@ namespace LoveAlways
                 // 如果没有文件路径或文件不存在，弹出选择对话框
                 if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
                 {
-            using (var ofd = new OpenFileDialog())
-            {
+                    // 如果勾选了 MetaSuper 且是 super 分区，引导用户选择固件目录
+                    if (checkbox18.Checked && partition.Name.Equals("super", StringComparison.OrdinalIgnoreCase))
+                    {
+                        using (var fbd = new FolderBrowserDialog())
+                        {
+                            fbd.Description = "已开启 MetaSuper！请选择 OPLUS 固件根目录 (包含 IMAGES 和 META)";
+                            if (fbd.ShowDialog() == DialogResult.OK)
+                            {
+                                await _qualcommController.FlashOplusSuperAsync(fbd.SelectedPath);
+                                return;
+                            }
+                        }
+                    }
+
+                    using (var ofd = new OpenFileDialog())
+                    {
                         ofd.Title = $"选择要写入 {partition.Name} 的镜像文件";
-                ofd.Filter = "镜像文件|*.img;*.bin|所有文件|*.*";
+                        ofd.Filter = "镜像文件|*.img;*.bin|所有文件|*.*";
 
                         if (ofd.ShowDialog() != DialogResult.OK)
                             return;
 
                         filePath = ofd.FileName;
+                    }
+                }
+                else
+                {
+                    // 即使路径存在，如果开启了 MetaSuper 且是 super 分区，也执行拆解逻辑
+                    if (checkbox18.Checked && partition.Name.Equals("super", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // 尝试从文件路径推断固件根目录 (通常镜像在 IMAGES 文件夹下)
+                        string firmwareRoot = Path.GetDirectoryName(Path.GetDirectoryName(filePath));
+                        if (Directory.Exists(Path.Combine(firmwareRoot, "META")))
+                        {
+                            await _qualcommController.FlashOplusSuperAsync(firmwareRoot);
+                            return;
+                        }
+                        else
+                        {
+                            // 如果推断失败，手动选择
+                            using (var fbd = new FolderBrowserDialog())
+                            {
+                                fbd.Description = "已开启 MetaSuper！请选择 OPLUS 固件根目录 (包含 IMAGES 和 META)";
+                                if (fbd.ShowDialog() == DialogResult.OK)
+                                {
+                                    await _qualcommController.FlashOplusSuperAsync(fbd.SelectedPath);
+                                    return;
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -1295,20 +1389,120 @@ namespace LoveAlways
                 uiRichTextBox1.BeginInvoke(new Action<string, Color?>(AppendLog), message, color);
                 return;
             }
+
+            Color logColor = color ?? Color.Black;
+
+            // 写入文件
             try
             {
-                File.AppendAllText(logFilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{message}\n");
+                File.AppendAllText(logFilePath, $"[{DateTime.Now:HH:mm:ss}] {message}" + Environment.NewLine);
+            }
+            catch { }
+
+            // 显示到 UI
+            uiRichTextBox1.SelectionColor = logColor;
+            uiRichTextBox1.AppendText(message + "\n");
+            uiRichTextBox1.SelectionStart = uiRichTextBox1.Text.Length;
+            uiRichTextBox1.ScrollToCaret();
+        }
+
+        /// <summary>
+        /// 初始化日志系统
+        /// </summary>
+        private void InitializeLogSystem()
+        {
+            try
+            {
+                string logFolderPath = "C:\\Tool_Log";
+                if (!Directory.Exists(logFolderPath))
+                {
+                    Directory.CreateDirectory(logFolderPath);
+                }
+
+                // 清理 7 天前的旧日志
+                CleanOldLogs(logFolderPath, 7);
+
+                string logFileName = $"{DateTime.Now:yyyy-MM-dd_HH.mm.ss}_log.txt";
+                logFilePath = Path.Combine(logFolderPath, logFileName);
+            }
+            catch
+            {
+                // 日志初始化失败时使用临时目录
+                logFilePath = Path.Combine(Path.GetTempPath(), $"LoveAlways_{DateTime.Now:yyyyMMdd_HHmmss}.log");
+            }
+        }
+
+        /// <summary>
+        /// 清理指定天数之前的旧日志
+        /// </summary>
+        private void CleanOldLogs(string logFolder, int daysToKeep)
+        {
+            try
+            {
+                var cutoff = DateTime.Now.AddDays(-daysToKeep);
+                var oldFiles = Directory.GetFiles(logFolder, "*_log.txt")
+                    .Where(f => File.GetCreationTime(f) < cutoff)
+                    .ToArray();
+
+                foreach (var file in oldFiles)
+                {
+                    try { File.Delete(file); } catch { }
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 写入日志文件头部信息
+        /// </summary>
+        private void WriteLogHeader(string sysInfo)
+        {
+            try
+            {
+                var header = new StringBuilder();
+                header.AppendLine($"启动时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                header.AppendLine($"系统: {sysInfo}");
+                header.AppendLine($"版本: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+                header.AppendLine();
+
+                File.WriteAllText(logFilePath, header.ToString());
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 查看日志菜单点击事件 - 打开日志文件夹并选中当前日志
+        /// </summary>
+        private void 查看日志ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string logFolder = Path.GetDirectoryName(logFilePath);
+                
+                if (!Directory.Exists(logFolder))
+                {
+                    Directory.CreateDirectory(logFolder);
+                }
+
+                // 如果当前日志文件存在，使用 Explorer 打开并选中它
+                if (File.Exists(logFilePath))
+                {
+                    // 使用 /select 参数打开资源管理器并选中文件
+                    System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{logFilePath}\"");
+                    AppendLog($"已打开日志文件夹: {logFolder}", Color.Blue);
+                }
+                else
+                {
+                    // 文件不存在，直接打开文件夹
+                    System.Diagnostics.Process.Start("explorer.exe", logFolder);
+                    AppendLog($"已打开日志文件夹: {logFolder}", Color.Blue);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("写入日志失败：" + ex.Message);
+                AppendLog($"打开日志失败: {ex.Message}", Color.Red);
+                MessageBox.Show($"无法打开日志文件夹: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            Color logColor = color ?? Color.Black;
-            string uiLogLine = $"{DateTime.Now:HH:mm:ss} {message}\n";
-            uiRichTextBox1.SelectionColor = logColor;
-            uiRichTextBox1.AppendText(uiLogLine);
-            uiRichTextBox1.SelectionStart = uiRichTextBox1.Text.Length;
-            uiRichTextBox1.ScrollToCaret();
         }
 
         private void Button2_Click(object sender, EventArgs e)

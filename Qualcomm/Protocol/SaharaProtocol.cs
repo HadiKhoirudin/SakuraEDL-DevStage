@@ -221,12 +221,13 @@ namespace LoveAlways.Qualcomm.Protocol
 
         // 传输进度
         private long _totalSent = 0;
-        private long _lastProgressLog = 0;
+        private Action<double> _progressCallback;
 
-        public SaharaClient(SerialPortManager port, Action<string> log = null)
+        public SaharaClient(SerialPortManager port, Action<string> log = null, Action<double> progressCallback = null)
         {
             _port = port;
             _log = log ?? delegate { };
+            _progressCallback = progressCallback;
             ProtocolVersion = 2;
             ProtocolVersionSupported = 1;
             CurrentMode = SaharaMode.ImageTransferPending;
@@ -253,9 +254,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 throw new FileNotFoundException("引导 文件不存在", loaderPath);
 
             byte[] fileBytes = File.ReadAllBytes(loaderPath);
-            _log(string.Format("[Sahara] 加载 引导: {0} ({1} KB)", Path.GetFileName(loaderPath), fileBytes.Length / 1024));
-
-            _log("[Sahara] 等待设备 Hello 包...");
+            _log(string.Format("[Sahara] 加载引导: {0} ({1} KB)", Path.GetFileName(loaderPath), fileBytes.Length / 1024));
 
             return await HandshakeAndLoadInternalAsync(fileBytes, ct);
         }
@@ -271,7 +270,6 @@ namespace LoveAlways.Qualcomm.Protocol
             int timeoutCount = 0;
             _doneSent = false;
             _totalSent = 0;
-            _lastProgressLog = 0;
             var sw = Stopwatch.StartNew();
 
             while (!done && loopGuard++ < 1000)
@@ -284,7 +282,6 @@ namespace LoveAlways.Qualcomm.Protocol
                 // 检查是否有预读取的 Hello 数据
                 if (loopGuard == 1 && _pendingHelloData != null && _pendingHelloData.Length >= 8)
                 {
-                    _log(string.Format("[Sahara] 使用预读取的 Hello 数据 ({0} 字节)", _pendingHelloData.Length));
                     header = new byte[8];
                     Array.Copy(_pendingHelloData, 0, header, 0, 8);
                 }
@@ -297,24 +294,15 @@ namespace LoveAlways.Qualcomm.Protocol
                 if (header == null)
                 {
                     timeoutCount++;
-                    int available = _port.BytesToRead;
-                    _log(string.Format("[Sahara] 读取超时 ({0}/5)，缓冲区: {1} 字节", timeoutCount, available));
-
                     if (timeoutCount >= 5)
                     {
-                        _log("[Sahara] 多次读取超时，设备可能未响应");
-                    
+                        _log("[Sahara] 设备无响应");
                         return false;
                     }
 
+                    int available = _port.BytesToRead;
                     if (available > 0)
-                    {
-                        var partial = await ReadBytesAsync(available, 1000, ct);
-                        if (partial != null)
-                        {
-                            _log(string.Format("[Sahara] 部分数据: {0}", BitConverter.ToString(partial, 0, Math.Min(16, partial.Length))));
-                        }
-                    }
+                        await ReadBytesAsync(available, 1000, ct);
 
                     await Task.Delay(500, ct);
                     continue;
@@ -324,14 +312,8 @@ namespace LoveAlways.Qualcomm.Protocol
                 uint cmdId = BitConverter.ToUInt32(header, 0);
                 uint pktLen = BitConverter.ToUInt32(header, 4);
 
-                if (cmdId != (uint)SaharaCommand.ReadData && cmdId != (uint)SaharaCommand.ReadData64)
-                {
-                    _log(string.Format("[Sahara] 收到: Cmd=0x{0:X2} ({1}), Len={2}", cmdId, (SaharaCommand)cmdId, pktLen));
-                }
-
                 if (pktLen < 8 || pktLen > MAX_BUFFER_SIZE * 4)
                 {
-                    _log(string.Format("[Sahara] 异常包: CmdId=0x{0:X2}, Len={1}", cmdId, pktLen));
                     PurgeBuffer();
                     await Task.Delay(50, ct);
                     continue;
@@ -363,20 +345,18 @@ namespace LoveAlways.Qualcomm.Protocol
 
                     case SaharaCommand.DoneResponse:
                         if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        _log("[Sahara] 引导 加载成功");
+                        _log("[Sahara] 引导加载成功");
                         done = true;
                         IsConnected = true;
                         break;
 
                     case SaharaCommand.CommandReady:
                         if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        _log("[Sahara] 收到 CmdReady，切换到传输模式");
                         SendSwitchMode(SaharaMode.ImageTransferPending);
                         break;
 
                     default:
                         if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        _log(string.Format("[Sahara] 未知命令: 0x{0:X2}", cmdId));
                         break;
                 }
             }
@@ -414,22 +394,15 @@ namespace LoveAlways.Qualcomm.Protocol
 
             ProtocolVersion = BitConverter.ToUInt32(body, 0);
             uint deviceMode = body.Length >= 12 ? BitConverter.ToUInt32(body, 12) : 0;
-            _log(string.Format("[Sahara] 收到 HELLO (版本={0}, 模式={1})", ProtocolVersion, deviceMode));
 
             // 尝试读取芯片信息
             if (!_chipInfoRead && deviceMode == (uint)SaharaMode.ImageTransferPending)
             {
                 _chipInfoRead = true;
                 bool enteredCommandMode = await TryReadChipInfoSafeAsync(ct);
-
-                if (enteredCommandMode)
-                {
-                    _log("[Sahara] 等待设备重新发送 Hello...");
-                    return;
-                }
+                if (enteredCommandMode) return;
             }
 
-            _log("[Sahara] 发送 HelloResponse (传输模式)");
             SendHelloResponse(SaharaMode.ImageTransferPending);
         }
 
@@ -445,21 +418,16 @@ namespace LoveAlways.Qualcomm.Protocol
             uint offset = BitConverter.ToUInt32(body, 4);
             uint length = BitConverter.ToUInt32(body, 8);
 
-            if (offset + length > fileBytes.Length)
-            {
-                _log(string.Format("[Sahara] 请求越界: offset={0}, length={1}", offset, length));
-                return;
-            }
+            if (offset + length > fileBytes.Length) return;
 
             _port.Write(fileBytes, (int)offset, (int)length);
 
             _totalSent += length;
-            if (_totalSent - _lastProgressLog > 100 * 1024)
-            {
-                int percent = (int)(_totalSent * 100 / fileBytes.Length);
-                _log(string.Format("[Sahara] 传输进度: {0} KB / {1} KB ({2}%)", _totalSent / 1024, fileBytes.Length / 1024, percent));
-                _lastProgressLog = _totalSent;
-            }
+            double percent = (double)_totalSent * 100 / fileBytes.Length;
+            
+            // 调用进度回调（进度条显示，不需要日志）
+            if (_progressCallback != null)
+                _progressCallback(percent);
         }
 
         /// <summary>
@@ -474,21 +442,16 @@ namespace LoveAlways.Qualcomm.Protocol
             ulong offset = BitConverter.ToUInt64(body, 8);
             ulong length = BitConverter.ToUInt64(body, 16);
 
-            if ((long)offset + (long)length > fileBytes.Length)
-            {
-                _log(string.Format("[Sahara] 64位请求越界: offset={0}, length={1}", offset, length));
-                return;
-            }
+            if ((long)offset + (long)length > fileBytes.Length) return;
 
             _port.Write(fileBytes, (int)offset, (int)length);
 
             _totalSent += (long)length;
-            if (_totalSent - _lastProgressLog > 100 * 1024)
-            {
-                int percent = (int)(_totalSent * 100 / fileBytes.Length);
-                _log(string.Format("[Sahara] 传输进度: {0} KB / {1} KB ({2}%)", _totalSent / 1024, fileBytes.Length / 1024, percent));
-                _lastProgressLog = _totalSent;
-            }
+            double percent = (double)_totalSent * 100 / fileBytes.Length;
+            
+            // 调用进度回调（进度条显示，不需要日志）
+            if (_progressCallback != null)
+                _progressCallback(percent);
         }
 
         /// <summary>
@@ -497,33 +460,24 @@ namespace LoveAlways.Qualcomm.Protocol
         private async Task<Tuple<bool, bool, int>> HandleEndImageTransferAsync(uint pktLen, int endImageTxCount, CancellationToken ct)
         {
             endImageTxCount++;
-
-            if (endImageTxCount > 10)
-            {
-                _log("[Sahara] 收到过多 EndImageTx 命令");
-                return Tuple.Create(false, false, endImageTxCount);
-            }
+            if (endImageTxCount > 10) return Tuple.Create(false, false, endImageTxCount);
 
             uint endStatus = 0;
             if (pktLen >= 16)
             {
                 var body = await ReadBytesAsync(8, 5000, ct);
-                if (body != null)
-                {
-                    endStatus = BitConverter.ToUInt32(body, 4);
-                }
+                if (body != null) endStatus = BitConverter.ToUInt32(body, 4);
             }
 
             if (endStatus != 0)
             {
                 var status = (SaharaStatus)endStatus;
-                _log(string.Format("[Sahara] 传输失败: {0}", SaharaStatusHelper.GetErrorMessage(status)));
+                _log(string.Format("[Sahara] 失败: {0}", SaharaStatusHelper.GetErrorMessage(status)));
                 return Tuple.Create(false, false, endImageTxCount);
             }
 
             if (!_doneSent)
             {
-                _log("[Sahara] 镜像传输完成，发送 Done");
                 SendDone();
                 _doneSent = true;
             }
@@ -536,23 +490,14 @@ namespace LoveAlways.Qualcomm.Protocol
         /// </summary>
         private async Task<bool> TryReadChipInfoSafeAsync(CancellationToken ct)
         {
-            if (_skipCommandMode)
-            {
-                _log("[Sahara] 跳过命令模式");
-                return false;
-            }
+            if (_skipCommandMode) return false;
 
             try
             {
-                _log(string.Format("[Sahara] 尝试进入命令模式 (v{0})...", ProtocolVersion));
                 SendHelloResponse(SaharaMode.Command);
 
                 var header = await ReadBytesAsync(8, 2000, ct);
-                if (header == null)
-                {
-                    _log("[Sahara] 命令模式无响应");
-                    return false;
-                }
+                if (header == null) return false;
 
                 uint cmdId = BitConverter.ToUInt32(header, 0);
                 uint pktLen = BitConverter.ToUInt32(header, 4);
@@ -560,19 +505,14 @@ namespace LoveAlways.Qualcomm.Protocol
                 if ((SaharaCommand)cmdId == SaharaCommand.CommandReady)
                 {
                     if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                    _log("[Sahara] 设备接受命令模式");
-
                     await ReadChipInfoCommandsAsync(ct);
-
                     SendSwitchMode(SaharaMode.ImageTransferPending);
                     await Task.Delay(50, ct);
-
                     return true;
                 }
                 else if ((SaharaCommand)cmdId == SaharaCommand.ReadData ||
                          (SaharaCommand)cmdId == SaharaCommand.ReadData64)
                 {
-                    _log(string.Format("[Sahara] 设备拒绝命令模式 (v{0})", ProtocolVersion));
                     if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
                     _skipCommandMode = true;
                     return false;
@@ -583,9 +523,8 @@ namespace LoveAlways.Qualcomm.Protocol
                     return false;
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                _log(string.Format("[Sahara] 芯片信息读取失败: {0}", ex.Message));
                 return false;
             }
         }
@@ -595,8 +534,6 @@ namespace LoveAlways.Qualcomm.Protocol
         /// </summary>
         private async Task ReadChipInfoCommandsAsync(CancellationToken ct)
         {
-            _log(string.Format("- Sahara version  : {0}", ProtocolVersion));
-
             // 1. 读取序列号
             var serialData = await ExecuteCommandSafeAsync(SaharaExecCommand.SerialNumRead, ct);
             if (serialData != null && serialData.Length >= 4)
@@ -605,21 +542,14 @@ namespace LoveAlways.Qualcomm.Protocol
                 ChipSerial = serial.ToString("x8");
                 ChipInfo.SerialHex = "0x" + ChipSerial.ToUpperInvariant();
                 ChipInfo.SerialDec = serial;
-                _log(string.Format("- Chip Serial Number : {0}", ChipSerial));
             }
 
-            // 2. 读取 HWID - V3 和 V1/V2 不同
+            // 2. 读取 HWID
             if (ProtocolVersion < 3)
             {
                 var hwidData = await ExecuteCommandSafeAsync(SaharaExecCommand.MsmHwIdRead, ct);
                 if (hwidData != null && hwidData.Length >= 8)
-                {
                     ProcessHwIdData(hwidData);
-                }
-            }
-            else
-            {
-                _log("[Sahara] V3 协议，使用 cmd=0x0A 读取芯片信息");
             }
 
             // 3. 读取 PK Hash
@@ -630,13 +560,6 @@ namespace LoveAlways.Qualcomm.Protocol
                 ChipPkHash = BitConverter.ToString(pkhash, 0, hashLen).Replace("-", "").ToLower();
                 ChipInfo.PkHash = ChipPkHash;
                 ChipInfo.PkHashInfo = QualcommDatabase.GetPkHashInfo(ChipPkHash);
-                _log(string.Format("- OEM PKHASH : {0}", ChipPkHash));
-
-                var pkInfo = QualcommDatabase.GetPkHashInfo(ChipPkHash);
-                if (pkInfo != "Unknown" && pkInfo != "Custom OEM")
-                {
-                    _log(string.Format("- SecBoot : {0}", pkInfo));
-                }
             }
 
             // 4. V3 专用: 读取扩展信息
@@ -644,9 +567,58 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 var extInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.ChipIdV3Read, ct);
                 if (extInfo != null && extInfo.Length >= 44)
-                {
                     ProcessV3ExtendedInfo(extInfo);
-                }
+            }
+            
+            // 5. 显示芯片信息（在上传引导前）
+            LogChipInfoBeforeUpload();
+        }
+        
+        /// <summary>
+        /// 在上传引导前显示芯片信息
+        /// </summary>
+        private void LogChipInfoBeforeUpload()
+        {
+            _log("芯片信息读取成功");
+            
+            // 芯片型号
+            if (!string.IsNullOrEmpty(ChipInfo.ChipName) && ChipInfo.ChipName != "Unknown")
+                _log(string.Format("- 芯片型号: {0}", ChipInfo.ChipName));
+            
+            // 序列号
+            if (!string.IsNullOrEmpty(ChipInfo.SerialHex))
+                _log(string.Format("- 序列号: {0}", ChipInfo.SerialHex));
+            
+            // 硬件 ID
+            if (!string.IsNullOrEmpty(ChipInfo.HwIdHex))
+                _log(string.Format("- 硬件ID: {0}", ChipInfo.HwIdHex));
+            
+            // MSM ID
+            if (ChipInfo.MsmId > 0)
+                _log(string.Format("- MSM ID: 0x{0:X}", ChipInfo.MsmId));
+            
+            // OEM ID + 厂商
+            if (ChipInfo.OemId > 0)
+            {
+                string vendor = !string.IsNullOrEmpty(ChipInfo.Vendor) && ChipInfo.Vendor != "Unknown" 
+                    ? ChipInfo.Vendor : "";
+                _log(string.Format("- OEM ID: 0x{0:X4} {1}", ChipInfo.OemId, vendor));
+            }
+            else if (!string.IsNullOrEmpty(ChipInfo.Vendor) && ChipInfo.Vendor != "Unknown")
+            {
+                _log(string.Format("- 厂商: {0}", ChipInfo.Vendor));
+            }
+            
+            // PK Hash
+            if (!string.IsNullOrEmpty(ChipInfo.PkHash))
+            {
+                string shortHash = ChipInfo.PkHash.Length > 16 
+                    ? ChipInfo.PkHash.Substring(0, 16) + "..." 
+                    : ChipInfo.PkHash;
+                _log(string.Format("- PK Hash: {0}", shortHash));
+                
+                if (!string.IsNullOrEmpty(ChipInfo.PkHashInfo) && ChipInfo.PkHashInfo != "Unknown")
+                    _log(string.Format("- SecBoot: {0}", ChipInfo.PkHashInfo));
             }
         }
 
@@ -661,20 +633,11 @@ namespace LoveAlways.Qualcomm.Protocol
 
             uint msmId = (uint)(hwid & 0xFFFFFF);
             ushort oemId = (ushort)((hwid >> 32) & 0xFFFF);
-            ushort modelId = (ushort)((hwid >> 48) & 0xFFFF);
 
             ChipInfo.MsmId = msmId;
             ChipInfo.OemId = oemId;
             ChipInfo.ChipName = QualcommDatabase.GetChipName(msmId);
             ChipInfo.Vendor = QualcommDatabase.GetVendorName(oemId);
-
-            _log(string.Format("- MSM HWID : 0x{0:x} | model_id:0x{1:x4} | oem_id:{2:X4} {3}", 
-                msmId, modelId, oemId, ChipInfo.Vendor));
-
-            if (ChipInfo.ChipName != "Unknown")
-                _log(string.Format("- CHIP : {0}", ChipInfo.ChipName));
-
-            _log(string.Format("- HW_ID : {0}", ChipHwId));
         }
 
         /// <summary>

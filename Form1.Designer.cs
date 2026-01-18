@@ -647,6 +647,7 @@ namespace LoveAlways
             this.查看日志ToolStripMenuItem.Name = "查看日志ToolStripMenuItem";
             this.查看日志ToolStripMenuItem.Size = new System.Drawing.Size(154, 24);
             this.查看日志ToolStripMenuItem.Text = "查看日志";
+            this.查看日志ToolStripMenuItem.Click += new System.EventHandler(this.查看日志ToolStripMenuItem_Click);
             // 
             // tabs1
             // 

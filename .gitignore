@@ -27,3 +27,29 @@ tools/
 
 # 7z archives
 *.7z
+
+# Python analysis scripts (temporary)
+*.py
+validate_*.py
+analyze_*.py
+extract_*.py
+parse_*.py
+scan_*.py
+find_*.py
+check_*.py
+dump_*.py
+verify_*.py
+deep_*.py
+clean_*.py
+exhaustive_*.py
+full_*.py
+quick_*.py
+real_*.py
+ultimate_*.py
+
+# Analysis reports (temporary)
+*_Report.txt
+*_report.txt
+*_analysis.txt
+*_props.txt
+super_*.txt

@@ -25,44 +25,34 @@ namespace LoveAlways.Qualcomm.Common
         private string _currentPortName = "";
 
         // 串口配置 (9008 EDL 模式用 USB CDC 模拟串口)
-        // USB 2.0 High Speed = 480 Mbps，波特率设置不影响实际速度
-        public int BaudRate { get; set; } = 921600;          // 最高波特率
-        public int ReadTimeout { get; set; } = 30000;        // 增加超时
-        public int WriteTimeout { get; set; } = 30000;       // 增加超时
-        public int ReadBufferSize { get; set; } = 16 * 1024 * 1024;  // 16MB 大缓冲
-        public int WriteBufferSize { get; set; } = 16 * 1024 * 1024; // 16MB 大缓冲
+        public int BaudRate { get; set; } = 921600;
+        public int ReadTimeout { get; set; } = 30000;
+        public int WriteTimeout { get; set; } = 30000;
+        public int ReadBufferSize { get; set; } = 16 * 1024 * 1024;
+        public int WriteBufferSize { get; set; } = 16 * 1024 * 1024;
 
-        /// <summary>
-        /// 当前串口是否打开
-        /// </summary>
         public bool IsOpen
         {
             get { return _port != null && _port.IsOpen; }
         }
 
-        /// <summary>
-        /// 当前端口名
-        /// </summary>
         public string PortName
         {
             get { return _currentPortName; }
         }
 
-        /// <summary>
-        /// 打开串口 (带重试机制)
-        /// </summary>
-        /// <param name="portName">端口名称</param>
-        /// <param name="maxRetries">最大重试次数</param>
-        /// <param name="discardBuffer">是否清空缓冲区 (Sahara 协议必须设为 false)</param>
+        public int BytesToRead
+        {
+            get { return _port != null ? _port.BytesToRead : 0; }
+        }
+
         public bool Open(string portName, int maxRetries = 3, bool discardBuffer = false)
         {
             lock (_lock)
             {
-                // 如果已打开同一端口，直接返回
                 if (_port != null && _port.IsOpen && _currentPortName == portName)
                     return true;
 
-                // 关闭之前的端口
                 CloseInternal();
 
                 for (int i = 0; i < maxRetries; i++)
@@ -120,17 +110,11 @@ namespace LoveAlways.Qualcomm.Common
             }
         }
 
-        /// <summary>
-        /// 异步打开串口
-        /// </summary>
         public Task<bool> OpenAsync(string portName, int maxRetries = 3, bool discardBuffer = false, CancellationToken ct = default(CancellationToken))
         {
             return Task.Run(() => Open(portName, maxRetries, discardBuffer), ct);
         }
 
-        /// <summary>
-        /// 关闭串口
-        /// </summary>
         public void Close()
         {
             lock (_lock)
@@ -147,20 +131,8 @@ namespace LoveAlways.Qualcomm.Common
                 {
                     if (_port.IsOpen)
                     {
-                        try
-                        {
-                            _port.DiscardInBuffer();
-                            _port.DiscardOutBuffer();
-                        }
-                        catch { }
-
-                        try
-                        {
-                            _port.DtrEnable = false;
-                            _port.RtsEnable = false;
-                        }
-                        catch { }
-
+                        try { _port.DiscardInBuffer(); _port.DiscardOutBuffer(); } catch { }
+                        try { _port.DtrEnable = false; _port.RtsEnable = false; } catch { }
                         Thread.Sleep(50);
                         _port.Close();
                     }
@@ -168,20 +140,13 @@ namespace LoveAlways.Qualcomm.Common
                 catch { }
                 finally
                 {
-                    try
-                    {
-                        _port.Dispose();
-                    }
-                    catch { }
+                    try { _port.Dispose(); } catch { }
                     _port = null;
                     _currentPortName = "";
                 }
             }
         }
 
-        /// <summary>
-        /// 强制释放端口
-        /// </summary>
         private static void ForceReleasePort(string portName)
         {
             try
@@ -195,34 +160,41 @@ namespace LoveAlways.Qualcomm.Common
             catch { }
         }
 
-        /// <summary>
-        /// 写入数据
-        /// </summary>
         public void Write(byte[] data, int offset, int count)
         {
-            if (_port == null || !_port.IsOpen)
-                throw new InvalidOperationException("串口未打开");
-
-            _port.Write(data, offset, count);
+            lock (_lock)
+            {
+                if (_port == null || !_port.IsOpen) throw new InvalidOperationException("串口未打开");
+                _port.Write(data, offset, count);
+            }
         }
 
-        /// <summary>
-        /// 写入数据
-        /// </summary>
         public void Write(byte[] data)
         {
             Write(data, 0, data.Length);
         }
 
-        /// <summary>
-        /// 读取数据
-        /// </summary>
+        public async Task<bool> WriteAsync(byte[] buffer, int offset, int count, CancellationToken ct)
+        {
+            if (!IsOpen) return false;
+            try
+            {
+                await _port.BaseStream.WriteAsync(buffer, offset, count, ct);
+                return true;
+            }
+            catch { return false; }
+        }
+
         public int Read(byte[] buffer, int offset, int count)
         {
-            if (_port == null || !_port.IsOpen)
-                throw new InvalidOperationException("串口未打开");
-
+            if (_port == null || !_port.IsOpen) throw new InvalidOperationException("串口未打开");
             return _port.Read(buffer, offset, count);
+        }
+
+        public async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken ct)
+        {
+            if (_port == null || !_port.IsOpen) return 0;
+            return await _port.BaseStream.ReadAsync(buffer, offset, count, ct);
         }
 
         /// <summary>
@@ -292,35 +264,21 @@ namespace LoveAlways.Qualcomm.Common
             }, ct);
         }
 
-        /// <summary>
-        /// 清空接收缓冲区
-        /// </summary>
+        public Stream BaseStream
+        {
+            get { return _port?.BaseStream; }
+        }
+
         public void DiscardInBuffer()
         {
-            if (_port != null)
-                _port.DiscardInBuffer();
+            if (_port != null) _port.DiscardInBuffer();
         }
 
-        /// <summary>
-        /// 清空发送缓冲区
-        /// </summary>
         public void DiscardOutBuffer()
         {
-            if (_port != null)
-                _port.DiscardOutBuffer();
+            if (_port != null) _port.DiscardOutBuffer();
         }
 
-        /// <summary>
-        /// 获取可用字节数
-        /// </summary>
-        public int BytesToRead
-        {
-            get { return _port != null ? _port.BytesToRead : 0; }
-        }
-
-        /// <summary>
-        /// 获取所有可用串口
-        /// </summary>
         public static string[] GetAvailablePorts()
         {
             return SerialPort.GetPortNames();
@@ -336,10 +294,7 @@ namespace LoveAlways.Qualcomm.Common
         {
             if (!_disposed)
             {
-                if (disposing)
-                {
-                    Close();
-                }
+                if (disposing) Close();
                 _disposed = true;
             }
         }

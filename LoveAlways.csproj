@@ -106,10 +106,12 @@
     <Compile Include="Qualcomm\Protocol\SaharaProtocol.cs" />
     <Compile Include="Qualcomm\Protocol\FirehoseClient.cs" />
     <Compile Include="Qualcomm\Services\QualcommService.cs" />
+    <Compile Include="Qualcomm\Services\OplusSuperFlashManager.cs" />
     <Compile Include="Qualcomm\Services\DeviceInfoService.cs" />
     <Compile Include="Qualcomm\Common\PortDetector.cs" />
     <Compile Include="Qualcomm\Common\RawprogramParser.cs" />
     <Compile Include="Qualcomm\Common\GptParser.cs" />
+    <Compile Include="Qualcomm\Common\LpMetadataParser.cs" />
     <Compile Include="Qualcomm\UI\QualcommUIController.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>

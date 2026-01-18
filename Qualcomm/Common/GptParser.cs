@@ -327,39 +327,55 @@ namespace LoveAlways.Qualcomm.Common
                 _log(string.Format("[GPT] Header信息: PartitionEntryLba={0}, NumberOfEntries={1}, EntrySize={2}, FirstUsableLba={3}",
                     header.PartitionEntryLba, header.NumberOfPartitionEntries, header.SizeOfPartitionEntry, header.FirstUsableLba));
 
-                // 计算分区条目起始位置 - 尝试多种方式
+                // 计算分区条目起始位置 - 多种策略
                 int entryOffset = -1;
                 
-                // 方式1: 使用 Header 中指定的 LBA
+                // 策略1: 使用 Header 中指定的 PartitionEntryLba
                 if (header.PartitionEntryLba > 0)
                 {
                     long calcOffset = (long)header.PartitionEntryLba * sectorSize;
                     if (calcOffset > 0 && calcOffset < data.Length - 128)
                     {
                         entryOffset = (int)calcOffset;
-                        _log(string.Format("[GPT] 使用 PartitionEntryLba 计算: {0} * {1} = {2}", 
+                        _log(string.Format("[GPT] 策略1 (PartitionEntryLba): {0} * {1} = {2}", 
                             header.PartitionEntryLba, sectorSize, entryOffset));
                     }
                 }
                 
-                // 方式2: Header 后紧跟分区条目
-                if (entryOffset < 0 || entryOffset >= data.Length - 128)
+                // 策略2: 小米/OPPO 等设备使用 512B 扇区，分区条目通常在 LBA 2 = 1024
+                if ((entryOffset < 0 || entryOffset >= data.Length - 128) && sectorSize == 512)
                 {
-                    entryOffset = headerOffset + sectorSize;
-                    _log(string.Format("[GPT] 使用相对位置: HeaderOffset({0}) + SectorSize({1}) = {2}", 
-                        headerOffset, sectorSize, entryOffset));
+                    int xiaomiOffset = 1024; // LBA 2 * 512B
+                    if (xiaomiOffset < data.Length - 128 && HasValidPartitionEntry(data, xiaomiOffset))
+                    {
+                        entryOffset = xiaomiOffset;
+                        _log(string.Format("[GPT] 策略2 (512B扇区/小米): 偏移 {0}", entryOffset));
+                    }
                 }
                 
-                // 方式3: 如果还是无效，尝试常见偏移
+                // 策略3: Header 后紧跟分区条目
                 if (entryOffset < 0 || entryOffset >= data.Length - 128)
                 {
-                    int[] commonOffsets = { 8192, 4096 * 2, 1024, 2048, 4096, 512 * 2 };
+                    int relativeOffset = headerOffset + sectorSize;
+                    if (relativeOffset < data.Length - 128 && HasValidPartitionEntry(data, relativeOffset))
+                    {
+                        entryOffset = relativeOffset;
+                        _log(string.Format("[GPT] 策略3 (Header+扇区): {0} + {1} = {2}", 
+                            headerOffset, sectorSize, entryOffset));
+                    }
+                }
+                
+                // 策略4: 暴力探测常见偏移
+                if (entryOffset < 0 || entryOffset >= data.Length - 128)
+                {
+                    // 常见偏移：512B扇区=1024, 4KB扇区=8192, 以及其他可能
+                    int[] commonOffsets = { 1024, 8192, 4096, 2048, 4096 * 2, 512 * 2, 512 * 4 };
                     foreach (int tryOffset in commonOffsets)
                     {
                         if (tryOffset < data.Length - 128 && HasValidPartitionEntry(data, tryOffset))
                         {
                             entryOffset = tryOffset;
-                            _log(string.Format("[GPT] 使用探测偏移: {0}", entryOffset));
+                            _log(string.Format("[GPT] 策略4 (探测): 偏移 {0}", entryOffset));
                             break;
                         }
                     }
@@ -375,37 +391,34 @@ namespace LoveAlways.Qualcomm.Common
                 int entrySize = (int)header.SizeOfPartitionEntry;
                 if (entrySize <= 0 || entrySize > 512) entrySize = 128;
 
-                // ========== 借鉴 gpttool 的计算方式 ==========
-                // gpttool: ParEntry_Num = Sec2b(ParEntriesArea_Size_Sec_Dec) / ParEntry_Size_b_Dec
-                // ParEntriesArea_Size = FirstUsableLba - PartitionEntryLba (对于 gptmain)
-                
+                // ========== 计算分区条目数量 ==========
                 int headerEntries = (int)header.NumberOfPartitionEntries;
                 if (headerEntries <= 0) headerEntries = 128;
                 
-                // 计算实际可用的分区条目数 (gpttool 方式)
+                // gpttool 方式: ParEntriesArea_Size = (FirstUsableLba - PartitionEntryLba) * SectorSize
                 int actualAvailableEntries = 0;
                 if (header.FirstUsableLba > header.PartitionEntryLba && header.PartitionEntryLba > 0)
                 {
-                    // ParEntriesArea_Size = (FirstUsableLba - PartitionEntryLba) * SectorSize
                     long parEntriesAreaSize = (long)(header.FirstUsableLba - header.PartitionEntryLba) * sectorSize;
                     actualAvailableEntries = (int)(parEntriesAreaSize / entrySize);
-                    _log(string.Format("[GPT] gpttool方式: ParEntriesArea=({0}-{1})*{2}={3}, 可用条目数={4}", 
-                        header.FirstUsableLba, header.PartitionEntryLba, sectorSize, parEntriesAreaSize, actualAvailableEntries));
+                    _log(string.Format("[GPT] gpttool方式: ({0}-{1})*{2}/{3}={4}", 
+                        header.FirstUsableLba, header.PartitionEntryLba, sectorSize, entrySize, actualAvailableEntries));
                 }
                 
                 // 从数据长度计算可扫描的最大条目数
                 int maxFromData = Math.Max(0, (data.Length - entryOffset) / entrySize);
                 
-                // 综合计算: 取 Header指定、实际可用、数据容量 中的最大值
-                // 但不超过数据实际能容纳的数量和合理上限 256
+                // 综合计算: 优先使用 Header 指定的数量，但不超过数据容量
+                // 小米设备可能有超过 128 个分区，上限提升到 512
                 int maxEntries = Math.Max(headerEntries, actualAvailableEntries);
                 maxEntries = Math.Min(maxEntries, maxFromData);  // 不能超过数据容量
-                maxEntries = Math.Min(maxEntries, 256);          // 合理上限
+                maxEntries = Math.Min(maxEntries, 512);          // 合理上限
 
-                _log(string.Format("[GPT] 分区条目: 偏移={0}, 大小={1}, Header数量={2}, gpttool计算={3}, 数据容量={4}, 实际扫描={5}", 
+                _log(string.Format("[GPT] 分区条目: 偏移={0}, 大小={1}, Header数量={2}, gpttool={3}, 数据容量={4}, 扫描={5}", 
                     entryOffset, entrySize, headerEntries, actualAvailableEntries, maxFromData, maxEntries));
 
                 int parsedCount = 0;
+                int emptyCount = 0;
                 for (int i = 0; i < maxEntries; i++)
                 {
                     int offset = entryOffset + i * entrySize;
@@ -426,7 +439,16 @@ namespace LoveAlways.Qualcomm.Common
                             break;
                         }
                     }
-                    if (isEmpty) continue;
+                    
+                    if (isEmpty)
+                    {
+                        emptyCount++;
+                        // 连续 32 个空条目则停止扫描
+                        if (emptyCount > 32) break;
+                        continue;
+                    }
+                    
+                    emptyCount = 0; // 重置空条目计数
 
                     // 解析分区条目
                     var partition = ParsePartitionEntry(data, offset, lun, sectorSize, i + 1);
@@ -719,7 +741,7 @@ namespace LoveAlways.Qualcomm.Common
         #region XML 生成
 
         /// <summary>
-        /// 生成 rawprogram.xml 内容
+        /// 生成合并后的 rawprogram.xml 内容 (包含所有 LUN)
         /// </summary>
         public string GenerateRawprogramXml(List<PartitionInfo> partitions, int sectorSize)
         {
@@ -729,26 +751,109 @@ namespace LoveAlways.Qualcomm.Common
 
             foreach (var p in partitions.OrderBy(x => x.Lun).ThenBy(x => x.StartSector))
             {
-                long sizeKb = (p.NumSectors * sectorSize) / 1024;
-                long startByte = p.StartSector * sectorSize;
+                long sizeKb = (p.NumSectors * (long)sectorSize) / 1024;
+                long startByte = p.StartSector * (long)sectorSize;
+
+                string filename = p.Name;
+                if (!filename.EndsWith(".img", StringComparison.OrdinalIgnoreCase) && 
+                    !filename.EndsWith(".bin", StringComparison.OrdinalIgnoreCase))
+                {
+                    filename += ".img";
+                }
 
                 sb.AppendFormat("  <program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
                     "file_sector_offset=\"0\" " +
-                    "filename=\"{1}.img\" " +
-                    "label=\"{1}\" " +
-                    "num_partition_sectors=\"{2}\" " +
+                    "filename=\"{1}\" " +
+                    "label=\"{2}\" " +
+                    "num_partition_sectors=\"{3}\" " +
                     "partofsingleimage=\"false\" " +
-                    "physical_partition_number=\"{3}\" " +
+                    "physical_partition_number=\"{4}\" " +
                     "readbackverify=\"false\" " +
-                    "size_in_KB=\"{4}\" " +
+                    "size_in_KB=\"{5}\" " +
                     "sparse=\"false\" " +
-                    "start_byte_hex=\"0x{5:X}\" " +
-                    "start_sector=\"{6}\" />\r\n",
-                    sectorSize, p.Name, p.NumSectors, p.Lun, sizeKb, startByte, p.StartSector);
+                    "start_byte_hex=\"0x{6:X}\" " +
+                    "start_sector=\"{7}\" />\r\n",
+                    sectorSize, filename, p.Name, p.NumSectors, p.Lun, sizeKb, startByte, p.StartSector);
             }
 
             sb.AppendLine("</data>");
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// 生成 rawprogram.xml 内容 (分 LUN 生成)
+        /// </summary>
+        public Dictionary<int, string> GenerateRawprogramXmls(List<PartitionInfo> partitions, int sectorSize)
+        {
+            var results = new Dictionary<int, string>();
+            var luns = partitions.Select(p => p.Lun).Distinct().OrderBy(l => l);
+
+            foreach (var lun in luns)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("<?xml version=\"1.0\" ?>");
+                sb.AppendLine("<data>");
+
+                var lunPartitions = partitions.Where(p => p.Lun == lun).OrderBy(p => p.StartSector);
+                foreach (var p in lunPartitions)
+                {
+                    long sizeKb = (p.NumSectors * (long)sectorSize) / 1024;
+                    long startByte = p.StartSector * (long)sectorSize;
+
+                    // 规范化文件名，如果有 .img 后缀则保留，没有则加上
+                    string filename = p.Name;
+                    if (!filename.EndsWith(".img", StringComparison.OrdinalIgnoreCase) && 
+                        !filename.EndsWith(".bin", StringComparison.OrdinalIgnoreCase))
+                    {
+                        filename += ".img";
+                    }
+
+                    sb.AppendFormat("  <program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                        "file_sector_offset=\"0\" " +
+                        "filename=\"{1}\" " +
+                        "label=\"{2}\" " +
+                        "num_partition_sectors=\"{3}\" " +
+                        "partofsingleimage=\"false\" " +
+                        "physical_partition_number=\"{4}\" " +
+                        "readbackverify=\"false\" " +
+                        "size_in_KB=\"{5}\" " +
+                        "sparse=\"false\" " +
+                        "start_byte_hex=\"0x{6:X}\" " +
+                        "start_sector=\"{7}\" />\r\n",
+                        sectorSize, filename, p.Name, p.NumSectors, p.Lun, sizeKb, startByte, p.StartSector);
+                }
+
+                sb.AppendLine("</data>");
+                results[lun] = sb.ToString();
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// 生成基础 patch.xml 内容 (分 LUN 生成)
+        /// </summary>
+        public Dictionary<int, string> GeneratePatchXmls(List<PartitionInfo> partitions, int sectorSize)
+        {
+            var results = new Dictionary<int, string>();
+            var luns = partitions.Select(p => p.Lun).Distinct().OrderBy(l => l);
+
+            foreach (var lun in luns)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("<?xml version=\"1.0\" ?>");
+                sb.AppendLine("<data>");
+
+                // 添加标准的 GPT 修复补丁模板 (实际值需要工具写入时动态计算，这里提供占位)
+                sb.AppendLine(string.Format("  <!-- GPT Header CRC Patches for LUN {0} -->", lun));
+                sb.AppendFormat("  <patch SECTOR_SIZE_IN_BYTES=\"{0}\" byte_offset=\"16\" filename=\"DISK\" physical_partition_number=\"{1}\" size_in_bytes=\"4\" start_sector=\"1\" value=\"0\" />\r\n", sectorSize, lun);
+                sb.AppendFormat("  <patch SECTOR_SIZE_IN_BYTES=\"{0}\" byte_offset=\"88\" filename=\"DISK\" physical_partition_number=\"{1}\" size_in_bytes=\"4\" start_sector=\"1\" value=\"0\" />\r\n", sectorSize, lun);
+
+                sb.AppendLine("</data>");
+                results[lun] = sb.ToString();
+            }
+
+            return results;
         }
 
         /// <summary>

@@ -9,6 +9,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using LoveAlways.Qualcomm.Common;
@@ -42,6 +43,8 @@ namespace LoveAlways.Qualcomm.Services
         private FirehoseClient _firehose;
         private readonly Action<string> _log;
         private readonly Action<long, long> _progress;
+        private readonly OplusSuperFlashManager _oplusSuperManager;
+        private readonly DeviceInfoService _deviceInfoService;
         private bool _disposed;
 
         // 状态
@@ -65,6 +68,8 @@ namespace LoveAlways.Qualcomm.Services
         {
             _log = log ?? delegate { };
             _progress = progress;
+            _oplusSuperManager = new OplusSuperFlashManager(_log);
+            _deviceInfoService = new DeviceInfoService(_log);
             _partitionCache = new Dictionary<int, List<PartitionInfo>>();
             State = QualcommConnectionState.Disconnected;
         }
@@ -83,7 +88,9 @@ namespace LoveAlways.Qualcomm.Services
             try
             {
                 SetState(QualcommConnectionState.Connecting);
-                _log(string.Format("[高通] 连接 {0}...", portName));
+                _log("等待高通 EDL USB 设备 : 成功");
+                _log(string.Format("USB 端口 : {0}", portName));
+                _log("正在连接设备 : 成功");
 
                 // 验证 Programmer 文件
                 if (!File.Exists(programmerPath))
@@ -107,7 +114,14 @@ namespace LoveAlways.Qualcomm.Services
 
                 // Sahara 握手
                 SetState(QualcommConnectionState.SaharaMode);
-                _sahara = new SaharaClient(_portManager, _log);
+                
+                // 创建 Sahara 客户端并传递进度回调
+                Action<double> saharaProgress = null;
+                if (_progress != null)
+                {
+                    saharaProgress = percent => _progress((long)percent, 100);
+                }
+                _sahara = new SaharaClient(_portManager, _log, saharaProgress);
 
                 bool saharaOk = await _sahara.HandshakeAndUploadAsync(programmerPath, ct);
                 if (!saharaOk)
@@ -128,7 +142,7 @@ namespace LoveAlways.Qualcomm.Services
                 }
 
                 // 等待 Firehose 就绪
-                _log("[高通] 等待 Firehose 就绪...");
+                _log("正在发送 Firehose 引导文件 : 成功");
                 await Task.Delay(1000, ct);
 
                 // 重新打开端口 (Firehose 模式)
@@ -163,13 +177,15 @@ namespace LoveAlways.Qualcomm.Services
                     await AutoAuthenticateAsync(programmerPath, ct);
                 }
 
+                _log("正在配置 Firehose...");
                 bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);
                 if (!configOk)
                 {
-                    _log("[高通] Firehose 配置失败");
+                    _log("配置 Firehose : 失败");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
+                _log("配置 Firehose : 成功");
 
                 // 对于不需要提前认证的设备，在配置后执行认证
                 if (!needsAuthFirst)
@@ -179,9 +195,6 @@ namespace LoveAlways.Qualcomm.Services
 
                 SetState(QualcommConnectionState.Ready);
                 _log("[高通] 连接成功");
-
-                // 显示设备信息
-                LogDeviceInfo();
 
                 return true;
             }
@@ -221,13 +234,15 @@ namespace LoveAlways.Qualcomm.Services
                 SetState(QualcommConnectionState.FirehoseMode);
                 _firehose = new FirehoseClient(_portManager, _log, _progress);
 
+                _log("正在配置 Firehose...");
                 bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);
                 if (!configOk)
                 {
-                    _log("[高通] Firehose 配置失败");
+                    _log("配置 Firehose : 失败");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
+                _log("配置 Firehose : 成功");
 
                 SetState(QualcommConnectionState.Ready);
                 _log("[高通] Firehose 直连成功");
@@ -313,7 +328,9 @@ namespace LoveAlways.Qualcomm.Services
                             // 如果没有签名文件，返回 true 继续（某些设备可能不需要认证）
                             return true;
                         }
-                        return await _firehose.PerformVipAuthAsync(digestPath, signaturePath, ct);
+                        bool ok = await _firehose.PerformVipAuthAsync(digestPath, signaturePath, ct);
+                        if (ok) IsVipDevice = true;
+                        return ok;
 
                     case "xiaomi":
                         _log("[高通] 执行小米认证...");
@@ -340,23 +357,6 @@ namespace LoveAlways.Qualcomm.Services
                 if (StateChanged != null)
                     StateChanged(this, newState);
             }
-        }
-
-        private void LogDeviceInfo()
-        {
-            if (ChipInfo == null) return;
-
-            _log("=== 设备信息 ===");
-            if (!string.IsNullOrEmpty(ChipInfo.SerialHex))
-                _log(string.Format("  Serial: {0}", ChipInfo.SerialHex));
-            if (!string.IsNullOrEmpty(ChipInfo.ChipName) && ChipInfo.ChipName != "Unknown")
-                _log(string.Format("  芯片: {0}", ChipInfo.ChipName));
-            if (!string.IsNullOrEmpty(ChipInfo.Vendor) && ChipInfo.Vendor != "Unknown")
-                _log(string.Format("  厂商: {0}", ChipInfo.Vendor));
-            if (!string.IsNullOrEmpty(ChipInfo.PkHashInfo))
-                _log(string.Format("  SecBoot: {0}", ChipInfo.PkHashInfo));
-            _log(string.Format("  存储: {0} (扇区 {1} 字节)", StorageType.ToUpper(), SectorSize));
-            _log("================");
         }
 
         #endregion
@@ -481,7 +481,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 手动执行 VIP 认证 (供 UI 调用)
+        /// 手动执行 OPLUS VIP 认证 (基于 Digest 和 Signature)
         /// </summary>
         public async Task<bool> PerformVipAuthManualAsync(string digestPath, string signaturePath, CancellationToken ct = default(CancellationToken))
         {
@@ -491,29 +491,18 @@ namespace LoveAlways.Qualcomm.Services
                 return false;
             }
 
-            if (!File.Exists(digestPath))
-            {
-                _log("[高通] Digest 文件不存在: " + digestPath);
-                return false;
-            }
-
-            if (!File.Exists(signaturePath))
-                {
-                _log("[高通] Signature 文件不存在: " + signaturePath);
-                return false;
-            }
-
-            _log("[高通] 执行 VIP 认证...");
+            _log("[高通] 启动 OPLUS VIP 认证 (Digest + Sign)...");
             try
             {
                 bool result = await _firehose.PerformVipAuthAsync(digestPath, signaturePath, ct);
                 if (result)
                 {
-                    _log("[高通] VIP 认证成功");
+                    _log("[高通] VIP 认证成功，已进入高权限模式");
+                    IsVipDevice = true; 
                 }
                 else
                 {
-                    _log("[高通] VIP 认证失败");
+                    _log("[高通] VIP 认证失败：校验未通过");
                 }
                 return result;
             }
@@ -522,6 +511,15 @@ namespace LoveAlways.Qualcomm.Services
                 _log(string.Format("[高通] VIP 认证异常: {0}", ex.Message));
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 获取设备挑战码 (用于在线签名)
+        /// </summary>
+        public async Task<string> GetVipChallengeAsync(CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null) return null;
+            return await _firehose.GetVipChallengeAsync(ct);
         }
 
         #endregion
@@ -546,7 +544,7 @@ namespace LoveAlways.Qualcomm.Services
         public async Task<List<PartitionInfo>> ReadAllGptAsync(
             int maxLuns, 
             IProgress<Tuple<int, int>> totalProgress,
-            IProgress<int> subProgress,
+            IProgress<double> subProgress,
             CancellationToken ct = default(CancellationToken))
         {
             var allPartitions = new List<PartitionInfo>();
@@ -554,7 +552,7 @@ namespace LoveAlways.Qualcomm.Services
             if (_firehose == null)
                 return allPartitions;
 
-            _log("[高通] 读取分区表...");
+            _log("正在读取 GUID 分区表...");
 
             // 报告开始
             if (totalProgress != null) totalProgress.Report(Tuple.Create(0, maxLuns));
@@ -568,6 +566,7 @@ namespace LoveAlways.Qualcomm.Services
             if (partitions != null && partitions.Count > 0)
             {
                 allPartitions.AddRange(partitions);
+                _log(string.Format("读取 GUID 分区表 : 成功 [{0}]", partitions.Count));
 
                 // 缓存分区
                 _partitionCache.Clear();
@@ -628,7 +627,7 @@ namespace LoveAlways.Qualcomm.Services
         /// <summary>
         /// 读取分区到文件
         /// </summary>
-        public async Task<bool> ReadPartitionAsync(string partitionName, string outputPath, IProgress<int> progress = null, CancellationToken ct = default(CancellationToken))
+        public async Task<bool> ReadPartitionAsync(string partitionName, string outputPath, IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
                 return false;
@@ -671,9 +670,9 @@ namespace LoveAlways.Qualcomm.Services
                         // 调用字节级进度回调 (用于速度计算)
                         _firehose.ReportProgress(readBytes, totalBytes);
 
-                        // 百分比进度
+                        // 百分比进度 (使用 double)
                         if (progress != null)
-                            progress.Report((int)(100.0 * readSectors / totalSectors));
+                            progress.Report(100.0 * readBytes / totalBytes);
                     }
                 }
 
@@ -690,7 +689,7 @@ namespace LoveAlways.Qualcomm.Services
         /// <summary>
         /// 写入分区
         /// </summary>
-        public async Task<bool> WritePartitionAsync(string partitionName, string filePath, IProgress<int> progress = null, CancellationToken ct = default(CancellationToken))
+        public async Task<bool> WritePartitionAsync(string partitionName, string filePath, IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
                 return false;
@@ -702,15 +701,32 @@ namespace LoveAlways.Qualcomm.Services
                 return false;
             }
 
+            // OPLUS 某些分区需要 SHA256 校验环绕
+            bool useSha256 = IsOplusDevice && (partitionName.ToLower() == "xbl" || partitionName.ToLower() == "abl" || partitionName.ToLower() == "imagefv");
+            if (useSha256) await _firehose.Sha256InitAsync(ct);
+
             // VIP 设备使用伪装模式写入
-            return await _firehose.FlashPartitionFromFileAsync(
+            bool success = await _firehose.FlashPartitionFromFileAsync(
                 partitionName, filePath, partition.Lun, partition.StartSector, progress, ct, IsVipDevice);
+
+            if (useSha256) await _firehose.Sha256FinalAsync(ct);
+
+            return success;
+        }
+
+        private bool IsOplusDevice 
+        { 
+            get { 
+                if (IsVipDevice) return true;
+                if (ChipInfo != null && (ChipInfo.Vendor == "OPPO" || ChipInfo.Vendor == "Realme" || ChipInfo.Vendor == "OnePlus")) return true;
+                return false;
+            } 
         }
 
         /// <summary>
         /// 直接写入指定 LUN 和 StartSector (用于 PrimaryGPT/BackupGPT 等特殊分区)
         /// </summary>
-        public async Task<bool> WriteDirectAsync(string label, string filePath, int lun, long startSector, IProgress<int> progress = null, CancellationToken ct = default(CancellationToken))
+        public async Task<bool> WriteDirectAsync(string label, string filePath, int lun, long startSector, IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
                 return false;
@@ -920,7 +936,7 @@ namespace LoveAlways.Qualcomm.Services
         /// <summary>
         /// 批量刷写分区
         /// </summary>
-        public async Task<bool> FlashMultipleAsync(IEnumerable<FlashPartitionInfo> partitions, IProgress<int> progress = null, CancellationToken ct = default(CancellationToken))
+        public async Task<bool> FlashMultipleAsync(IEnumerable<FlashPartitionInfo> partitions, IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
                 return false;
@@ -946,7 +962,7 @@ namespace LoveAlways.Qualcomm.Services
 
                 current++;
                 if (progress != null)
-                    progress.Report((int)(100.0 * current / total));
+                    progress.Report(100.0 * current / total);
             }
 
             return allSuccess;
@@ -980,5 +996,77 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         #endregion
+        /// <summary>
+        /// 刷写 OPLUS 固件包中的 Super 逻辑分区 (拆解写入)
+        /// </summary>
+        public async Task<bool> FlashOplusSuperAsync(string firmwareRoot, string nvId = "", IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null) return false;
+
+            // 1. 查找 super 分区信息
+            var superPart = FindPartition("super");
+            if (superPart == null)
+            {
+                _log("[高通] 未在设备上找到 super 分区");
+                return false;
+            }
+
+            // 2. 准备任务
+            _log("[高通] 正在解析 OPLUS 固件 Super 布局...");
+            string activeSlot = CurrentSlot;
+            if (activeSlot == "nonexistent" || string.IsNullOrEmpty(activeSlot))
+                activeSlot = "a";
+
+            var tasks = await _oplusSuperManager.PrepareSuperTasksAsync(firmwareRoot, superPart.StartSector, (int)superPart.SectorSize, activeSlot, nvId);
+            
+            if (tasks.Count == 0)
+            {
+                _log("[高通] 未找到可用的 Super 逻辑分区镜像");
+                return false;
+            }
+
+            // 3. 执行任务
+            long totalBytes = tasks.Sum(t => t.SizeInBytes);
+            long totalWritten = 0;
+
+            _log(string.Format("[高通] 开始拆解写入 {0} 个逻辑镜像 (总计展开大小: {1} MB)...", tasks.Count, totalBytes / 1024 / 1024));
+
+            foreach (var task in tasks)
+            {
+                if (ct.IsCancellationRequested) break;
+
+                _log(string.Format("[高通] 写入 {0} [{1}] 到物理扇区 {2}...", task.PartitionName, Path.GetFileName(task.FilePath), task.PhysicalSector));
+                
+                // 嵌套进度计算
+                var taskProgress = new Progress<double>(p => {
+                    if (progress != null)
+                    {
+                        double currentTaskWeight = (double)task.SizeInBytes / totalBytes;
+                        double overallPercent = ((double)totalWritten / totalBytes * 100) + (p * currentTaskWeight);
+                        progress.Report(overallPercent);
+                    }
+                });
+
+                bool success = await _firehose.FlashPartitionFromFileAsync(
+                    task.PartitionName, 
+                    task.FilePath, 
+                    superPart.Lun, 
+                    task.PhysicalSector, 
+                    taskProgress, 
+                    ct, 
+                    IsVipDevice);
+
+                if (!success)
+                {
+                    _log(string.Format("[高通] 写入 {0} 失败，流程中止", task.PartitionName));
+                    return false;
+                }
+
+                totalWritten += task.SizeInBytes;
+            }
+
+            _log("[高通] OPLUS Super 拆解写入完成");
+            return true;
+        }
     }
 }

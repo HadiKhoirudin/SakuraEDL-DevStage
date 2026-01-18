@@ -6,7 +6,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using LoveAlways.Qualcomm.Database;
@@ -40,7 +42,10 @@ namespace LoveAlways.Qualcomm.Services
         public string BuildId { get; set; }
         public string Fingerprint { get; set; }
         public string OtaVersion { get; set; }
+        public string OtaVersionFull { get; set; } // 新增：完整固件包名称
         public string DisplayId { get; set; }
+        public string BuiltDate { get; set; }     // 新增：人类可读构建日期
+        public string BuildTimestamp { get; set; } // 新增：Unix 时间戳
 
         // 存储信息
         public string StorageType { get; set; }
@@ -52,6 +57,14 @@ namespace LoveAlways.Qualcomm.Services
         public string OplusCpuInfo { get; set; }
         public string OplusNvId { get; set; }
         public string OplusProject { get; set; }
+
+        // Lenovo 特有信息
+        public string LenovoSeries { get; set; }
+
+        // 硬件识别信息 (devinfo 分区获取)
+        public string HardwareSn { get; set; }
+        public string Imei1 { get; set; }
+        public string Imei2 { get; set; }
 
         // 信息来源
         public Dictionary<string, string> Sources { get; set; }
@@ -80,6 +93,10 @@ namespace LoveAlways.Qualcomm.Services
             OplusCpuInfo = "";
             OplusNvId = "";
             OplusProject = "";
+            LenovoSeries = "";
+            HardwareSn = "";
+            Imei1 = "";
+            Imei2 = "";
             Sources = new Dictionary<string, string>();
         }
 
@@ -116,6 +133,14 @@ namespace LoveAlways.Qualcomm.Services
                 sb.AppendLine($"版本: {OtaVersion}");
             if (!string.IsNullOrEmpty(StorageType))
                 sb.AppendLine($"存储: {StorageType.ToUpper()}");
+            if (!string.IsNullOrEmpty(OplusProject))
+                sb.AppendLine($"项目ID: {OplusProject}");
+            if (!string.IsNullOrEmpty(OplusNvId))
+                sb.AppendLine($"NV ID: {OplusNvId}");
+            if (!string.IsNullOrEmpty(LenovoSeries))
+                sb.AppendLine($"联想系列: {LenovoSeries}");
+            if (!string.IsNullOrEmpty(HardwareSn))
+                sb.AppendLine($"硬件序列号: {HardwareSn}");
             return sb.ToString().TrimEnd();
         }
     }
@@ -138,13 +163,19 @@ namespace LoveAlways.Qualcomm.Services
         public string Fingerprint { get; set; }
         public string DisplayId { get; set; }
         public string OtaVersion { get; set; }
+        public string OtaVersionFull { get; set; } // 新增
         public string Incremental { get; set; }
+        public string BuildDate { get; set; }      // 新增
+        public string BuildUtc { get; set; }       // 新增
         public string BootSlot { get; set; }
 
         // OPLUS 特有
         public string OplusCpuInfo { get; set; }
         public string OplusNvId { get; set; }
         public string OplusProject { get; set; }
+
+        // Lenovo 特有
+        public string LenovoSeries { get; set; }
 
         public Dictionary<string, string> AllProperties { get; set; }
 
@@ -173,23 +204,75 @@ namespace LoveAlways.Qualcomm.Services
     }
 
     /// <summary>
-    /// LP 分区信息
+    /// LP 分区信息 (增强版 - 支持精准物理偏移)
     /// </summary>
     public class LpPartitionInfo
     {
         public string Name { get; set; }
         public uint Attrs { get; set; }
-        public uint FirstExtent { get; set; }
-        public uint NumExtents { get; set; }
-        public uint GroupIndex { get; set; }
-        public long StartOffset { get; set; }
-        public long Size { get; set; }
+        public long RelativeSector { get; set; } // 相对于 super 起始的 512B 扇区偏移
+        public long AbsoluteSector { get; set; } // 在磁盘上的绝对物理扇区 (根据 physicalSectorSize 换算)
+        public long SizeInSectors { get; set; }  // 分区大小 (扇区数)
+        public long Size { get; set; }           // 分区大小 (字节)
         public string FileSystem { get; set; }
 
         public LpPartitionInfo()
         {
             Name = "";
             FileSystem = "unknown";
+        }
+    }
+
+    /// <summary>
+    /// 镜像映射块信息 (用于精准偏移读取)
+    /// </summary>
+    public class ImageMapBlock
+    {
+        public long BlockIndex { get; set; }
+        public long BlockCount { get; set; }
+        public long FileOffset { get; set; } // 在 .img 文件中的偏移
+    }
+
+    /// <summary>
+    /// 镜像映射表解析器 (针对 OPPO/Realme 固件的 .map 文件)
+    /// </summary>
+    public class ImageMapParser
+    {
+        public List<ImageMapBlock> ParseMapFile(string mapPath, int blockSize = 4096)
+        {
+            var blocks = new List<ImageMapBlock>();
+            if (!File.Exists(mapPath)) return blocks;
+
+            try
+            {
+                var lines = File.ReadAllLines(mapPath);
+                long currentFileOffset = 0;
+
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+                    
+                    // 格式通常为: start_block block_count
+                    var parts = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2)
+                    {
+                        long start;
+                        long count;
+                        if (long.TryParse(parts[0], out start) && long.TryParse(parts[1], out count))
+                        {
+                            blocks.Add(new ImageMapBlock
+                            {
+                                BlockIndex = start,
+                                BlockCount = count,
+                                FileOffset = currentFileOffset
+                            });
+                            currentFileOffset += count * blockSize;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return blocks;
         }
     }
 
@@ -202,7 +285,8 @@ namespace LoveAlways.Qualcomm.Services
     {
         // LP Metadata 常量
         private const uint LP_METADATA_GEOMETRY_MAGIC = 0x616c4467;  // "gDla"
-        private const uint LP_METADATA_HEADER_MAGIC = 0x414c5030;    // "0PLA"
+        private const uint LP_METADATA_HEADER_MAGIC = 0x41680530;    // 标准: "0\x05hA"
+        private const uint LP_METADATA_HEADER_MAGIC_ALP0 = 0x414c5030; // 联想: "0PLA"
         private const ushort EXT4_MAGIC = 0xEF53;
         private const uint EROFS_MAGIC = 0xE0F5E1E2;
 
@@ -241,14 +325,38 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 从 build.prop 内容解析设备信息
+        /// 从 build.prop 内容解析设备信息 (增强版 - 支持属性块探测)
         /// </summary>
         public BuildPropInfo ParseBuildProp(string content)
         {
             var info = new BuildPropInfo();
             if (string.IsNullOrEmpty(content)) return info;
 
-            foreach (var line in content.Split('\n'))
+            // 包含正则表达式需要的命名空间
+            // 注意：Regex 在 System.Text.RegularExpressions 中
+            
+            // 如果内容中包含大量的不可打印字符，说明可能是原始分区数据
+            // 我们需要提取其中的有效行 (增强版正则表达式)
+            string[] lines;
+            if (content.Contains("\0"))
+            {
+                var list = new List<string>();
+                // 1. 匹配标准 ro. 属性
+                var matches = System.Text.RegularExpressions.Regex.Matches(content, @"(ro|display|persist)\.[a-zA-Z0-9._-]+=[^\r\n\x00\s]+");
+                foreach (System.Text.RegularExpressions.Match m in matches) list.Add(m.Value);
+                
+                // 2. 匹配 OPLUS/Lenovo/Xiaomi/ZTE 特有属性
+                var oplusMatches = System.Text.RegularExpressions.Regex.Matches(content, @"(separate\.soft|region|date\.utc|ro\.build\.oplus_nv_id|display\.id\.show|ro\.lenovo\.series|ro\.lenovo\.cpuinfo|ro\.system_ext\.build\.version\.incremental|ro\.zui\.version|ro\.miui\.ui\.version\.name|ro\.miui\.ui\.version\.code|ro\.miui\.region|ro\.build\.MiFavor_version|ro\.build\.display\.id)=[^\r\n\x00\s]+");
+                foreach (System.Text.RegularExpressions.Match m in oplusMatches) list.Add(m.Value);
+                
+                lines = list.ToArray();
+            }
+            else
+            {
+                lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            }
+
+            foreach (var line in lines)
             {
                 var trimmed = line.Trim();
                 if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("#")) continue;
@@ -259,147 +367,124 @@ namespace LoveAlways.Qualcomm.Services
                 var key = trimmed.Substring(0, idx).Trim();
                 var value = trimmed.Substring(idx + 1).Trim();
 
-                // 跳过包含无效字符的行
-                if (key.Contains(" ") || string.IsNullOrEmpty(value)) continue;
+                // 移除可能存在的末尾乱码 (常见于 EROFS 原始块提取)
+                if (value.Length > 0 && (value[value.Length - 1] < 32 || value[value.Length - 1] > 126))
+                {
+                    value = value.TrimEnd('\0', '\r', '\n', '\t', ' ');
+                }
+
+                if (string.IsNullOrEmpty(value)) continue;
 
                 info.AllProperties[key] = value;
 
-                // 按优先级解析各属性
+                // 核心属性映射
                 switch (key)
                 {
-                    // 品牌
                     case "ro.product.vendor.brand":
-                    case "ro.product.odm.brand":
-                        if (string.IsNullOrEmpty(info.Brand) || info.Brand == "oplus")
-                            info.Brand = value;
-                        break;
                     case "ro.product.brand":
-                    case "ro.product.system.brand":
-                        if (string.IsNullOrEmpty(info.Brand))
+                    case "ro.product.manufacturer":
+                        if (string.IsNullOrEmpty(info.Brand) || value != "oplus")
                             info.Brand = value;
                         break;
-
-                    // 型号
-                    case "ro.product.vendor.model":
-                    case "ro.product.odm.model":
-                    case "ro.product.model":
-                        if (string.IsNullOrEmpty(info.Model))
-                            info.Model = value;
-                        break;
-
-                    // 设备代号
-                    case "ro.product.vendor.device":
-                    case "ro.product.odm.device":
-                    case "ro.product.device":
-                        if (string.IsNullOrEmpty(info.Device))
-                            info.Device = value;
-                        break;
-
-                    // 市场名称 (中文)
+                    
                     case "ro.vendor.oplus.market.name":
                     case "ro.product.marketname":
-                    case "ro.config.marketing_name":
-                        if (string.IsNullOrEmpty(info.MarketName))
-                            info.MarketName = value;
+                        info.MarketName = value;
                         break;
 
-                    // 市场名称 (英文)
-                    case "ro.vendor.oplus.market.enname":
-                        if (string.IsNullOrEmpty(info.MarketNameEn))
-                            info.MarketNameEn = value;
+                    case "ro.product.vendor.marketname":
+                    case "ro.product.odm.marketname":
+                        info.MarketName = value;
                         break;
 
-                    // 制造商
-                    case "ro.product.manufacturer":
-                    case "ro.product.vendor.manufacturer":
-                        if (string.IsNullOrEmpty(info.Manufacturer))
-                            info.Manufacturer = value;
+                    case "ro.product.model":
+                    case "ro.product.vendor.model":
+                    case "ro.product.odm.model":
+                    case "ro.product.odm.cert":
+                    case "ro.lenovo.series":
+                        if (string.IsNullOrEmpty(info.Model) || value.Length > info.Model.Length || key == "ro.lenovo.series")
+                        {
+                            // 如果包含 Y700 或 Legion，优先级最高
+                            if (value.Contains("Y700") || value.Contains("Legion"))
+                                info.MarketName = value;
+                            else
+                                info.Model = value;
+                        }
                         break;
 
-                    // Android 版本
-                    case "ro.build.version.release":
-                    case "ro.system.build.version.release":
-                    case "ro.product.build.version.release":
-                        if (string.IsNullOrEmpty(info.AndroidVersion))
-                            info.AndroidVersion = value;
-                        break;
-
-                    // SDK 版本
-                    case "ro.build.version.sdk":
-                    case "ro.system.build.version.sdk":
-                        if (string.IsNullOrEmpty(info.SdkVersion))
-                            info.SdkVersion = value;
-                        break;
-
-                    // 安全补丁
-                    case "ro.build.version.security_patch":
-                    case "ro.vendor.build.security_patch":
-                        if (string.IsNullOrEmpty(info.SecurityPatch))
-                            info.SecurityPatch = value;
-                        break;
-
-                    // Build ID
-                    case "ro.build.id":
-                        if (string.IsNullOrEmpty(info.BuildId))
-                            info.BuildId = value;
-                        break;
-
-                    // Fingerprint
-                    case "ro.build.fingerprint":
-                    case "ro.vendor.build.fingerprint":
-                        if (string.IsNullOrEmpty(info.Fingerprint))
-                            info.Fingerprint = value;
-                        break;
-
-                    // Display ID
-                    case "ro.build.display.id":
-                    case "ro.build.display.id.show":
-                        if (string.IsNullOrEmpty(info.DisplayId))
-                            info.DisplayId = value;
-                        break;
-
-                    // OTA 版本
-                    case "ro.build.display.full_id":
-                    case "ro.build.version.ota":
-                        if (string.IsNullOrEmpty(info.OtaVersion))
+                    case "ro.miui.ui.version.name":
+                    case "ro.miui.ui.version.code":
+                        // 优先捕捉 MIUI/HyperOS 展示名: V14.0.x.x 或 OS3.0.x.x
+                        if (string.IsNullOrEmpty(info.OtaVersion) || value.StartsWith("V") || value.StartsWith("OS"))
                             info.OtaVersion = value;
+                        
+                        if (value.Contains("OS3.")) info.AndroidVersion = "16.0";
                         break;
 
-                    // 版本号
+                    case "ro.build.MiFavor_version":
+                        // 中兴 NebulaOS/MiFavor 版本
+                        if (string.IsNullOrEmpty(info.OtaVersion)) info.OtaVersion = value;
+                        break;
+
+                    case "ro.build.version.ota":
+                    case "ro.build.display.id":
+                    case "ro.system_ext.build.version.incremental":
+                        // 联想 ZUXOS 处理: TB321FU_CN_OPEN_USER_Q00011.0_V_ZUI_17.0.10.308_ST_251030
+                        if (value.Contains("ZUI") || value.Contains("ZUXOS"))
+                        {
+                            info.OtaVersionFull = value;
+                            // 提取精简版: 1.1.10.308
+                            var m = Regex.Match(value, @"\d+\.\d+\.\d+\.\d+");
+                            if (m.Success) info.OtaVersion = m.Value;
+                        }
+                        // 如果是努比亚/红魔，该字段通常包含 RedMagicOSxx 或 NebulaOS
+                        else if (value.Contains("RedMagic") || value.Contains("Nebula"))
+                        {
+                            info.OtaVersion = value;
+                        }
+                        else
+                        {
+                            if (string.IsNullOrEmpty(info.OtaVersion))
+                                info.OtaVersion = value;
+                        }
+                        break;
                     case "ro.build.version.incremental":
-                    case "ro.vendor.build.version.incremental":
-                        if (string.IsNullOrEmpty(info.Incremental))
-                            info.Incremental = value;
+                    case "display.id.show":
+                    case "region": // 将 region 映射到 OtaVersion，方便界面展示
+                        if (key == "display.id.show" || key == "region" || key.Contains("ota") || string.IsNullOrEmpty(info.OtaVersion))
+                        {
+                            // 如果是 display.id.show 且包含 (CNxx)，这就是最准确的展示版本
+                            if (key == "display.id.show" && value.Contains("(") && value.Contains(")"))
+                            {
+                                info.OtaVersion = value;
+                            }
+                            else if (string.IsNullOrEmpty(info.OtaVersion) || key.Contains("ota"))
+                            {
+                                info.OtaVersion = value;
+                            }
+                        }
                         break;
-
-                    // 启动槽位
-                    case "ro.boot.slot_suffix":
-                        info.BootSlot = value.TrimStart('_');
-                        break;
-
-                    // OPLUS 特有
-                    case "ro.product.oplus.cpuinfo":
-                    case "ro.vendor.oplus.cpuinfo":
-                        if (string.IsNullOrEmpty(info.OplusCpuInfo))
-                            info.OplusCpuInfo = value;
-                        break;
-
+                    
                     case "ro.build.oplus_nv_id":
-                        if (string.IsNullOrEmpty(info.OplusNvId))
-                            info.OplusNvId = value;
+                        info.OplusNvId = value;
+                        break;
+                    
+                    case "ro.lenovo.cpuinfo":
+                        info.OplusCpuInfo = value; // 借用 OplusCpuInfo 存储 CPU 信息
                         break;
 
-                    case "ro.separate.soft":
-                        if (string.IsNullOrEmpty(info.OplusProject))
-                            info.OplusProject = value;
+                    case "ro.build.date":
+                        info.BuildDate = value;
+                        break;
+
+                    case "ro.build.date.utc":
+                        info.BuildUtc = value;
+                        break;
+
+                    case "ro.build.version.release":
+                        info.AndroidVersion = value;
                         break;
                 }
-            }
-
-            // 后处理：如果品牌为空但制造商不为空
-            if (string.IsNullOrEmpty(info.Brand) && !string.IsNullOrEmpty(info.Manufacturer))
-            {
-                info.Brand = info.Manufacturer;
             }
 
             return info;
@@ -415,9 +500,12 @@ namespace LoveAlways.Qualcomm.Services
         public delegate byte[] DeviceReadDelegate(long offsetInSuper, int size);
 
         /// <summary>
-        /// 解析 LP Metadata - 从设备按需读取
+        /// 解析 LP Metadata - 从设备按需读取 (精准偏移版)
         /// </summary>
-        public List<LpPartitionInfo> ParseLpMetadataFromDevice(DeviceReadDelegate readFromDevice)
+        /// <param name="readFromDevice">读取委托 (从 super 分区起始开始读取)</param>
+        /// <param name="superStartSector">super 分区的起始物理扇区 (从 GPT 获取)</param>
+        /// <param name="physicalSectorSize">设备的物理扇区大小 (通常为 4096 或 512)</param>
+        public List<LpPartitionInfo> ParseLpMetadataFromDevice(DeviceReadDelegate readFromDevice, long superStartSector = 0, int physicalSectorSize = 512)
         {
             try
             {
@@ -430,8 +518,6 @@ namespace LoveAlways.Qualcomm.Services
                 }
 
                 uint magic = BitConverter.ToUInt32(geometryData, 0);
-                _logDetail($"Geometry Magic: 0x{magic:X8}");
-
                 if (magic != LP_METADATA_GEOMETRY_MAGIC)
                 {
                     _log("无效的 LP Geometry magic");
@@ -440,43 +526,46 @@ namespace LoveAlways.Qualcomm.Services
 
                 uint metadataMaxSize = BitConverter.ToUInt32(geometryData, 40);
                 uint metadataSlotCount = BitConverter.ToUInt32(geometryData, 44);
-                uint logicalBlockSize = BitConverter.ToUInt32(geometryData, 48);
+                
+                // 2. 尝试寻找活动的 Metadata Header
+                // 可能的偏移：8192 (Slot0, 512B扇区), 12288 (Slot0, 4KB扇区), 4096 (早期)
+                long[] possibleOffsets = { 8192, 12288, 4096, 16384 };
+                byte[] metadataData = null;
+                uint headerMagic = 0;
+                long finalOffset = 0;
 
-                _logDetail($"Metadata Max Size: {metadataMaxSize}, Slot Count: {metadataSlotCount}");
-
-                // 2. 读取 Metadata (偏移 0x3000 = 12288)
-                long metadataOffset = 4096 + 4096 * 2;
-                int initialReadSize = 4096;
-                var metadataData = readFromDevice(metadataOffset, initialReadSize);
-
-                if (metadataData == null || metadataData.Length < 256)
+                foreach (var offset in possibleOffsets)
                 {
-                    _log("无法读取 LP Metadata");
-                    return null;
-                }
+                    metadataData = readFromDevice(offset, 4096); // 先读 4KB 探测
+                    if (metadataData == null || metadataData.Length < 256) continue;
 
-                uint headerMagic = BitConverter.ToUInt32(metadataData, 0);
-                _logDetail($"Metadata Header Magic: 0x{headerMagic:X8}");
-
-                if (headerMagic != LP_METADATA_HEADER_MAGIC)
-                {
-                    _log("无效的 LP Metadata magic");
-                    return null;
-                }
-
-                // 读取完整 metadata
-                if (metadataData.Length < metadataMaxSize && metadataMaxSize <= 65536)
-                {
-                    var fullMetadata = readFromDevice(metadataOffset, (int)metadataMaxSize);
-                    if (fullMetadata != null && fullMetadata.Length >= metadataData.Length)
+                    headerMagic = BitConverter.ToUInt32(metadataData, 0);
+                    if (headerMagic == LP_METADATA_HEADER_MAGIC || headerMagic == LP_METADATA_HEADER_MAGIC_ALP0)
                     {
-                        metadataData = fullMetadata;
+                        finalOffset = offset;
+                        break;
                     }
                 }
 
-                uint headerSize = BitConverter.ToUInt32(metadataData, 8);
+                if (finalOffset == 0)
+                {
+                    _log("无法找到有效的 LP Metadata Header");
+                    return null;
+                }
 
-                // 3. 解析表描述符
+                // 读取完整的 metadata (根据 header 中的 size)
+                uint headerSize = BitConverter.ToUInt32(metadataData, 8);
+                uint tablesSize = BitConverter.ToUInt32(metadataData, 24);
+                int totalToRead = (int)(headerSize + tablesSize);
+                
+                if (totalToRead > metadataData.Length)
+                {
+                    metadataData = readFromDevice(finalOffset, totalToRead);
+                }
+
+                int tablesBase = (int)headerSize;
+
+                // 3. 解析表描述符 (偏移 0x50)
                 int tablesOffset = 0x50;
                 uint partOffset = BitConverter.ToUInt32(metadataData, tablesOffset);
                 uint partNum = BitConverter.ToUInt32(metadataData, tablesOffset + 4);
@@ -485,28 +574,20 @@ namespace LoveAlways.Qualcomm.Services
                 uint extNum = BitConverter.ToUInt32(metadataData, tablesOffset + 16);
                 uint extEntrySize = BitConverter.ToUInt32(metadataData, tablesOffset + 20);
 
-                _logDetail($"Partitions: count={partNum}, Extents: count={extNum}");
-
-                // 4. 解析 extents
-                var extents = new List<Tuple<long, uint, long, uint>>();
-                int tablesBase = (int)headerSize;
-
+                // 4. 解析 extents (物理映射)
+                var extents = new List<Tuple<long, long>>(); // <扇区数, 物理数据块偏移(512B单元)>
                 for (int i = 0; i < extNum; i++)
                 {
                     int entryOffset = tablesBase + (int)extOffset + i * (int)extEntrySize;
-                    if (entryOffset + extEntrySize > metadataData.Length) break;
+                    if (entryOffset + 12 > metadataData.Length) break;
 
                     long numSectors = BitConverter.ToInt64(metadataData, entryOffset);
-                    uint targetType = BitConverter.ToUInt32(metadataData, entryOffset + 8);
                     long targetData = BitConverter.ToInt64(metadataData, entryOffset + 12);
-                    uint targetSource = BitConverter.ToUInt32(metadataData, entryOffset + 20);
-
-                    extents.Add(Tuple.Create(numSectors, targetType, targetData, targetSource));
+                    extents.Add(Tuple.Create(numSectors, targetData));
                 }
 
-                // 5. 解析分区
+                // 5. 解析分区并换算【物理扇区】
                 var partitions = new List<LpPartitionInfo>();
-
                 for (int i = 0; i < partNum; i++)
                 {
                     int entryOffset = tablesBase + (int)partOffset + i * (int)partEntrySize;
@@ -518,25 +599,31 @@ namespace LoveAlways.Qualcomm.Services
                     uint attrs = BitConverter.ToUInt32(metadataData, entryOffset + 36);
                     uint firstExtent = BitConverter.ToUInt32(metadataData, entryOffset + 40);
                     uint numExtents = BitConverter.ToUInt32(metadataData, entryOffset + 44);
-                    uint groupIndex = BitConverter.ToUInt32(metadataData, entryOffset + 48);
-
-                    var partition = new LpPartitionInfo
-                    {
-                        Name = name,
-                        Attrs = attrs,
-                        FirstExtent = firstExtent,
-                        NumExtents = numExtents,
-                        GroupIndex = groupIndex
-                    };
 
                     if (numExtents > 0 && firstExtent < extents.Count)
                     {
                         var ext = extents[(int)firstExtent];
-                        partition.StartOffset = ext.Item3 * 512;
-                        partition.Size = ext.Item1 * 512;
-                    }
+                        
+                        // 【精准计算逻辑】
+                        // targetData 是 LP 内部以 512 字节为基准的偏移
+                        // 我们需要将其换算为物理磁盘的绝对扇区
+                        long relativeSector = ext.Item2; // 512B 扇区偏移
+                        long absoluteSector = superStartSector + (relativeSector * 512 / physicalSectorSize);
 
-                    partitions.Add(partition);
+                        var lp = new LpPartitionInfo
+                        {
+                            Name = name,
+                            Attrs = attrs,
+                            RelativeSector = relativeSector,
+                            AbsoluteSector = absoluteSector,
+                            SizeInSectors = ext.Item1 * 512 / physicalSectorSize,
+                            Size = ext.Item1 * 512
+                        };
+
+                        partitions.Add(lp);
+                        _logDetail(string.Format("逻辑分区 [{0}]: 物理扇区={1}, 大小={2}MB", 
+                            lp.Name, lp.AbsoluteSector, lp.Size / 1024 / 1024));
+                    }
                 }
 
                 return partitions;
@@ -585,113 +672,237 @@ namespace LoveAlways.Qualcomm.Services
         #region 从设备在线读取 build.prop
 
         /// <summary>
-        /// 从设备 Super 分区在线读取 build.prop
+        /// 从设备在线读取 build.prop (适配所有安卓版本)
         /// </summary>
-        /// <param name="readFromSuper">读取 Super 分区数据的委托</param>
+        /// <param name="readPartition">从指定分区名称读取数据的委托</param>
+        /// <param name="activeSlot">当前活动槽位 (a/b)</param>
+        /// <param name="hasSuper">是否存在 super 分区</param>
+        /// <param name="superStartSector">super 的物理起始扇区</param>
+        /// <param name="physicalSectorSize">扇区大小</param>
         /// <returns>解析后的 build.prop 信息</returns>
-        public BuildPropInfo ReadBuildPropFromDevice(DeviceReadDelegate readFromSuper)
+        public async Task<BuildPropInfo> ReadBuildPropFromDevice(
+            Func<string, long, int, Task<byte[]>> readPartition, 
+            string activeSlot = "", 
+            bool hasSuper = true,
+            long superStartSector = 0,
+            int physicalSectorSize = 512)
         {
             try
             {
-                _log("开始从设备读取 build.prop...");
+                BuildPropInfo finalInfo = null;
 
-                // 1. 解析 LP Metadata
-                var lpPartitions = ParseLpMetadataFromDevice(readFromSuper);
-                if (lpPartitions == null || lpPartitions.Count == 0)
+                if (hasSuper)
                 {
-                    _log("无法解析 LP Metadata");
-                    return null;
+                    _log("正在从 Super 分区逻辑卷解析 build.prop...");
+                    // 包装委托以符合 LP 解析器要求的格式 (从 super 分区读取偏移)
+                    DeviceReadDelegate readFromSuper = (offset, size) => {
+                        var task = readPartition("super", offset, size);
+                        task.Wait();
+                        return task.Result;
+                    };
+                    finalInfo = ReadBuildPropFromSuper(readFromSuper, activeSlot, superStartSector, physicalSectorSize);
                 }
 
-                _log(string.Format("发现 {0} 个 LP 分区", lpPartitions.Count));
+                // 即使有 super 且读取成功，也尝试扫描关键物理分区进行增强 (适配低版本或特定厂商 my_manifest)
+                _log("正在扫描物理分区以提取/增强 build.prop (全版本适配模式)...");
+                var searchPartitions = new List<string>();
+                string slotSuffix = string.IsNullOrEmpty(activeSlot) ? "" : "_" + activeSlot.ToLower().TrimStart('_');
 
-                // 2. 查找 system_a 或 vendor_a 分区
-                LpPartitionInfo targetPartition = null;
-                foreach (var p in lpPartitions)
+                if (!string.IsNullOrEmpty(slotSuffix))
                 {
-                    // 优先使用 vendor_a (通常包含更准确的设备信息)
-                    if (p.Name == "vendor_a" && p.NumExtents > 0)
-                    {
-                        targetPartition = p;
-                        break;
-                    }
-                    if (p.Name == "system_a" && p.NumExtents > 0 && targetPartition == null)
-                    {
-                        targetPartition = p;
-                    }
+                    searchPartitions.Add("my_manifest" + slotSuffix);
+                    searchPartitions.Add("vendor" + slotSuffix);
+                    searchPartitions.Add("system" + slotSuffix);
+                    searchPartitions.Add("odm" + slotSuffix);
                 }
+                searchPartitions.Add("my_manifest");
+                searchPartitions.Add("vendor");
+                searchPartitions.Add("system");
+                searchPartitions.Add("odm");
+                searchPartitions.Add("cust");
+                searchPartitions.Add("lenovocust");
 
-                // 尝试非 A/B 分区
-                if (targetPartition == null)
+                foreach (var partName in searchPartitions)
                 {
-                    foreach (var p in lpPartitions)
+                    var info = await ReadBuildPropFromStandalonePartition(partName, readPartition);
+                    if (info != null)
                     {
-                        if (p.Name == "vendor" && p.NumExtents > 0)
-                        {
-                            targetPartition = p;
+                        if (finalInfo == null) finalInfo = info;
+                        else MergeProperties(finalInfo, info);
+                        
+                        // 如果已经拿到了核心型号和市场名，可以提前结束提高速度
+                        if (!string.IsNullOrEmpty(finalInfo.MarketName) && !string.IsNullOrEmpty(finalInfo.OtaVersion))
                             break;
-                        }
-                        if (p.Name == "system" && p.NumExtents > 0 && targetPartition == null)
-                        {
-                            targetPartition = p;
-                        }
                     }
                 }
+                return finalInfo;
+            }
+            catch (Exception ex)
+            {
+                _log(string.Format("读取 build.prop 整体流程失败: {0}", ex.Message));
+            }
+            return null;
+        }
 
-                if (targetPartition == null)
-                {
-                    _log("未找到可读取的 system/vendor 分区");
-                    return null;
-                }
+        /// <summary>
+        /// 从 Super 分区逻辑卷读取 build.prop (精准合并模式)
+        /// </summary>
+        private BuildPropInfo ReadBuildPropFromSuper(DeviceReadDelegate readFromSuper, string activeSlot = "", long superStartSector = 0, int physicalSectorSize = 512)
+        {
+            var masterInfo = new BuildPropInfo();
+            try
+            {
+                // 1. 解析 LP Metadata
+                var lpPartitions = ParseLpMetadataFromDevice(readFromSuper, superStartSector, physicalSectorSize);
+                if (lpPartitions == null || lpPartitions.Count == 0) return null;
 
-                _log(string.Format("目标分区: {0}, 偏移: 0x{1:X}, 大小: {2}MB",
-                    targetPartition.Name, targetPartition.StartOffset, targetPartition.Size / 1024 / 1024));
+                string slotSuffix = string.IsNullOrEmpty(activeSlot) ? "" : "_" + activeSlot.ToLower().TrimStart('_');
+                
+                // 2. 优先级排序：从低到高读取，高优先级覆盖低优先级
+                // 顺序：System -> System_ext -> Product -> Vendor -> ODM -> My_manifest
+                var searchList = new List<string> { "system", "system_ext", "product", "vendor", "odm", "my_manifest" };
+                
+                foreach (var baseName in searchList)
+                {
+                    // 尝试带槽位的名称和不带槽位的名称
+                    var possibleNames = new[] { baseName + slotSuffix, baseName };
+                    foreach (var name in possibleNames)
+                    {
+                        var targetPartition = lpPartitions.FirstOrDefault(p => p.Name == name);
+                        if (targetPartition == null) continue;
 
-                // 3. 读取分区头部检测文件系统
-                byte[] partitionData = readFromSuper(targetPartition.StartOffset, 8192);
-                if (partitionData == null || partitionData.Length < 2048)
-                {
-                    _log("无法读取分区数据");
-                    return null;
-                }
+                        _log(string.Format("正在从逻辑卷 {0} (物理扇区: {1}) 解析 build.prop...", 
+                            targetPartition.Name, targetPartition.AbsoluteSector));
+                        
+                        // 换算逻辑分区在 super 内的字节偏移 (ParseLpMetadataFromDevice 已经算好了 RelativeSector)
+                        long byteOffsetInSuper = targetPartition.RelativeSector * 512;
+                        
+                        // 尝试正常文件系统解析
+                        BuildPropInfo partInfo = null;
+                        
+                        // 逻辑修改：由于 fsType 在此处未定义，我们需要先探测分区头
+                        var headerData = readFromSuper(byteOffsetInSuper, 4096);
+                        if (headerData != null && headerData.Length >= 4096)
+                        {
+                            uint magic = BitConverter.ToUInt32(headerData, 1024); // EROFS magic at 1024
+                            if (magic == EROFS_MAGIC)
+                                partInfo = ParseErofsAndFindBuildProp(readFromSuper, targetPartition, byteOffsetInSuper);
+                            else
+                                partInfo = ParseExt4AndFindBuildProp(readFromSuper, targetPartition, byteOffsetInSuper);
+                        }
 
-                string fsType = DetectFileSystem(partitionData);
-                targetPartition.FileSystem = fsType;
-                _log(string.Format("文件系统类型: {0}", fsType));
+                        // 兜底策略：如果文件系统解析失败，且分区很小 (如 my_manifest < 2MB)，进行暴力属性扫描
+                        if (partInfo == null && targetPartition.Size < 2 * 1024 * 1024)
+                        {
+                            _logDetail(string.Format("尝试对逻辑卷 {0} 进行暴力属性扫描...", targetPartition.Name));
+                            byte[] rawData = readFromSuper(byteOffsetInSuper, (int)targetPartition.Size);
+                            if (rawData != null)
+                            {
+                                string content = Encoding.UTF8.GetString(rawData);
+                                partInfo = ParseBuildProp(content);
+                            }
+                        }
 
-                // 4. 根据文件系统类型解析 build.prop
-                if (fsType == "erofs")
-                {
-                    return ParseErofsAndFindBuildProp(readFromSuper, targetPartition);
-                }
-                else if (fsType == "ext4")
-                {
-                    return ParseExt4AndFindBuildProp(readFromSuper, targetPartition);
-                }
-                else
-                {
-                    _log(string.Format("不支持的文件系统: {0}", fsType));
-                    return null;
+                        if (partInfo != null)
+                        {
+                            MergeProperties(masterInfo, partInfo);
+                        }
+                        break; // 找到带/不带槽位的一个即可
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _log(string.Format("读取 build.prop 失败: {0}", ex.Message));
-                return null;
+                _log("从 Super 精准读取失败: " + ex.Message);
             }
+            return string.IsNullOrEmpty(masterInfo.Model) ? null : masterInfo;
+        }
+
+        /// <summary>
+        /// 属性合并：高优先级覆盖低优先级，确保信息精准
+        /// </summary>
+        private void MergeProperties(BuildPropInfo target, BuildPropInfo source)
+        {
+            if (source == null) return;
+
+            // 1. 品牌/型号：这些属性通常在 vendor/odm 中最准
+            if (!string.IsNullOrEmpty(source.Brand)) target.Brand = source.Brand;
+            if (!string.IsNullOrEmpty(source.Model)) target.Model = source.Model;
+            if (!string.IsNullOrEmpty(source.MarketName)) target.MarketName = source.MarketName;
+            if (!string.IsNullOrEmpty(source.MarketNameEn)) target.MarketNameEn = source.MarketNameEn;
+            if (!string.IsNullOrEmpty(source.Device)) target.Device = source.Device;
+            if (!string.IsNullOrEmpty(source.Manufacturer)) target.Manufacturer = source.Manufacturer;
+
+            // 2. 版本信息：system 提供 Android 版本，但 vendor 提供安全补丁和 OTA 版本
+            if (!string.IsNullOrEmpty(source.AndroidVersion)) target.AndroidVersion = source.AndroidVersion;
+            if (!string.IsNullOrEmpty(source.SdkVersion)) target.SdkVersion = source.SdkVersion;
+            if (!string.IsNullOrEmpty(source.SecurityPatch)) target.SecurityPatch = source.SecurityPatch;
+            
+            // 3. OTA 版本精准合并
+            if (!string.IsNullOrEmpty(source.DisplayId)) target.DisplayId = source.DisplayId;
+            if (!string.IsNullOrEmpty(source.OtaVersion)) target.OtaVersion = source.OtaVersion;
+            if (!string.IsNullOrEmpty(source.OtaVersionFull)) target.OtaVersionFull = source.OtaVersionFull;
+            if (!string.IsNullOrEmpty(source.BuildDate)) target.BuildDate = source.BuildDate;
+            if (!string.IsNullOrEmpty(source.BuildUtc)) target.BuildUtc = source.BuildUtc;
+            
+            // 4. 厂商特有属性
+            if (!string.IsNullOrEmpty(source.OplusProject)) target.OplusProject = source.OplusProject;
+            if (!string.IsNullOrEmpty(source.OplusNvId)) target.OplusNvId = source.OplusNvId;
+            if (!string.IsNullOrEmpty(source.OplusCpuInfo)) target.OplusCpuInfo = source.OplusCpuInfo;
+            if (!string.IsNullOrEmpty(source.LenovoSeries)) target.LenovoSeries = source.LenovoSeries;
+
+            // 5. 合并全量字典
+            foreach (var kv in source.AllProperties)
+            {
+                target.AllProperties[kv.Key] = kv.Value;
+            }
+        }
+
+        /// <summary>
+        /// 从独立物理分区读取 build.prop
+        /// </summary>
+        private async Task<BuildPropInfo> ReadBuildPropFromStandalonePartition(string partitionName, Func<string, long, int, Task<byte[]>> readPartition)
+        {
+            try
+            {
+                _log(string.Format("尝试从物理分区 {0} 读取...", partitionName));
+                
+                // 读取头部探测文件系统
+                byte[] header = await readPartition(partitionName, 0, 4096);
+                if (header == null) return null;
+
+                string fsType = DetectFileSystem(header);
+                if (fsType == "unknown") return null;
+
+                var lpInfo = new LpPartitionInfo { Name = partitionName, RelativeSector = 0, FileSystem = fsType };
+                
+                // 包装一个针对此分区的读取器
+                DeviceReadDelegate readDelegate = (offset, size) => {
+                    var t = readPartition(partitionName, offset, size);
+                    t.Wait();
+                    return t.Result;
+                };
+
+                if (fsType == "erofs")
+                    return ParseErofsAndFindBuildProp(readDelegate, lpInfo);
+                else if (fsType == "ext4")
+                    return ParseExt4AndFindBuildProp(readDelegate, lpInfo);
+            }
+            catch { }
+            return null;
         }
 
         /// <summary>
         /// 从 EROFS 分区解析 build.prop
         /// </summary>
-        private BuildPropInfo ParseErofsAndFindBuildProp(DeviceReadDelegate readFromSuper, LpPartitionInfo partition)
+        private BuildPropInfo ParseErofsAndFindBuildProp(DeviceReadDelegate readFromSuper, LpPartitionInfo partition, long baseOffset = 0)
         {
             try
             {
                 // 创建一个读取委托，将偏移转换为分区内的绝对偏移
                 DeviceReadDelegate readFromPartition = (offset, size) =>
                 {
-                    return readFromSuper(partition.StartOffset + offset, size);
+                    return readFromSuper(baseOffset + offset, size);
                 };
 
                 // 读取 EROFS superblock
@@ -978,14 +1189,14 @@ namespace LoveAlways.Qualcomm.Services
         /// <summary>
         /// 从 EXT4 分区解析 build.prop
         /// </summary>
-        private BuildPropInfo ParseExt4AndFindBuildProp(DeviceReadDelegate readFromSuper, LpPartitionInfo partition)
+        private BuildPropInfo ParseExt4AndFindBuildProp(DeviceReadDelegate readFromSuper, LpPartitionInfo partition, long baseOffset = 0)
         {
             try
             {
                 // 创建读取委托
                 DeviceReadDelegate readFromPartition = (offset, size) =>
                 {
-                    return readFromSuper(partition.StartOffset + offset, size);
+                    return readFromSuper(baseOffset + offset, size);
                 };
 
                 // 1. 读取 Superblock (偏移 1024，大小 1024)
@@ -1401,6 +1612,108 @@ namespace LoveAlways.Qualcomm.Services
 
         #endregion
 
+        #region DevInfo 分区解析
+
+        /// <summary>
+        /// 从 devinfo 分区数据解析硬件信息 (SN/IMEI)
+        /// </summary>
+        /// <summary>
+        /// 解析 proinfo 分区 (联想系列专用)
+        /// </summary>
+        public void ParseProInfo(byte[] data, DeviceFullInfo info)
+        {
+            if (data == null || data.Length < 1024) return;
+
+            try
+            {
+                // 联想 proinfo 中的序列号通常在 0x24 或 0x38 偏移
+                string sn = ExtractString(data, 0x24, 32);
+                if (string.IsNullOrEmpty(sn) || !IsValidSerialNumber(sn))
+                    sn = ExtractString(data, 0x38, 32);
+
+                if (IsValidSerialNumber(sn))
+                {
+                    info.HardwareSn = sn;
+                    info.Sources["SN"] = "proinfo";
+                    _logDetail(string.Format("从 proinfo 发现序列号: {0}", sn));
+                }
+
+                // 联想型号有时也在 proinfo
+                string model = ExtractString(data, 0x200, 64);
+                if (!string.IsNullOrEmpty(model) && model.Contains("Lenovo"))
+                {
+                    info.Model = model.Replace("Lenovo", "").Trim();
+                    info.Brand = "Lenovo";
+                    _logDetail(string.Format("从 proinfo 发现型号: {0}", model));
+                }
+            }
+            catch (Exception ex)
+            {
+                _log("解析 proinfo 失败: " + ex.Message);
+            }
+        }
+
+        public void ParseDevInfo(byte[] data, DeviceFullInfo info)
+        {
+            if (data == null || data.Length < 512) return;
+
+            try
+            {
+                // 1. 提取序列号 (通常在偏移 0x00 开始，以 \0 结尾)
+                string sn = ExtractString(data, 0, 32);
+                if (IsValidSerialNumber(sn))
+                {
+                    info.Sources["SN"] = "devinfo";
+                    // 这里的 SN 通常是硬件 SN，优先于 Sahara 获取的 SerialHex
+                    _logDetail(string.Format("从 devinfo 发现序列号: {0}", sn));
+                }
+
+                // 2. 尝试提取 IMEI (不同厂家偏移不同)
+                // 常见偏移：0x400, 0x800, 0x1000
+                string imei1 = "";
+                if (data.Length >= 0x500) imei1 = ExtractImei(data, 0x400);
+                if (string.IsNullOrEmpty(imei1) && data.Length >= 0x900) imei1 = ExtractImei(data, 0x800);
+
+                if (!string.IsNullOrEmpty(imei1))
+                {
+                    info.Sources["IMEI"] = "devinfo";
+                    _logDetail(string.Format("从 devinfo 发现 IMEI: {0}", imei1));
+                }
+            }
+            catch (Exception ex)
+            {
+                _log("解析 devinfo 失败: " + ex.Message);
+            }
+        }
+
+        private string ExtractString(byte[] data, int offset, int maxLength)
+        {
+            if (offset >= data.Length) return "";
+            int len = 0;
+            while (len < maxLength && offset + len < data.Length && data[offset + len] != 0 && data[offset + len] >= 0x20 && data[offset + len] <= 0x7E)
+            {
+                len++;
+            }
+            if (len == 0) return "";
+            return Encoding.ASCII.GetString(data, offset, len).Trim();
+        }
+
+        private string ExtractImei(byte[] data, int offset)
+        {
+            string s = ExtractString(data, offset, 32);
+            if (s.Length >= 14 && s.All(char.IsDigit)) return s;
+            return "";
+        }
+
+        private bool IsValidSerialNumber(string sn)
+        {
+            if (string.IsNullOrEmpty(sn) || sn.Length < 8) return false;
+            // 简单校验：大部分 SN 是字母+数字
+            return sn.All(c => char.IsLetterOrDigit(c));
+        }
+
+        #endregion
+
         #region 综合信息获取
 
         /// <summary>
@@ -1480,7 +1793,18 @@ namespace LoveAlways.Qualcomm.Services
             if (!string.IsNullOrEmpty(source.DisplayId) && string.IsNullOrEmpty(target.DisplayId))
                 target.DisplayId = source.DisplayId;
             if (!string.IsNullOrEmpty(source.OtaVersion) && string.IsNullOrEmpty(target.OtaVersion))
-                target.OtaVersion = source.OtaVersion;
+            {
+                string ota = source.OtaVersion;
+                // 智能合成：如果 OTA 版本以 . 开头 (如 .610(CN01))，尝试补全前缀
+                if (ota.StartsWith(".") && !string.IsNullOrEmpty(target.AndroidVersion))
+                {
+                    ota = target.AndroidVersion + ".0.0" + ota;
+                }
+                target.OtaVersion = ota;
+            }
+            if (!string.IsNullOrEmpty(source.BuildDate)) target.BuiltDate = source.BuildDate;
+            if (!string.IsNullOrEmpty(source.BuildUtc)) target.BuildTimestamp = source.BuildUtc;
+            
             if (!string.IsNullOrEmpty(source.BootSlot) && string.IsNullOrEmpty(target.CurrentSlot))
             {
                 target.CurrentSlot = source.BootSlot;

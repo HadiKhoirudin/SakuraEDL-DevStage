@@ -321,118 +321,6 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region VIP 认证
-
-        /// <summary>
-        /// VIP 认证 (OPPO/OnePlus/Realme)
-        /// </summary>
-        public async Task<bool> PerformVipAuthAsync(string digestPath, string signaturePath, CancellationToken ct = default(CancellationToken))
-        {
-            if (!File.Exists(digestPath) || !File.Exists(signaturePath))
-            {
-                _log("[VIP] 缺少验证文件");
-                return false;
-            }
-
-            _log("[VIP] 开始安全验证...");
-
-            try
-            {
-                PurgeBuffer();
-
-                // Step 1: 发送 Digest
-                var digestData = File.ReadAllBytes(digestPath);
-                _log(string.Format("[VIP] Step 1: 发送 Digest ({0} 字节)...", digestData.Length));
-                _port.Write(digestData);
-                await Task.Delay(500, ct);
-                await ReadAndLogDeviceResponseAsync(ct, 3000);
-
-                // Step 2: TransferCfg
-                _log("[VIP] Step 2: 发送 TransferCfg...");
-                string transferCfgXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
-                    "<data><transfercfg reboot_type=\"off\" timeout_in_sec=\"90\" /></data>";
-                _port.Write(Encoding.UTF8.GetBytes(transferCfgXml));
-                await Task.Delay(300, ct);
-                await ReadAndLogDeviceResponseAsync(ct, 2000);
-
-                // Step 3: Verify
-                _log("[VIP] Step 3: 发送 Verify...");
-                string verifyXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
-                    "<data><verify value=\"ping\" EnableVip=\"1\"/></data>";
-                _port.Write(Encoding.UTF8.GetBytes(verifyXml));
-                await Task.Delay(300, ct);
-                await ReadAndLogDeviceResponseAsync(ct, 2000);
-
-                // Step 4: Signature
-                var sigData = File.ReadAllBytes(signaturePath);
-                _log(string.Format("[VIP] Step 4: 发送 Signature ({0} 字节)...", sigData.Length));
-                _port.Write(sigData);
-                await Task.Delay(500, ct);
-                await ReadAndLogDeviceResponseAsync(ct, 3000);
-
-                // Step 5: SHA256Init
-                _log("[VIP] Step 5: 发送 SHA256Init...");
-                string sha256Xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
-                    "<data><sha256init Verbose=\"1\"/></data>";
-                _port.Write(Encoding.UTF8.GetBytes(sha256Xml));
-                await Task.Delay(300, ct);
-                await ReadAndLogDeviceResponseAsync(ct, 2000);
-
-                _log("[VIP] VIP 验证流程完成");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _log(string.Format("[VIP] 验证异常: {0}", ex.Message));
-                return false;
-            }
-        }
-
-        private async Task<string> ReadAndLogDeviceResponseAsync(CancellationToken ct, int timeoutMs)
-        {
-            var startTime = DateTime.Now;
-            var sb = new StringBuilder();
-
-            while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs)
-            {
-                if (ct.IsCancellationRequested) break;
-
-                if (_port.BytesToRead > 0)
-                {
-                    byte[] buffer = new byte[_port.BytesToRead];
-                    int read = _port.Read(buffer, 0, buffer.Length);
-                    if (read > 0)
-                    {
-                        sb.Append(Encoding.UTF8.GetString(buffer, 0, read));
-
-                        var content = sb.ToString();
-
-                        // 提取设备日志
-                        var logMatches = Regex.Matches(content, @"<log value=""([^""]*)""\s*/>");
-                        foreach (Match m in logMatches)
-                        {
-                            if (m.Groups.Count > 1)
-                                _log("[Device] " + m.Groups[1].Value);
-                        }
-
-                        if (content.Contains("<response") || content.Contains("</data>"))
-                        {
-                            if (content.Contains("value=\"ACK\"") || content.Contains("verify passed"))
-                                return content;
-                            if (content.Contains("NAK") || content.Contains("ERROR"))
-                                return content;
-                        }
-                    }
-                }
-
-                await Task.Delay(50, ct);
-            }
-
-            return sb.ToString();
-        }
-
-        #endregion
-
         #region 读取分区表
 
         /// <summary>
@@ -450,11 +338,13 @@ namespace LoveAlways.Qualcomm.Protocol
                 byte[] gptData = null;
 
                 // GPT 头在 LBA 1，分区条目从 LBA 2 开始
-                // 标准 GPT 有 128 个条目，每个 128 字节 = 16KB
-                // 对于 4096 字节扇区: 16KB / 4096 = 4 个扇区 + 2 (MBR+Header) = 6 个
-                // 对于 512 字节扇区: 16KB / 512 = 32 个扇区 + 2 = 34 个
-                // 读取 128 个扇区确保覆盖所有可能的分区条目
-                int gptSectors = 128;
+                // 小米/Redmi 设备可能有超过 128 个分区条目（最多 256 个）
+                // 256 个条目 * 128 字节 = 32KB
+                // 对于 512 字节扇区: 32KB / 512 = 64 个扇区 + 2 (MBR+Header) = 66 个
+                // 对于 4096 字节扇区: 32KB / 4096 = 8 个扇区 + 2 = 10 个
+                // 读取 256 个扇区确保覆盖所有可能的分区条目（包括小米设备）
+                // 对于 512B 扇区 = 128KB，对于 4KB 扇区 = 1MB
+                int gptSectors = 256;
 
                 if (useVipMode)
                 {
@@ -830,40 +720,49 @@ namespace LoveAlways.Qualcomm.Protocol
         /// </summary>
         public async Task<bool> WritePartitionAsync(PartitionInfo partition, string imagePath, bool useOppoMode = false, CancellationToken ct = default(CancellationToken))
         {
+            return await WritePartitionAsync(partition.Lun, partition.StartSector, _sectorSize, imagePath, partition.Name, useOppoMode, ct);
+        }
+
+        /// <summary>
+        /// 写入分区数据 (指定起始扇区)
+        /// </summary>
+        public async Task<bool> WritePartitionAsync(int lun, long startSector, int sectorSize, string imagePath, string label = "Partition", bool useOppoMode = false, CancellationToken ct = default(CancellationToken))
+        {
             if (!File.Exists(imagePath))
                 throw new FileNotFoundException("镜像文件不存在", imagePath);
 
-            var fileInfo = new FileInfo(imagePath);
-            _log(string.Format("[Firehose] 写入分区: {0} ({1:N0} 字节)", partition.Name, fileInfo.Length));
+            // 检查是否为 Sparse 镜像
+            bool isSparse = SparseStream.IsSparseFile(imagePath);
+            _log(string.Format("[Firehose] 写入分区: {0} ({1}{2})", label, Path.GetFileName(imagePath), isSparse ? " [Sparse]" : ""));
 
-            var totalBytes = fileInfo.Length;
-            var sectorsPerChunk = _maxPayloadSize / _sectorSize;
-            var bytesPerChunk = sectorsPerChunk * _sectorSize;
-            var totalWritten = 0L;
-
-            StartTransferTimer(totalBytes);
-
-            using (var fs = new FileStream(imagePath, FileMode.Open, FileAccess.Read, FileShare.Read, FILE_BUFFER_SIZE))
+            using (Stream sourceStream = isSparse ? (Stream)SparseStream.Open(imagePath, _log) : File.OpenRead(imagePath))
             {
+                var totalBytes = sourceStream.Length;
+                var sectorsPerChunk = _maxPayloadSize / sectorSize;
+                var bytesPerChunk = sectorsPerChunk * sectorSize;
+                var totalWritten = 0L;
+
+                StartTransferTimer(totalBytes);
+
                 var buffer = new byte[bytesPerChunk];
-                var currentSector = partition.StartSector;
+                var currentSector = startSector;
 
                 while (totalWritten < totalBytes)
                 {
                     if (ct.IsCancellationRequested) return false;
 
                     var bytesToRead = (int)Math.Min(bytesPerChunk, totalBytes - totalWritten);
-                    var bytesRead = fs.Read(buffer, 0, bytesToRead);
+                    var bytesRead = sourceStream.Read(buffer, 0, bytesToRead);
                     if (bytesRead == 0) break;
 
                     // 补齐到扇区边界
-                    var paddedSize = ((bytesRead + _sectorSize - 1) / _sectorSize) * _sectorSize;
+                    var paddedSize = ((bytesRead + sectorSize - 1) / sectorSize) * sectorSize;
                     if (paddedSize > bytesRead)
                         Array.Clear(buffer, bytesRead, paddedSize - bytesRead);
 
-                    var sectorsToWrite = paddedSize / _sectorSize;
+                    var sectorsToWrite = paddedSize / sectorSize;
 
-                    if (!await WriteSectorsAsync(partition.Lun, currentSector, buffer, paddedSize, partition.Name, useOppoMode, ct))
+                    if (!await WriteSectorsAsync(lun, currentSector, buffer, paddedSize, label, useOppoMode, ct))
                     {
                         _log(string.Format("[Firehose] 写入失败 @ sector {0}", currentSector));
                         return false;
@@ -875,11 +774,11 @@ namespace LoveAlways.Qualcomm.Protocol
                     if (_progress != null)
                         _progress(totalWritten, totalBytes);
                 }
-            }
 
-            StopTransferTimer("写入", totalWritten);
-            _log(string.Format("[Firehose] 分区 {0} 写入完成: {1:N0} 字节", partition.Name, totalWritten));
-            return true;
+                StopTransferTimer("写入", totalWritten);
+                _log(string.Format("[Firehose] 分区 {0} 写入完成: {1:N0} 字节", label, totalWritten));
+                return true;
+            }
         }
 
         /// <summary>
@@ -915,7 +814,7 @@ namespace LoveAlways.Qualcomm.Protocol
         /// <summary>
         /// 从文件刷写分区
         /// </summary>
-        public async Task<bool> FlashPartitionFromFileAsync(string partitionName, string filePath, int lun, long startSector, IProgress<int> progress, CancellationToken ct, bool useVipMode = false)
+        public async Task<bool> FlashPartitionFromFileAsync(string partitionName, string filePath, int lun, long startSector, IProgress<double> progress, CancellationToken ct, bool useVipMode = false)
         {
             if (!File.Exists(filePath))
             {
@@ -923,42 +822,48 @@ namespace LoveAlways.Qualcomm.Protocol
                 return false;
             }
 
-            var fileInfo = new FileInfo(filePath);
-            long fileSize = fileInfo.Length;
-            int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
-
-            _log(string.Format("Firehose: 刷写 {0} -> {1} ({2:F2} MB){3}", 
-                Path.GetFileName(filePath), partitionName, fileSize / 1024.0 / 1024.0,
-                useVipMode ? " [VIP模式]" : ""));
-
-            // VIP 模式使用伪装策略
-            if (useVipMode)
+            // 检查是否为 Sparse 镜像
+            bool isSparse = SparseStream.IsSparseFile(filePath);
+            
+            using (Stream sourceStream = isSparse ? (Stream)SparseStream.Open(filePath, _log) : File.OpenRead(filePath))
             {
-                return await FlashPartitionVipModeAsync(partitionName, filePath, lun, startSector, numSectors, fileSize, progress, ct);
+                long fileSize = sourceStream.Length; // SparseStream 会返回展开后的大小
+                int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
+
+                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2:F2} MB){3}{4}", 
+                    Path.GetFileName(filePath), partitionName, fileSize / 1024.0 / 1024.0,
+                    isSparse ? " [Sparse]" : "",
+                    useVipMode ? " [VIP模式]" : ""));
+
+                // VIP 模式使用伪装策略
+                if (useVipMode)
+                {
+                    return await FlashPartitionVipModeAsync(partitionName, sourceStream, lun, startSector, numSectors, fileSize, progress, ct);
+                }
+
+                // 标准模式
+                string xml = string.Format(
+                    "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                    "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                    "start_sector=\"{3}\" filename=\"{4}\"/></data>",
+                    _sectorSize, numSectors, lun, startSector, partitionName);
+
+                _port.Write(Encoding.UTF8.GetBytes(xml));
+
+                if (!await WaitForRawDataModeAsync(ct))
+                {
+                    _log("Firehose: Program 命令被拒绝");
+                    return false;
+                }
+
+                return await SendStreamDataAsync(sourceStream, fileSize, progress, ct);
             }
-
-            // 标准模式
-            string xml = string.Format(
-                "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
-                "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
-                "start_sector=\"{3}\" filename=\"{4}\"/></data>",
-                _sectorSize, numSectors, lun, startSector, partitionName);
-
-            _port.Write(Encoding.UTF8.GetBytes(xml));
-
-            if (!await WaitForRawDataModeAsync(ct))
-            {
-                _log("Firehose: Program 命令被拒绝");
-                return false;
-            }
-
-            return await SendFileDataAsync(filePath, fileSize, progress, ct);
         }
 
         /// <summary>
         /// VIP 模式刷写分区 (使用伪装策略)
         /// </summary>
-        private async Task<bool> FlashPartitionVipModeAsync(string partitionName, string filePath, int lun, long startSector, int numSectors, long fileSize, IProgress<int> progress, CancellationToken ct)
+        private async Task<bool> FlashPartitionVipModeAsync(string partitionName, Stream sourceStream, int lun, long startSector, int numSectors, long fileSize, IProgress<double> progress, CancellationToken ct)
         {
             // 获取伪装策略
             var strategies = GetDynamicSpoofStrategies(lun, startSector, partitionName, false);
@@ -987,7 +892,9 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     _log(string.Format("[VIP Write] 伪装 {0} 成功，开始传输数据...", spoofLabel));
                     
-                    bool success = await SendFileDataAsync(filePath, fileSize, progress, ct);
+                    // 每次尝试前重置流位置
+                    sourceStream.Position = 0;
+                    bool success = await SendStreamDataAsync(sourceStream, fileSize, progress, ct);
                     if (success)
                     {
                         _log(string.Format("[VIP Write] {0} 写入成功", partitionName));
@@ -1003,52 +910,58 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 发送文件数据 (极速优化版)
+        /// 发送流数据 (通用的极速发送逻辑)
         /// </summary>
-        private async Task<bool> SendFileDataAsync(string filePath, long fileSize, IProgress<int> progress, CancellationToken ct)
+        private async Task<bool> SendStreamDataAsync(Stream stream, long streamSize, IProgress<double> progress, CancellationToken ct)
         {
             long sent = 0;
-            // 使用与设备 MaxPayload 匹配的缓冲区
             byte[] buffer = new byte[_maxPayloadSize];
-            int lastPercent = -1;
+            double lastPercent = -1;
+            DateTime lastProgressTime = DateTime.MinValue;
 
-            // 使用大缓冲区、顺序扫描优化、无缓存写入
-            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, FILE_BUFFER_SIZE, FileOptions.SequentialScan))
+            while (sent < streamSize)
             {
-                int read;
-                while ((read = fs.Read(buffer, 0, buffer.Length)) > 0 && !ct.IsCancellationRequested)
+                if (ct.IsCancellationRequested) return false;
+
+                int toRead = (int)Math.Min(_maxPayloadSize, streamSize - sent);
+                int read = await stream.ReadAsync(buffer, 0, toRead);
+                if (read <= 0) break;
+
+                // 补齐扇区
+                int toWrite = read;
+                if (read % _sectorSize != 0)
                 {
-                    // 补齐到扇区边界 (仅最后一块)
-                    int actualWrite = read;
-                    if (read < buffer.Length && read % _sectorSize != 0)
-                    {
-                        actualWrite = ((read / _sectorSize) + 1) * _sectorSize;
-                        Array.Clear(buffer, read, actualWrite - read);
-                    }
+                    toWrite = ((read / _sectorSize) + 1) * _sectorSize;
+                    Array.Clear(buffer, read, toWrite - read);
+                }
 
-                    // 直接写入串口，不等待
-                    _port.Write(buffer, 0, actualWrite);
-                    sent += read; // 记录实际文件字节数
+                if (!await _port.WriteAsync(buffer, 0, toWrite, ct))
+                {
+                    _log("Firehose: 数据写入失败");
+                    return false;
+                }
 
-                    // 调用 _progress 回调传递字节进度（用于速度计算）
-                    if (_progress != null)
-                        _progress(sent, fileSize);
+                sent += read;
+
+                // 节流进度报告：每 100ms 或每 0.1% 更新一次
+                var now = DateTime.Now;
+                double currentPercent = (100.0 * sent / streamSize);
+                if (currentPercent > lastPercent + 0.1 || (now - lastProgressTime).TotalMilliseconds > 100)
+                {
+                    if (_progress != null) _progress(sent, streamSize);
+                    if (progress != null) progress.Report(currentPercent);
                     
-                    // 每 1% 更新一次 UI 进度
-                    int currentPercent = (int)(100.0 * sent / fileSize);
-                    if (progress != null && currentPercent > lastPercent)
-                    {
-                        progress.Report(currentPercent);
-                        lastPercent = currentPercent;
-                    }
-
-                    // 不再等待，直接继续发送下一块
-                    // USB 有硬件流控，无需软件节流
+                    lastPercent = currentPercent;
+                    lastProgressTime = now;
                 }
             }
 
-            // 等待设备确认
-            return await WaitForAckAsync(ct, 180); // 大文件给更长超时
+            // 确保最后一次进度报告
+            if (_progress != null) _progress(streamSize, streamSize);
+            if (progress != null) progress.Report(100.0);
+
+            // 等待最终 ACK
+            return await WaitForAckAsync(ct, 180);
         }
 
         #endregion
@@ -1470,94 +1383,78 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 接收 read 命令的响应数据 (极速优化版)
+        /// 接收数据响应 (极速流水线版)
         /// </summary>
         private async Task<bool> ReceiveDataAfterAckAsync(byte[] buffer, CancellationToken ct)
         {
-            return await Task.Run(() =>
+            try
             {
-                try
+                int totalBytes = buffer.Length;
+                int received = 0;
+                bool headerFound = false;
+                
+                // 探测缓冲区
+                byte[] probeBuf = new byte[16384];
+                int probeIdx = 0;
+
+                while (received < totalBytes)
                 {
-                    int totalBytes = buffer.Length;
-                    int received = 0;
-                    bool headerFound = false;
-                    // 使用 1MB 缓冲区以匹配 USB 传输速度
-                    byte[] tempBuf = new byte[1024 * 1024];
+                    if (ct.IsCancellationRequested) return false;
 
-                    while (received < totalBytes)
+                    if (!headerFound)
                     {
-                        if (ct.IsCancellationRequested) return false;
+                        // 1. 寻找 XML 头部
+                        int read = await _port.ReadAsync(probeBuf, probeIdx, probeBuf.Length - probeIdx, ct);
+                        if (read <= 0) return false;
+                        probeIdx += read;
 
-                        // 根据阶段调整请求大小
-                        // 头部阶段: 小请求找 XML 结尾
-                        // 数据阶段: 大请求最大化吞吐量
-                        int requestSize = headerFound 
-                            ? Math.Min(tempBuf.Length, totalBytes - received) 
-                            : 16384;
+                        string content = Encoding.UTF8.GetString(probeBuf, 0, probeIdx);
+                        int ackIndex = content.IndexOf("rawmode=\"true\"", StringComparison.OrdinalIgnoreCase);
+                        if (ackIndex == -1) ackIndex = content.IndexOf("rawmode='true'", StringComparison.OrdinalIgnoreCase);
 
-                        byte[] readData = _port.TryReadExactAsync(requestSize, 15000, ct).Result;
-                        if (readData == null || readData.Length == 0)
+                        if (ackIndex >= 0)
                         {
-                            _log("[Read] 超时，无数据");
-                            return false;
-                        }
-
-                        int read = readData.Length;
-                        Array.Copy(readData, tempBuf, read);
-
-                        int dataStartOffset = 0;
-
-                        if (!headerFound)
-                        {
-                            string content = Encoding.UTF8.GetString(tempBuf, 0, read);
-
-                            int ackIndex = content.IndexOf("rawmode=\"true\"", StringComparison.OrdinalIgnoreCase);
-                            if (ackIndex == -1)
-                                ackIndex = content.IndexOf("rawmode='true'", StringComparison.OrdinalIgnoreCase);
-
-                            if (ackIndex >= 0)
+                            int xmlEndIndex = content.IndexOf("</data>", ackIndex);
+                            if (xmlEndIndex >= 0)
                             {
-                                int xmlEndIndex = content.IndexOf("</data>", ackIndex);
-                                if (xmlEndIndex >= 0)
+                                headerFound = true;
+                                int dataStart = xmlEndIndex + 7;
+                                // 跳过空白符
+                                while (dataStart < probeIdx && (probeBuf[dataStart] == '\n' || probeBuf[dataStart] == '\r'))
+                                    dataStart++;
+
+                                // 将探测缓冲区中剩余的数据存入目标 buffer
+                                int leftover = probeIdx - dataStart;
+                                if (leftover > 0)
                                 {
-                                    headerFound = true;
-                                    dataStartOffset = xmlEndIndex + 7;
-
-                                    while (dataStartOffset < read && (tempBuf[dataStartOffset] == '\n' || tempBuf[dataStartOffset] == '\r'))
-                                        dataStartOffset++;
-
-                                    if (dataStartOffset >= read) continue;
+                                    Array.Copy(probeBuf, dataStart, buffer, 0, Math.Min(leftover, totalBytes));
+                                    received = leftover;
                                 }
                             }
-                            else if (content.Contains("NAK"))
-                            {
-                                _log(string.Format("[Read] 设备拒绝: {0}", content.Substring(0, Math.Min(content.Length, 100))));
-                                return false;
-                            }
-                            else
-                            {
-                                // 跳过日志消息，不打印避免阻塞
-                                continue;
-                            }
                         }
-
-                        int dataLength = read - dataStartOffset;
-                        if (dataLength > 0)
+                        else if (content.Contains("NAK"))
                         {
-                            if (received + dataLength > buffer.Length)
-                                dataLength = buffer.Length - received;
-                            Array.Copy(tempBuf, dataStartOffset, buffer, received, dataLength);
-                            received += dataLength;
+                            return false;
                         }
+                        
+                        if (probeIdx >= probeBuf.Length && !headerFound) probeIdx = 0; // 防止溢出
                     }
-                    return true;
+                    else
+                    {
+                        // 2. 极速读取原始数据块
+                        int toRead = Math.Min(totalBytes - received, 1024 * 1024); // 每次最多读 1MB
+                        int read = await _port.ReadAsync(buffer, received, toRead, ct);
+                        if (read <= 0) break;
+                        received += read;
+                    }
                 }
-                catch (Exception ex)
-                {
-                    _log(string.Format("[Read] 异常: {0}", ex.Message));
-                    return false;
-                }
-            }, ct);
+                return received >= totalBytes;
+            }
+            catch (Exception ex)
+            {
+                _log("[Read] 极速解析异常: " + ex.Message);
+                return false;
+            }
         }
 
         /// <summary>
@@ -1730,6 +1627,148 @@ namespace LoveAlways.Qualcomm.Protocol
                 await Task.Delay(20, ct);
             }
             return sb.Length > 0 ? sb.ToString() : null;
+        }
+
+        #endregion
+
+        #region OPLUS (OPPO/Realme/OnePlus) VIP 认证
+
+        /// <summary>
+        /// 执行 VIP 认证流程 (基于 Digest 和 Signature 文件)
+        /// </summary>
+        /// <summary>
+        /// 执行 OPLUS VIP 认证 (Digest + Sign 二进制校验流程)
+        /// </summary>
+        public async Task<bool> PerformVipAuthAsync(string digestPath, string signaturePath, CancellationToken ct = default(CancellationToken))
+        {
+            if (!File.Exists(digestPath) || !File.Exists(signaturePath))
+            {
+                _log("[VIP] 认证失败：缺少 Digest 或 Signature 文件");
+                return false;
+            }
+
+            try
+            {
+                _log("[VIP] 步骤 1: 加载 Digest 校验文件...");
+                byte[] digestData = File.ReadAllBytes(digestPath);
+                
+                // 使用 program 命令模拟官方加载 DigestsToSign.bin
+                string digestXml = string.Format(
+                    "<?xml version=\"1.0\" ?><data>\n" +
+                    "<program SECTOR_SIZE_IN_BYTES=\"{0}\" filename=\"DigestsToSign.bin\" " +
+                    "label=\"DigestsToSign\" num_partition_sectors=\"{1}\" " +
+                    "physical_partition_number=\"0\" start_sector=\"0\" partofsingleimage=\"true\" />\n" +
+                    "</data>", 
+                    _sectorSize, (int)Math.Ceiling((double)digestData.Length / _sectorSize));
+                
+                PurgeBuffer();
+                _port.Write(Encoding.UTF8.GetBytes(digestXml));
+                if (!await WaitForRawDataModeAsync(ct))
+                {
+                    _log("[VIP] 设备拒绝接收 Digest 引导数据");
+                    return false;
+                }
+                
+                // 写入 Digest 数据并补齐扇区
+                int paddedDigestSize = ((digestData.Length + _sectorSize - 1) / _sectorSize) * _sectorSize;
+                byte[] paddedDigest = new byte[paddedDigestSize];
+                Array.Copy(digestData, paddedDigest, digestData.Length);
+                await _port.WriteAsync(paddedDigest, 0, paddedDigestSize, ct);
+                await WaitForAckAsync(ct);
+
+                _log("[VIP] 步骤 2: 发送 TransferCfg 协议切换...");
+                string transferXml = "<?xml version=\"1.0\" ?><data>\n<transfercfg reboot_type=\"off\" timeout_in_sec=\"90\" />\n</data>\n";
+                _port.Write(Encoding.UTF8.GetBytes(transferXml));
+                await WaitForAckAsync(ct);
+
+                _log("[VIP] 步骤 3: 发送 Verify Ping 验证状态...");
+                string verifyXml = "<?xml version=\"1.0\" ?><data>\n<verify value=\"ping\" EnableVip=\"1\" />\n</data>\n";
+                _port.Write(Encoding.UTF8.GetBytes(verifyXml));
+                await WaitForAckAsync(ct);
+
+                _log("[VIP] 步骤 4: 加载 Signature 签名文件...");
+                byte[] signatureData = File.ReadAllBytes(signaturePath);
+                
+                // 使用 program 命令模拟官方加载 Signature.bin
+                string signatureXml = string.Format(
+                    "<?xml version=\"1.0\" ?><data>\n" +
+                    "<program SECTOR_SIZE_IN_BYTES=\"{0}\" filename=\"Signature.bin\" " +
+                    "label=\"Signature\" num_partition_sectors=\"{1}\" " +
+                    "physical_partition_number=\"0\" start_sector=\"0\" partofsingleimage=\"true\" />\n" +
+                    "</data>", 
+                    _sectorSize, (int)Math.Ceiling((double)signatureData.Length / _sectorSize));
+
+                _port.Write(Encoding.UTF8.GetBytes(signatureXml));
+                if (!await WaitForRawDataModeAsync(ct))
+                {
+                    _log("[VIP] 设备拒绝接收 Signature 签名数据");
+                    return false;
+                }
+
+                // 写入 Signature 数据并补齐扇区
+                int paddedSignSize = ((signatureData.Length + _sectorSize - 1) / _sectorSize) * _sectorSize;
+                byte[] paddedSign = new byte[paddedSignSize];
+                Array.Copy(signatureData, paddedSign, signatureData.Length);
+                await _port.WriteAsync(paddedSign, 0, paddedSignSize, ct);
+                await WaitForAckAsync(ct);
+
+                _log("[VIP] 步骤 5: 执行 SHA256Init 解锁高权限...");
+                string shaInitXml = "<?xml version=\"1.0\" ?><data>\n<sha256init Verbose=\"1\" />\n</data>\n";
+                _port.Write(Encoding.UTF8.GetBytes(shaInitXml));
+                
+                if (await WaitForAckAsync(ct))
+                {
+                    _log("[VIP] 认证成功：设备高权限分区已解锁");
+                    return true;
+                }
+
+                _log("[VIP] 认证失败：SHA256Init 被拒绝");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _log(string.Format("[VIP] 认证过程发生异常: {0}", ex.Message));
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 获取设备当前的挑战码 (用于在线签名)
+        /// </summary>
+        public async Task<string> GetVipChallengeAsync(CancellationToken ct = default(CancellationToken))
+        {
+            _log("[VIP] 正在获取设备挑战码 (getsigndata)...");
+            string xml = "<?xml version=\"1.0\" ?><data>\n<getsigndata value=\"ping\" />\n</data>\n";
+            _port.Write(Encoding.UTF8.GetBytes(xml));
+
+            // 尝试从返回的 INFO 日志中提取 NV 数据
+            var response = await ReadRawResponseAsync(3000, ct);
+            if (response != null && response.Contains("NV:"))
+            {
+                var match = Regex.Match(response, "NV:([^;\\s]+)");
+                if (match.Success) return match.Groups[1].Value;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 初始化 SHA256 (OPLUS 分区写入前需要)
+        /// </summary>
+        public async Task<bool> Sha256InitAsync(CancellationToken ct = default(CancellationToken))
+        {
+            string xml = "<?xml version=\"1.0\" ?><data>\n<sha256init />\n</data>\n";
+            _port.Write(Encoding.UTF8.GetBytes(xml));
+            return await WaitForAckAsync(ct);
+        }
+
+        /// <summary>
+        /// 完成 SHA256 (OPLUS 分区写入后需要)
+        /// </summary>
+        public async Task<bool> Sha256FinalAsync(CancellationToken ct = default(CancellationToken))
+        {
+            string xml = "<?xml version=\"1.0\" ?><data>\n<sha256final />\n</data>\n";
+            _port.Write(Encoding.UTF8.GetBytes(xml));
+            return await WaitForAckAsync(ct);
         }
 
         #endregion
