@@ -889,7 +889,12 @@ namespace LoveAlways.Qualcomm.Services
             {
                 _log("从 Super 精准读取失败: " + ex.Message);
             }
-            return string.IsNullOrEmpty(masterInfo.Model) ? null : masterInfo;
+            // 只要有任何有效信息就返回，不仅仅检查 Model
+            bool hasValidInfo = !string.IsNullOrEmpty(masterInfo.Model) ||
+                               !string.IsNullOrEmpty(masterInfo.MarketName) ||
+                               !string.IsNullOrEmpty(masterInfo.Brand) ||
+                               !string.IsNullOrEmpty(masterInfo.Device);
+            return hasValidInfo ? masterInfo : null;
         }
 
         /// <summary>
