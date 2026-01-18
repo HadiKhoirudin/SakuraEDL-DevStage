@@ -153,6 +153,8 @@ namespace LoveAlways.Qualcomm.Services
         public string Brand { get; set; }
         public string Model { get; set; }
         public string Device { get; set; }
+        public string DeviceName { get; set; }     // ro.product.name
+        public string Codename { get; set; }       // ro.product.device / ro.build.product
         public string MarketName { get; set; }
         public string MarketNameEn { get; set; }
         public string Manufacturer { get; set; }
@@ -163,10 +165,10 @@ namespace LoveAlways.Qualcomm.Services
         public string Fingerprint { get; set; }
         public string DisplayId { get; set; }
         public string OtaVersion { get; set; }
-        public string OtaVersionFull { get; set; } // 新增
+        public string OtaVersionFull { get; set; }
         public string Incremental { get; set; }
-        public string BuildDate { get; set; }      // 新增
-        public string BuildUtc { get; set; }       // 新增
+        public string BuildDate { get; set; }
+        public string BuildUtc { get; set; }
         public string BootSlot { get; set; }
 
         // OPLUS 特有
@@ -184,6 +186,8 @@ namespace LoveAlways.Qualcomm.Services
             Brand = "";
             Model = "";
             Device = "";
+            DeviceName = "";
+            Codename = "";
             MarketName = "";
             MarketNameEn = "";
             Manufacturer = "";
@@ -194,11 +198,15 @@ namespace LoveAlways.Qualcomm.Services
             Fingerprint = "";
             DisplayId = "";
             OtaVersion = "";
+            OtaVersionFull = "";
             Incremental = "";
+            BuildDate = "";
+            BuildUtc = "";
             BootSlot = "";
             OplusCpuInfo = "";
             OplusNvId = "";
             OplusProject = "";
+            LenovoSeries = "";
             AllProperties = new Dictionary<string, string>();
         }
     }
@@ -482,7 +490,41 @@ namespace LoveAlways.Qualcomm.Services
                         break;
 
                     case "ro.build.version.release":
-                        info.AndroidVersion = value;
+                    case "ro.build.version.release_or_codename":
+                        if (string.IsNullOrEmpty(info.AndroidVersion))
+                            info.AndroidVersion = value;
+                        break;
+                    
+                    case "ro.build.version.sdk":
+                        info.SdkVersion = value;
+                        break;
+                    
+                    case "ro.build.version.security_patch":
+                        info.SecurityPatch = value;
+                        break;
+                    
+                    case "ro.product.device":
+                    case "ro.product.vendor.device":
+                    case "ro.build.product":
+                        if (string.IsNullOrEmpty(info.Codename))
+                            info.Codename = value;
+                        break;
+                    
+                    case "ro.build.id":
+                        info.BuildId = value;
+                        break;
+                    
+                    case "ro.build.fingerprint":
+                    case "ro.system.build.fingerprint":
+                    case "ro.vendor.build.fingerprint":
+                        if (string.IsNullOrEmpty(info.Fingerprint))
+                            info.Fingerprint = value;
+                        break;
+                    
+                    case "ro.product.name":
+                    case "ro.product.vendor.name":
+                        if (string.IsNullOrEmpty(info.DeviceName))
+                            info.DeviceName = value;
                         break;
                 }
             }
