@@ -540,6 +540,19 @@ namespace LoveAlways.Qualcomm.UI
         {
             try
             {
+                // 检查是否有可用于读取设备信息的分区
+                bool hasSuper = Partitions != null && Partitions.Exists(p => p.Name == "super");
+                bool hasVendor = Partitions != null && Partitions.Exists(p => p.Name == "vendor" || p.Name.StartsWith("vendor_"));
+                bool hasSystem = Partitions != null && Partitions.Exists(p => p.Name == "system" || p.Name.StartsWith("system_"));
+                bool hasMyManifest = Partitions != null && Partitions.Exists(p => p.Name.StartsWith("my_manifest"));
+                
+                // 如果没有任何可用分区，直接返回
+                if (!hasSuper && !hasVendor && !hasSystem && !hasMyManifest)
+                {
+                    Log("设备无 super/vendor/system 分区，跳过设备信息读取", Color.Orange);
+                    return;
+                }
+
                 if (_deviceInfoService == null)
                 {
                     _deviceInfoService = new DeviceInfoService(
@@ -548,15 +561,37 @@ namespace LoveAlways.Qualcomm.UI
                     );
                 }
 
-                // 创建通用的分区读取委托
-                Func<string, long, int, Task<byte[]>> readPartition = (partName, offset, size) =>
+                // 创建带超时的分区读取委托
+                Func<string, long, int, Task<byte[]>> readPartition = async (partName, offset, size) =>
                 {
-                    return _service.ReadPartitionDataAsync(partName, offset, size, _cts.Token);
+                    // 检查分区是否存在
+                    if (Partitions == null || !Partitions.Exists(p => p.Name == partName || p.Name.StartsWith(partName + "_")))
+                    {
+                        return null;
+                    }
+                    
+                    try
+                    {
+                        // 添加 10 秒超时保护
+                        using (var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+                        using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, timeoutCts.Token))
+                        {
+                            return await _service.ReadPartitionDataAsync(partName, offset, size, linkedCts.Token);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log(string.Format("读取 {0} 超时", partName), Color.Orange);
+                        return null;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
                 };
 
                 // 获取当前状态
                 string activeSlot = _service.CurrentSlot;
-                bool hasSuper = Partitions != null && Partitions.Exists(p => p.Name == "super");
                 long superStart = 0;
                 if (hasSuper)
                 {
@@ -598,9 +633,12 @@ namespace LoveAlways.Qualcomm.UI
                         break;
 
                     default:
-                        // 通用策略
-                        buildProp = await _deviceInfoService.ReadBuildPropFromDevice(
-                            readPartition, activeSlot, hasSuper, superStart, sectorSize);
+                        // 通用策略 - 只在有 super 分区时尝试
+                        if (hasSuper)
+                        {
+                            buildProp = await _deviceInfoService.ReadBuildPropFromDevice(
+                                readPartition, activeSlot, hasSuper, superStart, sectorSize);
+                        }
                         break;
                 }
 
@@ -614,8 +652,12 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 else
                 {
-                    Log("未能读取到设备信息", Color.Orange);
+                    Log("未能读取到设备信息（设备可能不支持或分区格式不兼容）", Color.Orange);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                Log("设备信息读取已取消", Color.Orange);
             }
             catch (Exception ex)
             {
