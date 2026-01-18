@@ -578,30 +578,19 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
             }
 
-            // 5. V3 专用: 读取扩展信息 (cmd=0x0A)
-            // V3 设备必须使用这个命令来获取 HWID
-            if (ProtocolVersion >= 3 || string.IsNullOrEmpty(ChipHwId))
+            // 5. V3 专用: 读取扩展信息 (cmd=0x0A) - 仅 V3 设备
+            if (ProtocolVersion >= 3)
             {
                 var extInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.ChipIdV3Read, ct);
                 if (extInfo != null && extInfo.Length >= 44)
                 {
                     ProcessV3ExtendedInfo(extInfo);
                 }
-                else if (extInfo != null && extInfo.Length >= 4)
-                {
-                    // 部分数据，记录用于调试
-                    uint chipIdV3 = BitConverter.ToUInt32(extInfo, 0);
-                    if (chipIdV3 != 0)
-                    {
-                        _log(string.Format("- Chip Identifier V3 : {0:x8}", chipIdV3));
-                    }
-                }
             }
 
             // 6. 读取 SBL 版本 (cmd=0x06 for V3, cmd=0x07 for V1/V2)
             if (ProtocolVersion >= 3)
             {
-                // V3: 使用 SblInfoRead (0x06) - 返回更多信息
                 var sblInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.SblInfoRead, ct);
                 if (sblInfo != null && sblInfo.Length >= 4)
                 {
@@ -610,7 +599,6 @@ namespace LoveAlways.Qualcomm.Protocol
             }
             else
             {
-                // V1/V2: 使用 SblSwVersion (0x07)
                 var sblVer = await ExecuteCommandSafeAsync(SaharaExecCommand.SblSwVersion, ct);
                 if (sblVer != null && sblVer.Length >= 4)
                 {
@@ -618,14 +606,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     _log(string.Format("- SBL SW Version : 0x{0:X8}", version));
                 }
             }
-
-            // 7. 读取 PBL 版本 (cmd=0x08)
-            var pblVer = await ExecuteCommandSafeAsync(SaharaExecCommand.PblSwVersion, ct);
-            if (pblVer != null && pblVer.Length >= 4)
-            {
-                uint version = BitConverter.ToUInt32(pblVer, 0);
-                _log(string.Format("- PBL SW Version : 0x{0:X8}", version));
-            }
+            // 注: PBL 版本读取 (cmd=0x08) 已移除，部分设备不支持会导致握手失败
         }
         
         /// <summary>

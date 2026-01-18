@@ -166,6 +166,7 @@ namespace LoveAlways.Qualcomm.Database
             { "58b4add1", "Xiaomi" },
             { "dd0cba2f", "Xiaomi" },
             { "1bebe386", "Xiaomi" },
+            { "c924a35f", "Xiaomi" },  // SDM845 设备
             
             // Vivo
             { "60ba997f", "Vivo" },
