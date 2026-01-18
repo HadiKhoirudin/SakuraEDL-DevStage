@@ -143,11 +143,12 @@ namespace LoveAlways.Qualcomm.Protocol
         private bool _disposed;
         private readonly StringBuilder _rxBuffer = new StringBuilder();
 
-        // 配置 - 速度优化
+        // 配置 - 速度优化 (参考官方 fh_loader 参数)
         private int _sectorSize = 4096;
         private int _maxPayloadSize = 16777216; // 16MB 默认 payload
 
-        private const int ACK_TIMEOUT_MS = 15000;          // 大文件需要更长超时
+        private const int ACK_TIMEOUT_MS = 120000;         // 官方: RX_TIMEOUT_SECONDS = 120
+        private const int ACK_TIMEOUT_SHORT_MS = 30000;    // 短操作超时
         private const int FILE_BUFFER_SIZE = 4 * 1024 * 1024;  // 4MB 文件缓冲 (提高读取速度)
         private const int OPTIMAL_PAYLOAD_REQUEST = 16 * 1024 * 1024; // 请求 16MB payload (设备可能返回较小值)
 
@@ -302,7 +303,7 @@ namespace LoveAlways.Qualcomm.Protocol
         #region 基础配置
 
         /// <summary>
-        /// 配置 Firehose
+        /// 配置 Firehose (支持官方协商机制)
         /// </summary>
         public async Task<bool> ConfigureAsync(string storageType = "ufs", int preferredPayloadSize = 0, CancellationToken ct = default(CancellationToken))
         {
@@ -310,50 +311,107 @@ namespace LoveAlways.Qualcomm.Protocol
             _sectorSize = (StorageType == "emmc") ? 512 : 4096;
 
             int requestedPayload = preferredPayloadSize > 0 ? preferredPayloadSize : OPTIMAL_PAYLOAD_REQUEST;
+            int maxNegotiationRounds = 3; // 官方协商最多重试几轮
 
-            string xml = string.Format(
-                "<?xml version=\"1.0\" ?><data><configure MemoryName=\"{0}\" Verbose=\"0\" " +
-                "AlwaysValidate=\"0\" MaxPayloadSizeToTargetInBytes=\"{1}\" ZlpAwareHost=\"0\" " +
-                "SkipStorageInit=\"0\" CheckDevinfo=\"0\" EnableFlash=\"1\" /></data>",
-                storageType, requestedPayload);
-
-            _log("[Firehose] 配置设备...");
-            PurgeBuffer();
-            _port.Write(Encoding.UTF8.GetBytes(xml));
-
-            for (int i = 0; i < 50; i++)
+            for (int round = 0; round < maxNegotiationRounds; round++)
             {
-                if (ct.IsCancellationRequested) return false;
+                string xml = string.Format(
+                    "<?xml version=\"1.0\" ?><data><configure MemoryName=\"{0}\" Verbose=\"0\" " +
+                    "AlwaysValidate=\"0\" MaxPayloadSizeToTargetInBytes=\"{1}\" ZlpAwareHost=\"0\" " +
+                    "SkipStorageInit=\"0\" CheckDevinfo=\"0\" EnableFlash=\"1\" /></data>",
+                    storageType, requestedPayload);
 
-                var resp = await ProcessXmlResponseAsync(ct);
-                if (resp != null)
+                if (round == 0)
+                    _log("[Firehose] 配置设备...");
+                else
+                    _log(string.Format("[Firehose] 重新协商 Payload: {0}KB...", requestedPayload / 1024));
+
+                PurgeBuffer();
+                _port.Write(Encoding.UTF8.GetBytes(xml));
+
+                int targetSupported = 0;
+                bool gotResponse = false;
+
+                for (int i = 0; i < 50; i++)
                 {
-                    string val = resp.Attribute("value") != null ? resp.Attribute("value").Value : "";
-                    bool isAck = val.Equals("ACK", StringComparison.OrdinalIgnoreCase);
+                    if (ct.IsCancellationRequested) return false;
 
-                    if (isAck || val.Equals("NAK", StringComparison.OrdinalIgnoreCase))
+                    var resp = await ProcessXmlResponseAsync(ct);
+                    if (resp != null)
                     {
-                        var ssAttr = resp.Attribute("SectorSizeInBytes");
-                        if (ssAttr != null)
-                        {
-                            int size;
-                            if (int.TryParse(ssAttr.Value, out size)) _sectorSize = size;
-                        }
+                        string val = resp.Attribute("value") != null ? resp.Attribute("value").Value : "";
+                        bool isAck = val.Equals("ACK", StringComparison.OrdinalIgnoreCase);
+                        bool isNak = val.Equals("NAK", StringComparison.OrdinalIgnoreCase);
 
-                        var mpAttr = resp.Attribute("MaxPayloadSizeToTargetInBytes");
-                        if (mpAttr != null)
+                        if (isAck || isNak)
                         {
-                            int maxPayload;
-                            if (int.TryParse(mpAttr.Value, out maxPayload) && maxPayload > 0)
-                                _maxPayloadSize = Math.Max(64 * 1024, Math.Min(maxPayload, 16 * 1024 * 1024));
-                        }
+                            gotResponse = true;
 
-                        _log(string.Format("[Firehose] 配置成功 - SectorSize:{0}, MaxPayload:{1}KB", _sectorSize, _maxPayloadSize / 1024));
-                        return true;
+                            // 解析 SectorSize
+                            var ssAttr = resp.Attribute("SectorSizeInBytes");
+                            if (ssAttr != null)
+                            {
+                                int size;
+                                if (int.TryParse(ssAttr.Value, out size)) _sectorSize = size;
+                            }
+
+                            // 解析当前 MaxPayload
+                            var mpAttr = resp.Attribute("MaxPayloadSizeToTargetInBytes");
+                            if (mpAttr != null)
+                            {
+                                int maxPayload;
+                                if (int.TryParse(mpAttr.Value, out maxPayload) && maxPayload > 0)
+                                    _maxPayloadSize = Math.Max(64 * 1024, Math.Min(maxPayload, 16 * 1024 * 1024));
+                            }
+
+                            // 官方协商: 检查设备支持的最大值
+                            var supportedAttr = resp.Attribute("MaxPayloadSizeToTargetInBytesSupported");
+                            if (supportedAttr != null)
+                            {
+                                int.TryParse(supportedAttr.Value, out targetSupported);
+                            }
+
+                            if (isAck)
+                            {
+                                _log(string.Format("[Firehose] 配置成功 - SectorSize:{0}, MaxPayload:{1}KB", _sectorSize, _maxPayloadSize / 1024));
+                                return true;
+                            }
+                            else
+                            {
+                                // NAK: 检查是否可以用更大的 payload 重新协商
+                                if (targetSupported > 0 && targetSupported > requestedPayload)
+                                {
+                                    _log(string.Format("[Firehose] 设备支持更大 Payload: {0}KB", targetSupported / 1024));
+                                    requestedPayload = targetSupported;
+                                    break; // 进入下一轮协商
+                                }
+                                else if (targetSupported > 0 && targetSupported < requestedPayload)
+                                {
+                                    // 设备要求更小的 payload
+                                    _log(string.Format("[Firehose] 设备要求更小 Payload: {0}KB", targetSupported / 1024));
+                                    requestedPayload = targetSupported;
+                                    break;
+                                }
+                                else
+                                {
+                                    // 无法协商，但仍返回成功（可能是存储初始化问题）
+                                    _log(string.Format("[Firehose] NAK 但继续 - SectorSize:{0}, MaxPayload:{1}KB", _sectorSize, _maxPayloadSize / 1024));
+                                    return true;
+                                }
+                            }
+                        }
                     }
+                    await Task.Delay(50, ct);
                 }
-                await Task.Delay(50, ct);
+
+                if (!gotResponse)
+                {
+                    _log("[Firehose] 配置无响应");
+                    return false;
+                }
             }
+
+            _log("[Firehose] 协商失败");
             return false;
         }
 
@@ -956,6 +1014,50 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
+        /// 写入扇区数据 (支持官方 NUM_DISK_SECTORS 负扇区格式)
+        /// 官方格式: start_sector="NUM_DISK_SECTORS-5." 由设备计算
+        /// </summary>
+        public async Task<bool> WriteSectorsWithNegativeSectorAsync(int lun, long startSector, byte[] data, int length, string label, CancellationToken ct)
+        {
+            int numSectors = length / _sectorSize;
+            
+            // 格式化 start_sector
+            // 负数使用官方格式: NUM_DISK_SECTORS-N (让设备计算)
+            // 正数直接使用数字
+            string startSectorStr;
+            if (startSector < 0)
+            {
+                // 官方格式: NUM_DISK_SECTORS-5. (注意尾部的点)
+                startSectorStr = string.Format("NUM_DISK_SECTORS{0}.", startSector);
+                _log(string.Format("[Firehose] 使用官方负扇区格式: {0}", startSectorStr));
+            }
+            else
+            {
+                startSectorStr = startSector.ToString();
+            }
+            
+            string xml = string.Format(
+                "<?xml version=\"1.0\" ?><data>" +
+                "<program SECTOR_SIZE_IN_BYTES=\"{0}\" num_partition_sectors=\"{1}\" " +
+                "physical_partition_number=\"{2}\" start_sector=\"{3}\" label=\"{4}\" />" +
+                "</data>",
+                _sectorSize, numSectors, lun, startSectorStr, label);
+
+            PurgeBuffer();
+            _port.Write(Encoding.UTF8.GetBytes(xml));
+
+            if (!await WaitForRawDataModeAsync(ct))
+            {
+                _log("[Firehose] Program 命令未确认");
+                return false;
+            }
+
+            _port.Write(data, 0, length);
+
+            return await WaitForAckAsync(ct, 10);
+        }
+
+        /// <summary>
         /// 从文件刷写分区
         /// </summary>
         public async Task<bool> FlashPartitionFromFileAsync(string partitionName, string filePath, int lun, long startSector, IProgress<double> progress, CancellationToken ct, bool useVipMode = false)
@@ -1021,6 +1123,64 @@ namespace LoveAlways.Qualcomm.Protocol
                 if (!await WaitForRawDataModeAsync(ct))
                 {
                     _log("Firehose: Program 命令被拒绝");
+                    return false;
+                }
+
+                return await SendStreamDataAsync(sourceStream, fileSize, progress, ct);
+            }
+        }
+
+        /// <summary>
+        /// 从文件刷写分区 (支持官方 NUM_DISK_SECTORS-N 负扇区格式)
+        /// 负扇区直接发送给设备，让设备计算绝对地址
+        /// </summary>
+        public async Task<bool> FlashPartitionFromFileWithNegativeSectorAsync(string partitionName, string filePath, int lun, long startSector, IProgress<double> progress, CancellationToken ct, bool useVipMode = false)
+        {
+            if (!File.Exists(filePath))
+            {
+                _log("Firehose: 文件不存在 - " + filePath);
+                return false;
+            }
+
+            // Sparse 镜像不支持负扇区
+            if (SparseStream.IsSparseFile(filePath))
+            {
+                _log("Firehose: Sparse 镜像不支持负扇区格式");
+                return false;
+            }
+            
+            using (Stream sourceStream = File.OpenRead(filePath))
+            {
+                long fileSize = sourceStream.Length;
+                int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
+
+                // 格式化 start_sector: 负数使用官方格式 NUM_DISK_SECTORS-N.
+                string startSectorStr;
+                if (startSector < 0)
+                {
+                    startSectorStr = string.Format("NUM_DISK_SECTORS{0}.", startSector);
+                }
+                else
+                {
+                    startSectorStr = startSector.ToString();
+                }
+
+                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2:F2} MB) @ {3}", 
+                    Path.GetFileName(filePath), partitionName, fileSize / 1024.0 / 1024.0, startSectorStr));
+
+                // 构造 program XML
+                string xml = string.Format(
+                    "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                    "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                    "start_sector=\"{3}\" filename=\"{4}\" label=\"{4}\" " +
+                    "read_back_verify=\"true\"/></data>",
+                    _sectorSize, numSectors, lun, startSectorStr, partitionName);
+
+                _port.Write(Encoding.UTF8.GetBytes(xml));
+
+                if (!await WaitForRawDataModeAsync(ct))
+                {
+                    _log("Firehose: Program 命令被拒绝 (负扇区格式)");
                     return false;
                 }
 
@@ -1475,7 +1635,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 应用单个补丁
+        /// 应用单个补丁 (支持官方 NUM_DISK_SECTORS 负扇区格式)
         /// </summary>
         public async Task<bool> ApplyPatchAsync(int lun, long startSector, int byteOffset, int sizeInBytes, string value, CancellationToken ct = default(CancellationToken))
         {
@@ -1483,13 +1643,24 @@ namespace LoveAlways.Qualcomm.Protocol
             if (string.IsNullOrEmpty(value) || sizeInBytes == 0)
                 return true;
 
-            _log(string.Format("[Firehose] 应用补丁: LUN{0} Sector{1} Offset{2} Size{3}", lun, startSector, byteOffset, sizeInBytes));
+            // 格式化 start_sector: 负数使用官方格式 NUM_DISK_SECTORS-N.
+            string startSectorStr;
+            if (startSector < 0)
+            {
+                startSectorStr = string.Format("NUM_DISK_SECTORS{0}.", startSector);
+                _log(string.Format("[Firehose] 应用补丁: LUN{0} Sector {1} Offset{2} Size{3}", lun, startSectorStr, byteOffset, sizeInBytes));
+            }
+            else
+            {
+                startSectorStr = startSector.ToString();
+                _log(string.Format("[Firehose] 应用补丁: LUN{0} Sector{1} Offset{2} Size{3}", lun, startSector, byteOffset, sizeInBytes));
+            }
 
             string xml = string.Format(
                 "<?xml version=\"1.0\" ?><data>\n" +
                 "<patch SECTOR_SIZE_IN_BYTES=\"{0}\" byte_offset=\"{1}\" filename=\"DISK\" " +
                 "physical_partition_number=\"{2}\" size_in_bytes=\"{3}\" start_sector=\"{4}\" value=\"{5}\" />\n</data>\n",
-                _sectorSize, byteOffset, lun, sizeInBytes, startSector, value);
+                _sectorSize, byteOffset, lun, sizeInBytes, startSectorStr, value);
 
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));

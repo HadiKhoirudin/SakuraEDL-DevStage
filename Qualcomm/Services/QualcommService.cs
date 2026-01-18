@@ -740,29 +740,30 @@ namespace LoveAlways.Qualcomm.Services
 
         /// <summary>
         /// 直接写入指定 LUN 和 StartSector (用于 PrimaryGPT/BackupGPT 等特殊分区)
+        /// 支持官方 NUM_DISK_SECTORS-N 负扇区格式
         /// </summary>
         public async Task<bool> WriteDirectAsync(string label, string filePath, int lun, long startSector, IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
                 return false;
 
-            // 处理负扇区 (NUM_DISK_SECTORS-N 会解析为 -N)
-            long resolvedSector = startSector;
+            // 负扇区使用官方格式直接发送给设备 (不再客户端转换)
             if (startSector < 0)
             {
-                resolvedSector = _firehose.ResolveNegativeSector(lun, startSector);
-                if (resolvedSector < 0)
-                {
-                    _log(string.Format("[高通] 无法写入: {0} (负扇区 {1} 无法解析)", label, startSector));
-                    return false;
-                }
+                _log(string.Format("[高通] 直接写入: {0} -> LUN{1} @ sector NUM_DISK_SECTORS{2}", label, lun, startSector));
+                
+                // 使用新的官方格式发送方法
+                return await _firehose.FlashPartitionFromFileWithNegativeSectorAsync(
+                    label, filePath, lun, startSector, progress, ct, IsVipDevice);
             }
+            else
+            {
+                _log(string.Format("[高通] 直接写入: {0} -> LUN{1} @ sector {2}", label, lun, startSector));
 
-            _log(string.Format("[高通] 直接写入: {0} -> LUN{1} @ sector {2}", label, lun, resolvedSector));
-
-            // 直接使用指定的 LUN 和 StartSector 写入
-            return await _firehose.FlashPartitionFromFileAsync(
-                label, filePath, lun, resolvedSector, progress, ct, IsVipDevice);
+                // 正数扇区正常写入
+                return await _firehose.FlashPartitionFromFileAsync(
+                    label, filePath, lun, startSector, progress, ct, IsVipDevice);
+            }
         }
 
         /// <summary>
