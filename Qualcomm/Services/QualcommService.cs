@@ -171,7 +171,19 @@ namespace LoveAlways.Qualcomm.Services
                 string authModeLower = authMode.ToLowerInvariant();
                 bool preConfigAuth = (authModeLower == "vip" || authModeLower == "oplus" || authModeLower == "xiaomi");
                 
-                if (preConfigAuth && authModeLower != "none")
+                // 小米设备自动认证：即使用户选择 none，也自动执行小米认证
+                bool isXiaomi = IsXiaomiDevice();
+                if (authModeLower == "none" && isXiaomi)
+                {
+                    _log("[高通] 检测到小米设备 (SecBoot)，自动执行 MiAuth 认证...");
+                    var xiaomi = new XiaomiAuthStrategy(_log);
+                    bool authOk = await xiaomi.AuthenticateAsync(_firehose, programmerPath, ct);
+                    if (authOk)
+                        _log("[高通] 小米认证成功");
+                    else
+                        _log("[高通] 小米认证失败，设备可能需要官方授权");
+                }
+                else if (preConfigAuth && authModeLower != "none")
                 {
                     _log(string.Format("[高通] 执行 {0} 认证 (配置前)...", authMode.ToUpper()));
                     bool authOk = false;
