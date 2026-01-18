@@ -395,14 +395,24 @@ namespace LoveAlways.Qualcomm.Services
                             info.Brand = value;
                         break;
                     
+                    // OPLUS 市场名称 (优先级最高)
                     case "ro.vendor.oplus.market.name":
-                    case "ro.product.marketname":
+                        // 这是最准确的中文市场名，如 "一加 12"
                         info.MarketName = value;
                         break;
 
+                    case "ro.vendor.oplus.market.enname":
+                        // 英文市场名，如 "OnePlus 12"，作为备选
+                        if (string.IsNullOrEmpty(info.MarketName))
+                            info.MarketName = value;
+                        break;
+
+                    case "ro.product.marketname":
                     case "ro.product.vendor.marketname":
                     case "ro.product.odm.marketname":
-                        info.MarketName = value;
+                        // 其他厂商的市场名
+                        if (string.IsNullOrEmpty(info.MarketName))
+                            info.MarketName = value;
                         break;
 
                     case "ro.product.model":
@@ -434,10 +444,34 @@ namespace LoveAlways.Qualcomm.Services
                         if (string.IsNullOrEmpty(info.OtaVersion)) info.OtaVersion = value;
                         break;
 
+                    // OPLUS 展示版本 (最高优先级) - 如 "PJD110_14.0.0.801(CN01)"
+                    case "ro.build.display.id.show":
+                        // 这是最准确的展示版本，直接使用
+                        info.OtaVersion = value;
+                        info.OtaVersionFull = value;
+                        break;
+
+                    // OPLUS 完整 OTA 包名 - 如 "PJD110domestic_11_14.0.0.801(CN01)_2024051322460079"
+                    case "ro.build.display.full_id":
+                        info.OtaVersionFull = value;
+                        // 如果 OtaVersion 未设置，从完整包名提取简化版本
+                        if (string.IsNullOrEmpty(info.OtaVersion))
+                        {
+                            // 提取 14.0.0.801(CN01) 部分
+                            var m = Regex.Match(value, @"(\d+\.\d+\.\d+\.\d+)\(([A-Z]{2}\d+)\)");
+                            if (m.Success)
+                                info.OtaVersion = string.Format("{0}({1})", m.Groups[1].Value, m.Groups[2].Value);
+                        }
+                        break;
+
                     case "ro.build.version.ota":
                     case "ro.build.display.id":
                     case "ro.system_ext.build.version.incremental":
                     case "ro.vendor.build.display.id":
+                        // 如果 ro.build.display.id.show 已设置，跳过这些
+                        if (!string.IsNullOrEmpty(info.OtaVersion) && info.OtaVersion.Contains("("))
+                            break;
+                        
                         // 联想 ZUXOS 处理: TB321FU_CN_OPEN_USER_Q00011.0_V_ZUI_17.0.10.308_ST_251030
                         if (value.Contains("ZUI") || value.Contains("ZUXOS"))
                         {
@@ -455,10 +489,7 @@ namespace LoveAlways.Qualcomm.Services
                         else if (value.Contains("(") && value.Contains(")") && (value.Contains("CN") || value.Contains("GL") || value.Contains("EU") || value.Contains("IN")))
                         {
                             info.OtaVersionFull = value;
-                            // 提取简化版本号
-                            var m = Regex.Match(value, @"(\d+\.\d+\.\d+)");
-                            if (m.Success && string.IsNullOrEmpty(info.OtaVersion))
-                                info.OtaVersion = m.Groups[1].Value;
+                            info.OtaVersion = value; // 直接使用完整格式
                         }
                         else
                         {

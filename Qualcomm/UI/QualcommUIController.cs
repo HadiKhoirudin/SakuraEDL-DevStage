@@ -809,56 +809,25 @@ namespace LoveAlways.Qualcomm.UI
 
         /// <summary>
         /// OPLUS (OPPO/Realme/OnePlus) 专用读取策略
-        /// 优先级: my_manifest > odm > vendor > system
+        /// 直接使用 DeviceInfoService 的通用策略，它会按正确顺序读取 my_manifest
+        /// 顺序: system -> system_ext -> product -> vendor -> odm -> my_manifest (高优先级覆盖低优先级)
         /// </summary>
         private async Task<BuildPropInfo> ReadOplusBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition, 
             string activeSlot, bool hasSuper, long superStart, int sectorSize)
         {
             Log("使用 OPLUS 专用解析策略...", Color.Blue);
             
-            // OPLUS 设备优先读取 my_manifest 分区（包含精准的设备信息）
-            string slotSuffix = string.IsNullOrEmpty(activeSlot) ? "" : "_" + activeSlot.ToLower().TrimStart('_');
-            var priorityPartitions = new[] { "my_manifest" + slotSuffix, "my_manifest", "odm" + slotSuffix, "odm" };
-
-            BuildPropInfo result = null;
-            foreach (var partName in priorityPartitions)
+            // OPLUS 设备的 my_manifest 是 EROFS 文件系统，不是纯文本
+            // 使用 DeviceInfoService 的通用策略（会正确解析 EROFS 并按优先级合并属性）
+            var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize);
+            
+            if (result != null && !string.IsNullOrEmpty(result.MarketName))
             {
-                if (Partitions != null && !Partitions.Exists(p => p.Name == partName))
-                    continue;
-
-                try
-                {
-                    Log(string.Format("尝试从 {0} 读取...", partName), Color.Gray);
-                    byte[] data = await readPartition(partName, 0, 4096);
-                    if (data != null && data.Length > 0)
-                    {
-                        // my_manifest 通常是纯文本属性文件
-                        string content = System.Text.Encoding.UTF8.GetString(data);
-                        if (content.Contains("ro.") || content.Contains("persist."))
-                        {
-                            // 读取完整分区 (my_manifest 通常很小)
-                            data = await readPartition(partName, 0, 256 * 1024);
-                            if (data != null)
-                            {
-                                content = System.Text.Encoding.UTF8.GetString(data);
-                                result = _deviceInfoService.ParseBuildProp(content);
-                                if (result != null && !string.IsNullOrEmpty(result.MarketName))
-                                {
-                                    Log(string.Format("从 {0} 成功读取设备信息", partName), Color.Green);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                catch { }
+                Log("从 OPLUS 分区成功读取设备信息", Color.Green);
             }
-
-            // 回落到通用策略
-            if (result == null || string.IsNullOrEmpty(result.MarketName))
+            else
             {
-                Log("OPLUS 特定分区读取失败，使用通用策略...", Color.Gray);
-                result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize);
+                Log("OPLUS 设备信息解析不完整，部分字段可能缺失", Color.Orange);
             }
 
             return result;
