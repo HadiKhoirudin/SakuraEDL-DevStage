@@ -597,6 +597,72 @@ namespace LoveAlways.Qualcomm.Protocol
                     }
                 }
             }
+
+            // 6. 读取 SBL 版本 (cmd=0x06 for V3, cmd=0x07 for V1/V2)
+            if (ProtocolVersion >= 3)
+            {
+                // V3: 使用 SblInfoRead (0x06) - 返回更多信息
+                var sblInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.SblInfoRead, ct);
+                if (sblInfo != null && sblInfo.Length >= 4)
+                {
+                    ProcessSblInfo(sblInfo);
+                }
+            }
+            else
+            {
+                // V1/V2: 使用 SblSwVersion (0x07)
+                var sblVer = await ExecuteCommandSafeAsync(SaharaExecCommand.SblSwVersion, ct);
+                if (sblVer != null && sblVer.Length >= 4)
+                {
+                    uint version = BitConverter.ToUInt32(sblVer, 0);
+                    _log(string.Format("- SBL SW Version : 0x{0:X8}", version));
+                }
+            }
+
+            // 7. 读取 PBL 版本 (cmd=0x08)
+            var pblVer = await ExecuteCommandSafeAsync(SaharaExecCommand.PblSwVersion, ct);
+            if (pblVer != null && pblVer.Length >= 4)
+            {
+                uint version = BitConverter.ToUInt32(pblVer, 0);
+                _log(string.Format("- PBL SW Version : 0x{0:X8}", version));
+            }
+        }
+        
+        /// <summary>
+        /// 处理 SBL 信息 (V3 专用, cmd=0x06)
+        /// </summary>
+        private void ProcessSblInfo(byte[] sblInfo)
+        {
+            // SBL Info 返回格式:
+            // 偏移 0: Serial Number (4字节)
+            // 偏移 4: MSM HW ID (8字节) - V3 可能包含
+            // 偏移 12+: 其他扩展信息
+            
+            if (sblInfo.Length >= 4)
+            {
+                uint sblSerial = BitConverter.ToUInt32(sblInfo, 0);
+                _log(string.Format("- SBL Serial : 0x{0:X8}", sblSerial));
+            }
+            
+            if (sblInfo.Length >= 8)
+            {
+                uint sblVersion = BitConverter.ToUInt32(sblInfo, 4);
+                if (sblVersion != 0 && sblVersion != 0xFFFFFFFF)
+                {
+                    _log(string.Format("- SBL Version : 0x{0:X8}", sblVersion));
+                }
+            }
+            
+            // 如果有更多数据，尝试解析 OEM 信息
+            if (sblInfo.Length >= 16)
+            {
+                uint oemField1 = BitConverter.ToUInt32(sblInfo, 8);
+                uint oemField2 = BitConverter.ToUInt32(sblInfo, 12);
+                if (oemField1 != 0 || oemField2 != 0)
+                {
+                    _log(string.Format("- SBL OEM Data : 0x{0:X8} 0x{1:X8}", oemField1, oemField2));
+                }
+            }
         }
         
         /// <summary>
