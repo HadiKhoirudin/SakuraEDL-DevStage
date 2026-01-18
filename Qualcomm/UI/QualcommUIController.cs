@@ -242,39 +242,10 @@ namespace LoveAlways.Qualcomm.UI
                 else
                 {
                     Log(string.Format("连接设备 (存储: {0}, 认证: {1})...", storageType, authMode), Color.Blue);
-                    success = await _service.ConnectAsync(portName, programmerPath, storageType, _cts.Token);
-                    UpdateProgressBarDirect(_progressBar, 60); // Sahara + Firehose 配置完成
-                    
-                    // 执行认证
-                    if (success && authMode != "none")
-                    {
-                        Log(string.Format("执行 {0} 认证...", authMode), Color.Blue);
-                        UpdateProgressBarDirect(_subProgressBar, 0);
-                        
-                        bool authOk = false;
-                        if ((authMode.ToLower() == "vip" || authMode.ToLower() == "oplus") && !string.IsNullOrEmpty(digestPath) && !string.IsNullOrEmpty(signaturePath))
-                        {
-                            // 如果用户提供了 VIP 文件，优先使用手动模式
-                            authOk = await _service.PerformVipAuthManualAsync(digestPath, signaturePath, _cts.Token);
-                        }
-                        else
-                        {
-                            // 使用策略模式认证
-                            authOk = await _service.AuthenticateAsync(authMode, _cts.Token);
-                        }
-                        
-                        UpdateProgressBarDirect(_progressBar, 80); // 认证完成
-                        UpdateProgressBarDirect(_subProgressBar, 100);
-
-                        if (!authOk)
-                        {
-                            Log("认证未完全通过，但连接仍可用", Color.Orange);
-                        }
-                    }
-                    else
-                    {
-                        UpdateProgressBarDirect(_progressBar, 80);
-                    }
+                    // 传递认证模式和文件路径给 ConnectAsync，认证在内部按正确顺序执行
+                    success = await _service.ConnectAsync(portName, programmerPath, storageType, 
+                        authMode, digestPath, signaturePath, _cts.Token);
+                    UpdateProgressBarDirect(_progressBar, 80); // Sahara + 认证 + Firehose 配置完成
                     
                     if (success)
                         SetSkipSaharaChecked(true);

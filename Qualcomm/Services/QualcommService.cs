@@ -82,8 +82,13 @@ namespace LoveAlways.Qualcomm.Services
         /// <param name="portName">COM 端口名</param>
         /// <param name="programmerPath">Programmer 文件路径</param>
         /// <param name="storageType">存储类型 (ufs/emmc)</param>
+        /// <param name="authMode">认证模式: none, vip, oneplus, xiaomi</param>
+        /// <param name="digestPath">VIP Digest 文件路径</param>
+        /// <param name="signaturePath">VIP Signature 文件路径</param>
         /// <param name="ct">取消令牌</param>
-        public async Task<bool> ConnectAsync(string portName, string programmerPath, string storageType = "ufs", CancellationToken ct = default(CancellationToken))
+        public async Task<bool> ConnectAsync(string portName, string programmerPath, string storageType = "ufs", 
+            string authMode = "none", string digestPath = "", string signaturePath = "",
+            CancellationToken ct = default(CancellationToken))
         {
             try
             {
@@ -131,28 +136,8 @@ namespace LoveAlways.Qualcomm.Services
                     return false;
                 }
 
-                // 检查是否为 VIP 设备 (OPPO/Realme) 或 OnePlus 设备
-                if (ChipInfo != null && !string.IsNullOrEmpty(ChipInfo.PkHash))
-                {
-                    // OnePlus 使用 Demacia 认证，不需要 VIP 伪装模式
-                    bool isOnePlus = QualcommDatabase.IsOnePlusDevice(ChipInfo.PkHash) ||
-                                    (ChipInfo.Vendor != null && ChipInfo.Vendor.Contains("OnePlus")) ||
-                                    ChipInfo.OemId == 0x50E1;
-                    
-                    if (isOnePlus)
-                    {
-                        _log("[高通] 检测到 OnePlus 设备 (Demacia 认证)");
-                        IsVipDevice = false; // OnePlus 不使用 VIP 伪装
-                    }
-                    else
-                    {
-                        IsVipDevice = QualcommDatabase.RequiresVipAuth(ChipInfo.PkHash);
-                        if (IsVipDevice)
-                        {
-                            _log("[高通] 检测到 VIP 设备 (OPPO/Realme)");
-                        }
-                    }
-                }
+                // 根据用户选择的认证模式设置标志 (不再自动检测)
+                IsVipDevice = (authMode.ToLowerInvariant() == "vip" || authMode.ToLowerInvariant() == "oplus");
 
                 // 等待 Firehose 就绪
                 _log("正在发送 Firehose 引导文件 : 成功");
@@ -182,12 +167,37 @@ namespace LoveAlways.Qualcomm.Services
                     _firehose.ChipPkHash = ChipInfo.PkHash;
                 }
 
-                // 对于需要认证的设备，在配置前执行认证
-                bool needsAuthFirst = IsXiaomiDevice();
-                if (needsAuthFirst)
+                // 根据用户选择执行认证 (配置前认证)
+                string authModeLower = authMode.ToLowerInvariant();
+                bool preConfigAuth = (authModeLower == "vip" || authModeLower == "oplus" || authModeLower == "xiaomi");
+                
+                if (preConfigAuth && authModeLower != "none")
                 {
-                    _log("[高通] 检测到需要认证的设备，在配置前执行认证...");
-                    await AutoAuthenticateAsync(programmerPath, ct);
+                    _log(string.Format("[高通] 执行 {0} 认证 (配置前)...", authMode.ToUpper()));
+                    bool authOk = false;
+                    
+                    if (authModeLower == "vip" || authModeLower == "oplus")
+                    {
+                        // VIP 认证必须在配置前
+                        if (!string.IsNullOrEmpty(digestPath) && !string.IsNullOrEmpty(signaturePath))
+                        {
+                            authOk = await PerformVipAuthManualAsync(digestPath, signaturePath, ct);
+                        }
+                        else
+                        {
+                            _log("[高通] VIP 认证需要 Digest 和 Signature 文件");
+                        }
+                    }
+                    else if (authModeLower == "xiaomi")
+                    {
+                        var xiaomi = new XiaomiAuthStrategy(_log);
+                        authOk = await xiaomi.AuthenticateAsync(_firehose, programmerPath, ct);
+                    }
+                    
+                    if (authOk)
+                        _log(string.Format("[高通] {0} 认证成功", authMode.ToUpper()));
+                    else
+                        _log(string.Format("[高通] {0} 认证失败", authMode.ToUpper()));
                 }
 
                 _log("正在配置 Firehose...");
@@ -200,10 +210,22 @@ namespace LoveAlways.Qualcomm.Services
                 }
                 _log("配置 Firehose : 成功");
 
-                // 对于不需要提前认证的设备，在配置后执行认证
-                if (!needsAuthFirst)
+                // 配置后认证 (OnePlus)
+                if (!preConfigAuth && authModeLower != "none")
                 {
-                await AutoAuthenticateAsync(programmerPath, ct);
+                    _log(string.Format("[高通] 执行 {0} 认证 (配置后)...", authMode.ToUpper()));
+                    bool authOk = false;
+                    
+                    if (authModeLower == "oneplus")
+                    {
+                        var oneplus = new OnePlusAuthStrategy(_log);
+                        authOk = await oneplus.AuthenticateAsync(_firehose, programmerPath, ct);
+                    }
+                    
+                    if (authOk)
+                        _log(string.Format("[高通] {0} 认证成功", authMode.ToUpper()));
+                    else
+                        _log(string.Format("[高通] {0} 认证失败", authMode.ToUpper()));
                 }
 
                 SetState(QualcommConnectionState.Ready);
