@@ -730,22 +730,27 @@ namespace LoveAlways.Qualcomm.Services
                     }
                 }
 
-                // 即使有 super 且读取成功，也尝试扫描关键物理分区进行增强 (适配低版本或特定厂商 my_manifest)
-                _log("正在扫描物理分区以提取/增强 build.prop (全版本适配模式)...");
+                // 如果从 Super 已经获取到基本信息，只扫描增强分区
+                // 如果 Super 读取失败，扫描所有物理分区
+                bool hasBasicInfo = finalInfo != null && 
+                    (!string.IsNullOrEmpty(finalInfo.Model) || !string.IsNullOrEmpty(finalInfo.MarketName));
+                
+                if (hasBasicInfo)
+                {
+                    _log("从 Super 获取到基本信息，跳过物理分区扫描");
+                    return finalInfo;
+                }
+
+                _log("正在扫描物理分区以提取 build.prop...");
                 var searchPartitions = new List<string>();
                 string slotSuffix = string.IsNullOrEmpty(activeSlot) ? "" : "_" + activeSlot.ToLower().TrimStart('_');
 
+                // 只扫描可能存在的独立物理分区 (不扫描 super 中的逻辑分区)
                 if (!string.IsNullOrEmpty(slotSuffix))
                 {
                     searchPartitions.Add("my_manifest" + slotSuffix);
-                    searchPartitions.Add("vendor" + slotSuffix);
-                    searchPartitions.Add("system" + slotSuffix);
-                    searchPartitions.Add("odm" + slotSuffix);
                 }
                 searchPartitions.Add("my_manifest");
-                searchPartitions.Add("vendor");
-                searchPartitions.Add("system");
-                searchPartitions.Add("odm");
                 searchPartitions.Add("cust");
                 searchPartitions.Add("lenovocust");
 
@@ -757,8 +762,8 @@ namespace LoveAlways.Qualcomm.Services
                         if (finalInfo == null) finalInfo = info;
                         else MergeProperties(finalInfo, info);
                         
-                        // 如果已经拿到了核心型号和市场名，可以提前结束提高速度
-                        if (!string.IsNullOrEmpty(finalInfo.MarketName) && !string.IsNullOrEmpty(finalInfo.OtaVersion))
+                        // 如果已经拿到了核心型号，提前结束
+                        if (!string.IsNullOrEmpty(finalInfo.MarketName) || !string.IsNullOrEmpty(finalInfo.Model))
                             break;
                     }
                 }
@@ -894,7 +899,7 @@ namespace LoveAlways.Qualcomm.Services
             {
                 _log(string.Format("尝试从物理分区 {0} 读取...", partitionName));
                 
-                // 读取头部探测文件系统
+                // 读取头部探测文件系统 (已有超时保护)
                 byte[] header = await readPartition(partitionName, 0, 4096);
                 if (header == null) return null;
 
@@ -903,17 +908,32 @@ namespace LoveAlways.Qualcomm.Services
 
                 var lpInfo = new LpPartitionInfo { Name = partitionName, RelativeSector = 0, FileSystem = fsType };
                 
-                // 包装一个针对此分区的读取器
-                DeviceReadDelegate readDelegate = (offset, size) => {
-                    var t = readPartition(partitionName, offset, size);
-                    t.Wait();
-                    return t.Result;
-                };
+                // 使用 Task.Run 避免同步 Wait() 导致 UI 线程死锁
+                // 设置 15 秒超时
+                var parseTask = Task.Run(() => 
+                {
+                    DeviceReadDelegate readDelegate = (offset, size) => {
+                        try
+                        {
+                            var t = readPartition(partitionName, offset, size);
+                            if (!t.Wait(TimeSpan.FromSeconds(8)))
+                                return null;
+                            return t.Result;
+                        }
+                        catch { return null; }
+                    };
 
-                if (fsType == "erofs")
-                    return ParseErofsAndFindBuildProp(readDelegate, lpInfo);
-                else if (fsType == "ext4")
-                    return ParseExt4AndFindBuildProp(readDelegate, lpInfo);
+                    if (fsType == "erofs")
+                        return ParseErofsAndFindBuildProp(readDelegate, lpInfo);
+                    else if (fsType == "ext4")
+                        return ParseExt4AndFindBuildProp(readDelegate, lpInfo);
+                    return null;
+                });
+
+                if (await Task.WhenAny(parseTask, Task.Delay(15000)) == parseTask)
+                    return parseTask.Result;
+                
+                _log(string.Format("解析分区 {0} 超时", partitionName));
             }
             catch { }
             return null;
