@@ -16,20 +16,68 @@ namespace LoveAlways.Qualcomm.Common
         private const uint LP_METADATA_GEOMETRY_MAGIC = 0x616c4467; // gDla (OPUS Header)
         private const uint LP_METADATA_HEADER_MAGIC = 0x414c5030;   // ALP0
 
+        // LP Metadata 使用的固定扇区大小
+        public const int LP_SECTOR_SIZE = 512;
+
         public class LpPartitionInfo
         {
             public string Name { get; set; }
             public List<LpExtentInfo> Extents { get; set; } = new List<LpExtentInfo>();
-            public long TotalSizeSectors => Extents.Sum(e => (long)e.NumSectors);
-            public long FirstSectorOffset => Extents.Count > 0 ? (long)Extents[0].TargetData : -1;
+            
+            /// <summary>
+            /// 总大小（LP 扇区数，每扇区 512 字节）
+            /// </summary>
+            public long TotalSizeLpSectors => Extents.Sum(e => (long)e.NumSectors);
+            
+            /// <summary>
+            /// 总大小（字节）
+            /// </summary>
+            public long TotalSizeBytes => TotalSizeLpSectors * LP_SECTOR_SIZE;
+            
+            /// <summary>
+            /// 第一个 Extent 的物理偏移（LP 扇区，512 字节/扇区）
+            /// 仅对 LINEAR 类型有效
+            /// </summary>
+            public long FirstLpSectorOffset => GetFirstLinearOffset();
+            
+            private long GetFirstLinearOffset()
+            {
+                // 只返回 LINEAR 类型的 Extent 偏移
+                foreach (var ext in Extents)
+                {
+                    if (ext.TargetType == 0) // LP_TARGET_TYPE_LINEAR
+                        return (long)ext.TargetData;
+                }
+                return -1;
+            }
+            
+            /// <summary>
+            /// 计算设备扇区偏移（考虑扇区大小转换）
+            /// </summary>
+            /// <param name="deviceSectorSize">设备扇区大小（如 4096）</param>
+            /// <returns>设备扇区偏移</returns>
+            public long GetDeviceSectorOffset(int deviceSectorSize)
+            {
+                long lpOffset = FirstLpSectorOffset;
+                if (lpOffset < 0) return -1;
+                
+                // LP Metadata 使用 512B 扇区，转换为设备扇区
+                long byteOffset = lpOffset * LP_SECTOR_SIZE;
+                return byteOffset / deviceSectorSize;
+            }
+            
+            /// <summary>
+            /// 是否有有效的 LINEAR Extent
+            /// </summary>
+            public bool HasLinearExtent => Extents.Any(e => e.TargetType == 0);
         }
 
         public class LpExtentInfo
         {
-            public ulong NumSectors { get; set; }
-            public uint TargetType { get; set; }
-            public ulong TargetData { get; set; }
-            public uint TargetSource { get; set; }
+            public ulong NumSectors { get; set; }      // LP 扇区数（512B）
+            public uint TargetType { get; set; }       // 0=LINEAR, 1=ZERO
+            public ulong TargetData { get; set; }      // 物理偏移（LP 扇区）
+            public uint TargetSource { get; set; }     // 块设备索引
         }
 
         /// <summary>
