@@ -537,14 +537,28 @@ namespace LoveAlways.Qualcomm.Common
             }
         }
 
+        // 最大内存转换限制 (256 MB)
+        private const long MAX_TO_RAW_BYTES_SIZE = 256L * 1024 * 1024;
+
         /// <summary>
         /// 将 Sparse 镜像转换为内存中的 Raw 数据
-        /// 警告: 仅适用于小型镜像
+        /// 警告: 仅适用于小型镜像 (最大 256 MB)
         /// </summary>
-        public byte[] ToRawBytes()
+        /// <param name="maxSize">可选的最大大小限制 (默认 256 MB)</param>
+        /// <returns>Raw 数据，超过限制或失败返回 null</returns>
+        public byte[] ToRawBytes(long maxSize = MAX_TO_RAW_BYTES_SIZE)
         {
-            if (!_isValid || _expandedLength > int.MaxValue)
+            if (!_isValid)
                 return null;
+            
+            // 安全检查: 防止内存溢出
+            if (_expandedLength > maxSize || _expandedLength > int.MaxValue)
+            {
+                if (_log != null)
+                    _log(string.Format("[Sparse] ToRawBytes 拒绝: 大小 {0:F1} MB 超过限制 {1:F1} MB",
+                        _expandedLength / (1024.0 * 1024.0), maxSize / (1024.0 * 1024.0)));
+                return null;
+            }
 
             try
             {
@@ -561,6 +575,12 @@ namespace LoveAlways.Qualcomm.Common
                 }
 
                 return result;
+            }
+            catch (OutOfMemoryException)
+            {
+                if (_log != null)
+                    _log("[Sparse] ToRawBytes 内存不足");
+                return null;
             }
             catch
             {

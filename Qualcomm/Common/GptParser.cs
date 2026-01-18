@@ -83,6 +83,9 @@ namespace LoveAlways.Qualcomm.Common
         private const int AB_FLAG_OFFSET = 6;
         private const int AB_PARTITION_ATTR_SLOT_ACTIVE = 0x1 << 2;
 
+        // 静态 CRC32 表 (避免每次重新生成)
+        private static readonly uint[] CRC32_TABLE = GenerateStaticCrc32Table();
+
         public GptParser(Action<string> log = null)
         {
             _log = log ?? (s => { });
@@ -656,29 +659,28 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// CRC32 计算
+        /// CRC32 计算 (使用静态表)
         /// </summary>
         private uint CalculateCrc32(byte[] data)
         {
-            uint[] crcTable = GenerateCrc32Table();
             uint crc = 0xFFFFFFFF;
             
             foreach (byte b in data)
             {
                 byte index = (byte)((crc ^ b) & 0xFF);
-                crc = (crc >> 8) ^ crcTable[index];
+                crc = (crc >> 8) ^ CRC32_TABLE[index];
             }
             
             return crc ^ 0xFFFFFFFF;
         }
 
         /// <summary>
-        /// 生成 CRC32 表
+        /// 静态初始化 CRC32 表 (程序启动时只生成一次)
         /// </summary>
-        private uint[] GenerateCrc32Table()
+        private static uint[] GenerateStaticCrc32Table()
         {
             uint[] table = new uint[256];
-            uint polynomial = 0xEDB88320;
+            const uint polynomial = 0xEDB88320;
             
             for (uint i = 0; i < 256; i++)
             {

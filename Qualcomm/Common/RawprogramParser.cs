@@ -228,20 +228,55 @@ namespace LoveAlways.Qualcomm.Common
             return info;
         }
 
+        // 搜索深度限制
+        private const int MAX_SEARCH_DEPTH = 5;
+        private const int MAX_FILES_TO_CACHE = 10000;
+
         /// <summary>
-        /// 预建文件缓存 (加速查找)
+        /// 预建文件缓存 (加速查找, 限制深度)
         /// </summary>
         private void BuildFileCache()
         {
             _fileCache.Clear();
             try
             {
-                var allFiles = Directory.GetFiles(_basePath, "*.*", SearchOption.AllDirectories);
-                foreach (var file in allFiles)
+                BuildFileCacheRecursive(_basePath, 0);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 递归构建文件缓存 (带深度限制)
+        /// </summary>
+        private void BuildFileCacheRecursive(string dir, int depth)
+        {
+            if (depth > MAX_SEARCH_DEPTH || _fileCache.Count >= MAX_FILES_TO_CACHE)
+                return;
+
+            try
+            {
+                // 添加当前目录的文件
+                foreach (var file in Directory.GetFiles(dir))
                 {
+                    if (_fileCache.Count >= MAX_FILES_TO_CACHE)
+                        return;
+                        
                     string name = Path.GetFileName(file);
                     if (!_fileCache.ContainsKey(name))
                         _fileCache[name] = file;
+                }
+
+                // 递归子目录
+                foreach (var subDir in Directory.GetDirectories(dir))
+                {
+                    // 跳过隐藏目录和常见无关目录
+                    string dirName = Path.GetFileName(subDir);
+                    if (dirName.StartsWith(".") || 
+                        dirName.Equals("node_modules", StringComparison.OrdinalIgnoreCase) ||
+                        dirName.Equals("__pycache__", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    BuildFileCacheRecursive(subDir, depth + 1);
                 }
             }
             catch { }
