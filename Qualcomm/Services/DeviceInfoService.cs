@@ -694,13 +694,40 @@ namespace LoveAlways.Qualcomm.Services
                 if (hasSuper)
                 {
                     _log("正在从 Super 分区逻辑卷解析 build.prop...");
-                    // 包装委托以符合 LP 解析器要求的格式 (从 super 分区读取偏移)
-                    DeviceReadDelegate readFromSuper = (offset, size) => {
-                        var task = readPartition("super", offset, size);
-                        task.Wait();
-                        return task.Result;
-                    };
-                    finalInfo = ReadBuildPropFromSuper(readFromSuper, activeSlot, superStartSector, physicalSectorSize);
+                    
+                    // 使用 Task.Run 将同步操作放到线程池执行，避免 UI 线程死锁
+                    // 设置 5 秒超时，防止卡死
+                    var superReadTask = Task.Run(() => 
+                    {
+                        // 包装委托以符合 LP 解析器要求的格式 (从 super 分区读取偏移)
+                        DeviceReadDelegate readFromSuper = (offset, size) => {
+                            try
+                            {
+                                var task = readPartition("super", offset, size);
+                                // 使用带超时的 Wait，防止单次读取卡死
+                                if (!task.Wait(TimeSpan.FromSeconds(10)))
+                                {
+                                    return null;
+                                }
+                                return task.Result;
+                            }
+                            catch
+                            {
+                                return null;
+                            }
+                        };
+                        return ReadBuildPropFromSuper(readFromSuper, activeSlot, superStartSector, physicalSectorSize);
+                    });
+                    
+                    // 整体超时 30 秒
+                    if (await Task.WhenAny(superReadTask, Task.Delay(30000)) == superReadTask)
+                    {
+                        finalInfo = superReadTask.Result;
+                    }
+                    else
+                    {
+                        _log("从 Super 分区读取超时 (30秒)，跳过");
+                    }
                 }
 
                 // 即使有 super 且读取成功，也尝试扫描关键物理分区进行增强 (适配低版本或特定厂商 my_manifest)
