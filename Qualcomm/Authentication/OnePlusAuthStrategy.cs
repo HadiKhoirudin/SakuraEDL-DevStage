@@ -23,39 +23,65 @@ namespace LoveAlways.Qualcomm.Authentication
         public string Name { get { return "OnePlus (Demacia/SetProjModel)"; } }
 
         // 设备配置: projId -> (version, cm, paramMode)
+        // 完整设备列表 (参考 edl-master)
         private static readonly Dictionary<string, Tuple<int, string, int>> DeviceConfigs = new Dictionary<string, Tuple<int, string, int>>
         {
-            // OP5-7T 系列 (Version 1)
-            { "16859", Tuple.Create(1, (string)null, 0) },  // OP5
-            { "17801", Tuple.Create(1, (string)null, 0) },  // OP5T
-            { "17819", Tuple.Create(1, (string)null, 0) },  // OP6
-            { "18801", Tuple.Create(1, (string)null, 0) },  // OP6T
-            { "18811", Tuple.Create(1, (string)null, 0) },  // OP6T T-Mo
-            { "18857", Tuple.Create(1, (string)null, 0) },  // OP7
-            { "18821", Tuple.Create(1, (string)null, 0) },  // OP7 Pro
-            { "18825", Tuple.Create(1, (string)null, 0) },  // OP7 Pro 5G
-            { "18827", Tuple.Create(1, (string)null, 0) },  // OP7 Pro 5G EE
-            { "18831", Tuple.Create(1, (string)null, 0) },  // OP7 Pro T-Mo
-            { "18865", Tuple.Create(1, (string)null, 0) },  // OP7T
-            { "19801", Tuple.Create(1, (string)null, 0) },  // OP7T Pro
-            { "19861", Tuple.Create(1, (string)null, 0) },  // OP7T Pro 5G
-            { "19863", Tuple.Create(1, (string)null, 0) },  // OP7T T-Mo
-
-            // OP8/9 系列 (Version 2)
-            { "19821", Tuple.Create(2, "0cffee8a", 0) },  // OP8
-            { "19855", Tuple.Create(2, "6d9215b4", 0) },  // OP8 T-Mo
-            { "19811", Tuple.Create(2, "40217c07", 0) },  // OP8 Pro
-            { "19805", Tuple.Create(2, "1a5ec176", 0) },  // OP8T
-            { "20801", Tuple.Create(2, "eacf50e7", 0) },  // Nord
-            { "19815", Tuple.Create(2, "9c151c7f", 0) },  // OP9 Pro
-            { "19825", Tuple.Create(2, "0898dcd6", 0) },  // OP9
-
-            // N10/N100 系列 (Version 3)
-            { "20885", Tuple.Create(3, "3a403a71", 1) },  // N10 5G Metro
-            { "20886", Tuple.Create(3, "b8bd9e39", 1) },  // N10 5G Global
-            { "20888", Tuple.Create(3, "142f1bd7", 1) },  // N10 5G TMO
-            { "20880", Tuple.Create(3, "6ccf5913", 1) },  // N100 Metro
-            { "20881", Tuple.Create(3, "fa9ff378", 1) },  // N100 Global
+            // ========== OP5-7T 系列 (Version 1) ==========
+            { "16859", Tuple.Create(1, (string)null, 0) },  // OP5 cheeseburger
+            { "17801", Tuple.Create(1, (string)null, 0) },  // OP5T dumpling
+            { "17819", Tuple.Create(1, (string)null, 0) },  // OP6 enchilada
+            { "18801", Tuple.Create(1, (string)null, 0) },  // OP6T fajita
+            { "18811", Tuple.Create(1, (string)null, 0) },  // OP6T T-Mo fajitat
+            { "18857", Tuple.Create(1, (string)null, 0) },  // OP7 guacamoleb
+            { "18821", Tuple.Create(1, (string)null, 0) },  // OP7 Pro guacamole
+            { "18825", Tuple.Create(1, (string)null, 0) },  // OP7 Pro 5G Sprint guacamoles
+            { "18827", Tuple.Create(1, (string)null, 0) },  // OP7 Pro 5G EE guacamoleg
+            { "18831", Tuple.Create(1, (string)null, 0) },  // OP7 Pro T-Mo guacamolet
+            { "18865", Tuple.Create(1, (string)null, 0) },  // OP7T hotdogb
+            { "19801", Tuple.Create(1, (string)null, 0) },  // OP7T Pro hotdog
+            { "19861", Tuple.Create(1, (string)null, 0) },  // OP7T Pro 5G T-Mo hotdogg
+            { "19863", Tuple.Create(1, (string)null, 0) },  // OP7T T-Mo hotdogt
+            
+            // ========== OP8 系列 (Version 2) ==========
+            { "19821", Tuple.Create(2, "0cffee8a", 0) },  // OP8 instantnoodle
+            { "19855", Tuple.Create(2, "6d9215b4", 0) },  // OP8 T-Mo instantnoodlet
+            { "19867", Tuple.Create(2, "4107b2d4", 0) },  // OP8 Verizon instantnoodlev
+            { "19868", Tuple.Create(2, "178d8213", 0) },  // OP8 Visible instantnoodlevis
+            { "19811", Tuple.Create(2, "40217c07", 0) },  // OP8 Pro instantnoodlep
+            { "19805", Tuple.Create(2, "1a5ec176", 0) },  // OP8T kebab
+            { "20809", Tuple.Create(2, "d6bc8c36", 0) },  // OP8T T-Mo kebabt
+            
+            // ========== OP Nord 系列 (Version 2) ==========
+            { "20801", Tuple.Create(2, "eacf50e7", 0) },  // OP Nord avicii
+            { "20813", Tuple.Create(2, "48ad7b61", 0) },  // OP Nord CE ebba
+            
+            // ========== OP9 系列 (Version 2) ==========
+            { "19815", Tuple.Create(2, "9c151c7f", 0) },  // OP9 Pro lemonadep
+            { "20859", Tuple.Create(2, "9c151c7f", 0) },  // OP9 Pro CN
+            { "20857", Tuple.Create(2, "9c151c7f", 0) },  // OP9 Pro IN
+            { "19825", Tuple.Create(2, "0898dcd6", 0) },  // OP9 lemonade
+            { "20851", Tuple.Create(2, "0898dcd6", 0) },  // OP9 CN
+            { "20852", Tuple.Create(2, "0898dcd6", 0) },  // OP9 IN
+            { "20853", Tuple.Create(2, "0898dcd6", 0) },  // OP9 EU
+            { "20828", Tuple.Create(2, "f498b60f", 0) },  // OP9R lemonades
+            { "20838", Tuple.Create(2, "f498b60f", 0) },  // OP9R CN
+            { "20854", Tuple.Create(2, "16225d4e", 0) },  // OP9 T-Mo lemonadet
+            { "2085A", Tuple.Create(2, "7f19519a", 0) },  // OP9 Pro T-Mo lemonadept
+            
+            // ========== Dre 系列 (Version 1) ==========
+            { "20818", Tuple.Create(1, (string)null, 0) },  // dre8t
+            { "2083C", Tuple.Create(1, (string)null, 0) },  // dre8m
+            { "2083D", Tuple.Create(1, (string)null, 0) },  // dre9
+            
+            // ========== N10/N100 系列 (Version 3) ==========
+            { "20885", Tuple.Create(3, "3a403a71", 1) },  // N10 5G Metro billie8t
+            { "20886", Tuple.Create(3, "b8bd9e39", 1) },  // N10 5G Global billie8
+            { "20888", Tuple.Create(3, "142f1bd7", 1) },  // N10 5G TMO billie8t
+            { "20889", Tuple.Create(3, "f2056ae1", 1) },  // N10 5G EU billie8
+            { "20880", Tuple.Create(3, "6ccf5913", 1) },  // N100 Metro billie2t
+            { "20881", Tuple.Create(3, "fa9ff378", 1) },  // N100 Global billie2
+            { "20882", Tuple.Create(3, "4ca1e84e", 1) },  // N100 TMO billie2t
+            { "20883", Tuple.Create(3, "ad9dba4a", 1) },  // N100 EU billie2
         };
 
         private static readonly byte[] AesKeyPrefix1 = { 0x10, 0x45, 0x63, 0x87, 0xE3, 0x7E, 0x23, 0x71 };
