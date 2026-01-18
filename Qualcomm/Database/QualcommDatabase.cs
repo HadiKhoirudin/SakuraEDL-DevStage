@@ -140,14 +140,14 @@ namespace LoveAlways.Qualcomm.Database
             // OPPO
             { "2be76cee", "OPPO" },
             { "d8e3b5a8", "OPPO" },
-            { "2acf3a85", "OPPO" },
             { "d53f19d2", "OPPO" },
             { "13d7a19a", "OPPO" },
             { "08239eab", "OPPO" },
             { "daedb40c", "OPPO" },
             { "f10bd691", "OPPO" },
             
-            // OnePlus
+            // OnePlus (注意：部分 OnePlus 设备使用 OPPO 的 SecBoot)
+            { "2acf3a85", "OnePlus" },  // OnePlus 7T/7 Pro 等
             { "7c15a98d", "OnePlus" },
             { "a26bc257", "OnePlus" },
             { "3cceb55b", "OnePlus" },

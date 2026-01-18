@@ -326,7 +326,7 @@ namespace LoveAlways.Qualcomm.Protocol
         /// <summary>
         /// 读取 GPT 分区表 (支持多 LUN)
         /// </summary>
-        public async Task<List<PartitionInfo>> ReadGptPartitionsAsync(bool useVipMode = false, CancellationToken ct = default(CancellationToken))
+        public async Task<List<PartitionInfo>> ReadGptPartitionsAsync(bool useVipMode = false, CancellationToken ct = default(CancellationToken), IProgress<int> lunProgress = null)
         {
             var partitions = new List<PartitionInfo>();
             
@@ -335,6 +335,8 @@ namespace LoveAlways.Qualcomm.Protocol
 
             for (int lun = 0; lun < 6; lun++)
             {
+                // 报告当前 LUN 进度
+                if (lunProgress != null) lunProgress.Report(lun);
                 byte[] gptData = null;
 
                 // GPT 头在 LBA 1，分区条目从 LBA 2 开始

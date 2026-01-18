@@ -596,10 +596,16 @@ namespace LoveAlways.Qualcomm.Services
             if (totalProgress != null) totalProgress.Report(Tuple.Create(0, maxLuns));
             if (subProgress != null) subProgress.Report(0);
 
-            var partitions = await _firehose.ReadGptPartitionsAsync(IsVipDevice, ct);
+            // LUN 进度回调 - 实时更新进度
+            var lunProgress = new Progress<int>(lun => {
+                if (totalProgress != null) totalProgress.Report(Tuple.Create(lun, maxLuns));
+                if (subProgress != null) subProgress.Report(100.0 * lun / maxLuns);
+            });
+
+            var partitions = await _firehose.ReadGptPartitionsAsync(IsVipDevice, ct, lunProgress);
             
             // 报告中间进度
-            if (subProgress != null) subProgress.Report(50);
+            if (subProgress != null) subProgress.Report(80);
             
             if (partitions != null && partitions.Count > 0)
             {

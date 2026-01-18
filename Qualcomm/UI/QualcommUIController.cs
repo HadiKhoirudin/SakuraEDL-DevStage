@@ -631,6 +631,10 @@ namespace LoveAlways.Qualcomm.UI
                 // 自动识别厂商并选择对应的解析策略
                 string detectedVendor = DetectDeviceVendor();
                 Log(string.Format("检测到设备厂商: {0}", detectedVendor), Color.Blue);
+                
+                // 更新进度: 厂商识别完成 (85%)
+                UpdateProgressBarDirect(_progressBar, 85);
+                UpdateProgressBarDirect(_subProgressBar, 25);
 
                 BuildPropInfo buildProp = null;
 
@@ -641,22 +645,26 @@ namespace LoveAlways.Qualcomm.UI
                     case "realme":
                     case "oneplus":
                     case "oplus":
+                        UpdateProgressBarDirect(_subProgressBar, 40);
                         buildProp = await ReadOplusBuildPropAsync(readPartition, activeSlot, hasSuper, superStart, sectorSize);
                         break;
 
                     case "xiaomi":
                     case "redmi":
                     case "poco":
+                        UpdateProgressBarDirect(_subProgressBar, 40);
                         buildProp = await ReadXiaomiBuildPropAsync(readPartition, activeSlot, hasSuper, superStart, sectorSize);
                         break;
 
                     case "lenovo":
                     case "motorola":
+                        UpdateProgressBarDirect(_subProgressBar, 40);
                         buildProp = await ReadLenovoBuildPropAsync(readPartition, activeSlot, hasSuper, superStart, sectorSize);
                         break;
 
                     case "zte":
                     case "nubia":
+                        UpdateProgressBarDirect(_subProgressBar, 40);
                         buildProp = await ReadZteBuildPropAsync(readPartition, activeSlot, hasSuper, superStart, sectorSize);
                         break;
 
@@ -664,11 +672,16 @@ namespace LoveAlways.Qualcomm.UI
                         // 通用策略 - 只在有 super 分区时尝试
                         if (hasSuper)
                         {
+                            UpdateProgressBarDirect(_subProgressBar, 40);
                             buildProp = await _deviceInfoService.ReadBuildPropFromDevice(
                                 readPartition, activeSlot, hasSuper, superStart, sectorSize);
                         }
                         break;
                 }
+
+                // 更新进度: 解析完成 (95%)
+                UpdateProgressBarDirect(_progressBar, 95);
+                UpdateProgressBarDirect(_subProgressBar, 80);
 
                 if (buildProp != null)
                 {
