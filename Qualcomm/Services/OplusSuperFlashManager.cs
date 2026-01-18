@@ -216,7 +216,26 @@ namespace LoveAlways.Qualcomm.Services
             return null;
         }
 
+        /// <summary>
+        /// 获取镜像的实际数据大小（Sparse 镜像只计算有效数据）
+        /// </summary>
         private long GetImageRealSize(string path)
+        {
+            if (SparseStream.IsSparseFile(path))
+            {
+                using (var ss = SparseStream.Open(path))
+                {
+                    // 返回实际数据大小，不含 DONT_CARE
+                    return ss.GetRealDataSize();
+                }
+            }
+            return new FileInfo(path).Length;
+        }
+
+        /// <summary>
+        /// 获取镜像展开后的完整大小
+        /// </summary>
+        private long GetImageExpandedSize(string path)
         {
             if (SparseStream.IsSparseFile(path))
             {

@@ -741,16 +741,23 @@ namespace LoveAlways.Qualcomm.Protocol
 
             // 检查是否为 Sparse 镜像
             bool isSparse = SparseStream.IsSparseFile(imagePath);
-            _log(string.Format("[Firehose] 写入分区: {0} ({1}{2})", label, Path.GetFileName(imagePath), isSparse ? " [Sparse]" : ""));
+            
+            if (isSparse)
+            {
+                // 智能 Sparse 写入：只写入有数据的部分，跳过 DONT_CARE
+                return await WriteSparsePartitionSmartAsync(lun, startSector, sectorSize, imagePath, label, useOppoMode, ct);
+            }
+            
+            _log(string.Format("[Firehose] 写入分区: {0} ({1})", label, Path.GetFileName(imagePath)));
 
-            using (Stream sourceStream = isSparse ? (Stream)SparseStream.Open(imagePath, _log) : File.OpenRead(imagePath))
+            using (Stream sourceStream = File.OpenRead(imagePath))
             {
                 var totalBytes = sourceStream.Length;
                 var sectorsPerChunk = _maxPayloadSize / sectorSize;
                 var bytesPerChunk = sectorsPerChunk * sectorSize;
-            var totalWritten = 0L;
+                var totalWritten = 0L;
 
-            StartTransferTimer(totalBytes);
+                StartTransferTimer(totalBytes);
 
                 var buffer = new byte[bytesPerChunk];
                 var currentSector = startSector;
@@ -781,11 +788,91 @@ namespace LoveAlways.Qualcomm.Protocol
 
                     if (_progress != null)
                         _progress(totalWritten, totalBytes);
-            }
+                }
 
-            StopTransferTimer("写入", totalWritten);
+                StopTransferTimer("写入", totalWritten);
                 _log(string.Format("[Firehose] 分区 {0} 写入完成: {1:N0} 字节", label, totalWritten));
-            return true;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// 智能写入 Sparse 镜像（只写有数据的 chunks，跳过 DONT_CARE）
+        /// </summary>
+        private async Task<bool> WriteSparsePartitionSmartAsync(int lun, long startSector, int sectorSize, string imagePath, string label, bool useOppoMode, CancellationToken ct)
+        {
+            using (var sparse = SparseStream.Open(imagePath, _log))
+            {
+                var totalExpandedSize = sparse.Length;
+                var realDataSize = sparse.GetRealDataSize();
+                var dataRanges = sparse.GetDataRanges();
+                
+                _log(string.Format("[Firehose] 写入分区: {0} ({1}) [Sparse 智能模式]", label, Path.GetFileName(imagePath)));
+                _log(string.Format("[Sparse] 展开大小: {0:N0} MB, 实际数据: {1:N0} MB, 节省: {2:P1}", 
+                    totalExpandedSize / 1024.0 / 1024.0, 
+                    realDataSize / 1024.0 / 1024.0,
+                    1.0 - (double)realDataSize / totalExpandedSize));
+                
+                if (dataRanges.Count == 0)
+                {
+                    _log("[Sparse] 镜像无实际数据，跳过写入");
+                    return true;
+                }
+                
+                var sectorsPerChunk = _maxPayloadSize / sectorSize;
+                var bytesPerChunk = sectorsPerChunk * sectorSize;
+                var buffer = new byte[bytesPerChunk];
+                var totalWritten = 0L;
+                
+                StartTransferTimer(realDataSize);
+                
+                // 逐个写入有数据的范围
+                foreach (var range in dataRanges)
+                {
+                    if (ct.IsCancellationRequested) return false;
+                    
+                    var rangeOffset = range.Item1;
+                    var rangeSize = range.Item2;
+                    var rangeStartSector = startSector + (rangeOffset / sectorSize);
+                    
+                    // 定位到该范围
+                    sparse.Seek(rangeOffset, SeekOrigin.Begin);
+                    var rangeWritten = 0L;
+                    
+                    while (rangeWritten < rangeSize)
+                    {
+                        if (ct.IsCancellationRequested) return false;
+                        
+                        var bytesToRead = (int)Math.Min(bytesPerChunk, rangeSize - rangeWritten);
+                        var bytesRead = sparse.Read(buffer, 0, bytesToRead);
+                        if (bytesRead == 0) break;
+                        
+                        // 补齐到扇区边界
+                        var paddedSize = ((bytesRead + sectorSize - 1) / sectorSize) * sectorSize;
+                        if (paddedSize > bytesRead)
+                            Array.Clear(buffer, bytesRead, paddedSize - bytesRead);
+                        
+                        var sectorsToWrite = paddedSize / sectorSize;
+                        var currentSector = rangeStartSector + (rangeWritten / sectorSize);
+                        
+                        if (!await WriteSectorsAsync(lun, currentSector, buffer, paddedSize, label, useOppoMode, ct))
+                        {
+                            _log(string.Format("[Firehose] 写入失败 @ sector {0}", currentSector));
+                            return false;
+                        }
+                        
+                        rangeWritten += bytesRead;
+                        totalWritten += bytesRead;
+                        
+                        if (_progress != null)
+                            _progress(totalWritten, realDataSize);
+                    }
+                }
+                
+                StopTransferTimer("写入", totalWritten);
+                _log(string.Format("[Firehose] 分区 {0} 写入完成: {1:N0} 字节 (跳过 {2:N0} MB 空白)", 
+                    label, totalWritten, (totalExpandedSize - realDataSize) / 1024.0 / 1024.0));
+                return true;
             }
         }
 
@@ -832,14 +919,20 @@ namespace LoveAlways.Qualcomm.Protocol
             // 检查是否为 Sparse 镜像
             bool isSparse = SparseStream.IsSparseFile(filePath);
             
-            using (Stream sourceStream = isSparse ? (Stream)SparseStream.Open(filePath, _log) : File.OpenRead(filePath))
+            // Sparse 镜像使用智能写入，跳过 DONT_CARE
+            if (isSparse)
             {
-                long fileSize = sourceStream.Length; // SparseStream 会返回展开后的大小
-            int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
+                return await FlashSparsePartitionSmartAsync(partitionName, filePath, lun, startSector, progress, ct, useVipMode);
+            }
+            
+            // Raw 镜像的常规写入
+            using (Stream sourceStream = File.OpenRead(filePath))
+            {
+                long fileSize = sourceStream.Length;
+                int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
 
-                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2:F2} MB){3}{4}", 
+                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2:F2} MB){3}", 
                     Path.GetFileName(filePath), partitionName, fileSize / 1024.0 / 1024.0,
-                    isSparse ? " [Sparse]" : "",
                     useVipMode ? " [VIP模式]" : ""));
 
                 // VIP 模式使用伪装策略
@@ -854,8 +947,8 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     // OnePlus 设备需要附带认证 Token - 添加 label 和 read_back_verify 符合官方协议
                     xml = string.Format(
-                "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
-                "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                        "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                        "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
                         "start_sector=\"{3}\" filename=\"{4}\" label=\"{4}\" " +
                         "read_back_verify=\"true\" token=\"{5}\" pk=\"{6}\"/></data>",
                         _sectorSize, numSectors, lun, startSector, partitionName,
@@ -870,18 +963,140 @@ namespace LoveAlways.Qualcomm.Protocol
                         "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
                         "start_sector=\"{3}\" filename=\"{4}\" label=\"{4}\" " +
                         "read_back_verify=\"true\"/></data>",
-                _sectorSize, numSectors, lun, startSector, partitionName);
+                        _sectorSize, numSectors, lun, startSector, partitionName);
                 }
 
-            _port.Write(Encoding.UTF8.GetBytes(xml));
+                _port.Write(Encoding.UTF8.GetBytes(xml));
 
-            if (!await WaitForRawDataModeAsync(ct))
-            {
-                _log("Firehose: Program 命令被拒绝");
-                return false;
-            }
+                if (!await WaitForRawDataModeAsync(ct))
+                {
+                    _log("Firehose: Program 命令被拒绝");
+                    return false;
+                }
 
                 return await SendStreamDataAsync(sourceStream, fileSize, progress, ct);
+            }
+        }
+
+        /// <summary>
+        /// 智能刷写 Sparse 镜像（只写有数据的 chunks）
+        /// </summary>
+        private async Task<bool> FlashSparsePartitionSmartAsync(string partitionName, string filePath, int lun, long startSector, IProgress<double> progress, CancellationToken ct, bool useVipMode)
+        {
+            using (var sparse = SparseStream.Open(filePath, _log))
+            {
+                var totalExpandedSize = sparse.Length;
+                var realDataSize = sparse.GetRealDataSize();
+                var dataRanges = sparse.GetDataRanges();
+                
+                _log(string.Format("Firehose: 刷写 {0} -> {1} [Sparse 智能模式]{2}", 
+                    Path.GetFileName(filePath), partitionName, useVipMode ? " [VIP模式]" : ""));
+                _log(string.Format("[Sparse] 展开: {0:F2} MB, 实际数据: {1:F2} MB, 节省: {2:P1}", 
+                    totalExpandedSize / 1024.0 / 1024.0, 
+                    realDataSize / 1024.0 / 1024.0,
+                    realDataSize > 0 ? (1.0 - (double)realDataSize / totalExpandedSize) : 1.0));
+                
+                if (dataRanges.Count == 0)
+                {
+                    _log("[Sparse] 镜像无实际数据，跳过写入");
+                    if (progress != null) progress.Report(100.0);
+                    return true;
+                }
+                
+                var totalWritten = 0L;
+                var rangeIndex = 0;
+                
+                // 逐个写入有数据的范围
+                foreach (var range in dataRanges)
+                {
+                    if (ct.IsCancellationRequested) return false;
+                    rangeIndex++;
+                    
+                    var rangeOffset = range.Item1;
+                    var rangeSize = range.Item2;
+                    var rangeStartSector = startSector + (rangeOffset / _sectorSize);
+                    var numSectors = (int)Math.Ceiling((double)rangeSize / _sectorSize);
+                    
+                    // 定位到该范围
+                    sparse.Seek(rangeOffset, SeekOrigin.Begin);
+                    
+                    // 构建 program 命令
+                    string xml;
+                    if (useVipMode)
+                    {
+                        // VIP 模式伪装
+                        xml = string.Format(
+                            "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                            "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                            "start_sector=\"{3}\" filename=\"gpt_main{2}.bin\" label=\"PrimaryGPT\" " +
+                            "read_back_verify=\"true\"/></data>",
+                            _sectorSize, numSectors, lun, rangeStartSector);
+                    }
+                    else if (IsOnePlusAuthenticated)
+                    {
+                        xml = string.Format(
+                            "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                            "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                            "start_sector=\"{3}\" filename=\"{4}\" label=\"{4}\" " +
+                            "read_back_verify=\"true\" token=\"{5}\" pk=\"{6}\"/></data>",
+                            _sectorSize, numSectors, lun, rangeStartSector, partitionName,
+                            OnePlusProgramToken, OnePlusProgramPk);
+                    }
+                    else
+                    {
+                        xml = string.Format(
+                            "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                            "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                            "start_sector=\"{3}\" filename=\"{4}\" label=\"{4}\" " +
+                            "read_back_verify=\"true\"/></data>",
+                            _sectorSize, numSectors, lun, rangeStartSector, partitionName);
+                    }
+                    
+                    _port.Write(Encoding.UTF8.GetBytes(xml));
+                    
+                    if (!await WaitForRawDataModeAsync(ct))
+                    {
+                        _log(string.Format("[Sparse] 第 {0}/{1} 段 Program 命令被拒绝", rangeIndex, dataRanges.Count));
+                        return false;
+                    }
+                    
+                    // 发送该范围的数据
+                    var sent = 0L;
+                    var chunkSize = Math.Min(_maxPayloadSize, 1 * 1024 * 1024); // 最大 1MB per chunk
+                    var buffer = new byte[chunkSize];
+                    
+                    while (sent < rangeSize)
+                    {
+                        if (ct.IsCancellationRequested) return false;
+                        
+                        var toRead = (int)Math.Min(chunkSize, rangeSize - sent);
+                        var read = sparse.Read(buffer, 0, toRead);
+                        if (read == 0) break;
+                        
+                        // 补齐到扇区边界
+                        var paddedSize = ((read + _sectorSize - 1) / _sectorSize) * _sectorSize;
+                        if (paddedSize > read)
+                            Array.Clear(buffer, read, paddedSize - read);
+                        
+                        await _port.WriteAsync(buffer, 0, paddedSize, ct);
+                        
+                        sent += read;
+                        totalWritten += read;
+                        
+                        if (progress != null && realDataSize > 0)
+                            progress.Report(totalWritten * 100.0 / realDataSize);
+                    }
+                    
+                    if (!await WaitForAckAsync(ct, 30))
+                    {
+                        _log(string.Format("[Sparse] 第 {0}/{1} 段写入未确认", rangeIndex, dataRanges.Count));
+                        return false;
+                    }
+                }
+                
+                _log(string.Format("[Sparse] {0} 写入完成: {1:N0} 字节 (跳过 {2:N0} MB 空白)", 
+                    partitionName, totalWritten, (totalExpandedSize - realDataSize) / 1024.0 / 1024.0));
+                return true;
             }
         }
 

@@ -1495,8 +1495,9 @@ namespace LoveAlways.Qualcomm.UI
                     {
                         if (SparseStream.IsSparseFile(path))
                         {
+                            // 使用实际数据大小，而非展开后的大小
                             using (var ss = SparseStream.Open(path))
-                                totalBytes += ss.Length;
+                                totalBytes += ss.GetRealDataSize();
                         }
                         else
                         {
@@ -1506,7 +1507,7 @@ namespace LoveAlways.Qualcomm.UI
                 }
 
                 StartOperationTimer("批量写入", totalSteps, 0, totalBytes);
-                Log(string.Format("开始批量写入 {0} 个分区 (总计: {1:F2} MB)...", total, totalBytes / 1024.0 / 1024.0), Color.Blue);
+                Log(string.Format("开始批量写入 {0} 个分区 (实际数据: {1:F2} MB)...", total, totalBytes / 1024.0 / 1024.0), Color.Blue);
 
                 long currentCompletedBytes = 0;
                 for (int i = 0; i < total; i++)
@@ -1524,8 +1525,9 @@ namespace LoveAlways.Qualcomm.UI
                     {
                         if (SparseStream.IsSparseFile(filePath))
                         {
+                            // 使用实际数据大小，而非展开后的大小
                             using (var ss = SparseStream.Open(filePath))
-                                fSize = ss.Length;
+                                fSize = ss.GetRealDataSize();
                         }
                         else
                         {

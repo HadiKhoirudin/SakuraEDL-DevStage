@@ -116,6 +116,65 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
+        /// 获取实际有数据的块数量（RAW + FILL chunks）
+        /// </summary>
+        public int GetRealDataChunkCount()
+        {
+            if (_chunkIndex == null) return 0;
+            int count = 0;
+            foreach (var chunk in _chunkIndex)
+            {
+                if (chunk.Type == CHUNK_TYPE_RAW || chunk.Type == CHUNK_TYPE_FILL)
+                    count++;
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// 获取实际有数据的总字节数（不含 DONT_CARE）
+        /// </summary>
+        public long GetRealDataSize()
+        {
+            if (_chunkIndex == null) return 0;
+            long size = 0;
+            foreach (var chunk in _chunkIndex)
+            {
+                if (chunk.Type == CHUNK_TYPE_RAW || chunk.Type == CHUNK_TYPE_FILL)
+                    size += chunk.OutputSize;
+            }
+            return size;
+        }
+
+        /// <summary>
+        /// 获取有数据块的列表（用于智能写入）
+        /// 返回: (起始偏移, 长度) 列表
+        /// </summary>
+        public List<Tuple<long, long>> GetDataRanges()
+        {
+            var ranges = new List<Tuple<long, long>>();
+            if (_chunkIndex == null) return ranges;
+            
+            foreach (var chunk in _chunkIndex)
+            {
+                if (chunk.Type == CHUNK_TYPE_RAW || chunk.Type == CHUNK_TYPE_FILL)
+                {
+                    ranges.Add(Tuple.Create(chunk.OutputOffset, chunk.OutputSize));
+                }
+            }
+            return ranges;
+        }
+
+        /// <summary>
+        /// 检查指定位置是否有实际数据（非 DONT_CARE）
+        /// </summary>
+        public bool HasDataAt(long position)
+        {
+            var chunk = FindChunk(position);
+            if (chunk == null) return false;
+            return chunk.Type == CHUNK_TYPE_RAW || chunk.Type == CHUNK_TYPE_FILL;
+        }
+
+        /// <summary>
         /// 创建 SparseStream
         /// </summary>
         public SparseStream(Stream baseStream, bool leaveOpen = false, Action<string> log = null)
