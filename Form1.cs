@@ -186,20 +186,9 @@ namespace LoveAlways
                 // ========== listView2 双击选择镜像文件 ==========
                 listView2.DoubleClick += (s, e) => QualcommPartitionDoubleClick();
 
-                // ========== checkbox11 生成XML按钮 ==========
-                checkbox11.CheckedChanged += (s, e) => {
-                    if (checkbox11.Checked)
-                    {
-                        if (_qualcommController.Partitions == null || _qualcommController.Partitions.Count == 0)
-                        {
-                            AppendLog("请先读取分区表再生成 XML", Color.Orange);
-                            checkbox11.Checked = false;
-                            return;
-                        }
-                        GeneratePartitionXml();
-                        checkbox11.Checked = false; // 生成完成后取消勾选
-                    }
-                };
+                // ========== checkbox11 生成XML 选项 ==========
+                // 这只是一个开关，表示回读分区时是否同时生成 XML
+                // 实际生成在回读完成后执行
 
                 // ========== checkbox15 自动重启 (刷写完成后) ==========
                 // 状态读取已在 QualcommErasePartitionAsync 等操作中检查
@@ -688,6 +677,59 @@ namespace LoveAlways
             }
         }
 
+        /// <summary>
+        /// 为指定分区生成 XML 文件到指定目录 (回读时调用)
+        /// </summary>
+        private void GenerateXmlForPartitions(List<PartitionInfo> partitions, string saveDir)
+        {
+            try
+            {
+                if (partitions == null || partitions.Count == 0)
+                {
+                    return;
+                }
+
+                var parser = new LoveAlways.Qualcomm.Common.GptParser();
+                int sectorSize = partitions[0].SectorSize > 0 ? partitions[0].SectorSize : 4096;
+
+                // 按 LUN 分组生成 rawprogram XML
+                var byLun = partitions.GroupBy(p => p.Lun).ToDictionary(g => g.Key, g => g.ToList());
+                
+                foreach (var kv in byLun)
+                {
+                    int lun = kv.Key;
+                    var lunPartitions = kv.Value;
+                    
+                    // 生成该 LUN 的 rawprogram XML
+                    var sb = new System.Text.StringBuilder();
+                    sb.AppendLine("<?xml version=\"1.0\" ?>");
+                    sb.AppendLine("<data>");
+                    sb.AppendLine("  <!-- 由 LoveAlways EDL Tool 生成 - 回读分区 -->");
+                    
+                    foreach (var p in lunPartitions)
+                    {
+                        // 生成 program 条目 (用于刷写回读的分区)
+                        sb.AppendFormat("  <program SECTOR_SIZE_IN_BYTES=\"{0}\" file_sector_offset=\"0\" " +
+                            "filename=\"{1}.img\" label=\"{1}\" num_partition_sectors=\"{2}\" " +
+                            "physical_partition_number=\"{3}\" start_sector=\"{4}\" />\n",
+                            sectorSize, p.Name, p.NumSectors, lun, p.StartSector);
+                    }
+                    
+                    sb.AppendLine("</data>");
+                    
+                    string fileName = Path.Combine(saveDir, $"rawprogram{lun}.xml");
+                    File.WriteAllText(fileName, sb.ToString());
+                    AppendLog($"已生成回读分区 XML: {Path.GetFileName(fileName)}", Color.Blue);
+                }
+                
+                AppendLog($"回读分区 XML 已保存到: {saveDir}", Color.Green);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"生成回读 XML 失败: {ex.Message}", Color.Orange);
+            }
+        }
+
         private async Task QualcommReadPartitionAsync()
         {
             if (_qualcommController == null || !_qualcommController.IsConnected)
@@ -711,11 +753,13 @@ namespace LoveAlways
                 
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
+                    string saveDir = fbd.SelectedPath;
+                    
                     if (checkedItems.Count == 1)
                     {
                         // 单个分区
                         var partition = checkedItems[0];
-                        string savePath = Path.Combine(fbd.SelectedPath, partition.Name + ".img");
+                        string savePath = Path.Combine(saveDir, partition.Name + ".img");
                         await _qualcommController.ReadPartitionAsync(partition.Name, savePath);
                     }
                     else
@@ -724,16 +768,16 @@ namespace LoveAlways
                         var partitionsToRead = new List<Tuple<string, string>>();
                         foreach (var p in checkedItems)
                         {
-                            string savePath = Path.Combine(fbd.SelectedPath, p.Name + ".img");
+                            string savePath = Path.Combine(saveDir, p.Name + ".img");
                             partitionsToRead.Add(Tuple.Create(p.Name, savePath));
                         }
                         await _qualcommController.ReadPartitionsBatchAsync(partitionsToRead);
                     }
                     
-                    // 回读完成后，如果勾选了生成XML，则生成
-                    if (checkbox11.Checked && _qualcommController.Partitions != null && _qualcommController.Partitions.Count > 0)
+                    // 回读完成后，如果勾选了生成XML，则为回读的分区生成 XML
+                    if (checkbox11.Checked && checkedItems.Count > 0)
                     {
-                        GeneratePartitionXml();
+                        GenerateXmlForPartitions(checkedItems, saveDir);
                     }
                 }
             }
