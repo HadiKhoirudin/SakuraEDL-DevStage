@@ -10,12 +10,20 @@
     <RootNamespace>LoveAlways</RootNamespace>
     <AssemblyName>LoveAlways</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <LangVersion>latest</LangVersion>  <!-- 添加这一行 -->
+    <LangVersion>latest</LangVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <!-- 版权与产品信息 -->
+    <Company>xiri</Company>
+    <Authors>xiri</Authors>
+    <Product>LoveAlways EDL Tool</Product>
+    <Copyright>Copyright © xiri 2025. All Rights Reserved.</Copyright>
+    <Description>高通 EDL 模式刷机工具</Description>
+    <ApplicationIcon>
+    </ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>

@@ -5,13 +5,13 @@ using System.Runtime.InteropServices;
 // 有关程序集的一般信息由以下
 // 控制。更改这些特性值可修改
 // 与程序集关联的信息。
-[assembly: AssemblyTitle("LoveAlways")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("LoveAlways EDL Tool")]
+[assembly: AssemblyDescription("高通 EDL 模式刷机工具 - Qualcomm Emergency Download Mode Flashing Tool")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("xiri")]
 [assembly: AssemblyProduct("LoveAlways")]
-[assembly: AssemblyCopyright("Copyright ©  2025")]
-[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCopyright("Copyright © xiri 2025. All Rights Reserved.")]
+[assembly: AssemblyTrademark("LoveAlways™")]
 [assembly: AssemblyCulture("")]
 
 // 将 ComVisible 设置为 false 会使此程序集中的类型
