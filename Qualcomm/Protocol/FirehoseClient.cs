@@ -853,24 +853,25 @@ namespace LoveAlways.Qualcomm.Protocol
                 string xml;
                 if (IsOnePlusAuthenticated)
                 {
-                    // OnePlus 设备需要附带认证 Token
+                    // OnePlus 设备需要附带认证 Token - 添加 label 和 read_back_verify 符合官方协议
                     xml = string.Format(
                         "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
                         "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
-                        "start_sector=\"{3}\" filename=\"{4}\" " +
-                        "token=\"{5}\" pk=\"{6}\"/></data>",
+                        "start_sector=\"{3}\" filename=\"{4}\" label=\"{4}\" " +
+                        "read_back_verify=\"true\" token=\"{5}\" pk=\"{6}\"/></data>",
                         _sectorSize, numSectors, lun, startSector, partitionName,
                         OnePlusProgramToken, OnePlusProgramPk);
                     _log("[OnePlus] 使用认证令牌写入");
                 }
                 else
                 {
-                    // 标准模式
+                    // 标准模式 - 添加 label 属性符合官方协议
                     xml = string.Format(
-                "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
-                "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
-                "start_sector=\"{3}\" filename=\"{4}\"/></data>",
-                _sectorSize, numSectors, lun, startSector, partitionName);
+                        "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
+                        "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
+                        "start_sector=\"{3}\" filename=\"{4}\" label=\"{4}\" " +
+                        "read_back_verify=\"true\"/></data>",
+                        _sectorSize, numSectors, lun, startSector, partitionName);
                 }
 
             _port.Write(Encoding.UTF8.GetBytes(xml));
@@ -903,12 +904,12 @@ namespace LoveAlways.Qualcomm.Protocol
                 _log(string.Format("[VIP Write] 尝试伪装: {0}/{1}", spoofLabel, spoofFilename));
                 PurgeBuffer();
 
-                // VIP 模式 program 命令
+                // VIP 模式 program 命令 - 添加 read_back_verify 符合官方协议
                 string xml = string.Format(
                     "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
                     "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
                     "start_sector=\"{3}\" filename=\"{4}\" label=\"{5}\" " +
-                    "partofsingleimage=\"true\" sparse=\"false\"/></data>",
+                    "partofsingleimage=\"true\" read_back_verify=\"true\" sparse=\"false\"/></data>",
                     _sectorSize, numSectors, lun, startSector, spoofFilename, spoofLabel);
 
                 _port.Write(Encoding.UTF8.GetBytes(xml));

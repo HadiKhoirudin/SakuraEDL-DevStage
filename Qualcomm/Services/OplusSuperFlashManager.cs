@@ -99,13 +99,26 @@ namespace LoveAlways.Qualcomm.Services
             Dictionary<string, string> nameToPathMap = LoadPartitionMapManual(superDefPath, imagesDir);
 
             // 4. 构建任务
+            // [官方协议] LP Metadata 写入 super 分区内偏移 1 扇区（主副本）和 2 扇区（备份副本）
+            // 主副本 (Primary) - super + 1 扇区
             tasks.Add(new FlashTask
             {
-                PartitionName = "super_metadata",
+                PartitionName = "super",  // 官方使用 label = super
                 FilePath = superMetaPath,
-                PhysicalSector = superStartSector,
+                PhysicalSector = superStartSector + 1,  // 偏移 1 扇区
                 SizeInBytes = metaData.Length
             });
+            _log(string.Format("[OPLUS] LP Metadata 主副本将写入: 扇区 {0} (super+1)", superStartSector + 1));
+            
+            // 备份副本 (Backup) - super + 2 扇区
+            tasks.Add(new FlashTask
+            {
+                PartitionName = "super",  // 官方使用 label = super  
+                FilePath = superMetaPath,
+                PhysicalSector = superStartSector + 2,  // 偏移 2 扇区
+                SizeInBytes = metaData.Length
+            });
+            _log(string.Format("[OPLUS] LP Metadata 备份副本将写入: 扇区 {0} (super+2)", superStartSector + 2));
 
             string suffix = "_" + activeSlot.ToLower();
             foreach (var lp in lpPartitions)
