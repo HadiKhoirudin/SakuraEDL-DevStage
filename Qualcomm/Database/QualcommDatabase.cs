@@ -46,6 +46,7 @@ namespace LoveAlways.Qualcomm.Database
             { 0x0045, "Nokia" },
             { 0x0048, "YuLong" },
             { 0x0051, "Oppo/OnePlus" },
+            { 0x50E1, "OnePlus" },       // OnePlus 新款设备 OEM ID
             { 0x0072, "Xiaomi" },
             { 0x0073, "Vivo" },
             { 0x0130, "GlocalMe" },

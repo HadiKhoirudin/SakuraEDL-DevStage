@@ -670,14 +670,23 @@ namespace LoveAlways.Qualcomm.UI
         /// </summary>
         private string DetectDeviceVendor()
         {
-            // 1. 首先从芯片信息获取 (Sahara 阶段)
-            if (_currentDeviceInfo != null && !string.IsNullOrEmpty(_currentDeviceInfo.Vendor) && _currentDeviceInfo.Vendor != "Unknown")
+            var chipInfo = _service?.ChipInfo;
+
+            // 1. 首先从设备信息获取
+            if (_currentDeviceInfo != null && !string.IsNullOrEmpty(_currentDeviceInfo.Vendor) && 
+                _currentDeviceInfo.Vendor != "Unknown" && !_currentDeviceInfo.Vendor.Contains("Unknown"))
             {
                 return NormalizeVendorName(_currentDeviceInfo.Vendor);
             }
 
-            // 2. 从 PK Hash 识别
-            var chipInfo = _service?.ChipInfo;
+            // 2. 从芯片 OEM ID 识别 (Sahara 阶段获取)
+            if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.Vendor) && 
+                chipInfo.Vendor != "Unknown" && !chipInfo.Vendor.Contains("Unknown"))
+            {
+                return NormalizeVendorName(chipInfo.Vendor);
+            }
+
+            // 3. 从 PK Hash 识别
             if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.PkHash))
             {
                 string vendor = QualcommDatabase.GetVendorByPkHash(chipInfo.PkHash);
@@ -685,7 +694,7 @@ namespace LoveAlways.Qualcomm.UI
                     return NormalizeVendorName(vendor);
             }
 
-            // 3. 从分区特征识别
+            // 4. 从分区特征识别
             if (Partitions != null && Partitions.Count > 0)
             {
                 // OPLUS 系 (OPPO/Realme/OnePlus)

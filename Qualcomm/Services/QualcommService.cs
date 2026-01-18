@@ -371,11 +371,23 @@ namespace LoveAlways.Qualcomm.Services
         {
             if (_firehose == null) return true;
 
+            // 综合判断厂商：优先 OEM ID，然后 PK Hash
             string vendor = "";
-            if (ChipInfo != null && !string.IsNullOrEmpty(ChipInfo.PkHash))
+            
+            // 1. 从 OEM ID 获取 (更准确)
+            if (ChipInfo != null && !string.IsNullOrEmpty(ChipInfo.Vendor) && 
+                !ChipInfo.Vendor.Contains("Unknown"))
+            {
+                vendor = ChipInfo.Vendor;
+            }
+            
+            // 2. 如果 OEM ID 无法识别，从 PK Hash 获取
+            if (string.IsNullOrEmpty(vendor) && ChipInfo != null && !string.IsNullOrEmpty(ChipInfo.PkHash))
             {
                 vendor = QualcommDatabase.GetVendorByPkHash(ChipInfo.PkHash);
             }
+            
+            _log(string.Format("[高通] 设备厂商识别: {0}", vendor));
             
             // 1. 小米设备 - 自动执行 MiAuth 认证
             if (vendor == "Xiaomi" || IsXiaomiDevice())
@@ -403,7 +415,10 @@ namespace LoveAlways.Qualcomm.Services
             }
 
             // 2. 一加设备 - 自动执行 Demacia 认证
-            if (vendor == "OnePlus")
+            // 注意：OEM ID 0x50E1 = "OnePlus"，0x0051 = "Oppo/OnePlus"
+            bool isOnePlus = vendor == "OnePlus" || vendor.Contains("OnePlus") || 
+                             (ChipInfo != null && ChipInfo.OemId == 0x50E1);
+            if (isOnePlus)
             {
                 _log("[高通] 检测到一加设备，自动执行认证...");
                 try
@@ -430,7 +445,9 @@ namespace LoveAlways.Qualcomm.Services
 
             // 3. OPPO/Realme (VIP) - 仅提示，由用户手动选择
             // 注意：OnePlus 已在上面处理并返回，不会进入这里
-            if (vendor == "OPPO" || vendor == "Realme")
+            bool isOppoRealme = vendor == "OPPO" || vendor == "Realme" || 
+                                vendor.Contains("Oppo") || vendor.Contains("Realme");
+            if (isOppoRealme)
             {
                 _log("[高通] 检测到 VIP 设备 (OPPO/Realme)");
                 _log("[高通] 💡 如需刷写敏感分区，请手动选择 VIP 认证");
