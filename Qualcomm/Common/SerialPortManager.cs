@@ -31,9 +31,69 @@ namespace LoveAlways.Qualcomm.Common
         public int ReadBufferSize { get; set; } = 16 * 1024 * 1024;
         public int WriteBufferSize { get; set; } = 16 * 1024 * 1024;
 
+        /// <summary>
+        /// 端口断开事件
+        /// </summary>
+        public event EventHandler PortDisconnected;
+
         public bool IsOpen
         {
             get { return _port != null && _port.IsOpen; }
+        }
+        
+        /// <summary>
+        /// 验证端口是否真正可用 (不仅检查 IsOpen，还尝试实际访问)
+        /// </summary>
+        public bool ValidateConnection()
+        {
+            lock (_lock)
+            {
+                if (_port == null || !_port.IsOpen)
+                    return false;
+                
+                try
+                {
+                    // 尝试访问端口属性来验证连接
+                    var _ = _port.BytesToRead;
+                    return true;
+                }
+                catch (IOException)
+                {
+                    // 端口已断开
+                    OnPortDisconnected();
+                    return false;
+                }
+                catch (InvalidOperationException)
+                {
+                    // 端口已关闭
+                    OnPortDisconnected();
+                    return false;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // 端口被其他程序占用
+                    OnPortDisconnected();
+                    return false;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 检查端口是否在系统可用端口列表中
+        /// </summary>
+        public bool IsPortAvailable()
+        {
+            if (string.IsNullOrEmpty(_currentPortName))
+                return false;
+            
+            var ports = SerialPort.GetPortNames();
+            return Array.Exists(ports, p => p.Equals(_currentPortName, StringComparison.OrdinalIgnoreCase));
+        }
+        
+        private void OnPortDisconnected()
+        {
+            CloseInternal();
+            PortDisconnected?.Invoke(this, EventArgs.Empty);
         }
 
         public string PortName

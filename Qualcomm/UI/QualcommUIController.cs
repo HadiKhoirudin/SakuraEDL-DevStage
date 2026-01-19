@@ -80,6 +80,55 @@ namespace LoveAlways.Qualcomm.UI
 
         public event EventHandler<bool> ConnectionStateChanged;
         public event EventHandler<List<PartitionInfo>> PartitionsLoaded;
+        
+        /// <summary>
+        /// 端口断开事件处理 (设备自己断开时触发)
+        /// </summary>
+        private void OnServicePortDisconnected(object sender, EventArgs e)
+        {
+            // 确保在 UI 线程上执行
+            if (_partitionListView != null && _partitionListView.InvokeRequired)
+            {
+                _partitionListView.BeginInvoke(new Action(() => OnServicePortDisconnected(sender, e)));
+                return;
+            }
+            
+            Log("设备已断开连接，需要重新完整配置", Color.Red);
+            
+            // 取消勾选"跳过引导"，下次重连需要完整配置
+            SetSkipSaharaChecked(false);
+            
+            // 更新 UI 状态
+            ConnectionStateChanged?.Invoke(this, false);
+            ClearDeviceInfoLabels();
+            
+            // 刷新端口列表
+            RefreshPorts();
+        }
+        
+        /// <summary>
+        /// 验证连接状态 (在操作前调用)
+        /// </summary>
+        public bool ValidateConnection()
+        {
+            if (_service == null)
+            {
+                Log("未连接设备", Color.Red);
+                return false;
+            }
+            
+            if (!_service.ValidateConnection())
+            {
+                Log("设备连接已失效，需要重新完整配置", Color.Red);
+                SetSkipSaharaChecked(false);  // 取消勾选"跳过引导"
+                ConnectionStateChanged?.Invoke(this, false);
+                ClearDeviceInfoLabels();
+                RefreshPorts();
+                return false;
+            }
+            
+            return true;
+        }
 
         public QualcommUIController(Action<string, Color?> log = null, Action<string> logDetail = null)
         {
@@ -261,6 +310,10 @@ namespace LoveAlways.Qualcomm.UI
                     UpdateProgressBarDirect(_progressBar, 100);
                     UpdateProgressBarDirect(_subProgressBar, 100);
                     UpdateDeviceInfoLabels();
+                    
+                    // 注册端口断开事件 (设备自己断开时会触发)
+                    _service.PortDisconnected += OnServicePortDisconnected;
+                    
                     ConnectionStateChanged?.Invoke(this, true);
                 }
                 else
@@ -1919,7 +1972,23 @@ namespace LoveAlways.Qualcomm.UI
 
         private bool EnsureConnected()
         {
-            if (!IsConnected) { Log("未连接设备", Color.Red); return false; }
+            if (_service == null)
+            {
+                Log("未连接设备", Color.Red);
+                return false;
+            }
+            
+            // 使用 ValidateConnection 检测端口是否真正可用
+            if (!_service.ValidateConnection())
+            {
+                Log("设备连接已失效，需要重新完整配置", Color.Red);
+                SetSkipSaharaChecked(false);  // 取消勾选"跳过引导"
+                ConnectionStateChanged?.Invoke(this, false);
+                ClearDeviceInfoLabels();
+                RefreshPorts();
+                return false;
+            }
+            
             return true;
         }
 

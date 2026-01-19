@@ -51,11 +51,14 @@ namespace LoveAlways.Qualcomm.Services
         // 状态
         public QualcommConnectionState State { get; private set; }
         public QualcommChipInfo ChipInfo { get { return _sahara != null ? _sahara.ChipInfo : null; } }
-        public bool IsConnected { get { return State == QualcommConnectionState.Ready; } }
         public bool IsVipDevice { get; private set; }
         public string StorageType { get { return _firehose != null ? _firehose.StorageType : "ufs"; } }
         public int SectorSize { get { return _firehose != null ? _firehose.SectorSize : 4096; } }
         public string CurrentSlot { get { return _firehose != null ? _firehose.CurrentSlot : "nonexistent"; } }
+        
+        // 最后使用的连接参数 (用于状态显示)
+        public string LastPortName { get; private set; }
+        public string LastStorageType { get; private set; }
 
         // 分区缓存
         private Dictionary<int, List<PartitionInfo>> _partitionCache;
@@ -64,6 +67,101 @@ namespace LoveAlways.Qualcomm.Services
         /// 状态变化事件
         /// </summary>
         public event EventHandler<QualcommConnectionState> StateChanged;
+        
+        /// <summary>
+        /// 端口断开事件 (设备自己断开时触发)
+        /// </summary>
+        public event EventHandler PortDisconnected;
+        
+        /// <summary>
+        /// 检查是否真正连接 (会验证端口状态)
+        /// </summary>
+        public bool IsConnected 
+        { 
+            get 
+            { 
+                if (State != QualcommConnectionState.Ready)
+                    return false;
+                    
+                // 验证端口是否真正可用
+                if (_portManager == null || !_portManager.ValidateConnection())
+                {
+                    // 端口已断开，更新状态
+                    HandlePortDisconnected();
+                    return false;
+                }
+                return true;
+            } 
+        }
+        
+        /// <summary>
+        /// 快速检查连接状态 (不验证端口，用于UI高频显示)
+        /// </summary>
+        public bool IsConnectedFast
+        {
+            get { return State == QualcommConnectionState.Ready && _portManager != null && _portManager.IsOpen; }
+        }
+        
+        /// <summary>
+        /// 验证连接是否有效
+        /// </summary>
+        public bool ValidateConnection()
+        {
+            if (State != QualcommConnectionState.Ready)
+                return false;
+                
+            if (_portManager == null)
+                return false;
+                
+            // 检查端口是否在系统中
+            if (!_portManager.IsPortAvailable())
+            {
+                _logDetail("[高通] 端口已从系统中移除");
+                HandlePortDisconnected();
+                return false;
+            }
+            
+            // 验证端口连接
+            if (!_portManager.ValidateConnection())
+            {
+                _logDetail("[高通] 端口连接验证失败");
+                HandlePortDisconnected();
+                return false;
+            }
+            
+            return true;
+        }
+        
+        /// <summary>
+        /// 处理端口断开 (设备自己断开)
+        /// </summary>
+        private void HandlePortDisconnected()
+        {
+            if (State == QualcommConnectionState.Disconnected)
+                return;
+                
+            _log("[高通] 检测到设备断开");
+            
+            // 清理资源
+            if (_portManager != null)
+            {
+                try { _portManager.Close(); } catch { }
+                try { _portManager.Dispose(); } catch { }
+                _portManager = null;
+            }
+            
+            if (_firehose != null)
+            {
+                try { _firehose.Dispose(); } catch { }
+                _firehose = null;
+            }
+            
+            // 清空分区缓存 (设备断开后缓存无效)
+            _partitionCache.Clear();
+            
+            SetState(QualcommConnectionState.Disconnected);
+            PortDisconnected?.Invoke(this, EventArgs.Empty);
+        }
 
         public QualcommService(Action<string> log = null, Action<long, long> progress = null, Action<string> logDetail = null)
         {
@@ -242,6 +340,16 @@ namespace LoveAlways.Qualcomm.Services
                         _log(string.Format("[高通] {0} 认证失败", authMode.ToUpper()));
                 }
 
+                // 保存连接参数
+                LastPortName = portName;
+                LastStorageType = storageType;
+                
+                // 注册端口断开事件
+                if (_portManager != null)
+                {
+                    _portManager.PortDisconnected += (s, e) => HandlePortDisconnected();
+                }
+                
                 SetState(QualcommConnectionState.Ready);
                 _log("[高通] 连接成功");
 
@@ -293,6 +401,16 @@ namespace LoveAlways.Qualcomm.Services
                 }
                 _log("配置 Firehose : 成功");
 
+                // 保存连接参数
+                LastPortName = portName;
+                LastStorageType = storageType;
+                
+                // 注册端口断开事件
+                if (_portManager != null)
+                {
+                    _portManager.PortDisconnected += (s, e) => HandlePortDisconnected();
+                }
+                
                 SetState(QualcommConnectionState.Ready);
                 _log("[高通] Firehose 直连成功");
                 return true;
