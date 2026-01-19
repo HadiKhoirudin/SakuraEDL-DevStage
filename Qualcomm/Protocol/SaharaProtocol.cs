@@ -531,14 +531,14 @@ namespace LoveAlways.Qualcomm.Protocol
 
         /// <summary>
         /// 读取芯片信息 - V1/V2/V3 版本区分
-        /// [关键修复] V3 设备某些命令可能不支持，需要容错处理
+        /// [关键] 所有命令失败时静默跳过，不影响握手
         /// </summary>
         private async Task ReadChipInfoCommandsAsync(CancellationToken ct)
         {
             // 1. 首先显示协议版本
             _log(string.Format("- Sahara version  : {0}", ProtocolVersion));
             
-            // 2. 读取序列号 (cmd=0x01) - 基础命令，一般都支持
+            // 2. 读取序列号 (cmd=0x01)
             var serialData = await ExecuteCommandSafeAsync(SaharaExecCommand.SerialNumRead, ct);
             if (serialData != null && serialData.Length >= 4)
             {
@@ -549,7 +549,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 _log(string.Format("- Chip Serial Number : {0}", ChipSerial));
             }
 
-            // 3. 读取 PK Hash (cmd=0x03) - 优先于 HWID，大多数设备支持
+            // 3. 读取 PK Hash (cmd=0x03)
             var pkhash = await ExecuteCommandSafeAsync(SaharaExecCommand.OemPkHashRead, ct);
             if (pkhash != null && pkhash.Length > 0)
             {
@@ -572,12 +572,18 @@ namespace LoveAlways.Qualcomm.Protocol
                 var hwidData = await ExecuteCommandSafeAsync(SaharaExecCommand.MsmHwIdRead, ct);
                 if (hwidData != null && hwidData.Length >= 8)
                     ProcessHwIdData(hwidData);
+                    
+                // V1/V2: 读取 SBL 版本 (cmd=0x07)，失败跳过
+                var sblVer = await ExecuteCommandSafeAsync(SaharaExecCommand.SblSwVersion, ct);
+                if (sblVer != null && sblVer.Length >= 4)
+                {
+                    uint version = BitConverter.ToUInt32(sblVer, 0);
+                    _log(string.Format("- SBL SW Version : 0x{0:X8}", version));
+                }
             }
             else
             {
-                // [关键] V3: 尝试 cmd=0x0A，但某些设备可能不支持
-                // 如果失败，不影响后续握手
-                _log("[Sahara] V3 协议，尝试读取扩展芯片信息...");
+                // V3: 尝试 cmd=0x0A，失败跳过
                 var extInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.ChipIdV3Read, ct);
                 if (extInfo != null && extInfo.Length >= 44)
                 {
@@ -595,11 +601,14 @@ namespace LoveAlways.Qualcomm.Protocol
                         }
                     }
                 }
+                
+                // V3: 读取 SBL 信息 (cmd=0x06)，失败跳过
+                var sblInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.SblInfoRead, ct);
+                if (sblInfo != null && sblInfo.Length >= 4)
+                {
+                    ProcessSblInfo(sblInfo);
+                }
             }
-
-            // 5. 读取 SBL 版本 - 可选，失败不影响握手
-            // 注: V3 的 cmd=0x06 (SblInfoRead) 和 V1/V2 的 cmd=0x07 在某些设备上也可能不支持
-            // 跳过此步骤以提高兼容性
             // 注: PBL 版本读取 (cmd=0x08) 已移除，部分设备不支持会导致握手失败
         }
         
