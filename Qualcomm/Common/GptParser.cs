@@ -575,9 +575,20 @@ namespace LoveAlways.Qualcomm.Common
             info.HasAbPartitions = true;
             info.CurrentSlot = "undefined";
 
-            // 排除 vendor_boot 分区 (可能与整体槽位状态不一致)
-            var checkPartitions = abPartitions.Where(p =>
-                p.Name != "vendor_boot_a" && p.Name != "vendor_boot_b").ToList();
+            // 检测关键分区的槽位状态 (boot, system, vendor 等)
+            var keyPartitions = new[] { "boot", "system", "vendor", "abl", "xbl", "dtbo" };
+            var checkPartitions = abPartitions.Where(p => {
+                string baseName = p.Name.EndsWith("_a") ? p.Name.Substring(0, p.Name.Length - 2) :
+                                  p.Name.EndsWith("_b") ? p.Name.Substring(0, p.Name.Length - 2) : p.Name;
+                return keyPartitions.Contains(baseName.ToLower());
+            }).ToList();
+
+            // 如果没有关键分区，使用所有 A/B 分区 (排除 vendor_boot)
+            if (checkPartitions.Count == 0)
+            {
+                checkPartitions = abPartitions.Where(p =>
+                    p.Name != "vendor_boot_a" && p.Name != "vendor_boot_b").ToList();
+            }
 
             int slotAActive = 0;
             int slotBActive = 0;
@@ -585,11 +596,24 @@ namespace LoveAlways.Qualcomm.Common
             foreach (var p in checkPartitions)
             {
                 bool isActive = IsSlotActive(p.Attributes);
+                bool isSuccessful = IsSlotSuccessful(p.Attributes);
+                bool isUnbootable = IsSlotUnbootable(p.Attributes);
+                
+                // 调试日志：打印关键分区的属性
+                if (keyPartitions.Any(k => p.Name.StartsWith(k, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _log(string.Format("[GPT] 槽位检测: {0} attr=0x{1:X16} active={2} success={3} unboot={4}",
+                        p.Name, p.Attributes, isActive, isSuccessful, isUnbootable));
+                }
+                
                 if (p.Name.EndsWith("_a") && isActive)
                     slotAActive++;
                 else if (p.Name.EndsWith("_b") && isActive)
                     slotBActive++;
             }
+
+            _log(string.Format("[GPT] 槽位统计: A激活={0}, B激活={1} (检查了{2}个分区)", 
+                slotAActive, slotBActive, checkPartitions.Count));
 
             if (slotAActive > slotBActive)
             {
@@ -606,18 +630,60 @@ namespace LoveAlways.Qualcomm.Common
                 info.CurrentSlot = "unknown";
                 info.OtherSlot = "unknown";
             }
+            else if (slotAActive == 0 && slotBActive == 0 && checkPartitions.Count > 0)
+            {
+                // 没有激活标志，尝试使用 successful 标志判断
+                int slotASuccessful = checkPartitions.Count(p => p.Name.EndsWith("_a") && IsSlotSuccessful(p.Attributes));
+                int slotBSuccessful = checkPartitions.Count(p => p.Name.EndsWith("_b") && IsSlotSuccessful(p.Attributes));
+                
+                _log(string.Format("[GPT] 无激活标志，使用 successful: A={0}, B={1}", slotASuccessful, slotBSuccessful));
+                
+                if (slotASuccessful > slotBSuccessful)
+                {
+                    info.CurrentSlot = "a";
+                    info.OtherSlot = "b";
+                }
+                else if (slotBSuccessful > slotASuccessful)
+                {
+                    info.CurrentSlot = "b";
+                    info.OtherSlot = "a";
+                }
+            }
 
             return info;
         }
 
         /// <summary>
-        /// 检查槽位是否激活
+        /// 检查槽位是否激活 (bit 50 in attributes)
         /// </summary>
         private bool IsSlotActive(ulong attributes)
         {
-            // 根据 gpttool 的逻辑
+            // A/B 属性在 attributes 的高字节部分
+            // Bit 48: Priority bit 0
+            // Bit 49: Priority bit 1
+            // Bit 50: Active
+            // Bit 51: Successful
+            // Bit 52: Unbootable
             byte flagByte = (byte)((attributes >> (AB_FLAG_OFFSET * 8)) & 0xFF);
             return (flagByte & AB_PARTITION_ATTR_SLOT_ACTIVE) == AB_PARTITION_ATTR_SLOT_ACTIVE;
+        }
+        
+        /// <summary>
+        /// 检查槽位是否启动成功 (bit 51 in attributes)
+        /// </summary>
+        private bool IsSlotSuccessful(ulong attributes)
+        {
+            byte flagByte = (byte)((attributes >> (AB_FLAG_OFFSET * 8)) & 0xFF);
+            return (flagByte & 0x08) == 0x08;  // bit 3 in byte 6 = bit 51
+        }
+        
+        /// <summary>
+        /// 检查槽位是否不可启动 (bit 52 in attributes)
+        /// </summary>
+        private bool IsSlotUnbootable(ulong attributes)
+        {
+            byte flagByte = (byte)((attributes >> (AB_FLAG_OFFSET * 8)) & 0xFF);
+            return (flagByte & 0x10) == 0x10;  // bit 4 in byte 6 = bit 52
         }
 
         #endregion

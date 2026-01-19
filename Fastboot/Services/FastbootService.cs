@@ -578,43 +578,87 @@ namespace LoveAlways.Fastboot.Services
             try
             {
                 _log($"[Fastboot] 执行: {command}");
+                string result = null;
                 
                 // 解析命令
                 if (command.StartsWith("getvar ", StringComparison.OrdinalIgnoreCase))
                 {
                     string varName = command.Substring(7).Trim();
-                    return await _nativeService.GetVariableAsync(varName, ct);
+                    result = await _nativeService.GetVariableAsync(varName, ct);
+                    _log($"[Fastboot] {varName}: {result ?? "(空)"}");
                 }
                 else if (command.StartsWith("oem ", StringComparison.OrdinalIgnoreCase))
                 {
                     string oemCmd = command.Substring(4).Trim();
-                    return await _nativeService.ExecuteOemCommandAsync(oemCmd, ct);
+                    result = await _nativeService.ExecuteOemCommandAsync(oemCmd, ct);
+                    _log($"[Fastboot] OEM 响应: {result ?? "OKAY"}");
                 }
                 else if (command == "reboot")
                 {
                     await _nativeService.RebootAsync(ct);
+                    _log("[Fastboot] 设备正在重启...");
                     return "OKAY";
                 }
                 else if (command == "reboot-bootloader" || command == "reboot bootloader")
                 {
                     await _nativeService.RebootBootloaderAsync(ct);
+                    _log("[Fastboot] 设备正在重启到 Bootloader...");
                     return "OKAY";
                 }
                 else if (command == "reboot-recovery" || command == "reboot recovery")
                 {
                     await _nativeService.RebootRecoveryAsync(ct);
+                    _log("[Fastboot] 设备正在重启到 Recovery...");
                     return "OKAY";
                 }
                 else if (command == "reboot-fastboot" || command == "reboot fastboot")
                 {
                     await _nativeService.RebootFastbootdAsync(ct);
+                    _log("[Fastboot] 设备正在重启到 Fastbootd...");
                     return "OKAY";
+                }
+                else if (command == "devices" || command == "device")
+                {
+                    // 显示当前连接的设备信息
+                    var info = DeviceInfo;
+                    if (info != null)
+                    {
+                        string deviceInfo = $"{info.Serial ?? "未知"}\tfastboot";
+                        _log($"[Fastboot] {deviceInfo}");
+                        return deviceInfo;
+                    }
+                    return "未连接设备";
+                }
+                else if (command.StartsWith("erase ", StringComparison.OrdinalIgnoreCase))
+                {
+                    string partition = command.Substring(6).Trim();
+                    bool success = await _nativeService.ErasePartitionAsync(partition, ct);
+                    result = success ? "OKAY" : "FAILED";
+                    _log($"[Fastboot] 擦除 {partition}: {result}");
+                }
+                else if (command == "flashing unlock")
+                {
+                    result = await UnlockBootloaderAsync("flashing unlock", ct) ? "OKAY" : "FAILED";
+                }
+                else if (command == "flashing lock")
+                {
+                    result = await LockBootloaderAsync("flashing lock", ct) ? "OKAY" : "FAILED";
+                }
+                else if (command.StartsWith("set_active ", StringComparison.OrdinalIgnoreCase))
+                {
+                    string slot = command.Substring(11).Trim();
+                    bool success = await SetActiveSlotAsync(slot, ct);
+                    result = success ? "OKAY" : "FAILED";
+                    _log($"[Fastboot] 设置活动槽位 {slot}: {result}");
                 }
                 else
                 {
                     // 其他命令当作 OEM 命令执行
-                    return await _nativeService.ExecuteOemCommandAsync(command, ct);
+                    result = await _nativeService.ExecuteOemCommandAsync(command, ct);
+                    _log($"[Fastboot] 响应: {result ?? "OKAY"}");
                 }
+                
+                return result ?? "OKAY";
             }
             catch (Exception ex)
             {

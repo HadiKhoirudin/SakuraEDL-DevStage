@@ -66,7 +66,10 @@ namespace LoveAlways.Qualcomm.UI
         private long _currentStepBytes;       // 当前步骤的字节数 (用于准确速度计算)
         private string _currentOperationName; // 当前操作名称保存
 
-        public bool IsConnected { get { return _service != null && _service.IsConnected; } }
+        /// <summary>
+        /// 快速检查连接状态（不触发端口验证，避免意外断开）
+        /// </summary>
+        public bool IsConnected { get { return _service != null && _service.IsConnectedFast; } }
         public bool IsBusy { get; private set; }
         public List<PartitionInfo> Partitions { get; private set; }
 
@@ -96,8 +99,8 @@ namespace LoveAlways.Qualcomm.UI
             
             Log("设备已断开连接，需要重新完整配置", Color.Red);
             
-            // 取消勾选"跳过引导"，下次重连需要完整配置
-            SetSkipSaharaChecked(false);
+            // 注意：不自动取消勾选"跳过引导"，让用户手动控制
+            // 用户可能想要在设备重新进入 EDL 后继续使用跳过引导功能
             
             // 更新 UI 状态
             ConnectionStateChanged?.Invoke(this, false);
@@ -121,7 +124,7 @@ namespace LoveAlways.Qualcomm.UI
             if (!_service.ValidateConnection())
             {
                 Log("设备连接已失效，需要重新完整配置", Color.Red);
-                SetSkipSaharaChecked(false);  // 取消勾选"跳过引导"
+                // 注意：不在这里取消勾选"跳过引导"，让用户手动控制
                 ConnectionStateChanged?.Invoke(this, false);
                 ClearDeviceInfoLabels();
                 RefreshPorts();
@@ -197,6 +200,9 @@ namespace LoveAlways.Qualcomm.UI
                 var ports = PortDetector.DetectAllPorts();
                 var edlPorts = PortDetector.DetectEdlPorts();
                 
+                // 保存当前选择的端口名称
+                string previousSelectedPort = GetSelectedPortName();
+                
                 _portComboBox.Items.Clear();
 
                 if (ports.Count == 0)
@@ -206,29 +212,57 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 else
                 {
-                foreach (var port in ports)
-                {
-                    string display = port.IsEdl
-                        ? string.Format("{0} - {1} [EDL]", port.PortName, port.Description)
-                        : string.Format("{0} - {1}", port.PortName, port.Description);
-                    _portComboBox.Items.Add(display);
-                }
-
-                    // 优先选择EDL端口
-                if (edlPorts.Count > 0)
-                {
-                    for (int i = 0; i < _portComboBox.Items.Count; i++)
+                    foreach (var port in ports)
                     {
-                        if (_portComboBox.Items[i].ToString().Contains(edlPorts[0].PortName))
+                        string display = port.IsEdl
+                            ? string.Format("{0} - {1} [EDL]", port.PortName, port.Description)
+                            : string.Format("{0} - {1}", port.PortName, port.Description);
+                        _portComboBox.Items.Add(display);
+                    }
+
+                    // 简单的选择逻辑：
+                    // 1. 优先恢复之前的选择（如果存在）
+                    // 2. 否则选择第一个 EDL 端口
+                    // 3. 否则选择第一个端口
+                    
+                    int selectedIndex = -1;
+                    
+                    // 尝试恢复之前的选择
+                    if (!string.IsNullOrEmpty(previousSelectedPort))
+                    {
+                        for (int i = 0; i < _portComboBox.Items.Count; i++)
                         {
-                            _portComboBox.SelectedIndex = i;
-                            break;
+                            if (_portComboBox.Items[i].ToString().Contains(previousSelectedPort))
+                            {
+                                selectedIndex = i;
+                                break;
+                            }
                         }
                     }
-                }
-                else if (_portComboBox.Items.Count > 0)
-                {
-                    _portComboBox.SelectedIndex = 0;
+                    
+                    // 如果之前没有选择或选择的端口不存在了，选择 EDL 端口
+                    if (selectedIndex < 0 && edlPorts.Count > 0)
+                    {
+                        for (int i = 0; i < _portComboBox.Items.Count; i++)
+                        {
+                            if (_portComboBox.Items[i].ToString().Contains(edlPorts[0].PortName))
+                            {
+                                selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 默认选择第一个
+                    if (selectedIndex < 0 && _portComboBox.Items.Count > 0)
+                    {
+                        selectedIndex = 0;
+                    }
+                    
+                    // 设置选择
+                    if (selectedIndex >= 0)
+                    {
+                        _portComboBox.SelectedIndex = selectedIndex;
                     }
                 }
 
@@ -237,8 +271,8 @@ namespace LoveAlways.Qualcomm.UI
             catch (Exception ex)
             {
                 if (!silent)
-            {
-                Log(string.Format("刷新端口失败: {0}", ex.Message), Color.Red);
+                {
+                    Log(string.Format("刷新端口失败: {0}", ex.Message), Color.Red);
                 }
                 return 0;
             }
@@ -1018,7 +1052,7 @@ namespace LoveAlways.Qualcomm.UI
             
             // OPLUS 设备的 my_manifest 是 EROFS 文件系统，不是纯文本
             // 使用 DeviceInfoService 的通用策略（会正确解析 EROFS 并按优先级合并属性）
-            var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize);
+            var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "OnePlus");
             
             if (result != null && !string.IsNullOrEmpty(result.MarketName))
             {
@@ -1042,7 +1076,7 @@ namespace LoveAlways.Qualcomm.UI
             Log("使用 Xiaomi 专用解析策略...", Color.Blue);
             
             // 小米设备使用标准策略，但优先 vendor 分区
-            var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize);
+            var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "Xiaomi");
             
             // 小米特有属性增强：检测 MIUI/HyperOS 版本
             if (result != null)
@@ -1112,7 +1146,7 @@ namespace LoveAlways.Qualcomm.UI
             // 回落到通用策略
             if (result == null || string.IsNullOrEmpty(result.MarketName))
             {
-                result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize);
+                result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "Lenovo");
             }
 
             // 联想特有处理：识别拯救者系列
@@ -1138,7 +1172,7 @@ namespace LoveAlways.Qualcomm.UI
         {
             Log("使用 ZTE/nubia 专用解析策略...", Color.Blue);
             
-            var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize);
+            var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "ZTE");
             
             // 中兴/努比亚特有处理
             if (result != null)
@@ -1205,9 +1239,12 @@ namespace LoveAlways.Qualcomm.UI
             }
 
             // 版本信息 (OTA版本/region)
+            // 优先级: OtaVersion > Incremental > DisplayId
             string otaVer = "";
             if (!string.IsNullOrEmpty(buildProp.OtaVersion))
                 otaVer = buildProp.OtaVersion;
+            else if (!string.IsNullOrEmpty(buildProp.Incremental))
+                otaVer = buildProp.Incremental;
             else if (!string.IsNullOrEmpty(buildProp.DisplayId))
                 otaVer = buildProp.DisplayId;
 
@@ -1259,18 +1296,34 @@ namespace LoveAlways.Qualcomm.UI
                 UpdateLabelSafe(_otaVersionLabel, "版本：" + otaVer);
             }
 
-            // Android 版本 (存储到 DeviceInfo，不在此标签显示)
+            // Android 版本
             if (!string.IsNullOrEmpty(buildProp.AndroidVersion))
             {
                 _currentDeviceInfo.AndroidVersion = buildProp.AndroidVersion;
+                _currentDeviceInfo.SdkVersion = buildProp.SdkVersion;
             }
             
-            // 设备型号 (使用 unlockLabel 作为第二个型号标签)
-            string model2 = "";
-            if (!string.IsNullOrEmpty(buildProp.Model))
-                model2 = buildProp.Model;
-            if (!string.IsNullOrEmpty(model2))
-                UpdateLabelSafe(_unlockLabel, "型号：" + model2);
+            // 设备代号 (使用 unlockLabel 显示设备内部代号)
+            // 优先级: Codename > Device > DeviceName
+            string codename = "";
+            if (!string.IsNullOrEmpty(buildProp.Codename))
+                codename = buildProp.Codename;
+            else if (!string.IsNullOrEmpty(buildProp.Device))
+                codename = buildProp.Device;
+            else if (!string.IsNullOrEmpty(buildProp.DeviceName))
+                codename = buildProp.DeviceName;
+            
+            if (!string.IsNullOrEmpty(codename))
+            {
+                _currentDeviceInfo.DeviceCodename = codename;
+                UpdateLabelSafe(_unlockLabel, "代号：" + codename);
+            }
+            else if (!string.IsNullOrEmpty(buildProp.Model))
+            {
+                // 如果没有代号，使用型号作为备选
+                _currentDeviceInfo.Model = buildProp.Model;
+                UpdateLabelSafe(_unlockLabel, "代号：" + buildProp.Model);
+            }
 
             // OPLUS/Realme 特有属性
             if (!string.IsNullOrEmpty(buildProp.OplusProject))
@@ -1385,14 +1438,14 @@ namespace LoveAlways.Qualcomm.UI
             // realme
             if (lower.Contains("realme"))
                 return "realme";
-            // Xiaomi
-            if (lower == "xiaomi")
+            // Xiaomi / MIUI
+            if (lower == "xiaomi" || lower == "miui" || lower.Contains("xiaomi"))
                 return "小米 (Xiaomi)";
             // Redmi
-            if (lower == "redmi")
+            if (lower == "redmi" || lower.Contains("redmi"))
                 return "红米 (Redmi)";
             // POCO
-            if (lower == "poco")
+            if (lower == "poco" || lower.Contains("poco"))
                 return "POCO";
             // nubia
             if (lower == "nubia")
@@ -1815,14 +1868,19 @@ namespace LoveAlways.Qualcomm.UI
                     var progress = new Progress<double>(percent => UpdateSubProgressFromPercent(percent));
                     bool ok;
 
-                    // PrimaryGPT/BackupGPT 等特殊分区使用直接写入
-                    if (partitionName == "PrimaryGPT" || partitionName == "BackupGPT" || 
-                        partitionName.StartsWith("gpt_main") || partitionName.StartsWith("gpt_backup"))
+                    // 如果有 XML 中的 LUN 和 StartSector 信息，优先使用直接写入
+                    // 这确保按照 XML 定义的位置写入，而不是依赖设备 GPT
+                    bool useDirectWrite = partitionName == "PrimaryGPT" || partitionName == "BackupGPT" || 
+                        partitionName.StartsWith("gpt_main") || partitionName.StartsWith("gpt_backup") ||
+                        startSector != 0;  // 如果有明确的起始扇区，使用直接写入
+                    
+                    if (useDirectWrite)
                     {
                         ok = await _service.WriteDirectAsync(partitionName, filePath, lun, startSector, progress, _cts.Token);
                     }
                     else
                     {
+                        // 没有明确扇区信息时，尝试通过分区名查找 (依赖设备 GPT)
                         ok = await _service.WritePartitionAsync(partitionName, filePath, progress, _cts.Token);
                     }
 
@@ -1830,20 +1888,22 @@ namespace LoveAlways.Qualcomm.UI
                     {
                         success++;
                         currentCompletedBytes += fSize;
-                        Log(string.Format("[{0}/{1}] {2} 写入成功", i + 1, total, partitionName), Color.Green);
+                        // 成功时不单独打印日志，只在最后汇总
                     }
                     else
                     {
-                        Log(string.Format("[{0}/{1}] {2} 写入失败", i + 1, total, partitionName), Color.Red);
+                        // 失败时打印详细信息
+                        Log(string.Format("写入失败: {0}", partitionName), Color.Red);
                     }
                 }
 
-                Log(string.Format("分区写入完成: {0}/{1} 成功", success, total), success == total ? Color.Green : Color.Orange);
+                // 汇总显示结果
+                if (success == total)
+                    Log(string.Format("分区写入完成: {0} 个分区全部成功", total), Color.Green);
+                else
+                    Log(string.Format("分区写入完成: {0}/{1} 成功，{2} 个失败", success, total, total - success), Color.Orange);
 
                 // 2. 应用 Patch (如果有)
-                Log(string.Format("[调试] hasPatch={0}, 取消={1}, patchFiles数量={2}", 
-                    hasPatch, _cts.Token.IsCancellationRequested, patchFiles != null ? patchFiles.Count : 0), Color.Gray);
-                    
                 if (hasPatch && !_cts.Token.IsCancellationRequested)
                 {
                     UpdateTotalProgress(total, totalSteps, currentCompletedBytes, 0);
@@ -1918,10 +1978,17 @@ namespace LoveAlways.Qualcomm.UI
                             bootSlotName = "boot_b (根据写入分区推断)";
                             Log("槽位未激活，根据写入的 _b 分区推断使用 LUN2", Color.Blue);
                         }
+                        else if (slotACount > 0 && slotBCount > 0)
+                        {
+                            // 全量刷机：同时刷写了 _a 和 _b 分区，默认激活 slot_a
+                            bootLun = 1;
+                            bootSlotName = "boot_a (全量刷机默认)";
+                            Log("全量刷机模式，默认激活 slot_a (LUN1)", Color.Blue);
+                        }
                         else
                         {
-                            // 无法推断，跳过激活
-                            Log("无法确定槽位，跳过启动分区激活 (建议手动设置)", Color.Orange);
+                            // 没有 A/B 分区，跳过激活
+                            Log("未检测到 A/B 分区，跳过启动分区激活", Color.Gray);
                         }
                     }
                     else if (currentSlot == "nonexistent")
@@ -2191,7 +2258,7 @@ namespace LoveAlways.Qualcomm.UI
             if (!_service.ValidateConnection())
             {
                 Log("设备连接已失效，需要重新完整配置", Color.Red);
-                SetSkipSaharaChecked(false);  // 取消勾选"跳过引导"
+                // 注意：不在这里取消勾选"跳过引导"，让用户手动控制
                 ConnectionStateChanged?.Invoke(this, false);
                 ClearDeviceInfoLabels();
                 RefreshPorts();

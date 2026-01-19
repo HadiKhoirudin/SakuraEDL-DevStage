@@ -793,7 +793,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 return await WriteSparsePartitionSmartAsync(lun, startSector, sectorSize, imagePath, label, useOppoMode, ct);
             }
             
-            _log(string.Format("[Firehose] 写入分区: {0} ({1})", label, Path.GetFileName(imagePath)));
+            _logDetail(string.Format("[Firehose] 写入: {0} ({1})", label, Path.GetFileName(imagePath)));
 
             using (Stream sourceStream = File.OpenRead(imagePath))
             {
@@ -836,7 +836,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
 
                 StopTransferTimer("写入", totalWritten);
-                _log(string.Format("[Firehose] 分区 {0} 写入完成: {1:N0} 字节", label, totalWritten));
+                _logDetail(string.Format("[Firehose] {0} 完成: {1:N0} 字节", label, totalWritten));
                 return true;
             }
         }
@@ -922,7 +922,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
                 
                 StopTransferTimer("写入", totalWritten);
-                _log(string.Format("[Firehose] 分区 {0} 写入完成: {1:N0} 字节 (跳过 {2:N0} MB 空白)", 
+                _logDetail(string.Format("[Firehose] {0} 完成: {1:N0} 字节 (跳过 {2:N0} MB)", 
                     label, totalWritten, (totalExpandedSize - realDataSize) / 1024.0 / 1024.0));
                 return true;
             }
@@ -1548,12 +1548,12 @@ namespace LoveAlways.Qualcomm.Protocol
             if (startSector < 0)
             {
                 startSectorStr = string.Format("NUM_DISK_SECTORS{0}.", startSector);
-                _log(string.Format("[Firehose] 应用补丁: LUN{0} Sector {1} Offset{2} Size{3}", lun, startSectorStr, byteOffset, sizeInBytes));
+                _logDetail(string.Format("[Patch] LUN{0} Sector {1} Offset{2} Size{3}", lun, startSectorStr, byteOffset, sizeInBytes));
             }
             else
             {
                 startSectorStr = startSector.ToString();
-                _log(string.Format("[Firehose] 应用补丁: LUN{0} Sector{1} Offset{2} Size{3}", lun, startSector, byteOffset, sizeInBytes));
+                _logDetail(string.Format("[Patch] LUN{0} Sector{1} Offset{2} Size{3}", lun, startSector, byteOffset, sizeInBytes));
             }
 
             string xml = string.Format(
@@ -1578,7 +1578,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 return 0;
             }
 
-            _log(string.Format("[Firehose] 应用 Patch 文件: {0}", System.IO.Path.GetFileName(patchXmlPath)));
+            _logDetail(string.Format("[Firehose] 应用 Patch: {0}", System.IO.Path.GetFileName(patchXmlPath)));
 
             int successCount = 0;
             try
@@ -1639,15 +1639,15 @@ namespace LoveAlways.Qualcomm.Protocol
                     if (await ApplyPatchAsync(lun, startSector, byteOffset, sizeInBytes, value, ct))
                         successCount++;
                     else
-                        _log(string.Format("[Firehose] 补丁失败: LUN{0} Sector{1}", lun, startSector));
+                        _logDetail(string.Format("[Patch] 失败: LUN{0} Sector{1}", lun, startSector));
                 }
             }
             catch (Exception ex)
             {
-                _log(string.Format("[Firehose] 应用 Patch 异常: {0}", ex.Message));
+                _log(string.Format("[Patch] 应用异常: {0}", ex.Message));
             }
 
-            _log(string.Format("[Firehose] 成功应用 {0} 个补丁", successCount));
+            _logDetail(string.Format("[Patch] {0} 成功应用 {1} 个补丁", System.IO.Path.GetFileName(patchXmlPath), successCount));
             return successCount;
         }
 
@@ -1709,14 +1709,14 @@ namespace LoveAlways.Qualcomm.Protocol
 
                             var content = sb.ToString();
 
-                            // 提取设备日志
+                            // 提取设备日志 (详细日志，不在主界面显示)
                             if (content.Contains("<log "))
                             {
                                 var logMatches = Regex.Matches(content, @"<log value=""([^""]*)""\s*/>");
                                 foreach (Match m in logMatches)
                                 {
                                     if (m.Groups.Count > 1)
-                                        _log("[Device] " + m.Groups[1].Value);
+                                        _logDetail("[Device] " + m.Groups[1].Value);
                                 }
                             }
 
@@ -2161,12 +2161,12 @@ namespace LoveAlways.Qualcomm.Protocol
                         
                         var content = sb.ToString();
                         
-                        // 提取并显示设备日志
+                        // 提取设备日志 (详细日志，不在主界面显示)
                         var logMatches = Regex.Matches(content, @"<log value=""([^""]*)""\s*/>");
                         foreach (Match m in logMatches)
                         {
                             if (m.Groups.Count > 1)
-                                _log(string.Format("[Device] {0}", m.Groups[1].Value));
+                                _logDetail(string.Format("[Device] {0}", m.Groups[1].Value));
                         }
                         
                         // 检查响应

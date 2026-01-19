@@ -226,7 +226,7 @@ namespace LoveAlways.Qualcomm.Services
                 {
                     saharaProgress = percent => _progress((long)percent, 100);
                 }
-                _sahara = new SaharaClient(_portManager, _log, saharaProgress);
+                _sahara = new SaharaClient(_portManager, _log, _logDetail, saharaProgress);
 
                 bool saharaOk = await _sahara.HandshakeAndUploadAsync(programmerPath, ct);
                 if (!saharaOk)
@@ -488,7 +488,7 @@ namespace LoveAlways.Qualcomm.Services
                 }
                 
                 // 创建临时 Sahara 客户端
-                _sahara = new SaharaClient(_portManager, _log, null);
+                _sahara = new SaharaClient(_portManager, _log, _logDetail, null);
                 
                 // 尝试重置
                 bool success = await _sahara.TryResetSaharaAsync(ct);
@@ -543,7 +543,7 @@ namespace LoveAlways.Qualcomm.Services
                 
                 if (_sahara == null)
                 {
-                    _sahara = new SaharaClient(_portManager, _log, null);
+                    _sahara = new SaharaClient(_portManager, _log, _logDetail, null);
                 }
                 
                 _sahara.SendHardReset();
@@ -969,7 +969,7 @@ namespace LoveAlways.Qualcomm.Services
             // 负扇区使用官方格式直接发送给设备 (不依赖客户端 GPT 缓存)
             if (startSector < 0)
             {
-                _log(string.Format("[高通] 直接写入: {0} -> LUN{1} @ NUM_DISK_SECTORS{2}", label, lun, startSector));
+                _logDetail(string.Format("[高通] 写入: {0} -> LUN{1} @ NUM_DISK_SECTORS{2}", label, lun, startSector));
                 
                 // 使用官方 NUM_DISK_SECTORS-N 格式，让设备计算绝对地址
                 return await _firehose.FlashPartitionWithNegativeSectorAsync(
@@ -977,7 +977,7 @@ namespace LoveAlways.Qualcomm.Services
             }
             else
             {
-                _log(string.Format("[高通] 直接写入: {0} -> LUN{1} @ sector {2}", label, lun, startSector));
+                _logDetail(string.Format("[高通] 写入: {0} -> LUN{1} @ sector {2}", label, lun, startSector));
 
                 // 正数扇区正常写入
                 return await _firehose.FlashPartitionFromFileAsync(

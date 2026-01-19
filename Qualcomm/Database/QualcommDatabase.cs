@@ -67,6 +67,7 @@ namespace LoveAlways.Qualcomm.Database
             { 0x2A70, "Oxygen" },
             { 0x2A96, "Micromax" },
             { 0x50E1, "OnePlus" },
+            { 0xB0E1, "Xiaomi" },      // 小米 (新设备)
         };
 
         // HWID -> 芯片名称 (完整数据库 - 200+ 芯片)
@@ -262,7 +263,7 @@ namespace LoveAlways.Qualcomm.Database
             { 0x001BB0E1, "SA8650P" },
             { 0x001BC0E1, "SA8770P" },
             { 0x000EA0E1, "SA415M" },
-            { 0x001BC0E1, "SA7775P" },
+            { 0x001BD0E2, "SA7775P" },  // 修复: 原 0x001BC0E1 重复
             { 0x001F40E1, "QCS8250" },
             
             // ======================= 可穿戴 (SW/SW) =======================

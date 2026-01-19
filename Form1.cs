@@ -51,6 +51,8 @@ namespace LoveAlways
         private System.Windows.Forms.Timer _portRefreshTimer;
         private string _lastPortList = "";
         private int _lastEdlCount = 0;
+        private bool _isOnFastbootTab = false;  // 当前是否在 Fastboot 标签页
+        private string _selectedXmlDirectory = "";  // 存储选择的 XML 文件所在目录
 
         // Fastboot UI 控制器
         private FastbootUIController _fastbootController;
@@ -217,10 +219,7 @@ namespace LoveAlways
                 // 初始化时刷新端口列表（静默模式）
                 _lastEdlCount = _qualcommController.RefreshPorts(silent: true);
                 
-                // 端口下拉框点击时刷新（静默模式）
-                uiComboBox1.DropDown += (s, e) => _qualcommController.RefreshPorts(silent: true);
-                
-                // 启动端口自动检测定时器 (每2秒检测一次)
+                // 启动端口自动检测定时器 (每2秒检测一次，只在端口列表变化时才刷新)
                 _portRefreshTimer = new System.Windows.Forms.Timer();
                 _portRefreshTimer.Interval = 2000;
                 _portRefreshTimer.Tick += (s, e) => RefreshPortsIfIdle();
@@ -244,31 +243,33 @@ namespace LoveAlways
         {
             try
             {
+                // 如果当前在 Fastboot 标签页，不刷新高通端口
+                if (_isOnFastbootTab)
+                    return;
+                    
                 // 如果有正在进行的操作，不刷新
                 if (_qualcommController != null && _qualcommController.HasPendingOperation)
                     return;
 
                 // 获取当前端口列表用于变化检测
                 var ports = LoveAlways.Qualcomm.Common.PortDetector.DetectAllPorts();
+                var edlPorts = LoveAlways.Qualcomm.Common.PortDetector.DetectEdlPorts();
                 string currentPortList = string.Join(",", ports.ConvertAll(p => p.PortName));
                 
                 // 只有端口列表变化时才刷新
                 if (currentPortList != _lastPortList)
                 {
                     bool hadEdl = _lastEdlCount > 0;
+                    bool newEdlDetected = edlPorts.Count > 0 && !hadEdl;
                     _lastPortList = currentPortList;
                     
                     // 静默刷新，返回EDL端口数量
                     int edlCount = _qualcommController?.RefreshPorts(silent: true) ?? 0;
                     
                     // 新检测到EDL设备时提示
-                    if (edlCount > 0 && !hadEdl)
+                    if (newEdlDetected && edlPorts.Count > 0)
                     {
-                        var edlPorts = LoveAlways.Qualcomm.Common.PortDetector.DetectEdlPorts();
-                        if (edlPorts.Count > 0)
-                        {
-                            AppendLog($"检测到 EDL 设备: {edlPorts[0].PortName} - {edlPorts[0].Description}", Color.LimeGreen);
-                        }
+                        AppendLog($"检测到 EDL 设备: {edlPorts[0].PortName} - {edlPorts[0].Description}", Color.LimeGreen);
                     }
                     
                     _lastEdlCount = edlCount;
@@ -399,10 +400,13 @@ namespace LoveAlways
                 
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
+                    // 保存 XML 文件所在目录（用于后续搜索 patch 文件）
+                    _selectedXmlDirectory = Path.GetDirectoryName(ofd.FileNames[0]) ?? "";
+                    
                     if (ofd.FileNames.Length == 1)
-                {
-                    input6.Text = ofd.FileName;
-                    AppendLog($"已选择 XML: {Path.GetFileName(ofd.FileName)}", Color.Green);
+                    {
+                        input6.Text = ofd.FileName;
+                        AppendLog($"已选择 XML: {Path.GetFileName(ofd.FileName)}", Color.Green);
                     }
                     else
                     {
@@ -429,8 +433,25 @@ namespace LoveAlways
             if (xmlPaths.Length == 1 && Path.GetFileName(xmlPaths[0]).Contains("rawprogram"))
             {
                 string dir = Path.GetDirectoryName(xmlPaths[0]);
+                // 只匹配 rawprogram0.xml, rawprogram1.xml 等数字后缀的文件
+                // 排除 _BLANK_GPT, _WIPE_PARTITIONS, _ERASE 等特殊文件
                 var siblingFiles = Directory.GetFiles(dir, "rawprogram*.xml")
-                    .OrderBy(f => f).ToArray();
+                    .Where(f => {
+                        string fileName = Path.GetFileNameWithoutExtension(f).ToLower();
+                        // 只接受 rawprogram + 数字 格式 (如 rawprogram0, rawprogram1, rawprogram_unsparse)
+                        // 排除包含 blank, wipe, erase 的文件
+                        if (fileName.Contains("blank") || fileName.Contains("wipe") || fileName.Contains("erase"))
+                            return false;
+                        return true;
+                    })
+                    .OrderBy(f => {
+                        // 按数字排序
+                        string name = Path.GetFileNameWithoutExtension(f);
+                        var numStr = new string(name.Where(char.IsDigit).ToArray());
+                        int num;
+                        return int.TryParse(numStr, out num) ? num : 999;
+                    })
+                    .ToArray();
                 
                 if (siblingFiles.Length > 1)
                 {
@@ -487,6 +508,32 @@ namespace LoveAlways
                 {
                     input8.Text = programmerPath;
                     AppendLog($"自动识别引导文件: {Path.GetFileName(programmerPath)}", Color.Green);
+                }
+                
+                // 预先检查 patch 文件
+                if (!string.IsNullOrEmpty(_selectedXmlDirectory) && Directory.Exists(_selectedXmlDirectory))
+                {
+                    var patchFiles = Directory.GetFiles(_selectedXmlDirectory, "patch*.xml", SearchOption.TopDirectoryOnly)
+                        .Where(f => {
+                            string fn = Path.GetFileName(f).ToLower();
+                            return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
+                        })
+                        .OrderBy(f => {
+                            string name = Path.GetFileNameWithoutExtension(f);
+                            var numStr = new string(name.Where(char.IsDigit).ToArray());
+                            int num;
+                            return int.TryParse(numStr, out num) ? num : 999;
+                        })
+                        .ToList();
+                    
+                    if (patchFiles.Count > 0)
+                    {
+                        AppendLog($"检测到 {patchFiles.Count} 个 Patch 文件: {string.Join(", ", patchFiles.Select(f => Path.GetFileName(f)))}", Color.Blue);
+                    }
+                    else
+                    {
+                        AppendLog("未检测到 Patch 文件", Color.Gray);
+                    }
                 }
                 
                 // 将所有任务填充到分区列表
@@ -976,29 +1023,89 @@ namespace LoveAlways
                 {
                     // 收集 Patch 文件
                     List<string> patchFiles = new List<string>();
-                    string xmlDir = "";
-                    try
+                    
+                    // 优先使用存储的 XML 目录，如果为空则尝试从 input6.Text 解析
+                    string xmlDir = _selectedXmlDirectory;
+                    if (string.IsNullOrEmpty(xmlDir))
                     {
-                        // 安全获取目录路径，处理空字符串或无效路径
-                        string xmlPath = input6.Text?.Trim() ?? "";
-                        if (!string.IsNullOrEmpty(xmlPath) && (File.Exists(xmlPath) || Directory.Exists(Path.GetDirectoryName(xmlPath))))
+                        try
                         {
-                            xmlDir = Path.GetDirectoryName(xmlPath) ?? "";
+                            string xmlPath = input6.Text?.Trim() ?? "";
+                            if (!string.IsNullOrEmpty(xmlPath) && File.Exists(xmlPath))
+                            {
+                                xmlDir = Path.GetDirectoryName(xmlPath) ?? "";
+                            }
+                        }
+                        catch (ArgumentException)
+                        {
+                            // 路径包含无效字符，忽略
                         }
                     }
-                    catch (ArgumentException)
-                    {
-                        // 路径包含无效字符，忽略
-                        xmlDir = "";
-                    }
+                    
                     if (!string.IsNullOrEmpty(xmlDir) && Directory.Exists(xmlDir))
                     {
-                        // 搜索所有 patch XML 文件
-                        var foundPatches = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.TopDirectoryOnly)
-                            .Where(f => !Path.GetFileName(f).Contains("BLANK") && !Path.GetFileName(f).Contains("WIPE"))
-                            .OrderBy(f => f)
-                            .ToList();
-                        patchFiles.AddRange(foundPatches);
+                        AppendLog($"正在目录中搜索 Patch 文件: {xmlDir}", Color.Gray);
+                        
+                        // 1. 先搜索当前目录（同级目录）
+                        try
+                        {
+                            var sameDir = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.TopDirectoryOnly)
+                                .Where(f => {
+                                    string fn = Path.GetFileName(f).ToLower();
+                                    return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
+                                })
+                                .ToList();
+                            patchFiles.AddRange(sameDir);
+                        }
+                        catch { }
+                        
+                        // 2. 如果当前目录没找到，搜索子目录（如 images 文件夹）
+                        if (patchFiles.Count == 0)
+                        {
+                            try
+                            {
+                                var subDirs = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.AllDirectories)
+                                    .Where(f => {
+                                        string fn = Path.GetFileName(f).ToLower();
+                                        return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
+                                    })
+                                    .ToList();
+                                patchFiles.AddRange(subDirs);
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendLog($"搜索子目录 Patch 文件时出错: {ex.Message}", Color.Orange);
+                            }
+                        }
+
+                        // 3. 如果都没找到，尝试在父目录搜索
+                        if (patchFiles.Count == 0)
+                        {
+                            try
+                            {
+                                string parentDir = Path.GetDirectoryName(xmlDir);
+                                if (!string.IsNullOrEmpty(parentDir) && Directory.Exists(parentDir))
+                                {
+                                    AppendLog($"当前目录未找到，搜索父目录: {parentDir}", Color.Gray);
+                                    var parentPatches = Directory.GetFiles(parentDir, "patch*.xml", SearchOption.AllDirectories)
+                                        .Where(f => {
+                                            string fn = Path.GetFileName(f).ToLower();
+                                            return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
+                                        })
+                                        .ToList();
+                                    patchFiles.AddRange(parentPatches);
+                                }
+                            }
+                            catch { }
+                        }
+                        
+                        // 排序 patch 文件
+                        patchFiles = patchFiles.Distinct().OrderBy(f => {
+                            string name = Path.GetFileNameWithoutExtension(f);
+                            var numStr = new string(name.Where(char.IsDigit).ToArray());
+                            int num;
+                            return int.TryParse(numStr, out num) ? num : 999;
+                        }).ToList();
 
                         if (patchFiles.Count > 0)
                         {
@@ -1012,6 +1119,10 @@ namespace LoveAlways
                         {
                             AppendLog("未检测到 Patch 文件，跳过补丁步骤", Color.Gray);
                         }
+                    }
+                    else
+                    {
+                        AppendLog($"无法获取 XML 目录路径 (xmlDir={xmlDir ?? "null"})", Color.Orange);
                     }
 
                     // UFS 设备需要激活启动 LUN，eMMC 只有 LUN0 不需要
@@ -2711,8 +2822,10 @@ namespace LoveAlways
                 select5.TextChanged += (s, e) => FastbootSearchPartition();
                 select5.SelectedIndexChanged += (s, e) => { _fbIsSelectingFromDropdown = true; };
 
-                // 启动设备监控
-                _fastbootController.StartDeviceMonitoring();
+                // 注意：不在初始化时启动 Fastboot 设备监控
+                // 只有当用户切换到 Fastboot 标签页时才启动监控
+                // 避免覆盖高通端口列表
+                // _fastbootController.StartDeviceMonitoring();
 
                 // 绑定标签页切换事件 - 更新右侧设备信息显示
                 tabs1.SelectedIndexChanged += OnTabPageChanged;
@@ -2726,7 +2839,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 标签页切换事件 - 切换设备信息显示
+        /// 标签页切换事件 - 切换设备信息显示和设备列表
         /// </summary>
         private void OnTabPageChanged(object sender, EventArgs e)
         {
@@ -2739,10 +2852,19 @@ namespace LoveAlways
                 // tabPage3 是引导模式 (Fastboot)
                 if (selectedTab == tabPage3)
                 {
-                    // 切换到 Fastboot 标签页，更新设备信息
+                    // 切换到 Fastboot 标签页
+                    _isOnFastbootTab = true;
+                    
+                    // 停止高通端口刷新定时器
+                    _portRefreshTimer?.Stop();
+                    
+                    // 更新 Fastboot 设备信息
                     if (_fastbootController != null)
                     {
+                        // 启动 Fastboot 设备监控
+                        _fastbootController.StartDeviceMonitoring();
                         _fastbootController.UpdateDeviceInfoLabels();
+                        
                         // 更新设备计数标签
                         int deviceCount = _fastbootController.DeviceCount;
                         if (deviceCount == 0)
@@ -2756,7 +2878,19 @@ namespace LoveAlways
                 // tabPage2 是高通平台 (EDL)
                 else if (selectedTab == tabPage2)
                 {
-                    // 切换到高通标签页，恢复高通设备信息
+                    // 切换到高通标签页
+                    _isOnFastbootTab = false;
+                    
+                    // 停止 Fastboot 设备监控
+                    _fastbootController?.StopDeviceMonitoring();
+                    
+                    // 启动高通端口刷新定时器
+                    _portRefreshTimer?.Start();
+                    
+                    // 刷新高通端口列表到下拉框
+                    _qualcommController?.RefreshPorts(silent: true);
+                    
+                    // 恢复高通设备信息
                     if (_qualcommController != null && _qualcommController.IsConnected)
                     {
                         // 高通控制器会自动更新，这里不需要额外操作
@@ -2772,6 +2906,13 @@ namespace LoveAlways
                         uiLabel14.Text = "型号：等待连接";
                         uiLabel12.Text = "OTA：等待连接";
                     }
+                }
+                else
+                {
+                    // 其他标签页
+                    _isOnFastbootTab = false;
+                    // 停止 Fastboot 设备监控
+                    _fastbootController?.StopDeviceMonitoring();
                 }
             }
             catch { }

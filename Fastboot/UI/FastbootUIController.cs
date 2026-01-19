@@ -214,8 +214,81 @@ namespace LoveAlways.Fastboot.UI
                 catch { }
             }
 
+            // 初始化快捷命令下拉框
+            InitializeCommandComboBox();
+
             // 初始化设备信息显示
             ResetDeviceInfoLabels();
+        }
+
+        /// <summary>
+        /// 初始化快捷命令下拉框（自动补齐）
+        /// </summary>
+        private void InitializeCommandComboBox()
+        {
+            if (_commandComboBox == null) return;
+
+            try
+            {
+                // 标准 Fastboot 命令列表
+                var commands = new string[]
+                {
+                    // 设备信息
+                    "devices",
+                    "getvar all",
+                    "getvar product",
+                    "getvar serialno",
+                    "getvar version",
+                    "getvar secure",
+                    "getvar unlocked",
+                    "getvar current-slot",
+                    "getvar slot-count",
+                    "getvar max-download-size",
+                    "getvar is-userspace",
+                    "getvar hw-revision",
+                    "getvar variant",
+                    
+                    // 重启命令
+                    "reboot",
+                    "reboot-bootloader",
+                    "reboot-recovery",
+                    "reboot-fastboot",
+                    
+                    // 解锁/锁定
+                    "flashing unlock",
+                    "flashing lock",
+                    "flashing unlock_critical",
+                    "flashing get_unlock_ability",
+                    
+                    // 槽位操作
+                    "set_active a",
+                    "set_active b",
+                    
+                    // OEM 命令
+                    "oem device-info",
+                    "oem unlock",
+                    "oem lock",
+                    "oem get_unlock_ability",
+                    
+                    // 擦除
+                    "erase frp",
+                    "erase userdata",
+                    "erase cache",
+                    "erase metadata",
+                };
+
+                // 设置下拉框数据源
+                _commandComboBox.Items.Clear();
+                foreach (var cmd in commands)
+                {
+                    _commandComboBox.Items.Add(cmd);
+                }
+
+                // 设置自动补齐
+                _commandComboBox.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
+                _commandComboBox.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
+            }
+            catch { }
         }
 
         /// <summary>
@@ -1117,9 +1190,20 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 _cts = new CancellationTokenSource();
 
+                Log($"执行命令: {command}", Color.Blue);
                 var result = await _service.ExecuteCommandAsync(command, _cts.Token);
                 
-                return result != null;
+                if (!string.IsNullOrEmpty(result))
+                {
+                    // 显示命令执行结果
+                    Log($"结果: {result}", Color.Green);
+                    return true;
+                }
+                else
+                {
+                    Log("命令执行完成（无返回值）", Color.Gray);
+                    return true;
+                }
             }
             catch (Exception ex)
             {
@@ -1137,7 +1221,17 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 if (_commandComboBox == null) return null;
-                return _commandComboBox.SelectedItem?.ToString() ?? _commandComboBox.Text;
+                string cmd = _commandComboBox.SelectedItem?.ToString() ?? _commandComboBox.Text;
+                
+                if (string.IsNullOrEmpty(cmd)) return null;
+                
+                // 自动去掉 "fastboot " 前缀
+                if (cmd.StartsWith("fastboot ", StringComparison.OrdinalIgnoreCase))
+                {
+                    cmd = cmd.Substring(9).Trim();
+                }
+                
+                return cmd;
             }
             catch
             {

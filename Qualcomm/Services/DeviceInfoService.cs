@@ -11,6 +11,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using LoveAlways.Qualcomm.Common;
 using LoveAlways.Qualcomm.Database;
 using LoveAlways.Qualcomm.Models;
 
@@ -447,16 +448,28 @@ namespace LoveAlways.Qualcomm.Services
                             info.OtaVersion = value;
                         break;
                     
-                    // 小米完整版本 (优先级高于 ro.miui.ui.version.name)
+                    // 完整增量版本号 (小米: V14.0.8.0.TNJCNXM, 通用: eng.xxx.20240101)
                     case "ro.build.version.incremental":
-                        // 小米设备的完整版本号，如 "V14.0.8.0.TNJCNXM"
-                        if (!string.IsNullOrEmpty(value) && (value.Contains(".") && value.Length > 8))
+                    case "ro.system.build.version.incremental":
+                    case "ro.vendor.build.version.incremental":
+                        // 始终保存 Incremental
+                        if (string.IsNullOrEmpty(info.Incremental))
+                            info.Incremental = value;
+                        
+                        // 小米设备的完整版本号，如 "V14.0.8.0.TNJCNXM" 或 "OS1.0.x.x"
+                        if (!string.IsNullOrEmpty(value))
                         {
-                            // 如果当前版本只是简短的 Vxxx，用这个更完整的版本替换
-                            if (string.IsNullOrEmpty(info.OtaVersion) || 
-                                (info.OtaVersion.StartsWith("V") && info.OtaVersion.Length < 10 && !info.OtaVersion.Contains(".")))
+                            // 小米 MIUI/HyperOS 版本
+                            if (value.StartsWith("V") || value.StartsWith("OS"))
                             {
-                                info.OtaVersion = value;
+                                if (string.IsNullOrEmpty(info.OtaVersion) || info.OtaVersion.Length < value.Length)
+                                    info.OtaVersion = value;
+                            }
+                            // 其他设备：如果包含完整版本号格式
+                            else if (value.Contains(".") && value.Length > 8)
+                            {
+                                if (string.IsNullOrEmpty(info.OtaVersion))
+                                    info.OtaVersion = value;
                             }
                         }
                         break;
@@ -490,7 +503,11 @@ namespace LoveAlways.Qualcomm.Services
                     case "ro.build.display.id":
                     case "ro.system_ext.build.version.incremental":
                     case "ro.vendor.build.display.id":
-                        // 如果 ro.build.display.id.show 已设置，跳过这些
+                        // 始终保存 DisplayId
+                        if (string.IsNullOrEmpty(info.DisplayId) && key == "ro.build.display.id")
+                            info.DisplayId = value;
+                        
+                        // 如果 ro.build.display.id.show 已设置，跳过 OtaVersion 设置
                         if (!string.IsNullOrEmpty(info.OtaVersion) && info.OtaVersion.Contains("("))
                             break;
                         
@@ -498,7 +515,7 @@ namespace LoveAlways.Qualcomm.Services
                         if (value.Contains("ZUI") || value.Contains("ZUXOS"))
                         {
                             info.OtaVersionFull = value;
-                            // 提取精简版: 1.1.10.308
+                            // 提取精简版: 17.0.10.308
                             var m = Regex.Match(value, @"\d+\.\d+\.\d+\.\d+");
                             if (m.Success) info.OtaVersion = m.Value;
                         }
@@ -512,6 +529,12 @@ namespace LoveAlways.Qualcomm.Services
                         {
                             info.OtaVersionFull = value;
                             info.OtaVersion = value; // 直接使用完整格式
+                        }
+                        // 小米 MIUI/HyperOS 版本格式: V14.0.8.0.TNJCNXM 或 OS1.0.x.x
+                        else if (value.StartsWith("V") || value.StartsWith("OS"))
+                        {
+                            if (string.IsNullOrEmpty(info.OtaVersion) || info.OtaVersion.Length < value.Length)
+                                info.OtaVersion = value;
                         }
                         else
                         {
@@ -619,9 +642,15 @@ namespace LoveAlways.Qualcomm.Services
                     
                     case "ro.product.device":
                     case "ro.product.vendor.device":
+                    case "ro.product.odm.device":
+                    case "ro.product.system.device":
                     case "ro.build.product":
+                    case "ro.product.board":
                         if (string.IsNullOrEmpty(info.Codename))
                             info.Codename = value;
+                        // 同时设置 Device 字段作为备选
+                        if (string.IsNullOrEmpty(info.Device))
+                            info.Device = value;
                         break;
                     
                     case "ro.build.id":
@@ -639,7 +668,26 @@ namespace LoveAlways.Qualcomm.Services
                     case "ro.product.vendor.name":
                         if (string.IsNullOrEmpty(info.DeviceName))
                             info.DeviceName = value;
+                        // 如果没有 Codename，product.name 通常也是设备代号
+                        if (string.IsNullOrEmpty(info.Codename) && !value.Contains(" "))
+                            info.Codename = value;
                         break;
+                }
+            }
+            
+            // 如果仍然没有 Codename，尝试从 Fingerprint 中提取
+            // Fingerprint 格式: Brand/device/device:version/... 例如 Xiaomi/polaris/polaris:10/...
+            if (string.IsNullOrEmpty(info.Codename) && !string.IsNullOrEmpty(info.Fingerprint))
+            {
+                var parts = info.Fingerprint.Split('/');
+                if (parts.Length >= 3)
+                {
+                    // 第二个和第三个部分通常包含设备代号
+                    string candidate = parts[1]; // 通常是设备代号
+                    if (!string.IsNullOrEmpty(candidate) && !candidate.Contains(" ") && candidate.Length > 2)
+                    {
+                        info.Codename = candidate;
+                    }
                 }
             }
 
@@ -796,28 +844,130 @@ namespace LoveAlways.Qualcomm.Services
         /// </summary>
         public string DetectFileSystem(byte[] data)
         {
-            if (data == null || data.Length < 2048) return "unknown";
+            if (data == null || data.Length < 512) 
+            {
+                _log(string.Format("  数据太短: {0} 字节", data?.Length ?? 0));
+                return "unknown";
+            }
+
+            // 打印调试信息
+            string debugInfo = "";
+            if (data.Length >= 4)
+            {
+                debugInfo += string.Format("@0={0:X2}{1:X2}{2:X2}{3:X2}", 
+                    data[0], data[1], data[2], data[3]);
+            }
+            if (data.Length >= 1028)
+            {
+                debugInfo += string.Format(" @1024={0:X2}{1:X2}{2:X2}{3:X2}", 
+                    data[1024], data[1025], data[1026], data[1027]);
+            }
+            if (data.Length >= 1082)
+            {
+                // EXT4 魔数位置: 1024 + 56 = 1080
+                debugInfo += string.Format(" @1080={0:X2}{1:X2}", 
+                    data[1080], data[1081]);
+            }
+            _logDetail(string.Format("  魔数: {0}", debugInfo));
+
+            // 检查 Sparse 镜像头 (0xED26FF3A)
+            if (data.Length >= 4)
+            {
+                uint magic0 = BitConverter.ToUInt32(data, 0);
+                if (magic0 == 0xED26FF3A)
+                {
+                    _log("  → Sparse 镜像格式");
+                    return "sparse";
+                }
+            }
+
+            // EROFS: superblock 在偏移 1024，magic = 0xE0F5E1E2 (小端)
+            if (data.Length >= 1024 + 4)
+            {
+                uint erofsAt1024 = BitConverter.ToUInt32(data, 1024);
+                if (erofsAt1024 == EROFS_MAGIC)
+                {
+                    return "erofs";
+                }
+            }
+
+            // EROFS 在偏移 0 (某些特殊情况)
+            if (data.Length >= 4)
+            {
+                uint erofsAt0 = BitConverter.ToUInt32(data, 0);
+                if (erofsAt0 == EROFS_MAGIC)
+                {
+                    _log("  → EROFS 在偏移 0");
+                    return "erofs_raw";
+                }
+            }
 
             // EXT4: superblock 在偏移 1024，magic 在 offset 56 (0xEF53)
             if (data.Length >= 1024 + 58)
             {
                 ushort ext4Magic = BitConverter.ToUInt16(data, 1024 + 56);
-                if (ext4Magic == EXT4_MAGIC) return "ext4";
+                if (ext4Magic == EXT4_MAGIC) 
+                {
+                    return "ext4";
+                }
             }
 
-            // EROFS: superblock 在偏移 1024，magic 在 offset 0
-            if (data.Length >= 1024 + 4)
-            {
-                bool isErofs = (data[1024] == 0xE2 && data[1025] == 0xE1 &&
-                               data[1026] == 0xF5 && data[1027] == 0xE0);
-                if (isErofs) return "erofs";
-            }
-
-            // F2FS
+            // F2FS: magic at offset 1024
             if (data.Length >= 1024 + 4)
             {
                 uint f2fsMagic = BitConverter.ToUInt32(data, 1024);
                 if (f2fsMagic == 0xF2F52010) return "f2fs";
+            }
+
+            // SquashFS: magic = 0x73717368 ("hsqs") 或 0x68737173 ("sqsh")
+            if (data.Length >= 4)
+            {
+                uint sqshMagic = BitConverter.ToUInt32(data, 0);
+                if (sqshMagic == 0x73717368 || sqshMagic == 0x68737173) return "squashfs";
+            }
+
+            // 检测 Android Boot Image (boot, recovery)
+            if (data.Length >= 8)
+            {
+                // ANDROID! magic
+                if (data[0] == 'A' && data[1] == 'N' && data[2] == 'D' && data[3] == 'R' &&
+                    data[4] == 'O' && data[5] == 'I' && data[6] == 'D' && data[7] == '!')
+                {
+                    return "android_boot";
+                }
+            }
+
+            // 检测 AVB (Android Verified Boot) footer - 可能在分区末尾
+            // AVB 签名的分区通常有特殊的头部结构
+
+            // 检测可能的加密或签名分区 (小米等厂商可能使用)
+            if (data.Length >= 4)
+            {
+                // 检查是否全是 0x00 (空分区)
+                bool allZero = true;
+                for (int i = 0; i < Math.Min(64, data.Length); i++)
+                {
+                    if (data[i] != 0) { allZero = false; break; }
+                }
+                if (allZero)
+                {
+                    _log("  → 分区数据为空");
+                    return "empty";
+                }
+                
+                // 检测小米特定的签名头部 (S72_, S27_ 等类似格式)
+                // 这些签名头部表示分区有签名/AVB数据，真正的文件系统在后面
+                if (data.Length >= 4)
+                {
+                    char c0 = (char)data[0], c1 = (char)data[1], c2 = (char)data[2], c3 = (char)data[3];
+                    // 检查是否看起来像签名头 (ASCII 字母/数字/下划线开头)
+                    bool looksLikeSignature = (c0 >= 'A' && c0 <= 'Z') || (c0 >= '0' && c0 <= '9');
+                    if (looksLikeSignature && (c3 == '_' || c2 == '_'))
+                    {
+                        _logDetail(string.Format("  → 检测到签名头: {0}{1}{2}{3} (文件系统可能在后面)", c0, c1, c2, c3));
+                        return "signed";  // 返回 signed 表示需要在后面偏移查找
+                    }
+                }
             }
 
             return "unknown";
@@ -835,13 +985,15 @@ namespace LoveAlways.Qualcomm.Services
         /// <param name="hasSuper">是否存在 super 分区</param>
         /// <param name="superStartSector">super 的物理起始扇区</param>
         /// <param name="physicalSectorSize">扇区大小</param>
+        /// <param name="vendorName">设备厂商名称 (可选，用于过滤分区)</param>
         /// <returns>解析后的 build.prop 信息</returns>
         public async Task<BuildPropInfo> ReadBuildPropFromDevice(
             Func<string, long, int, Task<byte[]>> readPartition, 
             string activeSlot = "", 
             bool hasSuper = true,
             long superStartSector = 0,
-            int physicalSectorSize = 512)
+            int physicalSectorSize = 512,
+            string vendorName = "")
         {
             try
             {
@@ -899,7 +1051,17 @@ namespace LoveAlways.Qualcomm.Services
 
                 _log("正在扫描物理分区以提取 build.prop...");
                 var searchPartitions = new List<string>();
-                string slotSuffix = string.IsNullOrEmpty(activeSlot) ? "" : "_" + activeSlot.ToLower().TrimStart('_');
+                
+                // 过滤无效的槽位值
+                string normalizedSlot = activeSlot;
+                if (string.IsNullOrEmpty(normalizedSlot) || 
+                    normalizedSlot == "undefined" || 
+                    normalizedSlot == "unknown" || 
+                    normalizedSlot == "nonexistent")
+                {
+                    normalizedSlot = "";
+                }
+                string slotSuffix = string.IsNullOrEmpty(normalizedSlot) ? "" : "_" + normalizedSlot.ToLower().TrimStart('_');
 
                 // 传统分区结构：优先扫描 system/vendor 分区
                 if (!hasSuper)
@@ -921,6 +1083,23 @@ namespace LoveAlways.Qualcomm.Services
                 searchPartitions.Add("my_manifest");
                 searchPartitions.Add("cust");
                 searchPartitions.Add("lenovocust");
+                
+                // 如果是没有 super 的旧设备，尝试更多分区
+                if (!hasSuper)
+                {
+                    // 小米旧设备可能有 persist 分区包含设备信息
+                    searchPartitions.Add("persist");
+                    // product 分区可能包含 build.prop
+                    if (!string.IsNullOrEmpty(slotSuffix))
+                        searchPartitions.Add("product" + slotSuffix);
+                    searchPartitions.Add("product");
+                    // odm 分区
+                    if (!string.IsNullOrEmpty(slotSuffix))
+                        searchPartitions.Add("odm" + slotSuffix);
+                    searchPartitions.Add("odm");
+                }
+                
+                _log(string.Format("  将扫描 {0} 个分区", searchPartitions.Count));
 
                 foreach (var partName in searchPartitions)
                 {
@@ -956,7 +1135,16 @@ namespace LoveAlways.Qualcomm.Services
                 var lpPartitions = ParseLpMetadataFromDevice(readFromSuper, superStartSector, physicalSectorSize);
                 if (lpPartitions == null || lpPartitions.Count == 0) return null;
 
-                string slotSuffix = string.IsNullOrEmpty(activeSlot) ? "" : "_" + activeSlot.ToLower().TrimStart('_');
+                // 过滤无效的槽位值
+                string normalizedSlot = activeSlot;
+                if (string.IsNullOrEmpty(normalizedSlot) || 
+                    normalizedSlot == "undefined" || 
+                    normalizedSlot == "unknown" || 
+                    normalizedSlot == "nonexistent")
+                {
+                    normalizedSlot = "";
+                }
+                string slotSuffix = string.IsNullOrEmpty(normalizedSlot) ? "" : "_" + normalizedSlot.ToLower().TrimStart('_');
                 
                 // 2. 优先级排序：从低到高读取，高优先级覆盖低优先级
                 // 顺序：System -> System_ext -> Product -> Vendor -> ODM -> My_manifest
@@ -1074,26 +1262,122 @@ namespace LoveAlways.Qualcomm.Services
                 
                 // 读取头部探测文件系统 (已有超时保护)
                 byte[] header = await readPartition(partitionName, 0, 4096);
-                if (header == null) return null;
+                if (header == null) 
+                {
+                    _log(string.Format("  → {0}: 无法读取头部数据", partitionName));
+                    return null;
+                }
 
                 string fsType = DetectFileSystem(header);
-                if (fsType == "unknown") return null;
+                long fsBaseOffset = 0;  // 文件系统的实际起始偏移
+                
+                // 如果检测到 sparse 格式，尝试跳过 sparse 头后重新检测
+                if (fsType == "sparse")
+                {
+                    _log(string.Format("  → {0}: 检测到 Sparse 格式，跳过头部重新检测...", partitionName));
+                    byte[] moreData = await readPartition(partitionName, 4096, 4096);
+                    if (moreData != null && moreData.Length > 1024)
+                    {
+                        fsType = DetectFileSystem(moreData);
+                        if (fsType != "unknown" && fsType != "sparse")
+                        {
+                            _log(string.Format("  → {0}: Sparse 内部为 {1} 文件系统", partitionName, fsType.ToUpper()));
+                            fsBaseOffset = 4096;
+                        }
+                    }
+                }
+                
+                // erofs_raw 表示 EROFS 魔数在偏移 0，需要调整读取偏移
+                if (fsType == "erofs_raw")
+                {
+                    fsType = "erofs";
+                    _logDetail(string.Format("  → {0}: 检测到无偏移 EROFS 文件系统", partitionName));
+                }
+                
+                // 如果检测到 empty、unknown 或 signed，尝试在不同偏移处查找文件系统
+                // 某些设备在分区头部有签名/AVB数据，真正的文件系统在后面
+                if (fsType == "unknown" || fsType == "empty" || fsType == "signed")
+                {
+                    // 尝试常见的偏移位置: 4KB, 8KB, 64KB, 1MB, 2MB, 4MB
+                    // 小米等厂商可能在分区头部有签名头 (如 S72_ 等)
+                    long[] tryOffsets = { 4096, 8192, 65536, 1048576, 2097152, 4194304 };
+                    foreach (var offset in tryOffsets)
+                    {
+                        byte[] dataAtOffset = await readPartition(partitionName, offset, 4096);
+                        if (dataAtOffset != null && dataAtOffset.Length >= 2048)
+                        {
+                            string fsAtOffset = DetectFileSystem(dataAtOffset);
+                            if (fsAtOffset != "unknown" && fsAtOffset != "empty" && fsAtOffset != "sparse")
+                            {
+                                _logDetail(string.Format("  → {0}: 在偏移 0x{1:X} 处检测到 {2} 文件系统", 
+                                    partitionName, offset, fsAtOffset.ToUpper()));
+                                fsType = fsAtOffset;
+                                fsBaseOffset = offset;  // 记录文件系统的实际偏移
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (fsType == "unknown" || fsType == "sparse" || fsType == "empty" || fsType == "signed") 
+                {
+                    _log(string.Format("  → {0}: 未识别的文件系统格式，尝试暴力扫描...", partitionName));
+                    
+                    // 暴力扫描：直接在分区数据中搜索 build.prop 属性
+                    var bruteForceResult = await BruteForceScanPartition(partitionName, readPartition);
+                    if (bruteForceResult != null)
+                    {
+                        _log(string.Format("  → {0}: 暴力扫描成功", partitionName));
+                        return bruteForceResult;
+                    }
+                    return null;
+                }
+                
+                _logDetail(string.Format("  → {0}: 检测到 {1} 文件系统 (偏移=0x{2:X})，正在解析...", 
+                    partitionName, fsType.ToUpper(), fsBaseOffset));
 
                 var lpInfo = new LpPartitionInfo { Name = partitionName, RelativeSector = 0, FileSystem = fsType };
                 
                 // 使用 Task.Run 避免同步 Wait() 导致 UI 线程死锁
                 // 设置 15 秒超时
+                // 关键修复：使用 fsBaseOffset 调整读取偏移
+                long capturedBaseOffset = fsBaseOffset;  // 捕获偏移量用于闭包
+                string capturedPartName = partitionName;  // 捕获分区名
                 var parseTask = Task.Run(() => 
                 {
                     DeviceReadDelegate readDelegate = (offset, size) => {
-                        try
+                        // 增加重试机制，提高 I/O 稳定性
+                        for (int retry = 0; retry < 3; retry++)
                         {
-                            var t = readPartition(partitionName, offset, size);
-                            if (!t.Wait(TimeSpan.FromSeconds(8)))
-                                return null;
-                            return t.Result;
+                            try
+                            {
+                                // 关键：在文件系统基础偏移上添加请求的偏移
+                                var t = readPartition(capturedPartName, capturedBaseOffset + offset, size);
+                                // system 分区读取较慢，增加超时时间
+                                int readTimeoutSec = capturedPartName.Contains("system") ? 15 : 10;
+                                if (!t.Wait(TimeSpan.FromSeconds(readTimeoutSec)))
+                                {
+                                    if (retry < 2)
+                                    {
+                                        System.Threading.Thread.Sleep(200);  // 短暂等待后重试
+                                        continue;
+                                    }
+                                    return null;
+                                }
+                                if (t.Result != null && t.Result.Length > 0)
+                                    return t.Result;
+                            }
+                            catch (Exception ex)
+                            {
+                                if (retry < 2)
+                                {
+                                    System.Threading.Thread.Sleep(200);
+                                    continue;
+                                }
+                                _logDetail(string.Format("读取分区数据失败: {0}", ex.Message));
+                            }
                         }
-                        catch { return null; }
+                        return null;
                     };
 
                     if (fsType == "erofs")
@@ -1103,12 +1387,81 @@ namespace LoveAlways.Qualcomm.Services
                     return null;
                 });
 
-                if (await Task.WhenAny(parseTask, Task.Delay(15000)) == parseTask)
+                // system 分区较大，需要更长超时时间
+                int timeoutMs = partitionName.Contains("system") ? 30000 : 20000;
+                if (await Task.WhenAny(parseTask, Task.Delay(timeoutMs)) == parseTask)
                     return parseTask.Result;
                 
-                _log(string.Format("解析分区 {0} 超时", partitionName));
+                _log(string.Format("解析分区 {0} 超时 ({1}秒)", partitionName, timeoutMs / 1000));
             }
             catch { }
+            return null;
+        }
+
+        /// <summary>
+        /// 暴力扫描分区数据，直接搜索 build.prop 属性
+        /// 用于文件系统无法识别的情况
+        /// </summary>
+        private async Task<BuildPropInfo> BruteForceScanPartition(string partitionName, Func<string, long, int, Task<byte[]>> readPartition)
+        {
+            try
+            {
+                // 分区可能很大，只扫描前 16MB
+                const int maxScanSize = 16 * 1024 * 1024;
+                const int chunkSize = 512 * 1024;  // 每次读取 512KB
+                
+                var foundProps = new List<string>();
+                
+                for (long offset = 0; offset < maxScanSize; offset += chunkSize)
+                {
+                    byte[] chunk = await readPartition(partitionName, offset, chunkSize);
+                    if (chunk == null || chunk.Length == 0)
+                        break;
+                    
+                    // 转换为字符串并搜索属性
+                    string content = Encoding.UTF8.GetString(chunk);
+                    
+                    // 搜索常见的 build.prop 属性
+                    var patterns = new[] {
+                        @"ro\.product\.model=[^\r\n\x00]+",
+                        @"ro\.product\.brand=[^\r\n\x00]+",
+                        @"ro\.product\.name=[^\r\n\x00]+",
+                        @"ro\.product\.device=[^\r\n\x00]+",
+                        @"ro\.product\.manufacturer=[^\r\n\x00]+",
+                        @"ro\.product\.marketname=[^\r\n\x00]+",
+                        @"ro\.build\.display\.id=[^\r\n\x00]+",
+                        @"ro\.build\.version\.release=[^\r\n\x00]+",
+                        @"ro\.build\.version\.sdk=[^\r\n\x00]+",
+                        @"ro\.miui\.ui\.version\.[^\r\n\x00]+",
+                        @"ro\.build\.MiFavor_version=[^\r\n\x00]+"
+                    };
+                    
+                    foreach (var pattern in patterns)
+                    {
+                        var matches = System.Text.RegularExpressions.Regex.Matches(content, pattern);
+                        foreach (System.Text.RegularExpressions.Match m in matches)
+                        {
+                            if (!foundProps.Contains(m.Value))
+                                foundProps.Add(m.Value);
+                        }
+                    }
+                    
+                    // 如果找到足够多的属性，提前结束
+                    if (foundProps.Count >= 5)
+                        break;
+                }
+                
+                if (foundProps.Count > 0)
+                {
+                    _log(string.Format("    暴力扫描找到 {0} 个属性", foundProps.Count));
+                    string combined = string.Join("\n", foundProps);
+                    return ParseBuildProp(combined);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logDetail(string.Format("暴力扫描失败: {0}", ex.Message));
+            }
             return null;
         }
 
@@ -1180,11 +1533,11 @@ namespace LoveAlways.Qualcomm.Services
                 int xattrSize = xattrCount > 0 ? (xattrCount - 1) * 4 + 12 : 0;
                 int inlineDataOffset = inodeSize + xattrSize;
 
-                _logDetail(string.Format("根目录: layout={0}, size={1}", dataLayout, dirSize));
+                _log(string.Format("  EROFS 根目录: layout={0}, size={1}", dataLayout, dirSize));
 
                 // 读取目录数据
                 byte[] dirData = null;
-                if (dataLayout == 2) // FLAT_INLINE
+                if (dataLayout == 2) // FLAT_INLINE - 数据内联在 inode 中
                 {
                     int totalSize = inlineDataOffset + (int)Math.Min(dirSize, blockSize);
                     var inodeAndData = readFromPartition(rootInodeOffset, totalSize);
@@ -1195,28 +1548,41 @@ namespace LoveAlways.Qualcomm.Services
                         Array.Copy(inodeAndData, inlineDataOffset, dirData, 0, dataLen);
                     }
                 }
-                else if (dataLayout == 0) // FLAT_PLAIN
+                else if (dataLayout == 0) // FLAT_PLAIN - 数据在连续块中
                 {
                     long dataOffset = (long)rawBlkAddr * blockSize;
                     dirData = readFromPartition(dataOffset, (int)Math.Min(dirSize, blockSize * 2));
                 }
+                else if (dataLayout == 3 || dataLayout == 1) // FLAT_COMPR (3) 或 FLAT_COMPR_LEGACY (1) - 压缩数据
+                {
+                    _log("  检测到压缩 EROFS，尝试 LZ4 解压...");
+                    dirData = ReadErofsCompressedData(readFromPartition, inodeData, isExtended, rawBlkAddr, blockSize, dirSize, metaBlkAddr);
+                }
 
                 if (dirData == null || dirData.Length < 12)
                 {
-                    _log("无法读取目录数据");
+                    _log(string.Format("  无法读取目录数据 (layout={0})", dataLayout));
                     return null;
                 }
 
                 // 解析目录项并查找 build.prop 或 etc 目录
                 var entries = ParseErofsDirectoryEntries(dirData, dirSize);
-                _logDetail(string.Format("根目录包含 {0} 个条目", entries.Count));
+                _log(string.Format("  EROFS 根目录包含 {0} 个条目", entries.Count));
+                
+                // 打印前几个条目帮助调试
+                int debugCount = 0;
+                foreach (var entry in entries)
+                {
+                    if (debugCount++ < 8)
+                        _logDetail(string.Format("    - {0} (type={1})", entry.Item2, entry.Item3));
+                }
 
                 // 先在根目录查找 build.prop
                 foreach (var entry in entries)
                 {
                     if (entry.Item2 == "build.prop" && entry.Item3 == 1)
                     {
-                        _log("找到 /build.prop");
+                        _logDetail("找到 /build.prop");
                         return ReadErofsFile(readFromPartition, metaBlkAddr, blockSize, entry.Item1);
                     }
                 }
@@ -1230,13 +1596,13 @@ namespace LoveAlways.Qualcomm.Services
                     {
                         if (entry.Item2 == dirName && entry.Item3 == 2)
                         {
-                            _logDetail(string.Format("进入 /{0} 目录...", dirName));
+                            _log(string.Format("  进入 /{0} 目录搜索...", dirName));
                             var subEntries = ReadErofsDirectory(readFromPartition, metaBlkAddr, blockSize, entry.Item1);
                             foreach (var subEntry in subEntries)
                             {
                                 if (subEntry.Item2 == "build.prop" && subEntry.Item3 == 1)
                                 {
-                                    _log(string.Format("找到 /{0}/build.prop", dirName));
+                                    _logDetail(string.Format("找到 /{0}/build.prop", dirName));
                                     return ReadErofsFile(readFromPartition, metaBlkAddr, blockSize, subEntry.Item1);
                                 }
                             }
@@ -1244,7 +1610,7 @@ namespace LoveAlways.Qualcomm.Services
                     }
                 }
 
-                _log("未找到 build.prop");
+                _logDetail("未找到 build.prop");
                 return null;
             }
             catch (Exception ex)
@@ -1252,6 +1618,184 @@ namespace LoveAlways.Qualcomm.Services
                 _log(string.Format("解析 EROFS 失败: {0}", ex.Message));
                 return null;
             }
+        }
+
+        /// <summary>
+        /// 读取 EROFS 压缩数据 (FLAT_COMPR/FLAT_COMPR_LEGACY)
+        /// 支持 LZ4 和 LZMA 压缩
+        /// </summary>
+        private byte[] ReadErofsCompressedData(DeviceReadDelegate read, byte[] inodeData, bool isExtended, 
+            uint rawBlkAddr, uint blockSize, long uncompressedSize, uint metaBlkAddr)
+        {
+            try
+            {
+                // EROFS 压缩格式：
+                // - 压缩数据存储在连续的块中
+                // - 每个压缩块有一个 cluster 头描述压缩信息
+                // - 使用 Z_EROFS_COMPR_HEAD_SIZE = 4 字节头
+                
+                long dataOffset = (long)rawBlkAddr * blockSize;
+                
+                // 读取足够多的数据（压缩后通常更小，但我们读取原始大小的数据）
+                int readSize = (int)Math.Min(uncompressedSize * 2, blockSize * 4);
+                byte[] compressedData = read(dataOffset, readSize);
+                
+                if (compressedData == null || compressedData.Length == 0)
+                {
+                    _logDetail("无法读取压缩数据");
+                    return null;
+                }
+
+                // 检测压缩类型
+                // EROFS 压缩块格式：[压缩头 4字节][压缩数据]
+                // 压缩头: 第一个字节标识压缩算法
+                // 0x01 = LZ4, 0x02 = LZMA/MicroLZMA
+
+                // 尝试方法1: 直接 LZ4 解压 (无头)
+                byte[] result = Lz4Decoder.Decompress(compressedData, (int)uncompressedSize);
+                if (result != null && result.Length > 0 && IsValidDirectoryData(result))
+                {
+                    _log("  LZ4 解压成功 (无头格式)");
+                    return result;
+                }
+
+                // 尝试方法2: 跳过 4 字节压缩头
+                if (compressedData.Length > 4)
+                {
+                    result = Lz4Decoder.Decompress(compressedData, 4, compressedData.Length - 4, (int)uncompressedSize);
+                    if (result != null && result.Length > 0 && IsValidDirectoryData(result))
+                    {
+                        _log("  LZ4 解压成功 (4字节头)");
+                        return result;
+                    }
+                }
+
+                // 尝试方法3: EROFS 块格式解压
+                result = Lz4Decoder.DecompressErofsBlock(compressedData, (int)uncompressedSize);
+                if (result != null && result.Length > 0 && IsValidDirectoryData(result))
+                {
+                    _log("  LZ4 解压成功 (EROFS 块格式)");
+                    return result;
+                }
+
+                // 尝试方法4: 扫描数据中的 LZ4 块
+                for (int offset = 0; offset < Math.Min(32, compressedData.Length - 16); offset++)
+                {
+                    result = Lz4Decoder.Decompress(compressedData, offset, compressedData.Length - offset, (int)uncompressedSize);
+                    if (result != null && result.Length > 0 && IsValidDirectoryData(result))
+                    {
+                        _log(string.Format("  LZ4 解压成功 (偏移 {0})", offset));
+                        return result;
+                    }
+                }
+
+                _log("  LZ4 解压失败，压缩格式可能不支持");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logDetail(string.Format("解压失败: {0}", ex.Message));
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 读取 EROFS 压缩文件数据
+        /// </summary>
+        private byte[] ReadErofsCompressedFileData(DeviceReadDelegate read, uint rawBlkAddr, uint blockSize, long uncompressedSize)
+        {
+            try
+            {
+                long dataOffset = (long)rawBlkAddr * blockSize;
+                
+                // 读取压缩数据（build.prop 通常很小，压缩后更小）
+                int readSize = (int)Math.Min(uncompressedSize * 2, blockSize * 4);
+                byte[] compressedData = read(dataOffset, readSize);
+                
+                if (compressedData == null || compressedData.Length == 0)
+                    return null;
+
+                // 尝试多种解压方式
+                byte[] result;
+
+                // 方法1: 直接 LZ4 解压
+                result = Lz4Decoder.Decompress(compressedData, (int)uncompressedSize);
+                if (result != null && result.Length > 0 && IsValidTextFile(result))
+                    return result;
+
+                // 方法2: 跳过 4 字节压缩头
+                if (compressedData.Length > 4)
+                {
+                    result = Lz4Decoder.Decompress(compressedData, 4, compressedData.Length - 4, (int)uncompressedSize);
+                    if (result != null && result.Length > 0 && IsValidTextFile(result))
+                        return result;
+                }
+
+                // 方法3: EROFS 块格式
+                result = Lz4Decoder.DecompressErofsBlock(compressedData, (int)uncompressedSize);
+                if (result != null && result.Length > 0 && IsValidTextFile(result))
+                    return result;
+
+                // 方法4: 扫描偏移
+                for (int offset = 1; offset < Math.Min(16, compressedData.Length - 16); offset++)
+                {
+                    result = Lz4Decoder.Decompress(compressedData, offset, compressedData.Length - offset, (int)uncompressedSize);
+                    if (result != null && result.Length > 0 && IsValidTextFile(result))
+                        return result;
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 验证是否像文本文件（build.prop）
+        /// </summary>
+        private bool IsValidTextFile(byte[] data)
+        {
+            if (data == null || data.Length < 10)
+                return false;
+
+            // build.prop 应该包含大量可打印 ASCII 字符
+            int printableCount = 0;
+            int checkLen = Math.Min(data.Length, 256);
+            
+            for (int i = 0; i < checkLen; i++)
+            {
+                byte b = data[i];
+                if ((b >= 0x20 && b <= 0x7E) || b == 0x0A || b == 0x0D || b == 0x09)
+                    printableCount++;
+            }
+
+            // 至少 80% 应该是可打印字符
+            return (printableCount * 100 / checkLen) >= 80;
+        }
+
+        /// <summary>
+        /// 验证解压后的数据是否像目录数据
+        /// </summary>
+        private bool IsValidDirectoryData(byte[] data)
+        {
+            if (data == null || data.Length < 12)
+                return false;
+
+            // EROFS 目录格式：前 8 字节是 nid，8-9 字节是 nameoff
+            ushort firstNameOff = BitConverter.ToUInt16(data, 8);
+            
+            // nameoff 应该是 12 的倍数且不为 0
+            if (firstNameOff == 0 || firstNameOff % 12 != 0 || firstNameOff > data.Length)
+                return false;
+
+            // 检查第一个条目的 nid 是否合理
+            ulong firstNid = BitConverter.ToUInt64(data, 0);
+            if (firstNid > 0xFFFFFFFF)  // nid 通常不会太大
+                return false;
+
+            return true;
         }
 
         /// <summary>
@@ -1296,6 +1840,10 @@ namespace LoveAlways.Qualcomm.Services
                 {
                     long dataOffset = (long)rawBlkAddr * blockSize;
                     dirData = read(dataOffset, (int)Math.Min(dirSize, blockSize * 2));
+                }
+                else if (dataLayout == 3 || dataLayout == 1) // FLAT_COMPR 压缩
+                {
+                    dirData = ReadErofsCompressedData(read, inodeData, isExtended, rawBlkAddr, blockSize, dirSize, metaBlkAddr);
                 }
 
                 if (dirData != null)
@@ -1399,6 +1947,10 @@ namespace LoveAlways.Qualcomm.Services
                 {
                     long dataOffset = (long)rawBlkAddr * blockSize;
                     fileData = read(dataOffset, readSize);
+                }
+                else if (dataLayout == 3 || dataLayout == 1) // FLAT_COMPR 压缩
+                {
+                    fileData = ReadErofsCompressedFileData(read, rawBlkAddr, blockSize, fileSize);
                 }
 
                 if (fileData != null && fileData.Length > 0)
@@ -1523,7 +2075,7 @@ namespace LoveAlways.Qualcomm.Services
                 {
                     if (entry.Item2 == "build.prop" && entry.Item3 == 1) // 普通文件
                     {
-                        _log("找到 /build.prop");
+                        _logDetail("找到 /build.prop");
                         return ReadExt4FileByInode(readFromPartition, entry.Item1, inodeTableBlock, blockSize, inodeSize, inodesPerGroup);
                     }
                 }
@@ -1545,7 +2097,7 @@ namespace LoveAlways.Qualcomm.Services
                                 {
                                     if (subEntry.Item2 == "build.prop" && subEntry.Item3 == 1)
                                     {
-                                        _log(string.Format("找到 /{0}/build.prop", dirName));
+                                        _logDetail(string.Format("找到 /{0}/build.prop", dirName));
                                         return ReadExt4FileByInode(readFromPartition, subEntry.Item1, inodeTableBlock, blockSize, inodeSize, inodesPerGroup);
                                     }
                                 }
@@ -1554,7 +2106,7 @@ namespace LoveAlways.Qualcomm.Services
                     }
                 }
 
-                _log("未找到 build.prop");
+                _logDetail("未找到 build.prop");
                 return null;
             }
             catch (Exception ex)
@@ -2007,8 +2559,16 @@ namespace LoveAlways.Qualcomm.Services
                 target.MarketName = source.MarketName;
             if (!string.IsNullOrEmpty(source.MarketNameEn) && string.IsNullOrEmpty(target.MarketNameEn))
                 target.MarketNameEn = source.MarketNameEn;
-            if (!string.IsNullOrEmpty(source.Device) && string.IsNullOrEmpty(target.DeviceCodename))
-                target.DeviceCodename = source.Device;
+            // 设备代号：优先 Codename (ro.product.device/ro.build.product)，其次 Device
+            if (string.IsNullOrEmpty(target.DeviceCodename))
+            {
+                if (!string.IsNullOrEmpty(source.Codename))
+                    target.DeviceCodename = source.Codename;
+                else if (!string.IsNullOrEmpty(source.Device))
+                    target.DeviceCodename = source.Device;
+                else if (!string.IsNullOrEmpty(source.DeviceName))
+                    target.DeviceCodename = source.DeviceName;
+            }
             if (!string.IsNullOrEmpty(source.AndroidVersion) && string.IsNullOrEmpty(target.AndroidVersion))
                 target.AndroidVersion = source.AndroidVersion;
             if (!string.IsNullOrEmpty(source.SdkVersion) && string.IsNullOrEmpty(target.SdkVersion))

@@ -122,6 +122,11 @@
     <Compile Include="Qualcomm\Common\RawprogramParser.cs" />
     <Compile Include="Qualcomm\Common\GptParser.cs" />
     <Compile Include="Qualcomm\Common\LpMetadataParser.cs" />
+    <Compile Include="Qualcomm\Common\Lz4Decoder.cs" />
+    <Compile Include="Qualcomm\Common\ErofsParser.cs" />
+    <Compile Include="Qualcomm\Common\Ext4Parser.cs" />
+    <Compile Include="Qualcomm\Common\FileSystemFactory.cs" />
+    <Compile Include="Qualcomm\Common\PartitionBuildPropReader.cs" />
     <Compile Include="Qualcomm\UI\QualcommUIController.cs" />
     <!-- Fastboot 模块 -->
     <Compile Include="Fastboot\Common\FastbootCommand.cs" />
