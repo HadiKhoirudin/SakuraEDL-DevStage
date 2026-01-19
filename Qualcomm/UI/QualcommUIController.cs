@@ -1176,11 +1176,12 @@ namespace LoveAlways.Qualcomm.UI
                 _currentDeviceInfo = new DeviceFullInfo();
             }
 
-            // 品牌 (如果从 my_manifest 提取到 realme，则覆盖 oplus)
+            // 品牌 (格式化显示)
             if (!string.IsNullOrEmpty(buildProp.Brand))
             {
-                _currentDeviceInfo.Brand = buildProp.Brand;
-                UpdateLabelSafe(_brandLabel, "品牌：" + buildProp.Brand);
+                string displayBrand = FormatBrandForDisplay(buildProp.Brand);
+                _currentDeviceInfo.Brand = displayBrand;
+                UpdateLabelSafe(_brandLabel, "品牌：" + displayBrand);
             }
 
             // 型号与市场名称 (最高优先级)
@@ -1211,19 +1212,47 @@ namespace LoveAlways.Qualcomm.UI
 
             if (!string.IsNullOrEmpty(otaVer))
             {
-                // 如果是联想 ZUI 版本，可能包含大版本号
-                if (otaVer.Contains("17.") && !otaVer.Contains("ZUI"))
-                    otaVer = "ZUI " + otaVer;
+                // 获取品牌用于判断
+                string brandLower = (buildProp.Brand ?? "").ToLowerInvariant();
                 
-                // 如果是小米 HyperOS 3.0 (Android 16+)
-                if (otaVer.StartsWith("OS3.") && !otaVer.Contains("HyperOS"))
+                // OnePlus 设备: OxygenOS 格式化 (版本格式 14.0.0.801(CN01) -> OxygenOS 14.0.0.801(CN01))
+                if (brandLower.Contains("oneplus"))
+                {
+                    // 如果版本以数字开头且包含括号，格式化为 OxygenOS
+                    if (Regex.IsMatch(otaVer, @"^\d+\.\d+\.\d+") && !otaVer.StartsWith("Oxygen") && !otaVer.StartsWith("Color"))
+                        otaVer = "OxygenOS " + otaVer;
+                }
+                // OPPO/Realme 设备: ColorOS 格式化
+                else if (brandLower.Contains("oppo") || brandLower.Contains("realme"))
+                {
+                    if (Regex.IsMatch(otaVer, @"^\d+\.\d+\.\d+") && !otaVer.StartsWith("Color"))
+                        otaVer = "ColorOS " + otaVer;
+                }
+                // 联想 ZUI 版本
+                else if (otaVer.Contains("17.") && !otaVer.Contains("ZUI") && brandLower.Contains("lenovo"))
+                {
+                    otaVer = "ZUI " + otaVer;
+                }
+                // 小米 HyperOS 3.0 (Android 16+)
+                else if (otaVer.StartsWith("OS3.") && !otaVer.Contains("HyperOS"))
+                {
                     otaVer = "HyperOS 3.0 " + otaVer;
-                // 如果是小米 HyperOS 1.0/2.0
+                }
+                // 小米 HyperOS 1.0/2.0
                 else if (otaVer.StartsWith("OS") && !otaVer.Contains("HyperOS"))
+                {
                     otaVer = "HyperOS " + otaVer;
-                // 如果是小米 MIUI 时代
-                else if (otaVer.StartsWith("V") && !otaVer.Contains("MIUI"))
+                }
+                // 小米 MIUI 时代
+                else if (otaVer.StartsWith("V") && !otaVer.Contains("MIUI") && (brandLower.Contains("xiaomi") || brandLower.Contains("redmi")))
+                {
                     otaVer = "MIUI " + otaVer;
+                }
+                // 红魔 RedMagicOS
+                else if (otaVer.Contains("RedMagic") && !otaVer.StartsWith("RedMagicOS"))
+                {
+                    otaVer = otaVer.Replace("RedMagic", "RedMagicOS ");
+                }
 
                 _currentDeviceInfo.OtaVersion = otaVer;
                 UpdateLabelSafe(_otaVersionLabel, "版本：" + otaVer);
@@ -1248,31 +1277,6 @@ namespace LoveAlways.Qualcomm.UI
                 Log(string.Format("  NV ID: {0}", buildProp.OplusNvId), Color.Blue);
             }
 
-            // 中兴/努比亚/红魔 品牌修正
-            if (!string.IsNullOrEmpty(buildProp.Brand))
-            {
-                string b = buildProp.Brand.ToLower();
-                if (b == "nubia" || b == "zte")
-                {
-                    string finalBrand = b == "nubia" ? "努比亚 (nubia)" : "中兴 (ZTE)";
-                    _currentDeviceInfo.Brand = finalBrand;
-                    UpdateLabelSafe(_brandLabel, "品牌：" + finalBrand);
-
-                    // 获取版本信息用于判断
-                    string ota = buildProp.OtaVersion ?? buildProp.DisplayId ?? "";
-                    
-                    // 通用逻辑：如果是努比亚且包含 RedMagic 关键字，自动修正为红魔系列
-                    if (ota.Contains("RedMagic"))
-                    {
-                        string mName = buildProp.MarketName ?? buildProp.Model ?? "努比亚手机";
-                        if (!mName.Contains("红魔")) mName = "努比亚 红魔 " + mName;
-                        
-                        _currentDeviceInfo.MarketName = mName;
-                        UpdateLabelSafe(_modelLabel, "型号：" + mName);
-                    }
-                }
-            }
-
             // Lenovo 特有属性
             if (!string.IsNullOrEmpty(buildProp.LenovoSeries))
             {
@@ -1285,23 +1289,24 @@ namespace LoveAlways.Qualcomm.UI
                 }
             }
 
-            // 中兴/努比亚/红魔 品牌修正
+            // 中兴/努比亚/红魔 特殊处理 (型号名称修正)
             if (!string.IsNullOrEmpty(buildProp.Brand))
             {
                 string b = buildProp.Brand.ToLower();
                 if (b == "nubia" || b == "zte")
                 {
-                    string finalBrand = b == "nubia" ? "努比亚 (nubia)" : "中兴 (ZTE)";
-                    _currentDeviceInfo.Brand = finalBrand;
-                    UpdateLabelSafe(_brandLabel, "品牌：" + finalBrand);
-
-                    // 如果是红魔，根据 OtaVersion (即 DisplayId) 或型号修正市场名称
+                    // 如果是红魔系列，更新型号名称
                     string ota = buildProp.OtaVersion ?? buildProp.DisplayId ?? "";
                     if (ota.Contains("RedMagic"))
                     {
-                        string rmMarket = "红魔 10 Pro (RedMagic)";
-                        // 尝试从型号进一步精确
-                        if (buildProp.Model == "NX789J") rmMarket = "红魔 10 Pro (NX789J)";
+                        // 红魔系列型号格式化
+                        string rmMarket = "";
+                        if (buildProp.Model == "NX789J")
+                            rmMarket = "红魔 10 Pro (NX789J)";
+                        else if (!string.IsNullOrEmpty(buildProp.MarketName))
+                            rmMarket = buildProp.MarketName.Contains("红魔") ? buildProp.MarketName : "红魔 " + buildProp.MarketName;
+                        else
+                            rmMarket = "红魔 " + buildProp.Model;
                         
                         _currentDeviceInfo.MarketName = rmMarket;
                         UpdateLabelSafe(_modelLabel, "型号：" + rmMarket);
@@ -1356,18 +1361,74 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
+        /// 格式化品牌显示名称
+        /// </summary>
+        private string FormatBrandForDisplay(string brand)
+        {
+            if (string.IsNullOrEmpty(brand)) return "未知";
+            
+            string lower = brand.ToLowerInvariant();
+            
+            // OnePlus
+            if (lower.Contains("oneplus"))
+                return "一加 (OnePlus)";
+            // OPPO
+            if (lower == "oppo")
+                return "OPPO";
+            // realme
+            if (lower.Contains("realme"))
+                return "realme";
+            // Xiaomi
+            if (lower == "xiaomi")
+                return "小米 (Xiaomi)";
+            // Redmi
+            if (lower == "redmi")
+                return "红米 (Redmi)";
+            // POCO
+            if (lower == "poco")
+                return "POCO";
+            // nubia
+            if (lower == "nubia")
+                return "努比亚 (nubia)";
+            // ZTE
+            if (lower == "zte")
+                return "中兴 (ZTE)";
+            // Lenovo
+            if (lower.Contains("lenovo"))
+                return "联想 (Lenovo)";
+            // Motorola
+            if (lower.Contains("motorola") || lower.Contains("moto"))
+                return "摩托罗拉 (Motorola)";
+            // Samsung
+            if (lower.Contains("samsung"))
+                return "三星 (Samsung)";
+            // Meizu
+            if (lower.Contains("meizu"))
+                return "魅族 (Meizu)";
+            // vivo
+            if (lower == "vivo")
+                return "vivo";
+            // iQOO
+            if (lower == "iqoo")
+                return "iQOO";
+            
+            // 首字母大写返回
+            return char.ToUpper(brand[0]) + brand.Substring(1).ToLower();
+        }
+
+        /// <summary>
         /// 清空设备信息标签
         /// </summary>
         public void ClearDeviceInfoLabels()
         {
             _currentDeviceInfo = null;
-            UpdateLabelSafe(_brandLabel, "品牌：无法获取");
-            UpdateLabelSafe(_chipLabel, "芯片：无法获取");
-            UpdateLabelSafe(_modelLabel, "设备型号：无法获取");
-            UpdateLabelSafe(_serialLabel, "序列号：无法获取");
-            UpdateLabelSafe(_storageLabel, "存储：无法获取");
-            UpdateLabelSafe(_unlockLabel, "解锁状态：无法获取");
-            UpdateLabelSafe(_otaVersionLabel, "OTA版本：无法获取");
+            UpdateLabelSafe(_brandLabel, "品牌：等待连接");
+            UpdateLabelSafe(_chipLabel, "芯片：等待连接");
+            UpdateLabelSafe(_modelLabel, "型号：等待连接");
+            UpdateLabelSafe(_serialLabel, "芯片序列号：等待连接");
+            UpdateLabelSafe(_storageLabel, "存储：等待连接");
+            UpdateLabelSafe(_unlockLabel, "状态：等待连接");
+            UpdateLabelSafe(_otaVersionLabel, "版本：等待连接");
         }
 
         #endregion

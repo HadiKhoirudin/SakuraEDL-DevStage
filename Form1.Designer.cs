@@ -2299,7 +2299,7 @@ namespace LoveAlways
             this.uiLabel12.Name = "uiLabel12";
             this.uiLabel12.Size = new System.Drawing.Size(452, 23);
             this.uiLabel12.TabIndex = 21;
-            this.uiLabel12.Text = "OTA版本：无法获取";
+            this.uiLabel12.Text = "版本：等待连接";
             // 
             // uiLabel11
             // 
@@ -2309,7 +2309,7 @@ namespace LoveAlways
             this.uiLabel11.Name = "uiLabel11";
             this.uiLabel11.Size = new System.Drawing.Size(180, 23);
             this.uiLabel11.TabIndex = 20;
-            this.uiLabel11.Text = "芯片：无法获取";
+            this.uiLabel11.Text = "芯片：等待连接";
             // 
             // uiLabel9
             // 
@@ -2319,7 +2319,7 @@ namespace LoveAlways
             this.uiLabel9.Name = "uiLabel9";
             this.uiLabel9.Size = new System.Drawing.Size(200, 23);
             this.uiLabel9.TabIndex = 19;
-            this.uiLabel9.Text = "品牌：无法获取";
+            this.uiLabel9.Text = "品牌：等待连接";
             // 
             // uiGroupBox3
             // 
@@ -2354,7 +2354,7 @@ namespace LoveAlways
             this.uiLabel14.Name = "uiLabel14";
             this.uiLabel14.Size = new System.Drawing.Size(200, 23);
             this.uiLabel14.TabIndex = 25;
-            this.uiLabel14.Text = "解锁状态：无法获取";
+            this.uiLabel14.Text = "状态：等待连接";
             // 
             // uiLabel13
             // 
@@ -2364,7 +2364,7 @@ namespace LoveAlways
             this.uiLabel13.Name = "uiLabel13";
             this.uiLabel13.Size = new System.Drawing.Size(198, 23);
             this.uiLabel13.TabIndex = 24;
-            this.uiLabel13.Text = "存储：无法获取";
+            this.uiLabel13.Text = "存储：等待连接";
             // 
             // uiLabel3
             // 
@@ -2374,7 +2374,7 @@ namespace LoveAlways
             this.uiLabel3.Name = "uiLabel3";
             this.uiLabel3.Size = new System.Drawing.Size(198, 23);
             this.uiLabel3.TabIndex = 23;
-            this.uiLabel3.Text = "设备型号：无法获取";
+            this.uiLabel3.Text = "型号：等待连接";
             // 
             // uiLabel10
             // 
@@ -2384,7 +2384,7 @@ namespace LoveAlways
             this.uiLabel10.Name = "uiLabel10";
             this.uiLabel10.Size = new System.Drawing.Size(200, 23);
             this.uiLabel10.TabIndex = 22;
-            this.uiLabel10.Text = "序列号：无法获取";
+            this.uiLabel10.Text = "芯片序列号：等待连接";
             // 
             // Form1
             // 
