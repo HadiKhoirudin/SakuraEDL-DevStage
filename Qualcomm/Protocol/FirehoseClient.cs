@@ -139,6 +139,7 @@ namespace LoveAlways.Qualcomm.Protocol
     {
         private readonly SerialPortManager _port;
         private readonly Action<string> _log;
+        private readonly Action<string> _logDetail;  // 详细调试日志 (只写入文件)
         private readonly Action<long, long> _progress;
         private bool _disposed;
         private readonly StringBuilder _rxBuffer = new StringBuilder();
@@ -190,14 +191,14 @@ namespace LoveAlways.Qualcomm.Protocol
             long totalSectors = GetLunTotalSectors(lun);
             if (totalSectors <= 0)
             {
-                _log(string.Format("[GPT] 无法解析负扇区: LUN{0} 总扇区数未知", lun));
+                _logDetail(string.Format("[GPT] 无法解析负扇区: LUN{0} 总扇区数未知", lun));
                 return -1;
             }
             
             // 负数扇区表示从末尾倒数
             // 例如: -5 表示 totalSectors - 5
             long absoluteSector = totalSectors + sector;
-            _log(string.Format("[GPT] 负扇区转换: LUN{0} sector {1} -> {2} (总扇区: {3})", 
+            _logDetail(string.Format("[GPT] 负扇区转换: LUN{0} sector {1} -> {2} (总扇区: {3})", 
                 lun, sector, absoluteSector, totalSectors));
             return absoluteSector;
         }
@@ -217,10 +218,11 @@ namespace LoveAlways.Qualcomm.Protocol
 
         public bool IsConnected { get { return _port.IsOpen; } }
 
-        public FirehoseClient(SerialPortManager port, Action<string> log = null, Action<long, long> progress = null)
+        public FirehoseClient(SerialPortManager port, Action<string> log = null, Action<long, long> progress = null, Action<string> logDetail = null)
         {
             _port = port;
             _log = log ?? delegate { };
+            _logDetail = logDetail ?? delegate { };
             _progress = progress;
             StorageType = "ufs";
             SupportedFunctions = new List<string>();
@@ -348,7 +350,7 @@ namespace LoveAlways.Qualcomm.Protocol
                                 _maxPayloadSize = Math.Max(64 * 1024, Math.Min(maxPayload, 16 * 1024 * 1024));
                         }
 
-                        _log(string.Format("[Firehose] 配置成功 - SectorSize:{0}, MaxPayload:{1}KB", _sectorSize, _maxPayloadSize / 1024));
+                        _logDetail(string.Format("[Firehose] 配置成功 - SectorSize:{0}, MaxPayload:{1}KB", _sectorSize, _maxPayloadSize / 1024));
                         return true;
                     }
                 }
@@ -410,7 +412,7 @@ namespace LoveAlways.Qualcomm.Protocol
                             gptData = await ReadGptPacketAsync(lun, 0, gptSectors, readStrategies[i, 0], readStrategies[i, 1], ct);
                             if (gptData != null && gptData.Length >= 512)
                             {
-                                _log(string.Format("[GPT] LUN{0} 使用伪装 {1} 成功", lun, readStrategies[i, 0]));
+                                _logDetail(string.Format("[GPT] LUN{0} 使用伪装 {1} 成功", lun, readStrategies[i, 0]));
                                 break;
                             }
                         }
@@ -424,16 +426,16 @@ namespace LoveAlways.Qualcomm.Protocol
                         PurgeBuffer();
                         if (lun > 0) await Task.Delay(50, ct);
 
-                        _log(string.Format("[GPT] 读取 LUN{0}...", lun));
+                        _logDetail(string.Format("[GPT] 读取 LUN{0}...", lun));
                         gptData = await ReadSectorsAsync(lun, 0, gptSectors, ct);
                         if (gptData != null && gptData.Length >= 512)
                         {
-                            _log(string.Format("[GPT] LUN{0} 读取成功 ({1} 字节)", lun, gptData.Length));
+                            _logDetail(string.Format("[GPT] LUN{0} 读取成功 ({1} 字节)", lun, gptData.Length));
                         }
                     }
                     catch (Exception ex)
                     {
-                        _log(string.Format("[GPT] LUN{0} 读取异常: {1}", lun, ex.Message));
+                        _logDetail(string.Format("[GPT] LUN{0} 读取异常: {1}", lun, ex.Message));
                     }
                 }
 
@@ -444,7 +446,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 if (lunPartitions.Count > 0)
                 {
                     partitions.AddRange(lunPartitions);
-                    _log(string.Format("[Firehose] LUN {0}: {1} 个分区", lun, lunPartitions.Count));
+                    _logDetail(string.Format("[Firehose] LUN {0}: {1} 个分区", lun, lunPartitions.Count));
                 }
             }
 
@@ -456,7 +458,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 // 输出合并后的槽位状态
                 if (_mergedSlot != "nonexistent")
                 {
-                    _log(string.Format("[Firehose] 设备槽位: {0} (A激活={1}, B激活={2})", 
+                    _logDetail(string.Format("[Firehose] 设备槽位: {0} (A激活={1}, B激活={2})", 
                         _mergedSlot, _slotACount, _slotBCount));
                 }
             }
@@ -480,7 +482,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 "sparse=\"false\" start_byte_hex=\"0x{6:X}\" start_sector=\"{7}\" />\n</data>\n",
                 _sectorSize, filename, label, numSectors, lun, sizeKB, startByte, startSector);
 
-            _log(string.Format("[GPT] 读取 LUN{0} (伪装: {1}/{2})...", lun, label, filename));
+            _logDetail(string.Format("[GPT] 读取 LUN{0} (伪装: {1}/{2})...", lun, label, filename));
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
 
@@ -488,11 +490,11 @@ namespace LoveAlways.Qualcomm.Protocol
             if (await ReceiveDataAfterAckAsync(buffer, ct))
             {
                 await WaitForAckAsync(ct);
-                _log(string.Format("[GPT] LUN{0} 读取成功 ({1} 字节)", lun, buffer.Length));
+                _logDetail(string.Format("[GPT] LUN{0} 读取成功 ({1} 字节)", lun, buffer.Length));
                 return buffer;
             }
 
-            _log(string.Format("[GPT] LUN{0} 读取失败", lun));
+            _logDetail(string.Format("[GPT] LUN{0} 读取失败", lun));
             return null;
         }
 
@@ -581,24 +583,24 @@ namespace LoveAlways.Qualcomm.Protocol
                 // 自动更新扇区大小
                 if (result.Header.SectorSize > 0 && result.Header.SectorSize != _sectorSize)
                 {
-                    _log(string.Format("[GPT] 更新扇区大小: {0} -> {1}", _sectorSize, result.Header.SectorSize));
+                    _logDetail(string.Format("[GPT] 更新扇区大小: {0} -> {1}", _sectorSize, result.Header.SectorSize));
                     _sectorSize = result.Header.SectorSize;
                 }
 
-                // 输出详细信息
-                _log(string.Format("[GPT] 磁盘 GUID: {0}", result.Header.DiskGuid));
-                _log(string.Format("[GPT] 分区数据区: LBA {0} - {1}", 
+                // 输出详细信息 (只写入日志文件)
+                _logDetail(string.Format("[GPT] 磁盘 GUID: {0}", result.Header.DiskGuid));
+                _logDetail(string.Format("[GPT] 分区数据区: LBA {0} - {1}", 
                     result.Header.FirstUsableLba, result.Header.LastUsableLba));
-                _log(string.Format("[GPT] CRC: {0}", result.Header.CrcValid ? "有效" : "无效"));
+                _logDetail(string.Format("[GPT] CRC: {0}", result.Header.CrcValid ? "有效" : "无效"));
                 
                 if (result.SlotInfo.HasAbPartitions)
                 {
-                    _log(string.Format("[GPT] 当前槽位: {0}", result.SlotInfo.CurrentSlot));
+                    _logDetail(string.Format("[GPT] 当前槽位: {0}", result.SlotInfo.CurrentSlot));
                 }
             }
             else if (!string.IsNullOrEmpty(result.ErrorMessage))
             {
-                _log(string.Format("[GPT] 解析失败: {0}", result.ErrorMessage));
+                _logDetail(string.Format("[GPT] 解析失败: {0}", result.ErrorMessage));
             }
 
             return result.Partitions;
@@ -850,8 +852,8 @@ namespace LoveAlways.Qualcomm.Protocol
                 var realDataSize = sparse.GetRealDataSize();
                 var dataRanges = sparse.GetDataRanges();
                 
-                _log(string.Format("[Firehose] 写入分区: {0} ({1}) [Sparse 智能模式]", label, Path.GetFileName(imagePath)));
-                _log(string.Format("[Sparse] 展开大小: {0:N0} MB, 实际数据: {1:N0} MB, 节省: {2:P1}", 
+                _logDetail(string.Format("[Firehose] 写入分区: {0} ({1}) [Sparse 智能模式]", label, Path.GetFileName(imagePath)));
+                _logDetail(string.Format("[Sparse] 展开大小: {0:N0} MB, 实际数据: {1:N0} MB, 节省: {2:P1}", 
                     totalExpandedSize / 1024.0 / 1024.0, 
                     realDataSize / 1024.0 / 1024.0,
                     1.0 - (double)realDataSize / totalExpandedSize));
@@ -859,11 +861,11 @@ namespace LoveAlways.Qualcomm.Protocol
                 if (dataRanges.Count == 0)
                 {
                     // 空 Sparse 镜像: 使用 erase 命令清空分区
-                    _log(string.Format("[Sparse] 镜像无实际数据，擦除分区 {0}...", label));
+                    _logDetail(string.Format("[Sparse] 镜像无实际数据，擦除分区 {0}...", label));
                     long numSectors = totalExpandedSize / sectorSize;
                     bool eraseOk = await EraseSectorsAsync(lun, startSector, numSectors, ct);
                     if (eraseOk)
-                        _log(string.Format("[Sparse] 分区 {0} 擦除完成 ({1:F2} MB)", label, totalExpandedSize / 1024.0 / 1024.0));
+                        _logDetail(string.Format("[Sparse] 分区 {0} 擦除完成 ({1:F2} MB)", label, totalExpandedSize / 1024.0 / 1024.0));
                     else
                         _log(string.Format("[Sparse] 分区 {0} 擦除失败", label));
                     return eraseOk;
@@ -1097,9 +1099,9 @@ namespace LoveAlways.Qualcomm.Protocol
                 var realDataSize = sparse.GetRealDataSize();
                 var dataRanges = sparse.GetDataRanges();
                 
-                _log(string.Format("Firehose: 刷写 {0} -> {1} [Sparse 智能模式]{2}", 
+                _logDetail(string.Format("Firehose: 刷写 {0} -> {1} [Sparse 智能模式]{2}", 
                     Path.GetFileName(filePath), partitionName, useVipMode ? " [VIP模式]" : ""));
-                _log(string.Format("[Sparse] 展开: {0:F2} MB, 实际数据: {1:F2} MB, 节省: {2:P1}", 
+                _logDetail(string.Format("[Sparse] 展开: {0:F2} MB, 实际数据: {1:F2} MB, 节省: {2:P1}", 
                     totalExpandedSize / 1024.0 / 1024.0, 
                     realDataSize / 1024.0 / 1024.0,
                     realDataSize > 0 ? (1.0 - (double)realDataSize / totalExpandedSize) : 1.0));
@@ -1107,12 +1109,12 @@ namespace LoveAlways.Qualcomm.Protocol
                 if (dataRanges.Count == 0)
                 {
                     // 空 Sparse 镜像 (如 userdata): 使用 erase 命令清空分区
-                    _log(string.Format("[Sparse] 镜像无实际数据，擦除分区 {0}...", partitionName));
+                    _logDetail(string.Format("[Sparse] 镜像无实际数据，擦除分区 {0}...", partitionName));
                     long numSectors = totalExpandedSize / _sectorSize;
                     bool eraseOk = await EraseSectorsAsync(lun, startSector, numSectors, ct);
                     if (progress != null) progress.Report(100.0);
                     if (eraseOk)
-                        _log(string.Format("[Sparse] 分区 {0} 擦除完成 ({1:F2} MB)", partitionName, totalExpandedSize / 1024.0 / 1024.0));
+                        _logDetail(string.Format("[Sparse] 分区 {0} 擦除完成 ({1:F2} MB)", partitionName, totalExpandedSize / 1024.0 / 1024.0));
                     else
                         _log(string.Format("[Sparse] 分区 {0} 擦除失败", partitionName));
                     return eraseOk;
@@ -1171,7 +1173,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     
                     if (!await WaitForRawDataModeAsync(ct))
                     {
-                        _log(string.Format("[Sparse] 第 {0}/{1} 段 Program 命令被拒绝", rangeIndex, dataRanges.Count));
+                        _logDetail(string.Format("[Sparse] 第 {0}/{1} 段 Program 命令被拒绝", rangeIndex, dataRanges.Count));
                         return false;
                     }
                     
@@ -1204,12 +1206,12 @@ namespace LoveAlways.Qualcomm.Protocol
                     
                     if (!await WaitForAckAsync(ct, 30))
                     {
-                        _log(string.Format("[Sparse] 第 {0}/{1} 段写入未确认", rangeIndex, dataRanges.Count));
+                        _logDetail(string.Format("[Sparse] 第 {0}/{1} 段写入未确认", rangeIndex, dataRanges.Count));
                         return false;
                     }
                 }
                 
-                _log(string.Format("[Sparse] {0} 写入完成: {1:N0} 字节 (跳过 {2:N0} MB 空白)", 
+                _logDetail(string.Format("[Sparse] {0} 写入完成: {1:N0} 字节 (跳过 {2:N0} MB 空白)", 
                     partitionName, totalWritten, (totalExpandedSize - realDataSize) / 1024.0 / 1024.0));
                 return true;
             }
@@ -1230,7 +1232,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 string spoofLabel = string.IsNullOrEmpty(strategy.Label) ? partitionName : strategy.Label;
                 string spoofFilename = string.IsNullOrEmpty(strategy.Filename) ? partitionName : strategy.Filename;
 
-                _log(string.Format("[VIP Write] 尝试伪装: {0}/{1}", spoofLabel, spoofFilename));
+                _logDetail(string.Format("[VIP Write] 尝试伪装: {0}/{1}", spoofLabel, spoofFilename));
                 PurgeBuffer();
 
                 // VIP 模式 program 命令 - 添加 read_back_verify 符合官方协议
@@ -1245,14 +1247,14 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 if (await WaitForRawDataModeAsync(ct))
                 {
-                    _log(string.Format("[VIP Write] 伪装 {0} 成功，开始传输数据...", spoofLabel));
+                    _logDetail(string.Format("[VIP Write] 伪装 {0} 成功，开始传输数据...", spoofLabel));
                     
                     // 每次尝试前重置流位置
                     sourceStream.Position = 0;
                     bool success = await SendStreamDataAsync(sourceStream, fileSize, progress, ct);
                     if (success)
                     {
-                        _log(string.Format("[VIP Write] {0} 写入成功", partitionName));
+                        _logDetail(string.Format("[VIP Write] {0} 写入成功", partitionName));
                         return true;
                     }
                 }

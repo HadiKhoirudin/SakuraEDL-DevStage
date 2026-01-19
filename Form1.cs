@@ -112,8 +112,10 @@ namespace LoveAlways
         {
             try
             {
-                // 创建高通 UI 控制器
-                _qualcommController = new QualcommUIController((msg, color) => AppendLog(msg, color));
+                // 创建高通 UI 控制器 (传入两个日志委托：UI日志 + 详细调试日志)
+                _qualcommController = new QualcommUIController(
+                    (msg, color) => AppendLog(msg, color),
+                    msg => AppendLogDetail(msg));
 
                 // 设置 listView2 支持多选和复选框
                 listView2.MultiSelect = true;
@@ -1476,6 +1478,18 @@ namespace LoveAlways
             uiRichTextBox1.AppendText(message + "\n");
             uiRichTextBox1.SelectionStart = uiRichTextBox1.Text.Length;
             uiRichTextBox1.ScrollToCaret();
+        }
+
+        /// <summary>
+        /// 详细调试日志 - 只写入文件，不显示在 UI
+        /// </summary>
+        private void AppendLogDetail(string message)
+        {
+            try
+            {
+                File.AppendAllText(logFilePath, $"[{DateTime.Now:HH:mm:ss}] [DEBUG] {message}" + Environment.NewLine);
+            }
+            catch { }
         }
 
         /// <summary>

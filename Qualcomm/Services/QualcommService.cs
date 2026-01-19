@@ -42,6 +42,7 @@ namespace LoveAlways.Qualcomm.Services
         private SaharaClient _sahara;
         private FirehoseClient _firehose;
         private readonly Action<string> _log;
+        private readonly Action<string> _logDetail;  // 详细调试日志 (只写入文件)
         private readonly Action<long, long> _progress;
         private readonly OplusSuperFlashManager _oplusSuperManager;
         private readonly DeviceInfoService _deviceInfoService;
@@ -64,12 +65,13 @@ namespace LoveAlways.Qualcomm.Services
         /// </summary>
         public event EventHandler<QualcommConnectionState> StateChanged;
 
-        public QualcommService(Action<string> log = null, Action<long, long> progress = null)
+        public QualcommService(Action<string> log = null, Action<long, long> progress = null, Action<string> logDetail = null)
         {
             _log = log ?? delegate { };
+            _logDetail = logDetail ?? delegate { };
             _progress = progress;
             _oplusSuperManager = new OplusSuperFlashManager(_log);
-            _deviceInfoService = new DeviceInfoService(_log);
+            _deviceInfoService = new DeviceInfoService(_log, _logDetail);
             _partitionCache = new Dictionary<int, List<PartitionInfo>>();
             State = QualcommConnectionState.Disconnected;
         }
@@ -157,7 +159,7 @@ namespace LoveAlways.Qualcomm.Services
 
                 // Firehose 配置
                 SetState(QualcommConnectionState.FirehoseMode);
-                _firehose = new FirehoseClient(_portManager, _log, _progress);
+                _firehose = new FirehoseClient(_portManager, _log, _progress, _logDetail);
 
                 // 传递芯片信息
                 if (ChipInfo != null)
@@ -279,7 +281,7 @@ namespace LoveAlways.Qualcomm.Services
                 }
 
                 SetState(QualcommConnectionState.FirehoseMode);
-                _firehose = new FirehoseClient(_portManager, _log, _progress);
+                _firehose = new FirehoseClient(_portManager, _log, _progress, _logDetail);
 
                 _log("正在配置 Firehose...");
                 bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);

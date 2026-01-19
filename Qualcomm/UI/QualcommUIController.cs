@@ -23,6 +23,7 @@ namespace LoveAlways.Qualcomm.UI
         private QualcommService _service;
         private CancellationTokenSource _cts;
         private readonly Action<string, Color?> _log;
+        private readonly Action<string> _logDetail;  // 详细调试日志 (只写入文件)
         private bool _disposed;
 
         // UI 控件引用 - 使用 dynamic 或反射来处理不同类型的控件
@@ -80,9 +81,10 @@ namespace LoveAlways.Qualcomm.UI
         public event EventHandler<bool> ConnectionStateChanged;
         public event EventHandler<List<PartitionInfo>> PartitionsLoaded;
 
-        public QualcommUIController(Action<string, Color?> log = null)
+        public QualcommUIController(Action<string, Color?> log = null, Action<string> logDetail = null)
         {
             _log = log ?? delegate { };
+            _logDetail = logDetail ?? delegate { };
             Partitions = new List<PartitionInfo>();
         }
 
@@ -230,7 +232,8 @@ namespace LoveAlways.Qualcomm.UI
                             UpdateProgressBarDirect(_progressBar, percent);
                             UpdateProgressBarDirect(_subProgressBar, 100.0 * current / total);
                         }
-                    }
+                    },
+                    _logDetail  // 传递详细调试日志委托
                 );
 
                 bool success;
