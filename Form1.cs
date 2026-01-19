@@ -2654,8 +2654,8 @@ namespace LoveAlways
                 // uiButton10 = 执行 (执行刷机脚本或快捷命令)
                 uiButton10.Click += async (s, e) => await FastbootExecuteAsync();
 
-                // button8 = 浏览 (选择输出路径/刷机目录)
-                button8.Click += (s, e) => FastbootSelectFlashDirectory();
+                // button8 = 浏览 (选择刷机脚本)
+                button8.Click += (s, e) => FastbootSelectScript();
 
                 // button9 = 浏览 (选择 Payload/刷机脚本)
                 button9.Click += (s, e) => FastbootSelectPayload();
@@ -2855,53 +2855,22 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 选择刷机目录 (自动扫描脚本)
+        /// Fastboot 选择刷机脚本文件
         /// </summary>
-        private void FastbootSelectFlashDirectory()
+        private void FastbootSelectScript()
         {
-            using (var fbd = new FolderBrowserDialog())
+            using (var ofd = new OpenFileDialog())
             {
-                fbd.Description = "选择包含刷机脚本的目录";
-                if (fbd.ShowDialog() == DialogResult.OK)
+                ofd.Title = "选择刷机脚本 (flash_all.bat)";
+                ofd.Filter = "刷机脚本|*.bat;*.sh;*.cmd|所有文件|*.*";
+                
+                if (ofd.ShowDialog() == DialogResult.OK)
                 {
-                    // 扫描目录中的刷机脚本
-                    var scripts = _fastbootController.ScanFlashScripts(fbd.SelectedPath);
+                    input1.Text = ofd.FileName;
+                    AppendLog($"已选择脚本: {Path.GetFileName(ofd.FileName)}", Color.Blue);
                     
-                    if (scripts.Count == 0)
-                    {
-                        AppendLog("目录中未找到刷机脚本 (flash_all.bat 等)", Color.Orange);
-                        return;
-                    }
-
-                    // 如果只有一个脚本，直接加载
-                    if (scripts.Count == 1)
-                    {
-                        uiTextBox1.Text = scripts[0];
-                        FastbootLoadScript(scripts[0]);
-                    }
-                    else
-                    {
-                        // 多个脚本，让用户选择
-                        var items = scripts.Select(s => 
-                            $"{Path.GetFileName(s)} - {LoveAlways.Fastboot.Common.BatScriptParser.GetScriptDescription(s)}").ToArray();
-                        
-                        // 简单选择：默认使用 flash_all.bat
-                        var flashAll = scripts.FirstOrDefault(s => 
-                            Path.GetFileName(s).Equals("flash_all.bat", StringComparison.OrdinalIgnoreCase));
-                        
-                        if (flashAll != null)
-                        {
-                            uiTextBox1.Text = flashAll;
-                            FastbootLoadScript(flashAll);
-                        }
-                        else
-                        {
-                            uiTextBox1.Text = scripts[0];
-                            FastbootLoadScript(scripts[0]);
-                        }
-
-                        AppendLog($"发现 {scripts.Count} 个刷机脚本，已加载: {Path.GetFileName(uiTextBox1.Text)}", Color.Blue);
-                    }
+                    // 加载脚本
+                    FastbootLoadScript(ofd.FileName);
                 }
             }
         }
