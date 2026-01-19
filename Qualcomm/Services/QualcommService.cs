@@ -460,6 +460,105 @@ namespace LoveAlways.Qualcomm.Services
 
             SetState(QualcommConnectionState.Disconnected);
         }
+        
+        /// <summary>
+        /// 重置卡住的 Sahara 状态
+        /// 当设备因为其他软件或引导错误导致卡在 Sahara 模式时使用
+        /// </summary>
+        /// <param name="portName">端口名</param>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功重置</returns>
+        public async Task<bool> ResetSaharaAsync(string portName, CancellationToken ct = default(CancellationToken))
+        {
+            _log("[高通] 尝试重置卡住的 Sahara 状态...");
+            
+            try
+            {
+                // 确保之前的连接已关闭
+                Disconnect();
+                await Task.Delay(200, ct);
+                
+                // 打开端口
+                _portManager = new SerialPortManager();
+                bool opened = await _portManager.OpenAsync(portName, 3, true, ct);
+                if (!opened)
+                {
+                    _log("[高通] 无法打开端口");
+                    return false;
+                }
+                
+                // 创建临时 Sahara 客户端
+                _sahara = new SaharaClient(_portManager, _log, null);
+                
+                // 尝试重置
+                bool success = await _sahara.TryResetSaharaAsync(ct);
+                
+                if (success)
+                {
+                    _log("[高通] ✓ Sahara 状态已重置，设备已准备好重新连接");
+                    SetState(QualcommConnectionState.SaharaMode);
+                }
+                else
+                {
+                    _log("[高通] ❌ 无法重置 Sahara，请尝试断电重启设备");
+                    // 关闭连接
+                    Disconnect();
+                }
+                
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _log("[高通] 重置 Sahara 异常: " + ex.Message);
+                Disconnect();
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 硬重置设备 (完全重启)
+        /// </summary>
+        /// <param name="portName">端口名</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> HardResetDeviceAsync(string portName, CancellationToken ct = default(CancellationToken))
+        {
+            _log("[高通] 发送硬重置命令...");
+            
+            try
+            {
+                // 如果已连接 Firehose，通过 Firehose 重置
+                if (_firehose != null && State == QualcommConnectionState.Ready)
+                {
+                    bool ok = await _firehose.ResetAsync("reset", ct);
+                    Disconnect();
+                    return ok;
+                }
+                
+                // 否则尝试通过 Sahara 重置
+                if (_portManager == null || !_portManager.IsOpen)
+                {
+                    _portManager = new SerialPortManager();
+                    await _portManager.OpenAsync(portName, 3, true, ct);
+                }
+                
+                if (_sahara == null)
+                {
+                    _sahara = new SaharaClient(_portManager, _log, null);
+                }
+                
+                _sahara.SendHardReset();
+                _log("[高通] 硬重置命令已发送，设备将重启");
+                
+                await Task.Delay(500, ct);
+                Disconnect();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _log("[高通] 硬重置异常: " + ex.Message);
+                return false;
+            }
+        }
 
         /// <summary>
         /// 执行认证

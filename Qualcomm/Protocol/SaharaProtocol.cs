@@ -825,7 +825,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 发送复位命令
+        /// 发送软复位命令 (ResetStateMachine) - 重置状态机，设备会重新发送 Hello
         /// </summary>
         public void SendReset()
         {
@@ -833,6 +833,137 @@ namespace LoveAlways.Qualcomm.Protocol
             WriteUInt32(packet, 0, (uint)SaharaCommand.ResetStateMachine);
             WriteUInt32(packet, 4, 8);
             _port.Write(packet);
+        }
+        
+        /// <summary>
+        /// 发送硬复位命令 (Reset) - 完全重启设备
+        /// </summary>
+        public void SendHardReset()
+        {
+            var packet = new byte[8];
+            WriteUInt32(packet, 0, (uint)SaharaCommand.Reset);
+            WriteUInt32(packet, 4, 8);
+            _port.Write(packet);
+        }
+        
+        /// <summary>
+        /// 尝试重置卡住的 Sahara 状态
+        /// </summary>
+        /// <param name="ct">取消令牌</param>
+        /// <returns>是否成功收到新的 Hello 包</returns>
+        public async Task<bool> TryResetSaharaAsync(CancellationToken ct = default(CancellationToken))
+        {
+            _log("[Sahara] 尝试重置 Sahara 状态...");
+            
+            // 方法 1: 发送 ResetStateMachine 命令
+            _log("[Sahara] 方法1: 发送 ResetStateMachine...");
+            PurgeBuffer();
+            SendReset();
+            await Task.Delay(500, ct);
+            
+            // 检查是否收到新的 Hello
+            var hello = await TryReadHelloAsync(2000, ct);
+            if (hello != null)
+            {
+                _log("[Sahara] ✓ 收到新的 Hello 包，状态已重置");
+                return true;
+            }
+            
+            // 方法 2: 发送 Hello Response 尝试重新同步
+            _log("[Sahara] 方法2: 发送 Hello Response 尝试重新同步...");
+            PurgeBuffer();
+            await SendHelloResponseAsync(2, 1, SaharaMode.ImageTransferPending, ct);
+            await Task.Delay(300, ct);
+            
+            hello = await TryReadHelloAsync(2000, ct);
+            if (hello != null)
+            {
+                _log("[Sahara] ✓ 收到新的 Hello 包，状态已重置");
+                return true;
+            }
+            
+            // 方法 3: 端口信号重置 (DTR/RTS)
+            _log("[Sahara] 方法3: 端口信号重置...");
+            try
+            {
+                _port.Close();
+                await Task.Delay(200, ct);
+                
+                // 重新打开端口并清空缓冲区
+                string portName = _port.PortName;
+                if (!string.IsNullOrEmpty(portName))
+                {
+                    await _port.OpenAsync(portName, 3, true, ct);
+                    await Task.Delay(500, ct);
+                    
+                    hello = await TryReadHelloAsync(3000, ct);
+                    if (hello != null)
+                    {
+                        _log("[Sahara] ✓ 端口重置后收到 Hello 包");
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _log("[Sahara] 端口重置异常: " + ex.Message);
+            }
+            
+            _log("[Sahara] ❌ 无法重置 Sahara 状态，设备可能需要断电重启");
+            return false;
+        }
+        
+        /// <summary>
+        /// 尝试读取 Hello 包 (用于检测状态重置)
+        /// </summary>
+        private async Task<byte[]> TryReadHelloAsync(int timeoutMs, CancellationToken ct)
+        {
+            var data = await ReadBytesAsync(48, timeoutMs, ct);
+            if (data == null || data.Length < 8)
+                return null;
+                
+            uint cmd = BitConverter.ToUInt32(data, 0);
+            if (cmd == (uint)SaharaCommand.Hello)
+                return data;
+                
+            return null;
+        }
+        
+        /// <summary>
+        /// 发送 Hello Response
+        /// </summary>
+        private async Task SendHelloResponseAsync(uint version, uint versionSupported, SaharaMode mode, CancellationToken ct)
+        {
+            var response = new SaharaHelloResponse
+            {
+                Command = (uint)SaharaCommand.HelloResponse,
+                Length = 48,
+                Version = version,
+                VersionSupported = versionSupported,
+                Status = 0,
+                Mode = (uint)mode
+            };
+            
+            byte[] packet = StructToBytes(response);
+            _port.Write(packet);
+            await Task.Delay(50, ct);
+        }
+        
+        private static byte[] StructToBytes<T>(T obj) where T : struct
+        {
+            int size = Marshal.SizeOf(typeof(T));
+            byte[] arr = new byte[size];
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            try
+            {
+                Marshal.StructureToPtr(obj, ptr, false);
+                Marshal.Copy(ptr, arr, 0, size);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
+            return arr;
         }
 
         #endregion

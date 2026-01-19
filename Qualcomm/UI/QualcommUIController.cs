@@ -349,6 +349,147 @@ namespace LoveAlways.Qualcomm.UI
             ClearDeviceInfoLabels();
             Log("已断开连接", Color.Gray);
         }
+        
+        /// <summary>
+        /// 重置卡住的 Sahara 状态
+        /// 当设备因为其他软件或引导错误导致卡在 Sahara 模式时使用
+        /// </summary>
+        public async Task<bool> ResetSaharaAsync()
+        {
+            string portName = GetSelectedPortName();
+            if (string.IsNullOrEmpty(portName))
+            {
+                Log("请选择端口", Color.Red);
+                return false;
+            }
+            
+            if (IsBusy)
+            {
+                Log("操作进行中", Color.Orange);
+                return false;
+            }
+            
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+                
+                Log("正在重置 Sahara 状态...", Color.Blue);
+                
+                // 确保 service 存在
+                if (_service == null)
+                {
+                    _service = new QualcommService(
+                        msg => Log(msg, null),
+                        null,
+                        _logDetail
+                    );
+                }
+                
+                bool success = await _service.ResetSaharaAsync(portName, _cts.Token);
+                
+                if (success)
+                {
+                    Log("Sahara 状态已重置，可以重新连接", Color.Green);
+                    // 取消勾选"跳过引导"，因为需要重新完整握手
+                    SetSkipSaharaChecked(false);
+                    // 刷新端口
+                    RefreshPorts();
+                }
+                else
+                {
+                    Log("无法重置 Sahara，请尝试断电重启设备", Color.Red);
+                }
+                
+                return success;
+            }
+            catch (OperationCanceledException)
+            {
+                Log("重置已取消", Color.Orange);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log("重置异常: " + ex.Message, Color.Red);
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+                _cts = null;
+            }
+        }
+        
+        /// <summary>
+        /// 硬重置设备 (完全重启)
+        /// </summary>
+        public async Task<bool> HardResetDeviceAsync()
+        {
+            string portName = GetSelectedPortName();
+            if (string.IsNullOrEmpty(portName))
+            {
+                Log("请选择端口", Color.Red);
+                return false;
+            }
+            
+            if (IsBusy)
+            {
+                Log("操作进行中", Color.Orange);
+                return false;
+            }
+            
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+                
+                Log("正在发送硬重置命令...", Color.Blue);
+                
+                if (_service == null)
+                {
+                    _service = new QualcommService(
+                        msg => Log(msg, null),
+                        null,
+                        _logDetail
+                    );
+                }
+                
+                bool success = await _service.HardResetDeviceAsync(portName, _cts.Token);
+                
+                if (success)
+                {
+                    Log("设备正在重启，请等待设备重新进入 EDL 模式", Color.Green);
+                    ConnectionStateChanged?.Invoke(this, false);
+                    ClearDeviceInfoLabels();
+                    SetSkipSaharaChecked(false);
+                    
+                    // 等待一段时间后刷新端口
+                    await Task.Delay(2000);
+                    RefreshPorts();
+                }
+                else
+                {
+                    Log("硬重置失败", Color.Red);
+                }
+                
+                return success;
+            }
+            catch (OperationCanceledException)
+            {
+                Log("操作已取消", Color.Orange);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log("硬重置异常: " + ex.Message, Color.Red);
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+                _cts = null;
+            }
+        }
 
         #region 设备信息显示
 
