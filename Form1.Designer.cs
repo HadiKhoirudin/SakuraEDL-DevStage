@@ -2354,7 +2354,7 @@ namespace LoveAlways
             this.uiLabel14.Name = "uiLabel14";
             this.uiLabel14.Size = new System.Drawing.Size(200, 23);
             this.uiLabel14.TabIndex = 25;
-            this.uiLabel14.Text = "状态：等待连接";
+            this.uiLabel14.Text = "型号：等待连接";
             // 
             // uiLabel13
             // 

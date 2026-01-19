@@ -143,7 +143,7 @@ namespace LoveAlways
                     modelLabel: uiLabel3,                // 设备型号
                     serialLabel: uiLabel10,              // 序列号
                     storageLabel: uiLabel13,             // 存储类型
-                    unlockLabel: uiLabel14,              // 解锁状态
+                    unlockLabel: uiLabel14,              // 设备型号2
                     otaVersionLabel: uiLabel12           // OTA版本
                 );
 

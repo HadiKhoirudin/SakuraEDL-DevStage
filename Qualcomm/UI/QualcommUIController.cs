@@ -49,7 +49,7 @@ namespace LoveAlways.Qualcomm.UI
         private dynamic _modelLabel;         // 设备型号
         private dynamic _serialLabel;        // 序列号
         private dynamic _storageLabel;       // 存储类型
-        private dynamic _unlockLabel;        // 解锁状态
+        private dynamic _unlockLabel;        // 设备型号2 (第二个型号标签)
         private dynamic _otaVersionLabel;    // OTA版本
         
         // 计时器和速度计算
@@ -566,8 +566,8 @@ namespace LoveAlways.Qualcomm.UI
             int sectorSize = _service.SectorSize;
             UpdateLabelSafe(_storageLabel, string.Format("存储：{0} ({1}B)", storageType.ToUpper(), sectorSize));
             
-            // 解锁状态
-            UpdateLabelSafe(_unlockLabel, "状态：已连接 Firehose");
+            // 设备型号 (待深度扫描)
+            UpdateLabelSafe(_unlockLabel, "型号：待深度扫描");
             
             // OTA版本
             UpdateLabelSafe(_otaVersionLabel, "版本：待深度扫描");
@@ -642,7 +642,7 @@ namespace LoveAlways.Qualcomm.UI
                 }
             }
             
-            UpdateLabelSafe(_unlockLabel, "状态：分区表已读取");
+            UpdateLabelSafe(_unlockLabel, "型号：分区表已读取");
         }
 
         /// <summary>
@@ -1259,12 +1259,18 @@ namespace LoveAlways.Qualcomm.UI
                 UpdateLabelSafe(_otaVersionLabel, "版本：" + otaVer);
             }
 
-            // Android 版本
+            // Android 版本 (存储到 DeviceInfo，不在此标签显示)
             if (!string.IsNullOrEmpty(buildProp.AndroidVersion))
             {
                 _currentDeviceInfo.AndroidVersion = buildProp.AndroidVersion;
-                UpdateLabelSafe(_unlockLabel, "状态：Android " + buildProp.AndroidVersion);
             }
+            
+            // 设备型号 (使用 unlockLabel 作为第二个型号标签)
+            string model2 = "";
+            if (!string.IsNullOrEmpty(buildProp.Model))
+                model2 = buildProp.Model;
+            if (!string.IsNullOrEmpty(model2))
+                UpdateLabelSafe(_unlockLabel, "型号：" + model2);
 
             // OPLUS/Realme 特有属性
             if (!string.IsNullOrEmpty(buildProp.OplusProject))
@@ -1428,7 +1434,7 @@ namespace LoveAlways.Qualcomm.UI
             UpdateLabelSafe(_modelLabel, "型号：等待连接");
             UpdateLabelSafe(_serialLabel, "芯片序列号：等待连接");
             UpdateLabelSafe(_storageLabel, "存储：等待连接");
-            UpdateLabelSafe(_unlockLabel, "状态：等待连接");
+            UpdateLabelSafe(_unlockLabel, "型号：等待连接");
             UpdateLabelSafe(_otaVersionLabel, "版本：等待连接");
         }
 
