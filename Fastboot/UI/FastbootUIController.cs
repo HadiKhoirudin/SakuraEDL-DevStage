@@ -665,6 +665,7 @@ namespace LoveAlways.Fastboot.UI
 
                 StartOperationTimer("刷写分区");
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {partitionsWithFiles.Count} 个分区");
                 UpdateLabelSafe(_speedLabel, "速度：计算中...");
 
@@ -677,14 +678,33 @@ namespace LoveAlways.Fastboot.UI
                 {
                     var part = partitionsWithFiles[i];
                     UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {part.Item1} ({i + 1}/{total})");
+                    // 总进度：基于已完成的分区数
                     UpdateProgressBar((i * 100.0) / total);
+                    // 子进度：当前分区刷写开始
+                    UpdateSubProgressBar(0);
 
+                    var flashStart = DateTime.Now;
+                    var fileSize = new FileInfo(part.Item2).Length;
+                    
                     bool result = await _service.FlashPartitionAsync(part.Item1, part.Item2, false, _cts.Token);
+                    
+                    // 子进度：当前分区刷写完成
+                    UpdateSubProgressBar(100);
+                    
+                    // 计算并显示速度
+                    var elapsed = (DateTime.Now - flashStart).TotalSeconds;
+                    if (elapsed > 0)
+                    {
+                        double speed = fileSize / elapsed;
+                        UpdateSpeedLabel(FormatSpeed(speed));
+                    }
+                    
                     if (result)
                         successCount++;
                 }
 
                 UpdateProgressBar(100);
+                UpdateSubProgressBar(100);
                 StopOperationTimer();
 
                 Log($"刷写完成: {successCount}/{total} 成功", 
@@ -702,6 +722,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 Log($"刷写失败: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 StopOperationTimer();
                 return false;
             }
@@ -734,26 +755,36 @@ namespace LoveAlways.Fastboot.UI
 
                 StartOperationTimer("擦除分区");
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 UpdateLabelSafe(_speedLabel, "速度：擦除中...");
 
                 int success = 0;
                 int total = selectedItems.Count;
+                int current = 0;
 
                 Log($"开始擦除 {total} 个分区...", Color.Blue);
 
                 foreach (ListViewItem item in selectedItems)
                 {
                     string partName = item.SubItems[0].Text;
-                    UpdateLabelSafe(_operationLabel, $"当前操作：擦除 {partName} ({success + 1}/{total})");
-                    UpdateProgressBar((success * 100.0) / total);
+                    UpdateLabelSafe(_operationLabel, $"当前操作：擦除 {partName} ({current + 1}/{total})");
+                    // 总进度：基于已完成的分区数
+                    UpdateProgressBar((current * 100.0) / total);
+                    // 子进度：开始擦除
+                    UpdateSubProgressBar(0);
                     
                     if (await _service.ErasePartitionAsync(partName, _cts.Token))
                     {
                         success++;
                     }
+                    
+                    // 子进度：当前分区擦除完成
+                    UpdateSubProgressBar(100);
+                    current++;
                 }
 
                 UpdateProgressBar(100);
+                UpdateSubProgressBar(100);
                 StopOperationTimer();
 
                 Log($"擦除完成: {success}/{total} 成功", 
@@ -1055,6 +1086,24 @@ namespace LoveAlways.Fastboot.UI
         {
             if (_speedLabel == null) return;
             UpdateLabelSafe(_speedLabel, $"速度：{formattedSpeed}");
+        }
+        
+        /// <summary>
+        /// 格式化速度显示
+        /// </summary>
+        private string FormatSpeed(double bytesPerSecond)
+        {
+            if (bytesPerSecond <= 0) return "计算中...";
+            
+            string[] units = { "B/s", "KB/s", "MB/s", "GB/s" };
+            double speed = bytesPerSecond;
+            int unitIndex = 0;
+            while (speed >= 1024 && unitIndex < units.Length - 1)
+            {
+                speed /= 1024;
+                unitIndex++;
+            }
+            return $"{speed:F2} {units[unitIndex]}";
         }
 
         /// <summary>
@@ -1382,6 +1431,7 @@ namespace LoveAlways.Fastboot.UI
 
                 StartOperationTimer("执行刷机脚本");
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 UpdateLabelSafe(_speedLabel, "速度：准备中...");
 
                 int total = selectedTasks.Count;
@@ -1397,7 +1447,10 @@ namespace LoveAlways.Fastboot.UI
                     _cts.Token.ThrowIfCancellationRequested();
 
                     var task = selectedTasks[i];
+                    // 总进度：基于任务数
                     UpdateProgressBar((i * 100.0) / total);
+                    // 子进度：当前任务开始
+                    UpdateSubProgressBar(0);
                     UpdateLabelSafe(_operationLabel, $"当前操作：{task.Operation} {task.PartitionName} ({i + 1}/{total})");
 
                     bool taskSuccess = false;
@@ -1468,6 +1521,9 @@ namespace LoveAlways.Fastboot.UI
                             break;
                     }
 
+                    // 子进度：当前任务完成
+                    UpdateSubProgressBar(100);
+                    
                     if (taskSuccess)
                         success++;
                     else
@@ -1475,6 +1531,7 @@ namespace LoveAlways.Fastboot.UI
                 }
 
                 UpdateProgressBar(100);
+                UpdateSubProgressBar(100);
                 StopOperationTimer();
 
                 // 如果没有重启命令但需要锁定BL，在这里执行
@@ -1494,6 +1551,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 Log("刷机操作已取消", Color.Orange);
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 StopOperationTimer();
                 return false;
             }
@@ -1501,6 +1559,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 Log($"刷机失败: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 StopOperationTimer();
                 return false;
             }
@@ -1753,6 +1812,7 @@ namespace LoveAlways.Fastboot.UI
 
                 StartOperationTimer("云端提取分区");
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 UpdateLabelSafe(_speedLabel, "速度：准备中...");
 
                 if (!Directory.Exists(outputDir))
@@ -1762,29 +1822,59 @@ namespace LoveAlways.Fastboot.UI
 
                 int success = 0;
                 int total = selectedNames.Count;
+                int currentIndex = 0;
 
-                for (int i = 0; i < total; i++)
+                // 注册进度事件处理器
+                EventHandler<RemoteExtractProgress> progressHandler = (s, e) =>
                 {
-                    _cts.Token.ThrowIfCancellationRequested();
-
-                    string name = selectedNames[i];
-                    string outputPath = Path.Combine(outputDir, $"{name}.img");
-
-                    UpdateLabelSafe(_operationLabel, $"当前操作：云端提取 {name} ({i + 1}/{total})");
-                    UpdateProgressBar((i * 100.0) / total);
-
-                    if (await _remotePayloadService.ExtractPartitionAsync(name, outputPath, _cts.Token))
+                    // 子进度条：当前分区的提取进度
+                    UpdateSubProgressBar(e.Percent);
+                    // 更新速度显示
+                    if (e.SpeedBytesPerSecond > 0)
                     {
-                        success++;
-                        Log($"提取成功: {name}.img", Color.Green);
+                        UpdateSpeedLabel(e.SpeedFormatted);
                     }
-                    else
+                };
+
+                _remotePayloadService.ExtractProgressChanged += progressHandler;
+
+                try
+                {
+                    for (int i = 0; i < total; i++)
                     {
-                        Log($"提取失败: {name}", Color.Red);
+                        _cts.Token.ThrowIfCancellationRequested();
+                        currentIndex = i;
+
+                        string name = selectedNames[i];
+                        string outputPath = Path.Combine(outputDir, $"{name}.img");
+
+                        UpdateLabelSafe(_operationLabel, $"当前操作：云端提取 {name} ({i + 1}/{total})");
+                        // 总进度：基于已完成的分区数
+                        UpdateProgressBar((i * 100.0) / total);
+                        // 子进度：开始提取
+                        UpdateSubProgressBar(0);
+
+                        if (await _remotePayloadService.ExtractPartitionAsync(name, outputPath, _cts.Token))
+                        {
+                            success++;
+                            Log($"提取成功: {name}.img", Color.Green);
+                        }
+                        else
+                        {
+                            Log($"提取失败: {name}", Color.Red);
+                        }
+                        
+                        // 子进度：当前分区提取完成
+                        UpdateSubProgressBar(100);
                     }
+                }
+                finally
+                {
+                    _remotePayloadService.ExtractProgressChanged -= progressHandler;
                 }
 
                 UpdateProgressBar(100);
+                UpdateSubProgressBar(100);
                 StopOperationTimer();
 
                 Log($"云端提取完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
@@ -1795,6 +1885,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 Log("提取操作已取消", Color.Orange);
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 StopOperationTimer();
                 return false;
             }
@@ -1802,6 +1893,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 Log($"提取失败: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 StopOperationTimer();
                 return false;
             }
@@ -2011,6 +2103,7 @@ namespace LoveAlways.Fastboot.UI
 
                 StartOperationTimer("提取 Payload 分区");
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 UpdateLabelSafe(_speedLabel, "速度：准备中...");
 
                 Log($"开始提取 {selectedNames.Count} 个分区到: {outputDir}", Color.Blue);
@@ -2026,7 +2119,10 @@ namespace LoveAlways.Fastboot.UI
                     string outputPath = Path.Combine(outputDir, $"{name}.img");
 
                     UpdateLabelSafe(_operationLabel, $"当前操作：提取 {name} ({i + 1}/{total})");
+                    // 总进度：基于已完成的分区数
                     UpdateProgressBar((i * 100.0) / total);
+                    // 子进度：开始提取
+                    UpdateSubProgressBar(0);
 
                     if (await _payloadService.ExtractPartitionAsync(name, outputPath, _cts.Token))
                     {
@@ -2037,9 +2133,13 @@ namespace LoveAlways.Fastboot.UI
                     {
                         Log($"提取失败: {name}", Color.Red);
                     }
+                    
+                    // 子进度：当前分区提取完成
+                    UpdateSubProgressBar(100);
                 }
 
                 UpdateProgressBar(100);
+                UpdateSubProgressBar(100);
                 StopOperationTimer();
 
                 Log($"提取完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
@@ -2108,6 +2208,7 @@ namespace LoveAlways.Fastboot.UI
 
                 StartOperationTimer("Payload 刷写");
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 UpdateLabelSafe(_speedLabel, "速度：准备中...");
 
                 Log($"开始从 Payload 刷写 {selectedPartitions.Count} 个分区...", Color.Blue);
@@ -2127,27 +2228,49 @@ namespace LoveAlways.Fastboot.UI
                         string tempPath = Path.Combine(tempDir, $"{partition.Name}.img");
 
                         UpdateLabelSafe(_operationLabel, $"当前操作：提取+刷写 {partition.Name} ({i + 1}/{total})");
+                        // 总进度：基于已完成的分区数
                         UpdateProgressBar((i * 100.0) / total);
+                        // 子进度：开始提取
+                        UpdateSubProgressBar(0);
 
                         // 1. 提取分区
                         Log($"提取 {partition.Name}...", Color.Blue);
+                        // 子进度：提取阶段 (0-50%)
+                        UpdateSubProgressBar(10);
                         if (!await _payloadService.ExtractPartitionAsync(partition.Name, tempPath, _cts.Token))
                         {
                             Log($"提取 {partition.Name} 失败，跳过刷写", Color.Red);
                             continue;
                         }
+                        
+                        // 子进度：提取完成 (50%)
+                        UpdateSubProgressBar(50);
 
                         // 2. 刷写分区
                         Log($"刷写 {partition.Name}...", Color.Blue);
+                        var flashStart = DateTime.Now;
+                        var fileSize = new FileInfo(tempPath).Length;
+                        
                         if (await _service.FlashPartitionAsync(partition.Name, tempPath, false, _cts.Token))
                         {
                             success++;
                             Log($"刷写成功: {partition.Name}", Color.Green);
+                            
+                            // 计算并显示刷写速度
+                            var elapsed = (DateTime.Now - flashStart).TotalSeconds;
+                            if (elapsed > 0)
+                            {
+                                double speed = fileSize / elapsed;
+                                UpdateSpeedLabel(FormatSpeed(speed));
+                            }
                         }
                         else
                         {
                             Log($"刷写失败: {partition.Name}", Color.Red);
                         }
+                        
+                        // 子进度：刷写完成 (100%)
+                        UpdateSubProgressBar(100);
 
                         // 3. 删除临时文件
                         try { File.Delete(tempPath); } catch { }
@@ -2160,6 +2283,7 @@ namespace LoveAlways.Fastboot.UI
                 }
 
                 UpdateProgressBar(100);
+                UpdateSubProgressBar(100);
                 StopOperationTimer();
 
                 Log($"Payload 刷写完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
@@ -2176,6 +2300,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 Log("刷写操作已取消", Color.Orange);
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 StopOperationTimer();
                 return false;
             }
@@ -2183,6 +2308,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 Log($"刷写失败: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 StopOperationTimer();
                 return false;
             }
@@ -2234,6 +2360,7 @@ namespace LoveAlways.Fastboot.UI
 
                 StartOperationTimer("云端 Payload 刷写");
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 UpdateLabelSafe(_speedLabel, "速度：准备中...");
 
                 Log($"开始从云端刷写 {selectedPartitions.Count} 个分区...", Color.Blue);
@@ -2244,8 +2371,10 @@ namespace LoveAlways.Fastboot.UI
                 // 注册流式刷写进度事件
                 EventHandler<RemotePayloadService.StreamFlashProgressEventArgs> progressHandler = (s, e) =>
                 {
+                    // 总进度：基于已完成的分区数 + 当前分区的进度
                     double overallPercent = ((success * 100.0) + e.Percent) / total;
                     UpdateProgressBar(overallPercent);
+                    // 子进度：当前分区的操作进度
                     UpdateSubProgressBar(e.Percent);
                     
                     // 根据阶段显示不同的速度
@@ -2329,6 +2458,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 Log("刷写操作已取消", Color.Orange);
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 StopOperationTimer();
                 return false;
             }
@@ -2336,6 +2466,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 Log($"刷写失败: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
+                UpdateSubProgressBar(0);
                 StopOperationTimer();
                 return false;
             }
