@@ -138,6 +138,31 @@ namespace LoveAlways.Fastboot.Services
             
             var info = new FastbootDeviceInfo();
             
+            // 复制所有变量到 RawVariables，并解析分区信息
+            foreach (var kv in _client.Variables)
+            {
+                string key = kv.Key.ToLowerInvariant();
+                string value = kv.Value;
+                
+                info.RawVariables[key] = value;
+                
+                // 解析分区大小: partition-size:boot_a: 0x4000000
+                if (key.StartsWith("partition-size:"))
+                {
+                    string partName = key.Substring("partition-size:".Length);
+                    if (TryParseHexOrDecimal(value, out long size))
+                    {
+                        info.PartitionSizes[partName] = size;
+                    }
+                }
+                // 解析逻辑分区: is-logical:system_a: yes
+                else if (key.StartsWith("is-logical:"))
+                {
+                    string partName = key.Substring("is-logical:".Length);
+                    info.PartitionIsLogical[partName] = value.ToLower() == "yes";
+                }
+            }
+            
             if (_client.Variables.TryGetValue(FastbootProtocol.VAR_PRODUCT, out string product))
                 info.Product = product;
             
@@ -145,20 +170,61 @@ namespace LoveAlways.Fastboot.Services
                 info.Serial = serial;
             
             if (_client.Variables.TryGetValue(FastbootProtocol.VAR_SECURE, out string secure))
-                info.SecureBoot = secure == "yes";
+                info.SecureBoot = secure.ToLower() == "yes";
             
             if (_client.Variables.TryGetValue(FastbootProtocol.VAR_UNLOCKED, out string unlocked))
-                info.Unlocked = unlocked == "yes";
+                info.Unlocked = unlocked.ToLower() == "yes";
             
             if (_client.Variables.TryGetValue(FastbootProtocol.VAR_CURRENT_SLOT, out string slot))
                 info.CurrentSlot = slot;
             
             if (_client.Variables.TryGetValue(FastbootProtocol.VAR_IS_USERSPACE, out string userspace))
-                info.IsFastbootd = userspace == "yes";
+                info.IsFastbootd = userspace.ToLower() == "yes";
+            
+            // 解析其他设备信息
+            if (_client.Variables.TryGetValue(FastbootProtocol.VAR_VERSION_BOOTLOADER, out string blVersion))
+                info.BootloaderVersion = blVersion;
+            
+            if (_client.Variables.TryGetValue(FastbootProtocol.VAR_VERSION_BASEBAND, out string bbVersion))
+                info.BasebandVersion = bbVersion;
+            
+            if (_client.Variables.TryGetValue(FastbootProtocol.VAR_HW_REVISION, out string hwRev))
+                info.HardwareVersion = hwRev;
+            
+            if (_client.Variables.TryGetValue(FastbootProtocol.VAR_VARIANT, out string variant))
+                info.Variant = variant;
             
             info.MaxDownloadSize = _client.MaxDownloadSize;
             
             return info;
+        }
+        
+        /// <summary>
+        /// 尝试解析十六进制或十进制数字
+        /// </summary>
+        private static bool TryParseHexOrDecimal(string value, out long result)
+        {
+            result = 0;
+            if (string.IsNullOrEmpty(value)) return false;
+
+            value = value.Trim();
+            
+            try
+            {
+                if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                {
+                    result = Convert.ToInt64(value.Substring(2), 16);
+                    return true;
+                }
+                else
+                {
+                    return long.TryParse(value, out result);
+                }
+            }
+            catch
+            {
+                return false;
+            }
         }
         
         #endregion
@@ -198,7 +264,25 @@ namespace LoveAlways.Fastboot.Services
                 });
             });
             
-            return await _client.FlashAsync(partition, imagePath, progress, ct);
+            try
+            {
+                // 强制 GC 释放之前可能残留的大内存块
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                
+                return await _client.FlashAsync(partition, imagePath, progress, ct);
+            }
+            catch (OutOfMemoryException ex)
+            {
+                _log($"内存不足，无法刷写 {partition}：文件太大，请尝试关闭其他程序后重试");
+                _logDetail($"OutOfMemoryException: {ex.Message}");
+                
+                // 尝试释放内存
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                
+                return false;
+            }
         }
         
         /// <summary>
@@ -322,6 +406,17 @@ namespace LoveAlways.Fastboot.Services
         {
             if (!IsConnected) return null;
             return await _client.GetVariableAsync(name, ct);
+        }
+        
+        #endregion
+        
+        #region OEM 命令
+        
+        public async Task<string> ExecuteOemCommandAsync(string command, CancellationToken ct = default)
+        {
+            if (!IsConnected) return null;
+            var response = await _client.OemCommandAsync(command, ct);
+            return response?.Message;
         }
         
         #endregion

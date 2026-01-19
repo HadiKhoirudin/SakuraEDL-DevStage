@@ -6,12 +6,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using LoveAlways.Fastboot.Common;
 using LoveAlways.Fastboot.Models;
+using LoveAlways.Fastboot.Protocol;
+using LoveAlways.Fastboot.Transport;
 
 namespace LoveAlways.Fastboot.Services
 {
     /// <summary>
     /// Fastboot 服务层
-    /// 提供设备检测、分区操作、刷写等功能
+    /// 使用原生 C# 协议实现，不依赖外部 fastboot.exe
     /// </summary>
     public class FastbootService : IDisposable
     {
@@ -19,24 +21,28 @@ namespace LoveAlways.Fastboot.Services
         private readonly Action<string> _logDetail;
         private readonly Action<int, int> _progress;
 
-        private string _currentSerial;
-        private FastbootDeviceInfo _deviceInfo;
+        private FastbootNativeService _nativeService;
         private bool _disposed;
 
         /// <summary>
         /// 当前连接的设备序列号
         /// </summary>
-        public string CurrentSerial => _currentSerial;
+        public string CurrentSerial => _nativeService?.CurrentSerial;
 
         /// <summary>
         /// 当前设备信息
         /// </summary>
-        public FastbootDeviceInfo DeviceInfo => _deviceInfo;
+        public FastbootDeviceInfo DeviceInfo => _nativeService?.DeviceInfo;
 
         /// <summary>
         /// 是否已连接设备
         /// </summary>
-        public bool IsConnected => !string.IsNullOrEmpty(_currentSerial);
+        public bool IsConnected => _nativeService?.IsConnected ?? false;
+        
+        /// <summary>
+        /// 刷写进度事件
+        /// </summary>
+        public event Action<FlashProgress> FlashProgressChanged;
 
         public FastbootService(Action<string> log, Action<int, int> progress = null, Action<string> logDetail = null)
         {
@@ -48,30 +54,24 @@ namespace LoveAlways.Fastboot.Services
         #region 设备检测
 
         /// <summary>
-        /// 获取 Fastboot 设备列表
+        /// 获取 Fastboot 设备列表（使用原生协议）
         /// </summary>
-        public async Task<List<FastbootDeviceListItem>> GetDevicesAsync(CancellationToken ct = default)
+        public Task<List<FastbootDeviceListItem>> GetDevicesAsync(CancellationToken ct = default)
         {
             var devices = new List<FastbootDeviceListItem>();
 
             try
             {
-                var result = await FastbootCommand.ExecuteAsync(null, "devices", ct);
+                // 使用原生 USB 枚举
+                var nativeDevices = FastbootClient.GetDevices();
                 
-                if (!string.IsNullOrEmpty(result.StdOut))
+                foreach (var device in nativeDevices)
                 {
-                    foreach (string line in result.StdOut.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
+                    devices.Add(new FastbootDeviceListItem
                     {
-                        string[] parts = line.Split(new[] { '\t', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length >= 2)
-                        {
-                            devices.Add(new FastbootDeviceListItem
-                            {
-                                Serial = parts[0],
-                                Status = parts[1]
-                            });
-                        }
-                    }
+                        Serial = device.Serial ?? $"{device.VendorId:X4}:{device.ProductId:X4}",
+                        Status = "fastboot"
+                    });
                 }
             }
             catch (Exception ex)
@@ -79,7 +79,7 @@ namespace LoveAlways.Fastboot.Services
                 _logDetail($"[Fastboot] 获取设备列表失败: {ex.Message}");
             }
 
-            return devices;
+            return Task.FromResult(devices);
         }
 
         /// <summary>
@@ -87,10 +87,53 @@ namespace LoveAlways.Fastboot.Services
         /// </summary>
         public async Task<bool> SelectDeviceAsync(string serial, CancellationToken ct = default)
         {
-            _currentSerial = serial;
             _log($"[Fastboot] 选择设备: {serial}");
-
-            return await RefreshDeviceInfoAsync(ct);
+            
+            // 断开旧连接
+            Disconnect();
+            
+            // 创建新的原生服务
+            _nativeService = new FastbootNativeService(_log, _logDetail);
+            _nativeService.ProgressChanged += OnNativeProgressChanged;
+            
+            // 连接设备
+            bool success = await _nativeService.ConnectAsync(serial, ct);
+            
+            if (success)
+            {
+                _log($"[Fastboot] 设备: {DeviceInfo?.Product ?? "未知"}");
+                _log($"[Fastboot] 安全启动: {(DeviceInfo?.SecureBoot == true ? "启用" : "禁用")}");
+                
+                if (DeviceInfo?.HasABPartition == true)
+                {
+                    _log($"[Fastboot] 当前槽位: {DeviceInfo.CurrentSlot}");
+                }
+                
+                _log($"[Fastboot] Fastbootd 模式: {(DeviceInfo?.IsFastbootd == true ? "是" : "否")}");
+                _log($"[Fastboot] 分区数量: {DeviceInfo?.PartitionSizes?.Count ?? 0}");
+            }
+            
+            return success;
+        }
+        
+        /// <summary>
+        /// 原生进度回调
+        /// </summary>
+        private void OnNativeProgressChanged(object sender, FastbootNativeProgressEventArgs e)
+        {
+            // 转换为 FlashProgress 并触发事件
+            var progress = new FlashProgress
+            {
+                PartitionName = e.Partition,
+                Phase = e.Stage,
+                CurrentChunk = e.CurrentChunk,
+                TotalChunks = e.TotalChunks,
+                SizeKB = e.TotalBytes / 1024,
+                SpeedKBps = e.SpeedBps / 1024.0,
+                Percent = e.Percent  // 传递实际进度值
+            };
+            
+            FlashProgressChanged?.Invoke(progress);
         }
 
         /// <summary>
@@ -98,36 +141,35 @@ namespace LoveAlways.Fastboot.Services
         /// </summary>
         public async Task<bool> RefreshDeviceInfoAsync(CancellationToken ct = default)
         {
-            if (string.IsNullOrEmpty(_currentSerial))
+            if (_nativeService == null || !_nativeService.IsConnected)
             {
-                _log("[Fastboot] 未选择设备");
+                _log("[Fastboot] 未连接设备");
                 return false;
             }
 
             try
             {
                 _log("[Fastboot] 正在读取设备信息...");
-
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, "getvar all", ct);
+                bool result = await _nativeService.RefreshDeviceInfoAsync(ct);
                 
-                // Fastboot 的 getvar 输出通常在 stderr
-                string output = string.IsNullOrEmpty(result.StdErr) ? result.StdOut : result.StdErr;
-                
-                _deviceInfo = FastbootDeviceInfo.ParseFromGetvarAll(output);
-                _deviceInfo.Serial = _currentSerial;
-
-                _log($"[Fastboot] 设备: {_deviceInfo.Product ?? "未知"}");
-                _log($"[Fastboot] 安全启动: {(_deviceInfo.SecureBoot ? "启用" : "禁用")}");
-                
-                if (_deviceInfo.HasABPartition)
+                if (result && DeviceInfo != null)
                 {
-                    _log($"[Fastboot] 当前槽位: {_deviceInfo.CurrentSlot}");
+                    _log($"[Fastboot] 设备: {DeviceInfo.Product ?? "未知"}");
+                    _log($"[Fastboot] 解锁状态: {(DeviceInfo.Unlocked == true ? "已解锁" : DeviceInfo.Unlocked == false ? "已锁定" : "未知")}");
+                    _log($"[Fastboot] Fastbootd: {(DeviceInfo.IsFastbootd ? "是" : "否")}");
+                    if (!string.IsNullOrEmpty(DeviceInfo.CurrentSlot))
+                        _log($"[Fastboot] 当前槽位: {DeviceInfo.CurrentSlot}");
+                    _log($"[Fastboot] 变量数量: {DeviceInfo.RawVariables?.Count ?? 0}");
+                    _log($"[Fastboot] 分区数量: {DeviceInfo.PartitionSizes?.Count ?? 0}");
+                    
+                    // 提示 bootloader 模式限制
+                    if (!DeviceInfo.IsFastbootd && DeviceInfo.PartitionSizes?.Count == 0)
+                    {
+                        _log("[Fastboot] 提示: Bootloader 模式不支持读取分区列表，如需查看请进入 Fastbootd 模式");
+                    }
                 }
-
-                _log($"[Fastboot] Fastbootd 模式: {(_deviceInfo.IsFastbootd ? "是" : "否")}");
-                _log($"[Fastboot] 分区数量: {_deviceInfo.PartitionSizes.Count}");
-
-                return true;
+                
+                return result;
             }
             catch (Exception ex)
             {
@@ -141,21 +183,26 @@ namespace LoveAlways.Fastboot.Services
         /// </summary>
         public void Disconnect()
         {
-            _currentSerial = null;
-            _deviceInfo = null;
+            if (_nativeService != null)
+            {
+                _nativeService.ProgressChanged -= OnNativeProgressChanged;
+                _nativeService.Disconnect();
+                _nativeService.Dispose();
+                _nativeService = null;
+            }
         }
 
         #endregion
 
         #region 分区操作
-
+        
         /// <summary>
         /// 刷写分区
         /// </summary>
         public async Task<bool> FlashPartitionAsync(string partitionName, string imagePath, 
             bool disableVerity = false, CancellationToken ct = default)
         {
-            if (!IsConnected)
+            if (_nativeService == null || !_nativeService.IsConnected)
             {
                 _log("[Fastboot] 未连接设备");
                 return false;
@@ -169,30 +216,21 @@ namespace LoveAlways.Fastboot.Services
 
             try
             {
-                _log($"[Fastboot] 正在刷写 {partitionName}...");
+                var fileInfo = new FileInfo(imagePath);
+                _log($"[Fastboot] 正在刷写 {partitionName} ({FormatSize(fileInfo.Length)})...");
 
-                string extraArgs = "";
+                bool result = await _nativeService.FlashPartitionAsync(partitionName, imagePath, disableVerity, ct);
                 
-                // 对于 vbmeta 分区，可以禁用 verity
-                if (disableVerity && (partitionName.StartsWith("vbmeta")))
-                {
-                    extraArgs = "--disable-verity --disable-verification ";
-                }
-
-                string cmd = $"flash {extraArgs}\"{partitionName}\" \"{imagePath}\"";
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, cmd, ct, 
-                    line => _logDetail($"[Fastboot] {line}"));
-
-                if (result.Success || result.StdErr.Contains("OKAY") || result.StdErr.Contains("Finished"))
+                if (result)
                 {
                     _log($"[Fastboot] {partitionName} 刷写成功");
-                    return true;
                 }
                 else
                 {
-                    _log($"[Fastboot] {partitionName} 刷写失败: {result.StdErr}");
-                    return false;
+                    _log($"[Fastboot] {partitionName} 刷写失败");
                 }
+                
+                return result;
             }
             catch (Exception ex)
             {
@@ -200,13 +238,29 @@ namespace LoveAlways.Fastboot.Services
                 return false;
             }
         }
+        
+        /// <summary>
+        /// 格式化文件大小
+        /// </summary>
+        private string FormatSize(long bytes)
+        {
+            string[] units = { "B", "KB", "MB", "GB" };
+            double size = bytes;
+            int unitIndex = 0;
+            while (size >= 1024 && unitIndex < units.Length - 1)
+            {
+                size /= 1024;
+                unitIndex++;
+            }
+            return $"{size:F2} {units[unitIndex]}";
+        }
 
         /// <summary>
         /// 擦除分区
         /// </summary>
         public async Task<bool> ErasePartitionAsync(string partitionName, CancellationToken ct = default)
         {
-            if (!IsConnected)
+            if (_nativeService == null || !_nativeService.IsConnected)
             {
                 _log("[Fastboot] 未连接设备");
                 return false;
@@ -216,18 +270,18 @@ namespace LoveAlways.Fastboot.Services
             {
                 _log($"[Fastboot] 正在擦除 {partitionName}...");
 
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, $"erase \"{partitionName}\"", ct);
+                bool result = await _nativeService.ErasePartitionAsync(partitionName, ct);
 
-                if (result.Success || result.StdErr.Contains("OKAY"))
+                if (result)
                 {
                     _log($"[Fastboot] {partitionName} 擦除成功");
-                    return true;
                 }
                 else
                 {
-                    _log($"[Fastboot] {partitionName} 擦除失败: {result.StdErr}");
-                    return false;
+                    _log($"[Fastboot] {partitionName} 擦除失败");
                 }
+                
+                return result;
             }
             catch (Exception ex)
             {
@@ -239,9 +293,14 @@ namespace LoveAlways.Fastboot.Services
         /// <summary>
         /// 批量刷写分区
         /// </summary>
-        public async Task<int> FlashPartitionsBatchAsync(List<Tuple<string, string>> partitions, 
-            CancellationToken ct = default)
+        public async Task<int> FlashPartitionsAsync(List<Tuple<string, string>> partitions, CancellationToken ct = default)
         {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return 0;
+            }
+
             int success = 0;
             int total = partitions.Count;
 
@@ -272,14 +331,16 @@ namespace LoveAlways.Fastboot.Services
         /// </summary>
         public async Task<bool> RebootAsync(CancellationToken ct = default)
         {
-            if (!IsConnected) return false;
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
 
             try
             {
-                _log("[Fastboot] 正在重启到系统...");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, "reboot", ct);
-                Disconnect();
-                return true;
+                _log("[Fastboot] 正在重启...");
+                return await _nativeService.RebootAsync(ct);
             }
             catch (Exception ex)
             {
@@ -293,33 +354,16 @@ namespace LoveAlways.Fastboot.Services
         /// </summary>
         public async Task<bool> RebootBootloaderAsync(CancellationToken ct = default)
         {
-            if (!IsConnected) return false;
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
 
             try
             {
                 _log("[Fastboot] 正在重启到 Bootloader...");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, "reboot bootloader", ct);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _log($"[Fastboot] 重启失败: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 重启到 Fastbootd (用户空间 fastboot)
-        /// </summary>
-        public async Task<bool> RebootFastbootdAsync(CancellationToken ct = default)
-        {
-            if (!IsConnected) return false;
-
-            try
-            {
-                _log("[Fastboot] 正在重启到 Fastbootd...");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, "reboot fastboot", ct);
-                return true;
+                return await _nativeService.RebootBootloaderAsync(ct);
             }
             catch (Exception ex)
             {
@@ -333,14 +377,39 @@ namespace LoveAlways.Fastboot.Services
         /// </summary>
         public async Task<bool> RebootRecoveryAsync(CancellationToken ct = default)
         {
-            if (!IsConnected) return false;
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
 
             try
             {
                 _log("[Fastboot] 正在重启到 Recovery...");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, "reboot recovery", ct);
-                Disconnect();
-                return true;
+                return await _nativeService.RebootRecoveryAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                _log($"[Fastboot] 重启失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 重启到 Fastbootd
+        /// </summary>
+        public async Task<bool> RebootFastbootdAsync(CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
+
+            try
+            {
+                _log("[Fastboot] 正在重启到 Fastbootd...");
+                return await _nativeService.RebootFastbootdAsync(ct);
             }
             catch (Exception ex)
             {
@@ -351,24 +420,23 @@ namespace LoveAlways.Fastboot.Services
 
         #endregion
 
-        #region 解锁/锁定操作
+        #region Bootloader 解锁/锁定
 
         /// <summary>
         /// 解锁 Bootloader
         /// </summary>
-        public async Task<bool> UnlockBootloaderAsync(string method = "flashing unlock", CancellationToken ct = default)
+        public async Task<bool> UnlockBootloaderAsync(string method = null, CancellationToken ct = default)
         {
-            if (!IsConnected) return false;
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
 
             try
             {
-                _log($"[Fastboot] 正在执行: {method}");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, method, ct);
-                
-                _log($"[Fastboot] 输出: {result.StdErr}");
-                
-                // 解锁命令可能需要用户在设备上确认
-                return true;
+                _log("[Fastboot] 正在解锁 Bootloader...");
+                return await _nativeService.UnlockBootloaderAsync(method, ct);
             }
             catch (Exception ex)
             {
@@ -380,17 +448,18 @@ namespace LoveAlways.Fastboot.Services
         /// <summary>
         /// 锁定 Bootloader
         /// </summary>
-        public async Task<bool> LockBootloaderAsync(string method = "flashing lock", CancellationToken ct = default)
+        public async Task<bool> LockBootloaderAsync(string method = null, CancellationToken ct = default)
         {
-            if (!IsConnected) return false;
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
 
             try
             {
-                _log($"[Fastboot] 正在执行: {method}");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, method, ct);
-                
-                _log($"[Fastboot] 输出: {result.StdErr}");
-                return true;
+                _log("[Fastboot] 正在锁定 Bootloader...");
+                return await _nativeService.LockBootloaderAsync(method, ct);
             }
             catch (Exception ex)
             {
@@ -401,246 +470,162 @@ namespace LoveAlways.Fastboot.Services
 
         #endregion
 
-        #region A/B 槽位操作
+        #region A/B 槽位
 
         /// <summary>
-        /// 切换 A/B 槽位
+        /// 设置活动槽位
         /// </summary>
         public async Task<bool> SetActiveSlotAsync(string slot, CancellationToken ct = default)
         {
-            if (!IsConnected) return false;
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return false;
+            }
 
             try
             {
-                _log($"[Fastboot] 正在切换到槽位: {slot}");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, $"set_active {slot}", ct);
-
-                if (result.Success || result.StdErr.Contains("OKAY"))
-                {
-                    _log($"[Fastboot] 槽位切换成功");
-                    await RefreshDeviceInfoAsync(ct);
-                    return true;
-                }
-                else
-                {
-                    _log($"[Fastboot] 槽位切换失败: {result.StdErr}");
-                    return false;
-                }
+                _log($"[Fastboot] 正在设置活动槽位: {slot}...");
+                return await _nativeService.SetActiveSlotAsync(slot, ct);
             }
             catch (Exception ex)
             {
-                _log($"[Fastboot] 槽位切换异常: {ex.Message}");
+                _log($"[Fastboot] 设置槽位失败: {ex.Message}");
                 return false;
             }
         }
-
+        
         /// <summary>
-        /// 切换到另一个槽位
+        /// 切换 A/B 槽位
         /// </summary>
         public async Task<bool> SwitchSlotAsync(CancellationToken ct = default)
         {
-            if (_deviceInfo == null || !_deviceInfo.HasABPartition)
+            if (_nativeService == null || !_nativeService.IsConnected)
             {
-                _log("[Fastboot] 设备不支持 A/B 分区");
-                return false;
-            }
-
-            string newSlot = _deviceInfo.CurrentSlot == "a" ? "b" : "a";
-            return await SetActiveSlotAsync(newSlot, ct);
-        }
-
-        #endregion
-
-        #region 逻辑分区操作 (Fastbootd)
-
-        /// <summary>
-        /// 创建逻辑分区
-        /// </summary>
-        public async Task<bool> CreateLogicalPartitionAsync(string name, long size, CancellationToken ct = default)
-        {
-            if (!IsConnected || _deviceInfo == null || !_deviceInfo.IsFastbootd)
-            {
-                _log("[Fastboot] 需要在 Fastbootd 模式下操作逻辑分区");
+                _log("[Fastboot] 未连接设备");
                 return false;
             }
 
             try
             {
-                _log($"[Fastboot] 正在创建逻辑分区: {name} ({size} bytes)");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, 
-                    $"create-logical-partition \"{name}\" {size}", ct);
-
-                if (result.Success || result.StdErr.Contains("OKAY"))
-                {
-                    _log($"[Fastboot] 逻辑分区 {name} 创建成功");
-                    return true;
-                }
-                else
-                {
-                    _log($"[Fastboot] 创建失败: {result.StdErr}");
-                    return false;
-                }
+                return await _nativeService.SwitchSlotAsync(ct);
             }
             catch (Exception ex)
             {
-                _log($"[Fastboot] 创建逻辑分区异常: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 删除逻辑分区
-        /// </summary>
-        public async Task<bool> DeleteLogicalPartitionAsync(string name, CancellationToken ct = default)
-        {
-            if (!IsConnected || _deviceInfo == null || !_deviceInfo.IsFastbootd)
-            {
-                _log("[Fastboot] 需要在 Fastbootd 模式下操作逻辑分区");
-                return false;
-            }
-
-            try
-            {
-                _log($"[Fastboot] 正在删除逻辑分区: {name}");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, 
-                    $"delete-logical-partition \"{name}\"", ct);
-
-                if (result.Success || result.StdErr.Contains("OKAY"))
-                {
-                    _log($"[Fastboot] 逻辑分区 {name} 删除成功");
-                    return true;
-                }
-                else
-                {
-                    _log($"[Fastboot] 删除失败: {result.StdErr}");
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                _log($"[Fastboot] 删除逻辑分区异常: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 调整逻辑分区大小
-        /// </summary>
-        public async Task<bool> ResizeLogicalPartitionAsync(string name, long newSize, CancellationToken ct = default)
-        {
-            if (!IsConnected || _deviceInfo == null || !_deviceInfo.IsFastbootd)
-            {
-                _log("[Fastboot] 需要在 Fastbootd 模式下操作逻辑分区");
-                return false;
-            }
-
-            try
-            {
-                _log($"[Fastboot] 正在调整逻辑分区大小: {name} -> {newSize} bytes");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, 
-                    $"resize-logical-partition \"{name}\" {newSize}", ct);
-
-                if (result.Success || result.StdErr.Contains("OKAY"))
-                {
-                    _log($"[Fastboot] 逻辑分区 {name} 大小调整成功");
-                    return true;
-                }
-                else
-                {
-                    _log($"[Fastboot] 调整失败: {result.StdErr}");
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                _log($"[Fastboot] 调整逻辑分区大小异常: {ex.Message}");
+                _log($"[Fastboot] 切换槽位失败: {ex.Message}");
                 return false;
             }
         }
 
         #endregion
 
-        #region 其他操作
+        #region OEM 命令
 
         /// <summary>
-        /// 执行自定义 Fastboot 命令
+        /// 执行 OEM 命令
         /// </summary>
-        public async Task<FastbootResult> ExecuteCommandAsync(string command, CancellationToken ct = default)
+        public async Task<string> ExecuteOemCommandAsync(string command, CancellationToken ct = default)
         {
-            _log($"[Fastboot] 执行: {command}");
-            var result = await FastbootCommand.ExecuteAsync(_currentSerial, command, ct);
-            
-            if (!string.IsNullOrEmpty(result.StdErr))
+            if (_nativeService == null || !_nativeService.IsConnected)
             {
-                _log($"[Fastboot] {result.StdErr}");
+                _log("[Fastboot] 未连接设备");
+                return null;
             }
-
-            return result;
-        }
-
-        /// <summary>
-        /// 取消快照更新状态
-        /// </summary>
-        public async Task<bool> CancelSnapshotUpdateAsync(CancellationToken ct = default)
-        {
-            if (!IsConnected) return false;
 
             try
             {
-                _log("[Fastboot] 正在取消快照更新状态...");
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, "snapshot-update cancel", ct);
-
-                if (result.Success || result.StdErr.Contains("OKAY"))
-                {
-                    _log("[Fastboot] 快照更新状态已取消");
-                    return true;
-                }
-                else
-                {
-                    _log($"[Fastboot] 取消失败: {result.StdErr}");
-                    return false;
-                }
+                _log($"[Fastboot] 执行 OEM: {command}");
+                return await _nativeService.ExecuteOemCommandAsync(command, ct);
             }
             catch (Exception ex)
             {
-                _log($"[Fastboot] 取消快照更新异常: {ex.Message}");
-                return false;
+                _log($"[Fastboot] OEM 命令失败: {ex.Message}");
+                return null;
             }
         }
 
         /// <summary>
-        /// 获取单个变量值
+        /// 获取变量值
         /// </summary>
         public async Task<string> GetVariableAsync(string name, CancellationToken ct = default)
         {
-            if (!IsConnected) return null;
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                return null;
+            }
 
             try
             {
-                var result = await FastbootCommand.ExecuteAsync(_currentSerial, $"getvar {name}", ct);
-                
-                // 解析输出，格式: name: value
-                string output = result.StdErr ?? result.StdOut;
-                if (string.IsNullOrEmpty(output)) return null;
+                return await _nativeService.GetVariableAsync(name, ct);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 执行任意命令（用于快捷命令功能）
+        /// </summary>
+        public async Task<string> ExecuteCommandAsync(string command, CancellationToken ct = default)
+        {
+            if (_nativeService == null || !_nativeService.IsConnected)
+            {
+                _log("[Fastboot] 未连接设备");
+                return null;
+            }
 
-                foreach (var line in output.Split('\n'))
+            try
+            {
+                _log($"[Fastboot] 执行: {command}");
+                
+                // 解析命令
+                if (command.StartsWith("getvar ", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (line.Contains(name + ":"))
-                    {
-                        int idx = line.IndexOf(':');
-                        if (idx > 0)
-                        {
-                            return line.Substring(idx + 1).Trim();
-                        }
-                    }
+                    string varName = command.Substring(7).Trim();
+                    return await _nativeService.GetVariableAsync(varName, ct);
+                }
+                else if (command.StartsWith("oem ", StringComparison.OrdinalIgnoreCase))
+                {
+                    string oemCmd = command.Substring(4).Trim();
+                    return await _nativeService.ExecuteOemCommandAsync(oemCmd, ct);
+                }
+                else if (command == "reboot")
+                {
+                    await _nativeService.RebootAsync(ct);
+                    return "OKAY";
+                }
+                else if (command == "reboot-bootloader" || command == "reboot bootloader")
+                {
+                    await _nativeService.RebootBootloaderAsync(ct);
+                    return "OKAY";
+                }
+                else if (command == "reboot-recovery" || command == "reboot recovery")
+                {
+                    await _nativeService.RebootRecoveryAsync(ct);
+                    return "OKAY";
+                }
+                else if (command == "reboot-fastboot" || command == "reboot fastboot")
+                {
+                    await _nativeService.RebootFastbootdAsync(ct);
+                    return "OKAY";
+                }
+                else
+                {
+                    // 其他命令当作 OEM 命令执行
+                    return await _nativeService.ExecuteOemCommandAsync(command, ct);
                 }
             }
-            catch { }
-
-            return null;
+            catch (Exception ex)
+            {
+                _log($"[Fastboot] 命令执行失败: {ex.Message}");
+                return null;
+            }
         }
 
         #endregion
+
+        #region IDisposable
 
         public void Dispose()
         {
@@ -650,5 +635,7 @@ namespace LoveAlways.Fastboot.Services
                 _disposed = true;
             }
         }
+
+        #endregion
     }
 }

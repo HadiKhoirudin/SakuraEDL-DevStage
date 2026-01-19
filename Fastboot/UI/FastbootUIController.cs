@@ -69,6 +69,16 @@ namespace LoveAlways.Fastboot.UI
         private long _totalOperationBytes;
         private long _completedBytes;
         private string _currentOperationName;
+        
+        // 多分区刷写进度跟踪
+        private int _flashTotalPartitions;
+        private int _flashCurrentPartitionIndex;
+        
+        // 进度更新节流
+        private DateTime _lastProgressUpdate = DateTime.MinValue;
+        private double _lastSubProgressValue = -1;
+        private double _lastMainProgressValue = -1;
+        private const int ProgressUpdateIntervalMs = 16; // 约60fps
 
         // 设备列表缓存
         private List<FastbootDeviceListItem> _cachedDevices = new List<FastbootDeviceListItem>();
@@ -243,11 +253,17 @@ namespace LoveAlways.Fastboot.UI
                 ?? "未知";
             UpdateLabelSafe(_brandLabel, $"品牌：{brand}");
 
-            // 芯片/平台
-            string chip = DeviceInfo.GetVariable("ro.boot.hardware") 
-                ?? DeviceInfo.GetVariable("hw-revision") 
-                ?? DeviceInfo.GetVariable("variant") 
-                ?? "未知";
+            // 芯片/平台 - 优先使用 variant，然后映射 hw-revision
+            string chip = DeviceInfo.GetVariable("variant");
+            if (string.IsNullOrEmpty(chip) || chip == "未知")
+            {
+                string hwRev = DeviceInfo.GetVariable("hw-revision");
+                chip = MapChipId(hwRev);
+            }
+            if (string.IsNullOrEmpty(chip) || chip == "未知")
+            {
+                chip = DeviceInfo.GetVariable("ro.boot.hardware") ?? "未知";
+            }
             UpdateLabelSafe(_chipLabel, $"芯片：{chip}");
 
             // 型号
@@ -280,11 +296,84 @@ namespace LoveAlways.Fastboot.UI
             }
             UpdateLabelSafe(_unlockLabel, $"解锁：{unlockStatus}");
 
-            // 当前槽位
-            string slot = DeviceInfo.GetVariable("current-slot") ?? "N/A";
-            if (slot != "N/A" && !slot.StartsWith("_"))
+            // 当前槽位 - 支持多种变量名
+            string slot = DeviceInfo.GetVariable("current-slot") 
+                ?? DeviceInfo.CurrentSlot;
+            string slotCount = DeviceInfo.GetVariable("slot-count");
+            
+            if (string.IsNullOrEmpty(slot))
+            {
+                // 检查是否支持 A/B 分区
+                if (!string.IsNullOrEmpty(slotCount) && slotCount != "0")
+                    slot = "未知";
+                else
+                    slot = "N/A";
+            }
+            else if (!slot.StartsWith("_"))
+            {
                 slot = "_" + slot;
+            }
             UpdateLabelSafe(_slotLabel, $"槽位：{slot}");
+        }
+
+        /// <summary>
+        /// 映射高通芯片 ID 到名称
+        /// </summary>
+        private string MapChipId(string hwRevision)
+        {
+            if (string.IsNullOrEmpty(hwRevision)) return "未知";
+            
+            // 高通芯片 ID 映射表
+            var chipMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                // Snapdragon 8xx 系列
+                { "20001", "SDM845" },
+                { "20002", "SDM845" },
+                { "339", "SDM845" },
+                { "321", "SDM835" },
+                { "318", "SDM835" },
+                { "360", "SDM855" },
+                { "356", "SM8150" },
+                { "415", "SM8250" },
+                { "457", "SM8350" },
+                { "530", "SM8450" },
+                { "536", "SM8550" },
+                { "591", "SM8650" },
+                
+                // Snapdragon 7xx 系列
+                { "365", "SDM730" },
+                { "366", "SDM730G" },
+                { "400", "SDM765G" },
+                { "434", "SM7250" },
+                { "475", "SM7325" },
+                
+                // Snapdragon 6xx 系列
+                { "317", "SDM660" },
+                { "324", "SDM670" },
+                { "345", "SDM675" },
+                { "355", "SDM690" },
+                
+                // Snapdragon 4xx 系列
+                { "293", "SDM450" },
+                { "353", "SM4250" },
+                
+                // MTK 系列
+                { "mt6893", "Dimensity 1200" },
+                { "mt6885", "Dimensity 1000+" },
+                { "mt6853", "Dimensity 720" },
+                { "mt6873", "Dimensity 800" },
+                { "mt6983", "Dimensity 9000" },
+                { "mt6895", "Dimensity 8100" },
+            };
+            
+            if (chipMap.TryGetValue(hwRevision, out string chipName))
+                return chipName;
+            
+            // 如果映射表中没有，检查是否是纯数字（可能是未知的高通 ID）
+            if (int.TryParse(hwRevision, out _))
+                return $"QC-{hwRevision}";
+            
+            return hwRevision;
         }
 
         /// <summary>
@@ -449,6 +538,9 @@ namespace LoveAlways.Fastboot.UI
                     (current, total) => UpdateProgressWithSpeed(current, total),
                     _logDetail
                 );
+                
+                // 订阅刷写进度事件
+                _service.FlashProgressChanged += OnFlashProgressChanged;
 
                 UpdateProgressBar(30);
                 bool success = await _service.SelectDeviceAsync(serial, _cts.Token);
@@ -525,8 +617,8 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> ReadPartitionTableAsync()
         {
-            if (!EnsureConnected()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (!await EnsureConnectedAsync()) return false;
 
             try
             {
@@ -626,8 +718,8 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> FlashSelectedPartitionsAsync()
         {
-            if (!EnsureConnected()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (!await EnsureConnectedAsync()) return false;
 
             var selectedItems = GetSelectedPartitionItems();
             if (selectedItems.Count == 0)
@@ -673,13 +765,16 @@ namespace LoveAlways.Fastboot.UI
 
                 int successCount = 0;
                 int total = partitionsWithFiles.Count;
+                
+                // 设置进度跟踪字段
+                _flashTotalPartitions = total;
 
                 for (int i = 0; i < total; i++)
                 {
+                    _flashCurrentPartitionIndex = i;
+                    
                     var part = partitionsWithFiles[i];
                     UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {part.Item1} ({i + 1}/{total})");
-                    // 总进度：基于已完成的分区数
-                    UpdateProgressBar((i * 100.0) / total);
                     // 子进度：当前分区刷写开始
                     UpdateSubProgressBar(0);
 
@@ -690,6 +785,8 @@ namespace LoveAlways.Fastboot.UI
                     
                     // 子进度：当前分区刷写完成
                     UpdateSubProgressBar(100);
+                    // 更新总进度
+                    UpdateProgressBar(((i + 1) * 100.0) / total);
                     
                     // 计算并显示速度
                     var elapsed = (DateTime.Now - flashStart).TotalSeconds;
@@ -702,6 +799,10 @@ namespace LoveAlways.Fastboot.UI
                     if (result)
                         successCount++;
                 }
+                
+                // 重置进度跟踪
+                _flashTotalPartitions = 0;
+                _flashCurrentPartitionIndex = 0;
 
                 UpdateProgressBar(100);
                 UpdateSubProgressBar(100);
@@ -709,6 +810,12 @@ namespace LoveAlways.Fastboot.UI
 
                 Log($"刷写完成: {successCount}/{total} 成功", 
                     successCount == total ? Color.Green : Color.Orange);
+
+                // 执行刷写后附加操作（切换槽位、擦除谷歌锁等）
+                if (successCount > 0)
+                {
+                    await ExecutePostFlashOperationsAsync();
+                }
 
                 // 自动重启
                 if (IsAutoRebootEnabled() && successCount > 0)
@@ -738,8 +845,8 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> EraseSelectedPartitionsAsync()
         {
-            if (!EnsureConnected()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (!await EnsureConnectedAsync()) return false;
 
             var selectedItems = GetSelectedPartitionItems();
             if (selectedItems.Count == 0)
@@ -824,6 +931,35 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
+        /// 检查是否有勾选的普通分区（非脚本任务，带镜像文件）
+        /// </summary>
+        public bool HasSelectedPartitionsWithFiles()
+        {
+            if (_partitionListView == null) return false;
+
+            try
+            {
+                foreach (ListViewItem item in _partitionListView.CheckedItems)
+                {
+                    // 跳过脚本任务和 Payload 分区
+                    if (item.Tag is BatScriptParser.FlashTask) continue;
+                    if (item.Tag is PayloadPartition) continue;
+                    if (item.Tag is RemotePayloadPartition) continue;
+
+                    // 检查是否有镜像文件路径
+                    string filePath = item.SubItems.Count > 3 ? item.SubItems[3].Text : "";
+                    if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch { }
+
+            return false;
+        }
+
+        /// <summary>
         /// 为分区选择镜像文件
         /// </summary>
         public void SelectImageForPartition(ListViewItem item)
@@ -864,7 +1000,7 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> RebootToSystemAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             return await _service.RebootAsync();
         }
 
@@ -873,7 +1009,7 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> RebootToBootloaderAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             return await _service.RebootBootloaderAsync();
         }
 
@@ -882,7 +1018,7 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> RebootToFastbootdAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             return await _service.RebootFastbootdAsync();
         }
 
@@ -891,7 +1027,7 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> RebootToRecoveryAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             return await _service.RebootRecoveryAsync();
         }
 
@@ -904,7 +1040,7 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> UnlockBootloaderAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
 
             string method = "flashing unlock";
             
@@ -924,7 +1060,7 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> LockBootloaderAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
 
             string method = "flashing lock";
             
@@ -946,7 +1082,7 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> SwitchSlotAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
             
             bool success = await _service.SwitchSlotAsync();
             
@@ -967,7 +1103,7 @@ namespace LoveAlways.Fastboot.UI
         /// </summary>
         public async Task<bool> ExecuteSelectedCommandAsync()
         {
-            if (!EnsureConnected()) return false;
+            if (!await EnsureConnectedAsync()) return false;
 
             string command = GetSelectedCommand();
             if (string.IsNullOrEmpty(command))
@@ -983,7 +1119,7 @@ namespace LoveAlways.Fastboot.UI
 
                 var result = await _service.ExecuteCommandAsync(command, _cts.Token);
                 
-                return result.Success;
+                return result != null;
             }
             catch (Exception ex)
             {
@@ -1009,6 +1145,15 @@ namespace LoveAlways.Fastboot.UI
             }
         }
 
+        /// <summary>
+        /// 检查是否有选中的快捷命令
+        /// </summary>
+        public bool HasSelectedCommand()
+        {
+            string cmd = GetSelectedCommand();
+            return !string.IsNullOrWhiteSpace(cmd);
+        }
+
         #endregion
 
         #region 辅助方法
@@ -1017,10 +1162,46 @@ namespace LoveAlways.Fastboot.UI
         {
             if (_service == null || !_service.IsConnected)
             {
-                Log("请先连接 Fastboot 设备", Color.Red);
+                // 检查是否有可用设备，提示用户连接
+                if (_cachedDevices != null && _cachedDevices.Count > 0)
+                {
+                    Log("请先点击「连接」按钮连接 Fastboot 设备", Color.Red);
+                }
+                else
+                {
+                    Log("未检测到 Fastboot 设备，请确保设备已进入 Fastboot 模式", Color.Red);
+                }
                 return false;
             }
             return true;
+        }
+        
+        /// <summary>
+        /// 确保设备已连接（异步版本，支持自动连接）
+        /// </summary>
+        private async Task<bool> EnsureConnectedAsync()
+        {
+            if (_service != null && _service.IsConnected)
+                return true;
+            
+            // 自动尝试连接
+            string selectedDevice = GetSelectedDevice();
+            if (!string.IsNullOrEmpty(selectedDevice))
+            {
+                Log("自动连接 Fastboot 设备...", Color.Blue);
+                return await ConnectAsync();
+            }
+            
+            // 检查是否有可用设备
+            if (_cachedDevices != null && _cachedDevices.Count > 0)
+            {
+                Log("请先选择并连接 Fastboot 设备", Color.Red);
+            }
+            else
+            {
+                Log("未检测到 Fastboot 设备，请确保设备已进入 Fastboot 模式", Color.Red);
+            }
+            return false;
         }
 
         /// <summary>
@@ -1086,6 +1267,51 @@ namespace LoveAlways.Fastboot.UI
         {
             if (_speedLabel == null) return;
             UpdateLabelSafe(_speedLabel, $"速度：{formattedSpeed}");
+        }
+        
+        /// <summary>
+        /// 刷写进度回调
+        /// </summary>
+        private void OnFlashProgressChanged(FlashProgress progress)
+        {
+            if (progress == null) return;
+            
+            // 计算进度值
+            double subProgress = progress.Percent;
+            double mainProgress = _flashTotalPartitions > 0 
+                ? (_flashCurrentPartitionIndex * 100.0 + progress.Percent) / _flashTotalPartitions 
+                : 0;
+            
+            // 时间间隔检查
+            var now = DateTime.Now;
+            bool timeElapsed = (now - _lastProgressUpdate).TotalMilliseconds >= ProgressUpdateIntervalMs;
+            bool forceUpdate = progress.Percent >= 95;
+            
+            // 无论如何都更新（保证流畅性）
+            if (!forceUpdate && !timeElapsed)
+                return;
+            
+            _lastProgressUpdate = now;
+            
+            // 更新子进度条（当前分区进度）
+            _lastSubProgressValue = subProgress;
+            UpdateSubProgressBar(subProgress);
+            
+            // 更新总进度条（多分区刷写时）
+            if (_flashTotalPartitions > 0)
+            {
+                _lastMainProgressValue = mainProgress;
+                UpdateProgressBar(mainProgress);
+            }
+            
+            // 更新速度显示
+            if (progress.SpeedKBps > 0)
+            {
+                UpdateSpeedLabel(progress.SpeedFormatted);
+            }
+            
+            // 实时更新时间
+            UpdateTimeLabel();
         }
         
         /// <summary>
@@ -1209,6 +1435,58 @@ namespace LoveAlways.Fastboot.UI
             catch
             {
                 return false;
+            }
+        }
+
+        private bool IsSwitchSlotEnabled()
+        {
+            try
+            {
+                return _switchSlotCheckbox?.Checked ?? false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool IsEraseGoogleLockEnabled()
+        {
+            try
+            {
+                return _eraseGoogleLockCheckbox?.Checked ?? false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 刷写完成后执行附加操作（切换槽位、擦除谷歌锁等）
+        /// </summary>
+        private async Task ExecutePostFlashOperationsAsync()
+        {
+            // 切换 A 槽位
+            if (IsSwitchSlotEnabled())
+            {
+                Log("正在切换到 A 槽位...", Color.Blue);
+                bool success = await _service.SetActiveSlotAsync("a", _cts?.Token ?? CancellationToken.None);
+                Log(success ? "已切换到 A 槽位" : "切换槽位失败", success ? Color.Green : Color.Red);
+            }
+
+            // 擦除谷歌锁 (FRP)
+            if (IsEraseGoogleLockEnabled())
+            {
+                Log("正在擦除谷歌锁 (FRP)...", Color.Blue);
+                // 尝试擦除 frp 分区
+                bool success = await _service.ErasePartitionAsync("frp", _cts?.Token ?? CancellationToken.None);
+                if (!success)
+                {
+                    // 部分设备使用 config 或 persistent 分区
+                    success = await _service.ErasePartitionAsync("config", _cts?.Token ?? CancellationToken.None);
+                }
+                Log(success ? "谷歌锁已擦除" : "擦除谷歌锁失败（分区可能不存在）", success ? Color.Green : Color.Orange);
             }
         }
 
@@ -1358,8 +1636,8 @@ namespace LoveAlways.Fastboot.UI
                         item.ForeColor = Color.Gray;
                     }
 
-                    // 默认勾选所有 flash 操作
-                    if (task.Operation == "flash" && task.ImageExists)
+                    // 默认勾选所有 flash 和 erase 操作
+                    if ((task.Operation == "flash" && task.ImageExists) || task.Operation == "erase")
                     {
                         item.Checked = true;
                     }
@@ -1383,8 +1661,8 @@ namespace LoveAlways.Fastboot.UI
                 return false;
             }
 
-            if (!EnsureConnected()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (!await EnsureConnectedAsync()) return false;
 
             // 获取选中的任务
             var selectedTasks = new List<BatScriptParser.FlashTask>();
@@ -1533,6 +1811,12 @@ namespace LoveAlways.Fastboot.UI
                 UpdateProgressBar(100);
                 UpdateSubProgressBar(100);
                 StopOperationTimer();
+
+                // 执行刷写后附加操作（切换槽位、擦除谷歌锁等）
+                if (success > 0)
+                {
+                    await ExecutePostFlashOperationsAsync();
+                }
 
                 // 如果没有重启命令但需要锁定BL，在这里执行
                 bool hasReboot = selectedTasks.Any(t => t.Operation == "reboot");
@@ -2178,8 +2462,8 @@ namespace LoveAlways.Fastboot.UI
                 return false;
             }
 
-            if (!EnsureConnected()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (!await EnsureConnectedAsync()) return false;
 
             // 获取选中的分区
             var selectedPartitions = new List<PayloadPartition>();
@@ -2288,6 +2572,12 @@ namespace LoveAlways.Fastboot.UI
 
                 Log($"Payload 刷写完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
 
+                // 执行刷写后附加操作（切换槽位、擦除谷歌锁等）
+                if (success > 0)
+                {
+                    await ExecutePostFlashOperationsAsync();
+                }
+
                 // 自动重启
                 if (IsAutoRebootEnabled() && success > 0)
                 {
@@ -2330,8 +2620,8 @@ namespace LoveAlways.Fastboot.UI
                 return false;
             }
 
-            if (!EnsureConnected()) return false;
             if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (!await EnsureConnectedAsync()) return false;
 
             // 获取选中的分区
             var selectedPartitions = new List<RemotePayloadPartition>();

@@ -2697,15 +2697,9 @@ namespace LoveAlways
                 // checkbox21 = 锁定BL (手动操作时执行，脚本执行时作为标志)
                 // 注意：不再自动执行，而是在刷机完成后根据选项执行
 
-                // checkbox41 = 切换A槽
-                checkbox41.CheckedChanged += async (s, e) =>
-                {
-                    if (checkbox41.Checked && _fastbootController.IsConnected)
-                    {
-                        await _fastbootController.SwitchSlotAsync();
-                        checkbox41.Checked = false; // 执行后取消勾选
-                    }
-                };
+                // checkbox41 = 切换A槽 (刷写完成后执行)
+                // checkbox43 = 擦除谷歌锁 (刷写完成后执行)
+                // 这些复选框只作为标记，不立即执行操作
 
                 // checkbox42 = 分区全选
                 checkbox42.CheckedChanged += (s, e) => FastbootSelectAllPartitions(checkbox42.Checked);
@@ -2961,12 +2955,17 @@ namespace LoveAlways
                 if (!connected) return;
             }
 
-            // 优先级 1: 如果有加载的 Payload，执行 Payload 刷写
-            if (_fastbootController.IsPayloadLoaded)
+            // 优先级 1: 如果选中了快捷命令，直接执行命令
+            if (_fastbootController.HasSelectedCommand())
+            {
+                await _fastbootController.ExecuteSelectedCommandAsync();
+            }
+            // 优先级 2: 如果有加载的 Payload，执行 Payload 刷写
+            else if (_fastbootController.IsPayloadLoaded)
             {
                 await _fastbootController.FlashFromPayloadAsync();
             }
-            // 优先级 2: 如果有加载的刷机任务，执行刷机脚本
+            // 优先级 3: 如果有加载的刷机任务，执行刷机脚本
             else if (_fastbootController.FlashTasks != null && _fastbootController.FlashTasks.Count > 0)
             {
                 // 读取用户选项
@@ -2975,10 +2974,15 @@ namespace LoveAlways
 
                 await _fastbootController.ExecuteFlashScriptAsync(keepData, lockBl);
             }
+            // 优先级 4: 如果勾选了分区且有镜像文件，直接写入分区
+            else if (_fastbootController.HasSelectedPartitionsWithFiles())
+            {
+                await _fastbootController.FlashSelectedPartitionsAsync();
+            }
             else
             {
-                // 否则执行快捷命令
-                await _fastbootController.ExecuteSelectedCommandAsync();
+                // 什么都没选，提示用户
+                AppendLog("请选择快捷命令、加载刷机脚本或勾选分区后再执行", Color.Orange);
             }
         }
 

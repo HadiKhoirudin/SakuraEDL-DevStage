@@ -199,47 +199,169 @@ namespace LoveAlways.Fastboot.Protocol
         {
             _variables.Clear();
             
-            // 读取常用变量
-            string[] importantVars = {
-                FastbootProtocol.VAR_PRODUCT,
-                FastbootProtocol.VAR_SERIALNO,
-                FastbootProtocol.VAR_SECURE,
-                FastbootProtocol.VAR_UNLOCKED,
-                FastbootProtocol.VAR_MAX_DOWNLOAD_SIZE,
-                FastbootProtocol.VAR_CURRENT_SLOT,
-                FastbootProtocol.VAR_SLOT_COUNT,
-                FastbootProtocol.VAR_IS_USERSPACE
-            };
+            // 尝试使用 getvar all 获取所有变量
+            bool gotAllVars = await TryGetAllVariablesAsync(ct);
             
-            foreach (var varName in importantVars)
+            // 如果 getvar all 失败或没有获取到足够的变量，逐个读取重要变量
+            if (!gotAllVars || _variables.Count < 5)
             {
-                try
+                string[] importantVars = {
+                    FastbootProtocol.VAR_PRODUCT,
+                    FastbootProtocol.VAR_SERIALNO,
+                    FastbootProtocol.VAR_SECURE,
+                    FastbootProtocol.VAR_UNLOCKED,
+                    FastbootProtocol.VAR_MAX_DOWNLOAD_SIZE,
+                    FastbootProtocol.VAR_CURRENT_SLOT,
+                    FastbootProtocol.VAR_SLOT_COUNT,
+                    FastbootProtocol.VAR_IS_USERSPACE,
+                    FastbootProtocol.VAR_VERSION_BOOTLOADER,
+                    FastbootProtocol.VAR_VERSION_BASEBAND,
+                    FastbootProtocol.VAR_HW_REVISION,
+                    FastbootProtocol.VAR_VARIANT
+                };
+                
+                foreach (var varName in importantVars)
                 {
-                    string value = await GetVariableAsync(varName, ct);
-                    if (!string.IsNullOrEmpty(value))
+                    if (_variables.ContainsKey(varName)) continue;
+                    
+                    try
                     {
-                        _variables[varName] = value;
-                        
-                        // 解析 max-download-size
-                        if (varName == FastbootProtocol.VAR_MAX_DOWNLOAD_SIZE)
+                        string value = await GetVariableAsync(varName, ct);
+                        if (!string.IsNullOrEmpty(value))
                         {
-                            if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
-                            {
-                                _maxDownloadSize = Convert.ToInt64(value.Substring(2), 16);
-                            }
-                            else if (long.TryParse(value, out long size))
-                            {
-                                _maxDownloadSize = size;
-                            }
+                            _variables[varName] = value;
                         }
                     }
+                    catch { }
                 }
-                catch { }
+            }
+            
+            // 解析 max-download-size
+            if (_variables.TryGetValue(FastbootProtocol.VAR_MAX_DOWNLOAD_SIZE, out string maxDlSize))
+            {
+                if (maxDlSize.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                {
+                    _maxDownloadSize = Convert.ToInt64(maxDlSize.Substring(2), 16);
+                }
+                else if (long.TryParse(maxDlSize, out long size))
+                {
+                    _maxDownloadSize = size;
+                }
             }
             
             _log($"设备: {GetVariableValue(FastbootProtocol.VAR_PRODUCT, "未知")}");
             _log($"序列号: {GetVariableValue(FastbootProtocol.VAR_SERIALNO, "未知")}");
             _log($"最大下载: {_maxDownloadSize / 1024 / 1024} MB");
+        }
+        
+        /// <summary>
+        /// 尝试使用 getvar all 获取所有变量
+        /// </summary>
+        private async Task<bool> TryGetAllVariablesAsync(CancellationToken ct)
+        {
+            try
+            {
+                EnsureConnected();
+                
+                _logDetail(">>> getvar:all");
+                
+                byte[] cmdBytes = FastbootProtocol.BuildCommand($"{FastbootProtocol.CMD_GETVAR}:{FastbootProtocol.VAR_ALL}");
+                
+                // 使用 TransferAsync 发送命令并获取第一个响应
+                byte[] response = await _transport.TransferAsync(cmdBytes, 2000, ct);
+                
+                if (response == null || response.Length == 0)
+                {
+                    _logDetail("getvar:all 无响应");
+                    return false;
+                }
+                
+                // 读取所有响应（INFO 消息）
+                int timeout = 15000; // 15秒超时
+                var startTime = DateTime.Now;
+                int varCount = 0;
+                
+                while ((DateTime.Now - startTime).TotalMilliseconds < timeout)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    
+                    if (response == null || response.Length == 0) break;
+                    
+                    var result = FastbootProtocol.ParseResponse(response, response.Length);
+                    _logDetail($"<<< {result.Type}: {result.Message}");
+                    
+                    if (result.IsInfo)
+                    {
+                        // 解析 INFO 消息格式: "key: value" 或 "(bootloader) key: value"
+                        if (ParseVariableFromInfo(result.Message))
+                            varCount++;
+                    }
+                    else if (result.IsSuccess)
+                    {
+                        // OKAY 表示命令成功结束
+                        _logDetail($"getvar:all 完成，获取 {varCount} 个变量");
+                        break;
+                    }
+                    else if (result.IsFail)
+                    {
+                        // FAIL 表示命令失败
+                        _logDetail($"getvar:all 失败: {result.Message}");
+                        break;
+                    }
+                    
+                    // 继续读取下一个响应
+                    response = await ReceiveResponseAsync(1000, ct);
+                }
+                
+                _logDetail($"总共获取 {_variables.Count} 个变量");
+                return _variables.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                _logDetail($"getvar:all 异常: {ex.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 从 INFO 消息解析变量
+        /// 支持格式：
+        /// - key: value
+        /// - partition-size:boot_a: 0x4000000
+        /// - is-logical:system_a: yes
+        /// - (bootloader) key: value
+        /// </summary>
+        private bool ParseVariableFromInfo(string message)
+        {
+            if (string.IsNullOrEmpty(message)) return false;
+            
+            string line = message.Trim();
+            
+            // 移除 (bootloader) 前缀
+            if (line.StartsWith("(bootloader)"))
+            {
+                line = line.Substring(12).Trim();
+            }
+            
+            // 使用正则表达式解析：支持 partition-size:xxx: value 和 key: value 格式
+            // 格式：key: value 或 prefix:name: value
+            // 正则：匹配 "key: value" 其中 key 可以包含 "prefix:name" 格式
+            var match = System.Text.RegularExpressions.Regex.Match(line, 
+                @"^([a-zA-Z0-9_-]+(?::[a-zA-Z0-9_-]+)?):\s*(.+)$");
+            
+            if (match.Success)
+            {
+                string key = match.Groups[1].Value.Trim().ToLowerInvariant();
+                string value = match.Groups[2].Value.Trim();
+                
+                if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
+                {
+                    _variables[key] = value;
+                    return true;
+                }
+            }
+            
+            return false;
         }
         
         private string GetVariableValue(string key, string defaultValue = null)
@@ -294,10 +416,17 @@ namespace LoveAlways.Fastboot.Protocol
                 return false;
             }
             
-            // 分块传输
+            // 分块传输 - 使用设备报告的 max-download-size（与官方 fastboot 一致）
             int chunkIndex = 0;
             int totalChunks = 0;
             long totalSent = 0;
+            
+            // 速度计算变量
+            var speedStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            long lastSpeedBytes = 0;
+            DateTime lastSpeedTime = DateTime.Now;
+            double currentSpeed = 0;
+            const int speedUpdateIntervalMs = 200; // 每200ms更新一次速度
             
             foreach (var chunk in image.SplitForTransfer(_maxDownloadSize))
             {
@@ -307,6 +436,7 @@ namespace LoveAlways.Fastboot.Protocol
                     totalChunks = chunk.TotalChunks;
                 
                 // 报告进度: Sending
+                // 进度始终基于已发送字节数计算（0-95%）
                 var progressArgs = new FastbootProgressEventArgs
                 {
                     Partition = partition,
@@ -315,13 +445,9 @@ namespace LoveAlways.Fastboot.Protocol
                     TotalChunks = totalChunks,
                     BytesSent = totalSent,
                     TotalBytes = totalSize,
-                    Percent = totalChunks > 1 
-                        ? (chunkIndex * 100.0 / totalChunks) 
-                        : (totalSent * 100.0 / totalSize)
+                    Percent = totalSent * 95.0 / totalSize,
+                    SpeedBps = currentSpeed
                 };
-                
-                ReportProgress(progressArgs);
-                progress?.Report(progressArgs);
                 
                 // 发送 download 命令
                 var downloadResponse = await SendCommandAsync(
@@ -343,7 +469,10 @@ namespace LoveAlways.Fastboot.Protocol
                 
                 // 分块发送数据
                 int offset = 0;
-                int blockSize = 512 * 1024; // 512KB 块
+                int blockSize = 64 * 1024; // 64KB 块，更频繁的更新
+                long lastProgressBytes = totalSent;
+                const int progressIntervalBytes = 256 * 1024; // 每 256KB 报告一次进度
+                
                 while (offset < chunk.Size)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -354,11 +483,31 @@ namespace LoveAlways.Fastboot.Protocol
                     offset += toSend;
                     totalSent += toSend;
                     
-                    // 更新进度
-                    progressArgs.BytesSent = totalSent;
-                    progressArgs.Percent = totalSent * 50.0 / totalSize; // Sending 占 50%
-                    ReportProgress(progressArgs);
-                    progress?.Report(progressArgs);
+                    // 计算实时速度
+                    var now = DateTime.Now;
+                    var timeSinceLastSpeedUpdate = (now - lastSpeedTime).TotalMilliseconds;
+                    
+                    if (timeSinceLastSpeedUpdate >= speedUpdateIntervalMs)
+                    {
+                        long bytesSinceLastUpdate = totalSent - lastSpeedBytes;
+                        currentSpeed = bytesSinceLastUpdate / (timeSinceLastSpeedUpdate / 1000.0);
+                        lastSpeedBytes = totalSent;
+                        lastSpeedTime = now;
+                    }
+                    
+                    // 每 256KB 或 chunk 结束时报告进度
+                    bool isChunkEnd = (offset >= chunk.Size);
+                    bool shouldReport = (totalSent - lastProgressBytes) >= progressIntervalBytes || isChunkEnd;
+                    
+                    if (shouldReport)
+                    {
+                        lastProgressBytes = totalSent;
+                        progressArgs.BytesSent = totalSent;
+                        progressArgs.Percent = totalSent * 95.0 / totalSize;
+                        progressArgs.SpeedBps = currentSpeed;
+                        ReportProgress(progressArgs);
+                        progress?.Report(progressArgs);
+                    }
                 }
                 
                 // 等待 OKAY
@@ -378,13 +527,13 @@ namespace LoveAlways.Fastboot.Protocol
                 
                 // 发送 flash 命令
                 progressArgs.Stage = ProgressStage.Writing;
-                progressArgs.Percent = 50 + (chunkIndex + 1) * 50.0 / totalChunks;
+                // Writing 阶段占 95-100%
+                progressArgs.Percent = 95 + (chunkIndex + 1) * 5.0 / totalChunks;
                 ReportProgress(progressArgs);
                 progress?.Report(progressArgs);
                 
-                string flashCmd = totalChunks > 1
-                    ? $"{FastbootProtocol.CMD_FLASH}:{partition}:{chunkIndex}/{totalChunks}"
-                    : $"{FastbootProtocol.CMD_FLASH}:{partition}";
+                // 标准 Fastboot 协议：flash 命令始终是 flash:partition
+                string flashCmd = $"{FastbootProtocol.CMD_FLASH}:{partition}";
                 
                 var flashResponse = await SendCommandAsync(flashCmd, FastbootProtocol.DATA_TIMEOUT_MS, ct);
                 

@@ -292,6 +292,20 @@ namespace LoveAlways.Fastboot.Transport
                 {
                     descriptor.ProductId = Convert.ToInt32(lower.Substring(pidIndex + 4, 4), 16);
                 }
+                
+                // 从设备路径提取序列号
+                // 设备路径格式: \\?\usb#vid_18d1&pid_d00d#SERIAL#{GUID}
+                string[] parts = devicePath.Split('#');
+                if (parts.Length >= 3)
+                {
+                    // 第三部分是序列号（在 VID&PID 之后，GUID 之前）
+                    string serial = parts[2];
+                    // 确保不是 GUID（GUID 以 { 开头）
+                    if (!string.IsNullOrEmpty(serial) && !serial.StartsWith("{"))
+                    {
+                        descriptor.Serial = serial;
+                    }
+                }
             }
             catch { }
         }
