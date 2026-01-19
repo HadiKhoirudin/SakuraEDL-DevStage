@@ -123,6 +123,7 @@
     <Compile Include="Qualcomm\UI\QualcommUIController.cs" />
     <!-- Fastboot 模块 -->
     <Compile Include="Fastboot\Common\FastbootCommand.cs" />
+    <Compile Include="Fastboot\Common\BatScriptParser.cs" />
     <Compile Include="Fastboot\Models\FastbootDeviceInfo.cs" />
     <Compile Include="Fastboot\Services\FastbootService.cs" />
     <Compile Include="Fastboot\UI\FastbootUIController.cs" />

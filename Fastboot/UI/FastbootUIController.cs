@@ -759,6 +759,309 @@ namespace LoveAlways.Fastboot.UI
 
         #endregion
 
+        #region Bat 脚本解析
+
+        // 存储解析的刷机任务
+        private List<BatScriptParser.FlashTask> _flashTasks;
+        
+        /// <summary>
+        /// 获取当前加载的刷机任务
+        /// </summary>
+        public List<BatScriptParser.FlashTask> FlashTasks => _flashTasks;
+
+        /// <summary>
+        /// 加载 bat/sh 刷机脚本
+        /// </summary>
+        public bool LoadFlashScript(string scriptPath)
+        {
+            if (!File.Exists(scriptPath))
+            {
+                Log($"脚本文件不存在: {scriptPath}", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                Log($"正在解析脚本: {Path.GetFileName(scriptPath)}...", Color.Blue);
+
+                string baseDir = Path.GetDirectoryName(scriptPath);
+                var parser = new BatScriptParser(baseDir, msg => _logDetail(msg));
+
+                _flashTasks = parser.ParseScript(scriptPath);
+
+                if (_flashTasks.Count == 0)
+                {
+                    Log("脚本中未找到有效的刷机命令", Color.Orange);
+                    return false;
+                }
+
+                // 统计信息
+                int flashCount = _flashTasks.Count(t => t.Operation == "flash");
+                int eraseCount = _flashTasks.Count(t => t.Operation == "erase");
+                int existCount = _flashTasks.Count(t => t.ImageExists);
+                long totalSize = _flashTasks.Where(t => t.ImageExists).Sum(t => t.FileSize);
+
+                Log($"解析完成: {flashCount} 个刷写, {eraseCount} 个擦除", Color.Green);
+                Log($"镜像文件: {existCount} 个存在, 总大小 {FormatSize(totalSize)}", Color.Blue);
+
+                // 更新分区列表显示
+                UpdatePartitionListFromScript();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log($"解析脚本失败: {ex.Message}", Color.Red);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 从脚本任务更新分区列表
+        /// </summary>
+        private void UpdatePartitionListFromScript()
+        {
+            if (_partitionListView == null || _flashTasks == null) return;
+
+            try
+            {
+                if (_partitionListView.InvokeRequired)
+                {
+                    _partitionListView.BeginInvoke(new Action(UpdatePartitionListFromScriptInternal));
+                }
+                else
+                {
+                    UpdatePartitionListFromScriptInternal();
+                }
+            }
+            catch { }
+        }
+
+        private void UpdatePartitionListFromScriptInternal()
+        {
+            try
+            {
+                _partitionListView.Items.Clear();
+
+                foreach (var task in _flashTasks)
+                {
+                    // 根据操作类型设置不同显示
+                    string operationText = task.Operation;
+                    string sizeText = "-";
+                    string filePathText = "";
+
+                    if (task.Operation == "flash")
+                    {
+                        operationText = task.ImageExists ? "写入" : "写入 (缺失)";
+                        sizeText = task.FileSizeFormatted;
+                        filePathText = task.ImagePath;
+                    }
+                    else if (task.Operation == "erase")
+                    {
+                        operationText = "擦除";
+                    }
+                    else if (task.Operation == "set_active")
+                    {
+                        operationText = "激活槽位";
+                    }
+                    else if (task.Operation == "reboot")
+                    {
+                        operationText = "重启";
+                    }
+
+                    var item = new ListViewItem(new string[]
+                    {
+                        task.PartitionName,
+                        operationText,
+                        sizeText,
+                        filePathText
+                    });
+
+                    item.Tag = task;
+
+                    // 根据状态设置颜色
+                    if (task.Operation == "flash" && !task.ImageExists)
+                    {
+                        item.ForeColor = Color.Red;
+                    }
+                    else if (task.Operation == "erase")
+                    {
+                        item.ForeColor = Color.Orange;
+                    }
+                    else if (task.Operation == "set_active" || task.Operation == "reboot")
+                    {
+                        item.ForeColor = Color.Gray;
+                    }
+
+                    // 默认勾选所有 flash 操作
+                    if (task.Operation == "flash" && task.ImageExists)
+                    {
+                        item.Checked = true;
+                    }
+
+                    _partitionListView.Items.Add(item);
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 执行加载的刷机脚本
+        /// </summary>
+        public async Task<bool> ExecuteFlashScriptAsync()
+        {
+            if (_flashTasks == null || _flashTasks.Count == 0)
+            {
+                Log("请先加载刷机脚本", Color.Orange);
+                return false;
+            }
+
+            if (!EnsureConnected()) return false;
+            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+
+            // 获取选中的任务
+            var selectedTasks = new List<BatScriptParser.FlashTask>();
+            
+            try
+            {
+                foreach (ListViewItem item in _partitionListView.CheckedItems)
+                {
+                    if (item.Tag is BatScriptParser.FlashTask task)
+                    {
+                        selectedTasks.Add(task);
+                    }
+                }
+            }
+            catch { }
+
+            if (selectedTasks.Count == 0)
+            {
+                Log("请选择要执行的刷机任务", Color.Orange);
+                return false;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+
+                int total = selectedTasks.Count;
+                int success = 0;
+                int failed = 0;
+
+                Log($"开始执行 {total} 个刷机任务...", Color.Blue);
+
+                for (int i = 0; i < total; i++)
+                {
+                    _cts.Token.ThrowIfCancellationRequested();
+
+                    var task = selectedTasks[i];
+                    UpdateProgress(i, total);
+
+                    bool taskSuccess = false;
+
+                    switch (task.Operation)
+                    {
+                        case "flash":
+                            if (task.ImageExists)
+                            {
+                                taskSuccess = await _service.FlashPartitionAsync(
+                                    task.PartitionName, task.ImagePath, false, _cts.Token);
+                            }
+                            else
+                            {
+                                Log($"跳过 {task.PartitionName}: 镜像文件不存在", Color.Orange);
+                            }
+                            break;
+
+                        case "erase":
+                            taskSuccess = await _service.ErasePartitionAsync(task.PartitionName, _cts.Token);
+                            break;
+
+                        case "set_active":
+                            string slot = task.PartitionName.Replace("slot_", "");
+                            taskSuccess = await _service.SetActiveSlotAsync(slot, _cts.Token);
+                            break;
+
+                        case "reboot":
+                            // 重启操作放在最后执行
+                            if (i == total - 1)
+                            {
+                                string target = task.PartitionName.Replace("reboot_", "");
+                                if (target == "system" || string.IsNullOrEmpty(target))
+                                {
+                                    taskSuccess = await _service.RebootAsync(_cts.Token);
+                                }
+                                else if (target == "bootloader")
+                                {
+                                    taskSuccess = await _service.RebootBootloaderAsync(_cts.Token);
+                                }
+                                else if (target == "recovery")
+                                {
+                                    taskSuccess = await _service.RebootRecoveryAsync(_cts.Token);
+                                }
+                            }
+                            else
+                            {
+                                Log("跳过中间的重启命令", Color.Gray);
+                                taskSuccess = true;
+                            }
+                            break;
+                    }
+
+                    if (taskSuccess)
+                        success++;
+                    else
+                        failed++;
+                }
+
+                UpdateProgress(total, total);
+
+                Log($"刷机完成: {success} 成功, {failed} 失败", 
+                    failed == 0 ? Color.Green : Color.Orange);
+
+                return failed == 0;
+            }
+            catch (OperationCanceledException)
+            {
+                Log("刷机操作已取消", Color.Orange);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log($"刷机失败: {ex.Message}", Color.Red);
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// 扫描目录中的刷机脚本
+        /// </summary>
+        public List<string> ScanFlashScripts(string directory)
+        {
+            return BatScriptParser.FindFlashScripts(directory);
+        }
+
+        /// <summary>
+        /// 格式化文件大小
+        /// </summary>
+        private string FormatSize(long size)
+        {
+            if (size >= 1024L * 1024 * 1024)
+                return $"{size / (1024.0 * 1024 * 1024):F2} GB";
+            if (size >= 1024 * 1024)
+                return $"{size / (1024.0 * 1024):F2} MB";
+            if (size >= 1024)
+                return $"{size / 1024.0:F2} KB";
+            return $"{size} B";
+        }
+
+        #endregion
+
         public void Dispose()
         {
             if (!_disposed)
