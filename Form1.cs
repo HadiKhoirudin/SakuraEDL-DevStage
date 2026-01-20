@@ -4100,7 +4100,7 @@ namespace LoveAlways
         }
         
         /// <summary>
-        /// 打开 CMD 命令行 (在程序目录下)
+        /// 打开 CMD 命令行 (在程序目录下，管理员权限)
         /// </summary>
         private void OpenCommandPrompt()
         {
@@ -4110,14 +4110,19 @@ namespace LoveAlways
                 {
                     FileName = "cmd.exe",
                     WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory,
-                    UseShellExecute = true
+                    UseShellExecute = true,
+                    Verb = "runas"  // 以管理员权限运行
                 };
                 System.Diagnostics.Process.Start(psi);
-                AppendLog($"已打开命令行: {psi.WorkingDirectory}", Color.Blue);
+                AppendLog($"已打开管理员命令行: {psi.WorkingDirectory}", Color.Blue);
             }
             catch (Exception ex)
             {
-                AppendLog($"打开命令行失败: {ex.Message}", Color.Red);
+                // 用户可能取消了 UAC 提示
+                if (ex.Message.Contains("canceled") || ex.Message.Contains("取消"))
+                    AppendLog("用户取消了管理员权限请求", Color.Orange);
+                else
+                    AppendLog($"打开命令行失败: {ex.Message}", Color.Red);
             }
         }
         
