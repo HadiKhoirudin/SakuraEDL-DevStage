@@ -67,12 +67,13 @@ namespace LoveAlways
             
             checkbox14.Checked = true;
             radio3.Checked = true;
-            // 加载系统信息
-            this.Load += async (sender, e) =>
+            // 加载系统信息（使用预加载数据）
+            this.Load += (sender, e) =>
             {
                 try
                 {
-                    string sysInfo = await WindowsInfo.GetSystemInfoAsync();
+                    // 使用预加载的系统信息
+                    string sysInfo = PreloadManager.SystemInfo ?? "未知";
                     uiLabel4.Text = $"计算机：{sysInfo}";
                     
                     // 写入系统信息到日志头部
@@ -2970,27 +2971,21 @@ namespace LoveAlways
         private List<string> _edlLoaderItems = null;
         
         /// <summary>
-        /// 初始化 EDL Loader 选择列表 (按品牌分组) - 异步优化
+        /// 初始化 EDL Loader 选择列表 (按品牌分组) - 使用预加载数据
         /// </summary>
         private void InitializeEdlLoaderList()
         {
-            // 异步加载，避免阻塞 UI
-            Task.Run(() => BuildEdlLoaderItems()).ContinueWith(t =>
+            // 使用预加载的数据（已在 SplashForm 期间加载完成）
+            var items = PreloadManager.EdlLoaderItems;
+            if (items != null && items.Count > 0)
             {
-                if (t.Result != null && t.Result.Count > 0)
+                try
                 {
-                    // 回到 UI 线程批量添加
-                    this.BeginInvoke(new Action(() =>
-                    {
-                        try
-                        {
-                            // 批量添加所有项目
-                            select3.Items.AddRange(t.Result.ToArray());
-                        }
-                        catch { }
-                    }));
+                    // 直接批量添加（数据已预加载，无需异步）
+                    select3.Items.AddRange(items.ToArray());
                 }
-            });
+                catch { }
+            }
         }
         
         /// <summary>

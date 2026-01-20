@@ -19,9 +19,6 @@ namespace LoveAlways
         private Point _logoTarget;
         private Color _logoBaseColor;
 
-        // 状态分段显示控制：0=注册进程,1=启动进程,2=加载中
-        private int _statusStage = 0;
-        private int _statusTickCounter = 0; // 用于计算每段显示的延时（以 Timer_Tick 次数计）
 
         public SplashForm()
         {
@@ -29,6 +26,9 @@ namespace LoveAlways
             DoubleBuffered = true;
             // 启动时背景略微透明，随后淡入
             this.Opacity = 0.85;
+
+            // 启动后台预加载
+            PreloadManager.StartPreload();
 
             _timer = new Timer();
             _timer.Interval = 30; // ~33 FPS
@@ -63,8 +63,11 @@ namespace LoveAlways
             if (this.Opacity < 1.0)
                 this.Opacity = Math.Min(1.0, this.Opacity + 0.01);
 
-            // progress goes up slowly
-            if (_progress < 100)
+            // 同步预加载进度（动画进度不低于预加载进度，但可以略微领先）
+            int targetProgress = Math.Max(_progress, PreloadManager.Progress);
+            if (_progress < targetProgress)
+                _progress = Math.Min(_progress + 2, targetProgress);
+            else if (_progress < 100)
                 _progress++;
 
             // reflect on UI controls if available
@@ -76,38 +79,8 @@ namespace LoveAlways
                 }
                 if (uiLabelStatus != null)
                 {
-                    // 状态分段延时显示：每段显示 durationTicks 个定时器周期后切换到下一段
-                    int durationTicks = 25; // 25 * 30ms ~= 750ms，可调整
-
-                    // 仅在还没进入最终加载阶段时推进计数
-                    if (_statusStage < 2)
-                    {
-                        _statusTickCounter++;
-                        if (_statusTickCounter >= durationTicks)
-                        {
-                            _statusTickCounter = 0;
-                            _statusStage++;
-                        }
-                    }
-
-                    switch (_statusStage)
-                    {
-                        case 0:
-                            uiLabelStatus.Text = "注册进程...";
-                            break;
-                        case 1:
-                            uiLabelStatus.Text = "启动进程...";
-                            break;
-                        case 2:
-                            uiLabelStatus.Text = "检查环境和版本...";
-                            break;
-                        case 3:
-                            uiLabelStatus.Text = "加载进程...";
-                            break;
-                        default:
-                            uiLabelStatus.Text = $"加载中 {_progress}%";
-                            break;
-                    }
+                    // 显示预加载模块的实际状态
+                    uiLabelStatus.Text = PreloadManager.CurrentStatus;
                 }
             }
             catch { }
@@ -132,7 +105,8 @@ namespace LoveAlways
 
             Invalidate();
 
-            if (_progress >= 100)
+            // 预加载完成且进度达到100%才关闭
+            if (_progress >= 100 && PreloadManager.IsPreloadComplete)
             {
                 _timer.Stop();
                 // short delay so user sees 100%
