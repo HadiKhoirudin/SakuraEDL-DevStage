@@ -88,6 +88,9 @@ namespace LoveAlways
             this.tabPage5 = new AntdUI.TabPage();
             this.tabPage4 = new AntdUI.TabPage();
             this.tabPage3 = new AntdUI.TabPage();
+            this.labelDevRoot = new Sunny.UI.UILabel();
+            this.labelDevMTK = new Sunny.UI.UILabel();
+            this.labelDevSpreadtrum = new Sunny.UI.UILabel();
             this.uiButton10 = new Sunny.UI.UIButton();
             this.uiTextBox1 = new Sunny.UI.UITextBox();
             this.uiComboBox2 = new Sunny.UI.UIComboBox();
@@ -838,6 +841,7 @@ namespace LoveAlways
             // 
             // tabPage5
             // 
+            this.tabPage5.Controls.Add(this.labelDevSpreadtrum);
             this.tabPage5.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabPage5.Location = new System.Drawing.Point(0, 33);
             this.tabPage5.Name = "tabPage5";
@@ -847,12 +851,49 @@ namespace LoveAlways
             // 
             // tabPage4
             // 
+            this.tabPage4.Controls.Add(this.labelDevMTK);
             this.tabPage4.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabPage4.Location = new System.Drawing.Point(0, 33);
             this.tabPage4.Name = "tabPage4";
             this.tabPage4.Size = new System.Drawing.Size(829, 659);
             this.tabPage4.TabIndex = 2;
             this.tabPage4.Text = "MTK平台";
+            // 
+            // labelDevRoot
+            // 
+            this.labelDevRoot.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.labelDevRoot.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.labelDevRoot.ForeColor = System.Drawing.Color.Silver;
+            this.labelDevRoot.Location = new System.Drawing.Point(0, 0);
+            this.labelDevRoot.Name = "labelDevRoot";
+            this.labelDevRoot.Size = new System.Drawing.Size(829, 659);
+            this.labelDevRoot.TabIndex = 0;
+            this.labelDevRoot.Text = "开发中...";
+            this.labelDevRoot.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // labelDevMTK
+            // 
+            this.labelDevMTK.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.labelDevMTK.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.labelDevMTK.ForeColor = System.Drawing.Color.Silver;
+            this.labelDevMTK.Location = new System.Drawing.Point(0, 0);
+            this.labelDevMTK.Name = "labelDevMTK";
+            this.labelDevMTK.Size = new System.Drawing.Size(829, 659);
+            this.labelDevMTK.TabIndex = 0;
+            this.labelDevMTK.Text = "开发中...";
+            this.labelDevMTK.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // labelDevSpreadtrum
+            // 
+            this.labelDevSpreadtrum.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.labelDevSpreadtrum.Font = new System.Drawing.Font("微软雅黑", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.labelDevSpreadtrum.ForeColor = System.Drawing.Color.Silver;
+            this.labelDevSpreadtrum.Location = new System.Drawing.Point(0, 0);
+            this.labelDevSpreadtrum.Name = "labelDevSpreadtrum";
+            this.labelDevSpreadtrum.Size = new System.Drawing.Size(829, 659);
+            this.labelDevSpreadtrum.TabIndex = 0;
+            this.labelDevSpreadtrum.Text = "开发中...";
+            this.labelDevSpreadtrum.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // tabPage3
             // 
@@ -1686,42 +1727,13 @@ namespace LoveAlways
             // 
             // tabPage1
             // 
-            this.tabPage1.Controls.Add(this.uiComboBox5);
-            this.tabPage1.Controls.Add(this.uiButton3);
-            this.tabPage1.Controls.Add(this.checkbox4);
-            this.tabPage1.Controls.Add(this.checkbox2);
-            this.tabPage1.Controls.Add(this.checkbox1);
-            this.tabPage1.Controls.Add(this.uiButton24);
-            this.tabPage1.Controls.Add(this.uiLabel18);
-            this.tabPage1.Controls.Add(this.uiLabel17);
-            this.tabPage1.Controls.Add(this.uiLabel16);
-            this.tabPage1.Controls.Add(this.slider3);
-            this.tabPage1.Controls.Add(this.select2);
-            this.tabPage1.Controls.Add(this.slider2);
-            this.tabPage1.Controls.Add(this.uiButton23);
-            this.tabPage1.Controls.Add(this.uiButton17);
-            this.tabPage1.Controls.Add(this.uiButton16);
-            this.tabPage1.Controls.Add(this.uiButton15);
-            this.tabPage1.Controls.Add(this.uiLabel15);
-            this.tabPage1.Controls.Add(this.uiButton12);
-            this.tabPage1.Controls.Add(this.progress2);
-            this.tabPage1.Controls.Add(this.progress1);
-            this.tabPage1.Controls.Add(this.uiButton4);
-            this.tabPage1.Controls.Add(this.button1);
-            this.tabPage1.Controls.Add(this.input3);
-            this.tabPage1.Controls.Add(this.uiButton2);
-            this.tabPage1.Controls.Add(this.checkbox3);
-            this.tabPage1.Controls.Add(this.uiButton5);
-            this.tabPage1.Controls.Add(this.uiButton13);
-            this.tabPage1.Controls.Add(this.uiButton14);
-            this.tabPage1.Controls.Add(this.checkbox6);
-            this.tabPage1.Controls.Add(this.tabs2);
+            this.tabPage1.Controls.Add(this.labelDevRoot);
             this.tabPage1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabPage1.Location = new System.Drawing.Point(0, 33);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Size = new System.Drawing.Size(829, 659);
             this.tabPage1.TabIndex = 6;
-            this.tabPage1.Text = "主页";
+            this.tabPage1.Text = "自动root";
             // 
             // uiComboBox5
             // 
@@ -2606,6 +2618,9 @@ namespace LoveAlways
         private Sunny.UI.UITextBox uiTextBox1;
         private Sunny.UI.UIComboBox uiComboBox5;
         private Sunny.UI.UIButton uiButton10;
+        private Sunny.UI.UILabel labelDevRoot;
+        private Sunny.UI.UILabel labelDevMTK;
+        private Sunny.UI.UILabel labelDevSpreadtrum;
     }
 }
 
