@@ -57,6 +57,9 @@ Name: "chinese"; MessagesFile: "compiler:Default.isl"
 [Messages]
 ; 中文界面
 SetupWindowTitle=安装 - %1
+; 选择安装位置页面
+WizardSelectDir=选择安装位置
+SelectDirDesc=您想将 [name] 安装到哪里？
 WelcomeLabel1=欢迎使用 [name] 安装向导
 WelcomeLabel2=本向导将引导您完成 [name/ver] 的安装。%n%n建议您在继续之前关闭所有其他应用程序。
 SelectDirLabel3=安装程序将把 [name] 安装到以下文件夹。
