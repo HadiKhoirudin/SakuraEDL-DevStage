@@ -257,7 +257,23 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 握手并上传 Loader (失败时自动尝试重置)
+        /// 握手并上传 Loader (失败时自动尝试重置) - 从内存数据
+        /// </summary>
+        /// <param name="loaderData">引导文件数据 (byte[])</param>
+        /// <param name="loaderName">引导名称 (用于日志显示)</param>
+        /// <param name="ct">取消令牌</param>
+        /// <param name="maxRetries">最大重试次数</param>
+        public async Task<bool> HandshakeAndUploadAsync(byte[] loaderData, string loaderName, CancellationToken ct = default(CancellationToken), int maxRetries = 2)
+        {
+            if (loaderData == null || loaderData.Length == 0)
+                throw new ArgumentException("引导数据为空");
+
+            _log(string.Format("[Sahara] 加载内嵌引导: {0} ({1} KB)", loaderName, loaderData.Length / 1024));
+            return await HandshakeAndUploadCoreAsync(loaderData, ct, maxRetries);
+        }
+
+        /// <summary>
+        /// 握手并上传 Loader (失败时自动尝试重置) - 从文件路径
         /// </summary>
         /// <param name="loaderPath">引导文件路径</param>
         /// <param name="ct">取消令牌</param>
@@ -269,7 +285,14 @@ namespace LoveAlways.Qualcomm.Protocol
 
             byte[] fileBytes = File.ReadAllBytes(loaderPath);
             _log(string.Format("[Sahara] 加载引导: {0} ({1} KB)", Path.GetFileName(loaderPath), fileBytes.Length / 1024));
+            return await HandshakeAndUploadCoreAsync(fileBytes, ct, maxRetries);
+        }
 
+        /// <summary>
+        /// 握手上传核心逻辑
+        /// </summary>
+        private async Task<bool> HandshakeAndUploadCoreAsync(byte[] fileBytes, CancellationToken ct, int maxRetries)
+        {
             // 尝试握手，失败时自动重置并重试
             for (int attempt = 0; attempt <= maxRetries; attempt++)
             {

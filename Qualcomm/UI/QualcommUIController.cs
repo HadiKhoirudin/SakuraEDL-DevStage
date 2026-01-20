@@ -371,6 +371,245 @@ namespace LoveAlways.Qualcomm.UI
             }
         }
 
+        /// <summary>
+        /// 使用完整内嵌 VIP 数据连接设备 (Loader + Digest + Signature)
+        /// </summary>
+        /// <param name="storageType">存储类型 (ufs/emmc)</param>
+        /// <param name="platform">平台名称 (如 SM8550)</param>
+        /// <param name="loaderData">内嵌的 Loader (Firehose) 数据</param>
+        /// <param name="digestData">内嵌的 Digest 数据</param>
+        /// <param name="signatureData">内嵌的 Signature 数据</param>
+        public async Task<bool> ConnectWithVipDataAsync(string storageType, string platform, byte[] loaderData, byte[] digestData, byte[] signatureData)
+        {
+            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+
+            string portName = GetSelectedPortName();
+            if (string.IsNullOrEmpty(portName)) { Log("请选择端口", Color.Red); return false; }
+
+            if (loaderData == null || digestData == null || signatureData == null)
+            {
+                Log("VIP 数据无效", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+                
+                // 启动进度条
+                StartOperationTimer("VIP 连接", 100, 0);
+                UpdateProgressBarDirect(_progressBar, 0);
+                UpdateProgressBarDirect(_subProgressBar, 0);
+
+                Log(string.Format("[VIP] 平台: {0}", platform), Color.Blue);
+                Log(string.Format("[VIP] Loader: {0} KB (内嵌)", loaderData.Length / 1024), Color.Gray);
+                Log(string.Format("[VIP] Digest: {0} KB (内嵌)", digestData.Length / 1024), Color.Gray);
+                Log(string.Format("[VIP] Signature: {0} 字节 (内嵌)", signatureData.Length), Color.Gray);
+
+                _service = new QualcommService(
+                    msg => Log(msg, null),
+                    (current, total) => {
+                        if (total > 0)
+                        {
+                            // Sahara 阶段进度映射到 0-40%
+                            double percent = 40.0 * current / total;
+                            UpdateProgressBarDirect(_progressBar, percent);
+                            UpdateProgressBarDirect(_subProgressBar, 100.0 * current / total);
+                        }
+                    },
+                    _logDetail
+                );
+
+                // Step 1: 通过 Sahara 上传内嵌的 Loader
+                UpdateProgressBarDirect(_progressBar, 5);
+                Log("[VIP] Step 1: 上传 Loader (Sahara)...", Color.Blue);
+                
+                bool saharaOk = await _service.ConnectWithLoaderDataAsync(portName, loaderData, storageType, _cts.Token);
+                if (!saharaOk)
+                {
+                    Log("[VIP] Sahara 握手/Loader 上传失败", Color.Red);
+                    return false;
+                }
+                UpdateProgressBarDirect(_progressBar, 50);
+                Log("[VIP] Loader 上传成功，已进入 Firehose 模式", Color.Green);
+
+                // Step 2: 执行 VIP 认证 (Digest + Signature)
+                Log("[VIP] Step 2: 执行签名认证...", Color.Blue);
+                bool authOk = await _service.PerformVipAuthAsync(digestData, signatureData, _cts.Token);
+                UpdateProgressBarDirect(_progressBar, 85);
+
+                if (authOk)
+                {
+                    Log("[VIP] 认证成功！高权限模式已激活", Color.Green);
+                    UpdateProgressBarDirect(_progressBar, 100);
+                    UpdateProgressBarDirect(_subProgressBar, 100);
+                    UpdateDeviceInfoLabels();
+                    
+                    _service.PortDisconnected += OnServicePortDisconnected;
+                    ConnectionStateChanged?.Invoke(this, true);
+                    
+                    // 自动勾选跳过 Sahara (下次可以直接连接)
+                    SetSkipSaharaChecked(true);
+                    
+                    return true;
+                }
+                else
+                {
+                    Log("[VIP] 认证失败，签名可能不匹配", Color.Red);
+                    UpdateProgressBarDirect(_progressBar, 0);
+                    UpdateProgressBarDirect(_subProgressBar, 0);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log("[VIP] 连接异常: " + ex.Message, Color.Red);
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// 使用内嵌 Loader 数据连接
+        /// 适用于通用 EDL Loader，支持可选认证
+        /// </summary>
+        /// <param name="storageType">存储类型 (ufs/emmc)</param>
+        /// <param name="loaderData">Loader 二进制数据</param>
+        /// <param name="loaderName">Loader 名称 (用于日志)</param>
+        /// <param name="authMode">认证模式: none, oneplus</param>
+        public async Task<bool> ConnectWithLoaderDataAsync(string storageType, byte[] loaderData, string loaderName, string authMode = "none")
+        {
+            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+
+            string portName = GetSelectedPortName();
+            if (string.IsNullOrEmpty(portName)) { Log("请选择端口", Color.Red); return false; }
+
+            if (loaderData == null || loaderData.Length < 100)
+            {
+                Log("Loader 数据无效", Color.Red);
+                return false;
+            }
+
+            try
+            {
+                IsBusy = true;
+                _cts = new CancellationTokenSource();
+                
+                // 启动进度条
+                StartOperationTimer("EDL 连接", 100, 0);
+                UpdateProgressBarDirect(_progressBar, 0);
+                UpdateProgressBarDirect(_subProgressBar, 0);
+
+                string authInfo = authMode != "none" ? $", 认证: {authMode}" : "";
+                Log(string.Format("[EDL] Loader: {0} ({1} KB{2})", loaderName, loaderData.Length / 1024, authInfo), Color.Cyan);
+
+                _service = new QualcommService(
+                    msg => Log(msg, null),
+                    (current, total) => {
+                        if (total > 0)
+                        {
+                            double percent = 70.0 * current / total;
+                            UpdateProgressBarDirect(_progressBar, percent);
+                            UpdateProgressBarDirect(_subProgressBar, 100.0 * current / total);
+                        }
+                    },
+                    _logDetail
+                );
+
+                // 通过 Sahara 上传 Loader
+                Log("[EDL] 上传 Loader (Sahara)...", Color.Cyan);
+                
+                bool success = await _service.ConnectWithLoaderDataAsync(portName, loaderData, storageType, _cts.Token);
+                
+                if (!success)
+                {
+                    Log("[EDL] Sahara 握手/Loader 上传失败", Color.Red);
+                    UpdateProgressBarDirect(_progressBar, 0);
+                    UpdateProgressBarDirect(_subProgressBar, 0);
+                    return false;
+                }
+                
+                UpdateProgressBarDirect(_progressBar, 75);
+                Log("[EDL] Loader 上传成功，已进入 Firehose 模式", Color.Green);
+                
+                // 执行品牌特定认证
+                string authLower = authMode.ToLowerInvariant();
+                
+                if (authLower == "oneplus")
+                {
+                    Log("[EDL] 执行 OnePlus 认证...", Color.Cyan);
+                    bool authOk = await _service.PerformOnePlusAuthAsync(_cts.Token);
+                    UpdateProgressBarDirect(_progressBar, 90);
+                    
+                    if (authOk)
+                    {
+                        Log("[EDL] OnePlus 认证成功", Color.Green);
+                    }
+                    else
+                    {
+                        Log("[EDL] OnePlus 认证失败，部分功能可能受限", Color.Orange);
+                    }
+                }
+                else if (authLower == "xiaomi")
+                {
+                    Log("[EDL] 执行小米认证...", Color.Cyan);
+                    bool authOk = await _service.PerformXiaomiAuthAsync(_cts.Token);
+                    UpdateProgressBarDirect(_progressBar, 90);
+                    
+                    if (authOk)
+                    {
+                        Log("[EDL] 小米认证成功", Color.Green);
+                    }
+                    else
+                    {
+                        Log("[EDL] 小米认证失败，部分功能可能受限", Color.Orange);
+                    }
+                }
+                else if (authLower == "none" && _service.IsXiaomiDevice())
+                {
+                    // 小米设备自动认证
+                    Log("[EDL] 检测到小米设备，自动执行认证...", Color.Cyan);
+                    bool authOk = await _service.PerformXiaomiAuthAsync(_cts.Token);
+                    UpdateProgressBarDirect(_progressBar, 90);
+                    
+                    if (authOk)
+                    {
+                        Log("[EDL] 小米自动认证成功", Color.Green);
+                    }
+                    else
+                    {
+                        Log("[EDL] 小米自动认证失败，部分功能可能受限", Color.Orange);
+                    }
+                }
+                
+                Log("[EDL] 连接成功！", Color.Green);
+                UpdateProgressBarDirect(_progressBar, 100);
+                UpdateProgressBarDirect(_subProgressBar, 100);
+                UpdateDeviceInfoLabels();
+                
+                _service.PortDisconnected += OnServicePortDisconnected;
+                ConnectionStateChanged?.Invoke(this, true);
+                
+                // 自动勾选跳过 Sahara
+                SetSkipSaharaChecked(true);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log("[EDL] 连接异常: " + ex.Message, Color.Red);
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
         public void Disconnect()
         {
             if (_service != null)

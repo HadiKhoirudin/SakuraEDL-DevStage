@@ -2135,6 +2135,169 @@ namespace LoveAlways.Qualcomm.Protocol
                 return false;
             }
         }
+
+        /// <summary>
+        /// 执行 VIP 认证流程 (使用 byte[] 数据，无需文件)
+        /// </summary>
+        /// <param name="digestData">Digest 数据 (Hash Segment)</param>
+        /// <param name="signatureData">签名数据 (256 字节 RSA-2048)</param>
+        public async Task<bool> PerformVipAuthAsync(byte[] digestData, byte[] signatureData, CancellationToken ct = default(CancellationToken))
+        {
+            if (digestData == null || digestData.Length == 0)
+            {
+                _log("[VIP] 认证失败：缺少 Digest 数据");
+                return false;
+            }
+            if (signatureData == null || signatureData.Length == 0)
+            {
+                _log("[VIP] 认证失败：缺少 Signature 数据");
+                return false;
+            }
+
+            _log("[VIP] 开始安全验证 (内存数据模式)...");
+
+            try
+            {
+                // Step 1: 发送 Digest
+                await SendVipDigestAsync(digestData, ct);
+
+                // Step 2-3: 准备 VIP 模式
+                await PrepareVipModeAsync(ct);
+
+                // Step 4: 发送签名 (256 字节)
+                bool sigOk = await SendVipSignatureAsync(signatureData, ct);
+
+                // Step 5: 完成认证
+                await FinalizeVipAuthAsync(ct);
+
+                return sigOk;
+            }
+            catch (OperationCanceledException)
+            {
+                _log("[VIP] 验证被取消");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _log(string.Format("[VIP] 验证异常: {0}", ex.Message));
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Step 1: 发送 VIP Digest (Hash Segment)
+        /// </summary>
+        public async Task<bool> SendVipDigestAsync(byte[] digestData, CancellationToken ct = default(CancellationToken))
+        {
+            _log(string.Format("[VIP] Step 1: 发送 Digest ({0} 字节)...", digestData.Length));
+            PurgeBuffer();
+
+            await _port.WriteAsync(digestData, 0, digestData.Length, ct);
+            await Task.Delay(500, ct);
+
+            string resp = await ReadAndLogDeviceResponseAsync(ct, 3000);
+            if (resp.Contains("NAK") || resp.Contains("ERROR"))
+            {
+                _log("[VIP] Digest 响应异常，尝试继续...");
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Step 2-3: 准备 VIP 模式 (TransferCfg + Verify)
+        /// </summary>
+        public async Task<bool> PrepareVipModeAsync(CancellationToken ct = default(CancellationToken))
+        {
+            // TransferCfg
+            _log("[VIP] Step 2: 发送 TransferCfg...");
+            string transferCfgXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
+                "<data><transfercfg reboot_type=\"off\" timeout_in_sec=\"90\" /></data>";
+            _port.Write(Encoding.UTF8.GetBytes(transferCfgXml));
+            await Task.Delay(300, ct);
+            string resp2 = await ReadAndLogDeviceResponseAsync(ct, 2000);
+            if (resp2.Contains("NAK") || resp2.Contains("ERROR"))
+            {
+                _log("[VIP] TransferCfg 失败，尝试继续...");
+            }
+
+            // Verify
+            _log("[VIP] Step 3: 发送 Verify (EnableVip=1)...");
+            string verifyXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
+                "<data><verify value=\"ping\" EnableVip=\"1\"/></data>";
+            _port.Write(Encoding.UTF8.GetBytes(verifyXml));
+            await Task.Delay(300, ct);
+            string resp3 = await ReadAndLogDeviceResponseAsync(ct, 2000);
+            if (resp3.Contains("NAK") || resp3.Contains("ERROR"))
+            {
+                _log("[VIP] Verify 失败，尝试继续...");
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Step 4: 发送 VIP 签名 (256 字节 RSA-2048)
+        /// 这是核心方法：在发送 Digest 后写入签名
+        /// </summary>
+        /// <param name="signatureData">签名数据 (256 字节)</param>
+        public async Task<bool> SendVipSignatureAsync(byte[] signatureData, CancellationToken ct = default(CancellationToken))
+        {
+            // 处理签名数据大小
+            byte[] sig;
+            if (signatureData.Length == 256)
+            {
+                // 已经是正确大小
+                sig = signatureData;
+            }
+            else if (signatureData.Length > 256)
+            {
+                // 提取前 256 字节 (处理带填充的 sign.bin)
+                sig = new byte[256];
+                Array.Copy(signatureData, 0, sig, 0, 256);
+                _log(string.Format("[VIP] 从 {0} 字节数据中提取 256 字节签名", signatureData.Length));
+            }
+            else
+            {
+                // 数据不足，填充零
+                sig = new byte[256];
+                Array.Copy(signatureData, 0, sig, 0, signatureData.Length);
+                _log(string.Format("[VIP] 警告: 签名数据不足 256 字节 (实际 {0})", signatureData.Length));
+            }
+
+            _log(string.Format("[VIP] Step 4: 发送 Signature ({0} 字节)...", sig.Length));
+            await _port.WriteAsync(sig, 0, sig.Length, ct);
+            await Task.Delay(500, ct);
+
+            string resp = await ReadAndLogDeviceResponseAsync(ct, 3000);
+            bool success = !resp.Contains("NAK") && !resp.Contains("ERROR");
+
+            if (success || string.IsNullOrEmpty(resp))
+                _log("[VIP] Signature 发送完成");
+            else
+                _log("[VIP] Signature 可能被拒绝");
+
+            return success || string.IsNullOrEmpty(resp);
+        }
+
+        /// <summary>
+        /// Step 5: 完成 VIP 认证 (SHA256Init)
+        /// </summary>
+        public async Task<bool> FinalizeVipAuthAsync(CancellationToken ct = default(CancellationToken))
+        {
+            _log("[VIP] Step 5: 发送 SHA256Init...");
+            string sha256Xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
+                "<data><sha256init Verbose=\"1\"/></data>";
+            _port.Write(Encoding.UTF8.GetBytes(sha256Xml));
+            await Task.Delay(300, ct);
+            string resp = await ReadAndLogDeviceResponseAsync(ct, 2000);
+            if (resp.Contains("NAK") || resp.Contains("ERROR"))
+            {
+                _log("[VIP] SHA256Init 失败，尝试继续...");
+            }
+
+            _log("[VIP] VIP 验证流程完成");
+            return true;
+        }
         
         /// <summary>
         /// 读取并记录设备响应 (异步非阻塞)

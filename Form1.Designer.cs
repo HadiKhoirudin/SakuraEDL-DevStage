@@ -1352,16 +1352,21 @@ namespace LoveAlways
             // 
             this.select3.Items.AddRange(new object[] {
             "自动识别或自选引导",
-            "云端测试引导1",
-            "云端测试引导2",
-            "云端测试引导3",
-            "云端测试引导4",
-            "云端测试引导5",
-            "云端测试引导6",
-            "云端测试引导7",
-            "云端测试引导8",
-            "云端测试引导9",
-            "云端测试引导10"});
+            "[VIP] SM8750 - Snapdragon 8Elite",
+            "[VIP] SM8735 - Snapdragon 8SGen4",
+            "[VIP] SM8650 - Snapdragon 8Gen3",
+            "[VIP] SM8550_1 - Snapdragon 8Gen2 V2.6",
+            "[VIP] SM8550_2 - Snapdragon 8Gen2 V2.7",
+            "[VIP] SM8475 - Snapdragon 8+Gen1",
+            "[VIP] SM8450 - Snapdragon 8Gen1",
+            "[VIP] SM8350 - Snapdragon 888/888+",
+            "[VIP] SM7550 - Snapdragon 7+Gen3",
+            "[VIP] SM7475 - Snapdragon 7+Gen2",
+            "[VIP] SM7450 - Snapdragon 7Gen1",
+            "[VIP] SM7325 - Snapdragon 6G1/7SG2",
+            "[VIP] SM6375 - Snapdragon 695/6SGen3",
+            "[VIP] SM6225 - Snapdragon 480",
+            "[VIP] SM6115 - Snapdragon 460"});
             this.select3.List = true;
             this.select3.Location = new System.Drawing.Point(4, 1);
             this.select3.MaxCount = 6;

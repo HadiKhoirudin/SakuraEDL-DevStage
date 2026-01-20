@@ -18,6 +18,7 @@ using LoveAlways.Qualcomm.Common;
 using LoveAlways.Qualcomm.Models;
 using LoveAlways.Fastboot.UI;
 using LoveAlways.Fastboot.Common;
+using LoveAlways.Qualcomm.Database;
 
 namespace LoveAlways
 {
@@ -115,6 +116,9 @@ namespace LoveAlways
 
             // 初始化 Fastboot 模块
             InitializeFastbootModule();
+            
+            // 初始化 EDL Loader 选择列表
+            InitializeEdlLoaderList();
         }
 
         #region 高通模块
@@ -648,9 +652,100 @@ namespace LoveAlways
         {
             if (_qualcommController == null) return false;
 
+            string selectedLoader = select3.Text;
+            bool isVipLoader = selectedLoader.StartsWith("[VIP]");
+            bool isEdlLoader = selectedLoader.StartsWith("[") && !isVipLoader && !selectedLoader.StartsWith("───");
+            bool skipSahara = checkbox12.Checked;
+
+            // VIP 内嵌模式 (OPLUS 签名)
+            if (isVipLoader)
+            {
+                string platform = ExtractPlatformFromVipSelection(selectedLoader);
+                
+                if (!ChimeraSignDatabase.TryGet(platform, out var signData))
+                {
+                    AppendLog($"未找到平台 {platform} 的签名数据", Color.Red);
+                    return false;
+                }
+
+                // 检查资源包是否存在
+                if (!ChimeraSignDatabase.IsLoaderPackAvailable())
+                {
+                    AppendLog("错误: 找不到 firehose.pak 资源包", Color.Red);
+                    AppendLog("请将资源包放到程序目录下", Color.Orange);
+                    return false;
+                }
+
+                // 从资源包加载 Loader
+                byte[] loaderData = ChimeraSignDatabase.LoadLoader(platform);
+                if (loaderData == null)
+                {
+                    AppendLog($"无法从资源包加载 {platform} 的 Loader", Color.Red);
+                    return false;
+                }
+
+                AppendLog($"[VIP] {signData.Name} - Loader:{loaderData.Length/1024}KB Digest:{signData.DigestSize/1024}KB", Color.Blue);
+                
+                // 使用 VIP 连接 (Loader 从资源包, Digest+Sign 内嵌)
+                return await _qualcommController.ConnectWithVipDataAsync(
+                    _storageType,
+                    platform,
+                    loaderData,
+                    signData.Digest,
+                    signData.Signature
+                );
+            }
+            
+            // EDL Loader 模式 (通用/无签名)
+            if (isEdlLoader)
+            {
+                string edlId = ExtractEdlLoaderIdFromSelection(selectedLoader);
+                
+                // 检查资源包是否存在
+                if (!EdlLoaderDatabase.IsPakAvailable())
+                {
+                    AppendLog("错误: 找不到 edl_loaders.pak 资源包", Color.Red);
+                    AppendLog("请将资源包放到程序目录下", Color.Orange);
+                    return false;
+                }
+                
+                // 从资源包加载 Loader
+                byte[] loaderData = EdlLoaderDatabase.LoadLoader(edlId);
+                if (loaderData == null)
+                {
+                    AppendLog($"无法从资源包加载 {edlId}", Color.Red);
+                    return false;
+                }
+                
+                // 获取 Loader 信息用于显示
+                string displayName = edlId;
+                if (EdlLoaderDatabase.Database.TryGetValue(edlId, out var loaderInfo))
+                {
+                    displayName = loaderInfo.Name;
+                }
+                
+                // 获取认证模式
+                string edlAuthMode = "none";
+                if (EdlLoaderDatabase.Database.TryGetValue(edlId, out var edlInfo))
+                {
+                    edlAuthMode = edlInfo.AuthMode ?? "none";
+                }
+                
+                string authInfo = edlAuthMode != "none" ? $" [认证: {edlAuthMode}]" : "";
+                AppendLog($"[EDL] {displayName} - {loaderData.Length/1024}KB{authInfo}", Color.Cyan);
+                
+                // 使用 EDL 连接 (传递认证模式)
+                return await _qualcommController.ConnectWithLoaderDataAsync(
+                    _storageType,
+                    loaderData,
+                    edlId,
+                    edlAuthMode
+                );
+            }
+
+            // 普通模式
             // input8 = 引导文件路径
             string programmerPath = input8.Text?.Trim() ?? "";
-            bool skipSahara = checkbox12.Checked;
 
             if (!skipSahara && string.IsNullOrEmpty(programmerPath))
             {
@@ -2677,31 +2772,285 @@ namespace LoveAlways
         {
             string selectedItem = select3.Text;
             bool isAutoOrCustom = selectedItem == "自动识别或自选引导";
+            bool isVipLoader = selectedItem.StartsWith("[VIP]");
+            bool isEdlLoader = selectedItem.StartsWith("[") && !isVipLoader && !selectedItem.StartsWith("───");
+            bool isSeparator = selectedItem.StartsWith("───");
+            
+            // 跳过分隔符选择
+            if (isSeparator)
+            {
+                select3.Text = "自动识别或自选引导";
+                return;
+            }
             
             // 禁用或启用输入字段
             input9.Enabled = isAutoOrCustom;
             input8.Enabled = isAutoOrCustom;
             input7.Enabled = isAutoOrCustom;
             
-            // 处理 input8 的显示文本
-            if (!isAutoOrCustom)
+            // 处理 VIP Loader
+            if (isVipLoader)
             {
+                // 提取平台名称 (例如: "[VIP] SM8550 - Snapdragon 8Gen2/8+Gen2" -> "SM8550")
+                string platform = ExtractPlatformFromVipSelection(selectedItem);
+                
                 // 只在首次禁用时保存原始文本
                 if (string.IsNullOrEmpty(input8OriginalText))
                 {
                     input8OriginalText = input8.Text;
                 }
-                // 设置禁用状态的提示文本
+                
+                // 显示 VIP 模式信息
+                input8.Text = $"[VIP] {platform} (资源包)";
+                input9.Text = $"[VIP] Digest (内嵌)";
+                input7.Text = $"[VIP] Signature (内嵌)";
+                
+                // 显示平台信息 (简洁模式)
+                if (ChimeraSignDatabase.TryGet(platform, out var signData))
+                {
+                    bool pakAvailable = ChimeraSignDatabase.IsLoaderPackAvailable();
+                    if (!pakAvailable)
+                    {
+                        AppendLog($"[VIP] {signData.Name} - 资源包未找到!", Color.Orange);
+                    }
+                }
+                
+                // 自动启用 VIP 验证
+                checkbox19.Checked = true;
+                checkbox17.Checked = false;  // 取消 oneplus
+                _authMode = "vip";
+            }
+            // 处理 EDL Loader
+            else if (isEdlLoader)
+            {
+                string edlId = ExtractEdlLoaderIdFromSelection(selectedItem);
+                
+                if (string.IsNullOrEmpty(input8OriginalText))
+                {
+                    input8OriginalText = input8.Text;
+                }
+                
+                // 显示 EDL 模式信息
+                input8.Text = $"[EDL] {edlId} (资源包)";
+                input9.Text = "";
+                input7.Text = "";
+                
+                // 根据 AuthMode 决定认证模式
+                string authMode = "none";
+                if (EdlLoaderDatabase.Database.TryGetValue(edlId, out var loaderInfo))
+                {
+                    authMode = loaderInfo.AuthMode ?? "none";
+                }
+                
+                if (authMode == "oneplus")
+                {
+                    // OnePlus Loader: 自动启用 oneplus 认证
+                    checkbox17.Checked = true;   // oldoneplus
+                    checkbox19.Checked = false;  // oplus
+                    _authMode = "oneplus";
+                }
+                else
+                {
+                    // OPPO/Realme 或其他: 不需要验证
+                    checkbox17.Checked = false;
+                    checkbox19.Checked = false;
+                    _authMode = "none";
+                }
+            }
+            else if (!isAutoOrCustom)
+            {
+                // 其他非自动模式
+                if (string.IsNullOrEmpty(input8OriginalText))
+                {
+                    input8OriginalText = input8.Text;
+                }
                 input8.Text = "当前模式禁止选择文件";
             }
             else
             {
                 // 强制清空以显示占位符
                 input8.Text = "";
+                input9.Text = "";
+                input7.Text = "";
                 // 重置原始文本存储
                 input8OriginalText = "";
             }
         }
+        
+        /// <summary>
+        /// 从 EDL 选择项中提取 Loader ID
+        /// </summary>
+        private string ExtractEdlLoaderIdFromSelection(string selection)
+        {
+            // "[Huawei] 888 (通用)" -> "Huawei_888"
+            // "[Meizu] Meizu21Pro" -> "Meizu_Meizu21Pro"
+            if (string.IsNullOrEmpty(selection)) return "";
+            
+            // 提取品牌和名称
+            int bracketEnd = selection.IndexOf(']');
+            if (bracketEnd < 0) return "";
+            
+            string brand = selection.Substring(1, bracketEnd - 1);
+            string rest = selection.Substring(bracketEnd + 1).Trim();
+            
+            // 处理通用 loader
+            if (rest.EndsWith("(通用)"))
+            {
+                string chip = rest.Replace("(通用)", "").Trim();
+                return $"{brand}_{chip}";
+            }
+            
+            // 处理专用 loader
+            // 从 rest 中提取型号名
+            string model = rest.Replace($"{brand} ", "").Trim();
+            // 移除芯片信息 (括号部分)
+            int parenIndex = model.IndexOf('(');
+            if (parenIndex > 0)
+            {
+                model = model.Substring(0, parenIndex).Trim();
+            }
+            
+            return $"{brand}_{model}";
+        }
+
+        /// <summary>
+        /// 从 VIP 选择项中提取平台名称
+        /// </summary>
+        private string ExtractPlatformFromVipSelection(string selection)
+        {
+            // "[VIP] SM8550 - Snapdragon 8Gen2/8+Gen2" -> "SM8550"
+            if (string.IsNullOrEmpty(selection)) return "";
+            
+            // 移除 "[VIP] " 前缀
+            string trimmed = selection.Replace("[VIP] ", "");
+            
+            // 取 " - " 之前的部分
+            int dashIndex = trimmed.IndexOf(" - ");
+            if (dashIndex > 0)
+            {
+                return trimmed.Substring(0, dashIndex).Trim();
+            }
+            
+            return trimmed.Trim();
+        }
+
+        #region EDL Loader 初始化
+        
+        // 缓存 EDL Loader 列表项
+        private List<string> _edlLoaderItems = null;
+        
+        /// <summary>
+        /// 初始化 EDL Loader 选择列表 (按品牌分组) - 异步优化
+        /// </summary>
+        private void InitializeEdlLoaderList()
+        {
+            // 异步加载，避免阻塞 UI
+            Task.Run(() => BuildEdlLoaderItems()).ContinueWith(t =>
+            {
+                if (t.Result != null && t.Result.Count > 0)
+                {
+                    // 回到 UI 线程批量添加
+                    this.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            // 批量添加所有项目
+                            select3.Items.AddRange(t.Result.ToArray());
+                        }
+                        catch { }
+                    }));
+                }
+            });
+        }
+        
+        /// <summary>
+        /// 构建 EDL Loader 列表项 (后台线程)
+        /// </summary>
+        private List<string> BuildEdlLoaderItems()
+        {
+            var items = new List<string>(300);
+            
+            try
+            {
+                // 检查 EDL PAK 是否可用
+                if (!EdlLoaderDatabase.IsPakAvailable())
+                    return items;
+                
+                // 获取所有品牌
+                var brands = EdlLoaderDatabase.GetBrands();
+                if (brands.Length == 0)
+                    return items;
+                
+                // 按品牌分组构建
+                foreach (var brand in brands)
+                {
+                    var loaders = EdlLoaderDatabase.GetByBrand(brand);
+                    if (loaders.Length == 0) continue;
+                    
+                    // 添加品牌分隔符
+                    string brandName = GetBrandDisplayName(brand);
+                    items.Add($"─── {brandName} ({loaders.Length}) ───");
+                    
+                    // 先添加通用 loader
+                    foreach (var loader in loaders)
+                    {
+                        if (loader.IsCommon)
+                        {
+                            string chip = string.IsNullOrEmpty(loader.Chip) ? "" : $" {loader.Chip}";
+                            items.Add($"[{brand}]{chip} (通用)");
+                        }
+                    }
+                    
+                    // 再添加专用 loader
+                    foreach (var loader in loaders)
+                    {
+                        if (!loader.IsCommon)
+                        {
+                            string shortName = loader.Name.Replace($"{brand} ", "");
+                            items.Add($"[{brand}] {shortName}");
+                        }
+                    }
+                }
+                
+                _edlLoaderItems = items;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"EDL Loader 构建失败: {ex.Message}");
+            }
+            
+            return items;
+        }
+        
+        /// <summary>
+        /// 获取品牌中文显示名
+        /// </summary>
+        private string GetBrandDisplayName(string brand)
+        {
+            switch (brand.ToLower())
+            {
+                case "huawei": return "华为/荣耀";
+                case "zte": return "中兴/努比亚/红魔";
+                case "xiaomi": return "小米/Redmi";
+                case "blackshark": return "黑鲨";
+                case "vivo": return "vivo/iQOO";
+                case "meizu": return "魅族";
+                case "lenovo": return "联想/摩托罗拉";
+                case "samsung": return "三星";
+                case "nothing": return "Nothing";
+                case "rog": return "华硕ROG";
+                case "lg": return "LG";
+                case "smartisan": return "锤子";
+                case "xtc": return "小天才";
+                case "360": return "360";
+                case "bbk": return "BBK";
+                case "royole": return "柔宇";
+                case "oplus": return "OPPO/OnePlus/Realme";
+                default: return brand;
+            }
+        }
+        
+        #endregion
 
         #region Fastboot 模块
 

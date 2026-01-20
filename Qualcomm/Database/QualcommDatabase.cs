@@ -332,6 +332,7 @@ namespace LoveAlways.Qualcomm.Database
             { "08239eab", "OPPO" },
             { "daedb40c", "OPPO" },
             { "f10bd691", "OPPO" },
+            { "91057040", "OPPO" },  // SDM710 OPPO 设备
             
             // OnePlus (注意：部分 OnePlus 设备使用 OPPO 的 SecBoot)
             { "2acf3a85", "OnePlus" },  // OnePlus 7T/7 Pro 等

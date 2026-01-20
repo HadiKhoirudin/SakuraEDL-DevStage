@@ -112,6 +112,8 @@
     <Compile Include="Qualcomm\Common\SerialPortManager.cs" />
     <Compile Include="Qualcomm\Common\SparseStream.cs" />
     <Compile Include="Qualcomm\Database\QualcommDatabase.cs" />
+    <Compile Include="Qualcomm\Database\ChimeraSignDatabase.cs" />
+    <Compile Include="Qualcomm\Database\EdlLoaderDatabase.cs" />
     <Compile Include="Qualcomm\Models\PartitionInfo.cs" />
     <Compile Include="Qualcomm\Protocol\SaharaProtocol.cs" />
     <Compile Include="Qualcomm\Protocol\FirehoseClient.cs" />

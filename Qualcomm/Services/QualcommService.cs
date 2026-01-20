@@ -378,6 +378,119 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
+        /// 使用内嵌 Loader 数据连接设备 (VIP 模式)
+        /// </summary>
+        /// <param name="portName">端口名</param>
+        /// <param name="loaderData">Loader 二进制数据</param>
+        /// <param name="storageType">存储类型</param>
+        /// <param name="ct">取消令牌</param>
+        public async Task<bool> ConnectWithLoaderDataAsync(string portName, byte[] loaderData, string storageType = "ufs", CancellationToken ct = default(CancellationToken))
+        {
+            try
+            {
+                SetState(QualcommConnectionState.Connecting);
+                _log("[高通] 使用内嵌 Loader 连接...");
+                _log(string.Format("USB 端口 : {0}", portName));
+
+                if (loaderData == null || loaderData.Length == 0)
+                {
+                    _log("[高通] Loader 数据为空");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+
+                // 初始化串口
+                _portManager = new SerialPortManager();
+                bool opened = await _portManager.OpenAsync(portName, 3, false, ct);
+                if (!opened)
+                {
+                    _log("[高通] 无法打开端口");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+
+                // Sahara 握手并上传内嵌 Loader
+                SetState(QualcommConnectionState.SaharaMode);
+                Action<double> saharaProgress = null;
+                if (_progress != null)
+                {
+                    saharaProgress = percent => _progress((long)percent, 100);
+                }
+                _sahara = new SaharaClient(_portManager, _log, _logDetail, saharaProgress);
+                
+                bool saharaOk = await _sahara.HandshakeAndUploadAsync(loaderData, "VIP_Loader", ct);
+                if (!saharaOk)
+                {
+                    _log("[高通] Sahara 握手/Loader 上传失败");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+
+                // 芯片信息已通过 _sahara.ChipInfo 保存，ChipInfo 属性会自动获取
+
+                // 标记为 VIP 设备
+                IsVipDevice = true;
+
+                // 等待 Firehose 就绪
+                _log("正在发送 Firehose 引导文件 : 成功");
+                await Task.Delay(1000, ct);
+
+                // 重新打开端口 (Firehose 模式)
+                _portManager.Close();
+                await Task.Delay(500, ct);
+
+                opened = await _portManager.OpenAsync(portName, 5, true, ct);
+                if (!opened)
+                {
+                    _log("[高通] 无法重新打开端口");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+
+                // Firehose 配置
+                SetState(QualcommConnectionState.FirehoseMode);
+                _firehose = new FirehoseClient(_portManager, _log, _progress, _logDetail);
+
+                _log("正在配置 Firehose...");
+                bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);
+                if (!configOk)
+                {
+                    _log("配置 Firehose : 失败");
+                    SetState(QualcommConnectionState.Error);
+                    return false;
+                }
+                _log("配置 Firehose : 成功");
+
+                // 保存连接参数
+                LastPortName = portName;
+                LastStorageType = storageType;
+
+                // 注册端口断开事件
+                if (_portManager != null)
+                {
+                    _portManager.PortDisconnected += (s, e) => HandlePortDisconnected();
+                }
+
+                SetState(QualcommConnectionState.Ready);
+                _log("[高通] VIP Loader 连接成功");
+
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                _log("[高通] 连接已取消");
+                SetState(QualcommConnectionState.Disconnected);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _log(string.Format("[高通] 连接错误 - {0}", ex.Message));
+                SetState(QualcommConnectionState.Error);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 直接连接 Firehose (跳过 Sahara)
         /// </summary>
         public async Task<bool> ConnectFirehoseDirectAsync(string portName, string storageType = "ufs", CancellationToken ct = default(CancellationToken))
@@ -623,6 +736,64 @@ namespace LoveAlways.Qualcomm.Services
             }
         }
 
+        /// <summary>
+        /// 执行 OnePlus 认证
+        /// </summary>
+        public async Task<bool> PerformOnePlusAuthAsync(CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null)
+            {
+                _log("[高通] 未连接 Firehose，无法执行 OnePlus 认证");
+                return false;
+            }
+
+            try
+            {
+                _log("[高通] 执行 OnePlus 认证...");
+                var oneplusAuth = new Authentication.OnePlusAuthStrategy(_log);
+                bool ok = await oneplusAuth.AuthenticateAsync(_firehose, "", ct);
+                if (ok)
+                    _log("[高通] OnePlus 认证成功");
+                else
+                    _log("[高通] OnePlus 认证失败");
+                return ok;
+            }
+            catch (Exception ex)
+            {
+                _log(string.Format("[高通] OnePlus 认证异常: {0}", ex.Message));
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 执行小米认证
+        /// </summary>
+        public async Task<bool> PerformXiaomiAuthAsync(CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null)
+            {
+                _log("[高通] 未连接 Firehose，无法执行小米认证");
+                return false;
+            }
+
+            try
+            {
+                _log("[高通] 执行小米认证...");
+                var xiaomiAuth = new Authentication.XiaomiAuthStrategy(_log);
+                bool ok = await xiaomiAuth.AuthenticateAsync(_firehose, "", ct);
+                if (ok)
+                    _log("[高通] 小米认证成功");
+                else
+                    _log("[高通] 小米认证失败");
+                return ok;
+            }
+            catch (Exception ex)
+            {
+                _log(string.Format("[高通] 小米认证异常: {0}", ex.Message));
+                return false;
+            }
+        }
+
         private void SetState(QualcommConnectionState newState)
         {
             if (State != newState)
@@ -677,7 +848,7 @@ namespace LoveAlways.Qualcomm.Services
         /// <summary>
         /// 检测是否为小米设备 (通过 OEM ID 或其他特征)
         /// </summary>
-        private bool IsXiaomiDevice()
+        public bool IsXiaomiDevice()
         {
             if (ChipInfo == null) return false;
 
@@ -747,6 +918,159 @@ namespace LoveAlways.Qualcomm.Services
                 _log(string.Format("[高通] VIP 认证异常: {0}", ex.Message));
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 手动执行 OPLUS VIP 认证 (基于 byte[] 数据)
+        /// 支持在发送 Digest 后直接写入签名数据
+        /// </summary>
+        /// <param name="digestData">Digest 数据 (Hash Segment, ~20-30KB)</param>
+        /// <param name="signatureData">签名数据 (256 字节 RSA-2048)</param>
+        public async Task<bool> PerformVipAuthAsync(byte[] digestData, byte[] signatureData, CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null)
+            {
+                _log("[高通] 未连接设备");
+                return false;
+            }
+
+            _log(string.Format("[高通] 启动 VIP 认证 (Digest={0}B, Sign={1}B)...", 
+                digestData?.Length ?? 0, signatureData?.Length ?? 0));
+            try
+            {
+                bool result = await _firehose.PerformVipAuthAsync(digestData, signatureData, ct);
+                if (result)
+                {
+                    _log("[高通] VIP 认证成功，已进入高权限模式");
+                    IsVipDevice = true;
+                }
+                else
+                {
+                    _log("[高通] VIP 认证失败：校验未通过");
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _log(string.Format("[高通] VIP 认证异常: {0}", ex.Message));
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 分步执行 VIP 认证 - Step 1: 发送 Digest
+        /// </summary>
+        public async Task<bool> SendVipDigestAsync(byte[] digestData, CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null) return false;
+            return await _firehose.SendVipDigestAsync(digestData, ct);
+        }
+
+        /// <summary>
+        /// 分步执行 VIP 认证 - Step 2-3: 准备 VIP 模式
+        /// </summary>
+        public async Task<bool> PrepareVipModeAsync(CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null) return false;
+            return await _firehose.PrepareVipModeAsync(ct);
+        }
+
+        /// <summary>
+        /// 分步执行 VIP 认证 - Step 4: 发送签名 (256 字节)
+        /// 这是核心方法：在发送 Digest 后写入签名
+        /// </summary>
+        public async Task<bool> SendVipSignatureAsync(byte[] signatureData, CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null) return false;
+            return await _firehose.SendVipSignatureAsync(signatureData, ct);
+        }
+
+        /// <summary>
+        /// 分步执行 VIP 认证 - Step 5: 完成认证
+        /// </summary>
+        public async Task<bool> FinalizeVipAuthAsync(CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null) return false;
+            return await _firehose.FinalizeVipAuthAsync(ct);
+        }
+
+        /// <summary>
+        /// 使用嵌入的奇美拉签名数据进行 VIP 认证
+        /// </summary>
+        /// <param name="platform">平台代号 (如 SM8550, SM8650 等)</param>
+        public async Task<bool> PerformChimeraAuthAsync(string platform, CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null)
+            {
+                _log("[高通] 未连接设备");
+                return false;
+            }
+
+            // 从嵌入数据库获取签名数据
+            var signData = ChimeraSignDatabase.Get(platform);
+            if (signData == null)
+            {
+                _log(string.Format("[高通] 不支持的平台: {0}", platform));
+                _log("[高通] 支持的平台: " + string.Join(", ", ChimeraSignDatabase.GetSupportedPlatforms()));
+                return false;
+            }
+
+            _log(string.Format("[高通] 使用奇美拉签名: {0} ({1})", signData.Name, signData.Platform));
+            _log(string.Format("[高通] Digest: {0} 字节, Signature: {1} 字节", 
+                signData.DigestSize, signData.SignatureSize));
+
+            return await PerformVipAuthAsync(signData.Digest, signData.Signature, ct);
+        }
+
+        /// <summary>
+        /// 自动检测平台并使用奇美拉签名认证
+        /// </summary>
+        public async Task<bool> PerformChimeraAuthAutoAsync(CancellationToken ct = default(CancellationToken))
+        {
+            if (_firehose == null)
+            {
+                _log("[高通] 未连接设备");
+                return false;
+            }
+
+            // 尝试从 Sahara 获取的芯片信息
+            string platform = null;
+            if (_sahara != null && _sahara.ChipInfo != null)
+            {
+                platform = _sahara.ChipInfo.ChipName;
+                if (string.IsNullOrEmpty(platform) || platform == "Unknown")
+                {
+                    // 尝试从 MSM ID 推断
+                    uint msmId = _sahara.ChipInfo.MsmId;
+                    platform = QualcommDatabase.GetChipName(msmId);
+                }
+            }
+
+            if (string.IsNullOrEmpty(platform) || platform == "Unknown")
+            {
+                _log("[高通] 无法自动检测平台，请手动指定");
+                _log("[高通] 支持的平台: " + string.Join(", ", ChimeraSignDatabase.GetSupportedPlatforms()));
+                return false;
+            }
+
+            _log(string.Format("[高通] 自动检测到平台: {0}", platform));
+            return await PerformChimeraAuthAsync(platform, ct);
+        }
+
+        /// <summary>
+        /// 获取支持的奇美拉平台列表
+        /// </summary>
+        public string[] GetSupportedChimeraPlatforms()
+        {
+            return ChimeraSignDatabase.GetSupportedPlatforms();
+        }
+
+        /// <summary>
+        /// 检查平台是否支持奇美拉签名
+        /// </summary>
+        public bool IsChimeraSupported(string platform)
+        {
+            return ChimeraSignDatabase.IsSupported(platform);
         }
 
         /// <summary>
