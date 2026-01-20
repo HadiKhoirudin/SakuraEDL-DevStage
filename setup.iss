@@ -53,7 +53,6 @@ VersionInfoCopyright=Copyright © xiri 2025-2026
 ShowLanguageDialog=auto
 
 [Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
