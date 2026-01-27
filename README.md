@@ -294,7 +294,7 @@ MultiFlash-Tool/
 ## 📧 联系方式
 
 ### 社区交流
-- **QQ 群**: MultiFlash TOOL
+- **QQ 群**: [MultiFlash TOOL](https://qm.qq.com/q/z3iVnkm22c)
 - **Telegram**: [OPFlashTool](https://t.me/OPFlashTool)
 - **Discord**: [加入服务器](https://discord.gg/multiflash)
 
