@@ -24,12 +24,6 @@ Supports Qualcomm EDL (9008), MediaTek (MTK), Spreadtrum (SPD/Unisoc), and Fastb
 |:---:|:---:|:---:|:---:|
 | Qualcomm + MTK + Spreadtrum | XFlash + XML Protocol | Flash + Unbrick + Decrypt | Auto Loader Matching |
 
-## 📸 Interface Preview
-
-<p align="center">
-  <img src="assets/screenshot.png" alt="MultiFlash Tool Interface Screenshot" width="800">
-</p>
-
 ---
 
 ## ✨ Features
