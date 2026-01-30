@@ -185,7 +185,7 @@ MultiFlash.exe
 - **SPD Protocol**: Referencing [spd_dump](https://github.com/ArtRichards/spd_dump)
 
 ### Project Structure
-
+```
 MultiFlash-Tool/
 ├── MediaTek/ # 🆕 MediaTek Module
 │ ├── Protocol/
@@ -221,7 +221,7 @@ MultiFlash-Tool/
 ├── Authentication/ # Authentication Policies
 ├── Services/ # Common Services
 └── Localization/ # Multi-language
-
+```
 ---
 
 ## 📊 Supported Chips
