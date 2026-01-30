@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="MultiFlash Tool Logo" width="128">
+  <img src="https://github.com/xiriovo/SakuraEDL/blob/v2.0.0/assets/logo.jpg" alt="MultiFlash Tool Logo" width="128">
 </p>
 
 # MultiFlash Tool
@@ -14,7 +14,7 @@ Supports Qualcomm EDL (9008), MediaTek (MTK), Spreadtrum (SPD/Unisoc), and Fastb
 [![GitHub Forks](https://img.shields.io/github/forks/xiriovo/MultiFlash-Tool)](https://github.com/xiriovo/MultiFlash-Tool/network/members)
 [![GitHub Release](https://img.shields.io/github/v/release/xiriovo/MultiFlash-Tool)](https://github.com/xiriovo/MultiFlash-Tool/releases)
 
-[中文文档](README.md) | [English](README_EN.md) | [Quick Reference](docs/QUICK_REFERENCE.md)
+[Quick Reference](docs/QUICK_REFERENCE.md)
 
 ---
 
