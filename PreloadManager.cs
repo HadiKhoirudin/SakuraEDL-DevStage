@@ -7,17 +7,17 @@ using OPFlashTool.Services;
 namespace LoveAlways
 {
     /// <summary>
-    /// 预加载管理器 - 优化版，支持懒加载模式减少内存占用
-    /// EDL Loader 已改为云端自动匹配，不再预加载本地 PAK
+    /// Preload Manager - Optimized version, supports lazy loading to reduce memory usage
+    /// EDL Loader has been changed to cloud auto-match, no longer preloads local PAK
     /// </summary>
     public static class PreloadManager
     {
-        // 预加载状态
+        // Preload Status
         public static bool IsPreloadComplete { get; private set; } = false;
-        public static string CurrentStatus { get; private set; } = "准备中...";
+        public static string CurrentStatus { get; private set; } = "Preparing...";
         public static int Progress { get; private set; } = 0;
 
-        // 懒加载数据 - 按需加载
+        // Lazy loaded data - load on demand
         private static List<string> _edlLoaderItems = null;
         private static List<string> _vipLoaderItems = null;
         private static bool _edlLoaderItemsLoaded = false;
@@ -25,20 +25,20 @@ namespace LoveAlways
         private static readonly object _loaderLock = new object();
 
         /// <summary>
-        /// EDL Loader 列表 (已废弃，使用云端匹配)
+        /// EDL Loader List (Deprecated, use cloud match)
         /// </summary>
-        [Obsolete("使用云端自动匹配")]
+        [Obsolete("Use cloud auto-match")]
         public static List<string> EdlLoaderItems
         {
             get
             {
-                // 返回空列表，EDL Loader 现在使用云端匹配
+                // Returns empty list, EDL Loader now uses cloud match
                 return new List<string>();
             }
         }
         
         /// <summary>
-        /// VIP Loader 列表 (仍从本地 PAK 加载)
+        /// VIP Loader List (Still loaded from local PAK)
         /// </summary>
         public static List<string> VipLoaderItems
         {
@@ -68,15 +68,15 @@ namespace LoveAlways
                 {
                     try 
                     { 
-                        // 使用 Task.Run 避免死锁
+                        // Use Task.Run to avoid deadlock
                         _systemInfo = Task.Run(async () => 
                             await WindowsInfo.GetSystemInfoAsync().ConfigureAwait(false)
                         ).GetAwaiter().GetResult(); 
                     }
                     catch (Exception ex)
                     { 
-                        System.Diagnostics.Debug.WriteLine($"[PreloadManager] 获取系统信息失败: {ex.Message}");
-                        _systemInfo = "未知"; 
+                        System.Diagnostics.Debug.WriteLine($"[PreloadManager] Failed to get system info: {ex.Message}");
+                        _systemInfo = "Unknown"; 
                     }
                 }
                 return _systemInfo;
@@ -86,14 +86,14 @@ namespace LoveAlways
         private static bool? _edlPakAvailable = null;
         
         /// <summary>
-        /// EDL PAK 是否可用 (已废弃，使用云端匹配)
+        /// Whether EDL PAK is available (Deprecated, use cloud match)
         /// </summary>
-        [Obsolete("使用云端自动匹配")]
+        [Obsolete("Use cloud auto-match")]
         public static bool EdlPakAvailable
         {
             get
             {
-                // 始终返回 false，强制使用云端匹配
+                // Always return false, force use cloud match
                 return false;
             }
         }
@@ -111,16 +111,16 @@ namespace LoveAlways
             }
         }
 
-        // 预加载任务
+        // Preload Task
         private static Task _preloadTask = null;
 
-        // 是否启用懒加载模式 (使用 PerformanceConfig)
+        // Whether to enable lazy loading mode (use PerformanceConfig)
         private static bool EnableLazyLoading => Common.PerformanceConfig.EnableLazyLoading;
 
         /// <summary>
-        /// 启动预加载（在 SplashForm 中调用）
-        /// 优化版：仅加载必要资源，其他按需加载
-        /// EDL Loader 改为云端自动匹配，不再预加载
+        /// Start Preload (Called in SplashForm)
+        /// Optimized version: Only load necessary resources, others on demand
+        /// EDL Loader changed to cloud auto-match, no longer preloaded
         /// </summary>
         public static void StartPreload()
         {
@@ -130,53 +130,51 @@ namespace LoveAlways
             {
                 try
                 {
-                    // 阶段0: 提取嵌入的工具文件（必须）
-                    CurrentStatus = "提取工具文件...";
+                    // Phase 0: Extract embedded tool files (Required)
+                    CurrentStatus = "Extracting tool files...";
                     Progress = 10;
                     EmbeddedResourceExtractor.ExtractAll();
                     Progress = 30;
 
-                    // 阶段1: 检查 VIP PAK（快速）- EDL 已改为云端匹配
-                    CurrentStatus = "检查资源包...";
+                    // Phase 1: Check VIP PAK (Fast) - EDL changed to cloud match
+                    CurrentStatus = "Checking resource packs...";
                     Progress = 40;
                     _vipPakAvailable = ChimeraSignDatabase.IsLoaderPackAvailable();
                     Progress = 50;
 
-                    // 懒加载模式：跳过预加载系统信息
+                    // Lazy loading mode: skip preloading system info
                     if (!EnableLazyLoading)
                     {
-                        // 阶段2: 预加载 VIP Loader 列表 (如果可用)
+                        // Phase 2: Preload VIP Loader list (if available)
                         if (_vipPakAvailable.Value)
                         {
-                            CurrentStatus = "加载 VIP 引导数据库...";
+                            CurrentStatus = "Loading VIP boot database...";
                             Progress = 60;
                             _vipLoaderItems = BuildVipLoaderItems();
                             _vipLoaderItemsLoaded = true;
                         }
                         Progress = 70;
 
-                        // 阶段3: 预加载系统信息
-                        CurrentStatus = "获取系统信息...";
+                        // Phase 3: Preload system info
+                        CurrentStatus = "Getting system info...";
                         Progress = 80;
                         try { _systemInfo = await WindowsInfo.GetSystemInfoAsync(); }
-                        catch { _systemInfo = "未知"; }
+                        catch { _systemInfo = "Unknown"; }
                     }
                     
                     Progress = 90;
 
-                    // 阶段4: 预热常用类型（轻量级）
-                    CurrentStatus = "初始化组件...";
+                    // Phase 4: Prewarm common types (Lightweight)
+                    CurrentStatus = "Initializing components...";
                     PrewarmTypesLight();
 
-                    // 完成
-                    CurrentStatus = "加载完成";
+                    // Complete
                     Progress = 100;
                     IsPreloadComplete = true;
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"预加载失败: {ex.Message}");
-                    CurrentStatus = "加载完成";
+                    System.Diagnostics.Debug.WriteLine($"Preload failed: {ex.Message}");
                     Progress = 100;
                     IsPreloadComplete = true;
                 }
@@ -184,7 +182,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 释放缓存以减少内存占用
+        /// Release cache to reduce memory usage
         /// </summary>
         public static void ClearCache()
         {
@@ -202,7 +200,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 等待预加载完成
+        /// Wait for preload to complete
         /// </summary>
         public static async Task WaitForPreloadAsync()
         {
@@ -213,17 +211,17 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 构建 EDL Loader 列表项 (已废弃，使用云端匹配)
+        /// Build EDL Loader list items (Deprecated, use cloud match)
         /// </summary>
-        [Obsolete("使用云端自动匹配")]
+        [Obsolete("Use cloud auto-match")]
         private static List<string> BuildEdlLoaderItems()
         {
-            // 不再构建本地 PAK 列表，EDL Loader 使用云端匹配
+            // No longer builds local PAK list, EDL Loader uses cloud match
             return new List<string>();
         }
         
         /// <summary>
-        /// 构建 VIP Loader 列表项 (OPLUS 签名认证设备)
+        /// Build VIP Loader list items (OPLUS signature authentication devices)
         /// </summary>
         private static List<string> BuildVipLoaderItems()
         {
@@ -234,12 +232,12 @@ namespace LoveAlways
                 if (!ChimeraSignDatabase.IsLoaderPackAvailable())
                     return items;
 
-                // 获取所有 VIP 平台
+                // Get all VIP platforms
                 var platforms = ChimeraSignDatabase.GetSupportedPlatforms();
                 if (platforms == null || platforms.Length == 0)
                     return items;
 
-                items.Add("─── VIP 签名设备 ───");
+                items.Add("─── VIP Signed Devices ───");
                 
                 foreach (var platform in platforms)
                 {
@@ -251,42 +249,42 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"VIP Loader 构建失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"VIP Loader build failed: {ex.Message}");
             }
 
             return items;
         }
 
         /// <summary>
-        /// 获取品牌中文显示名
+        /// Get Brand Display Name (Internationalized)
         /// </summary>
         private static string GetBrandDisplayName(string brand)
         {
             switch (brand.ToLower())
             {
-                case "huawei": return "华为/荣耀";
-                case "zte": return "中兴/努比亚/红魔";
-                case "xiaomi": return "小米/Redmi";
-                case "blackshark": return "黑鲨";
-                case "vivo": return "vivo/iQOO";
-                case "meizu": return "魅族";
-                case "lenovo": return "联想/摩托罗拉";
-                case "samsung": return "三星";
+                case "huawei": return "Huawei/Honor";
+                case "zte": return "ZTE/Nubia/RedMagic";
+                case "xiaomi": return "Xiaomi/Redmi";
+                case "blackshark": return "BlackShark";
+                case "vivo": return "Vivo/iQOO";
+                case "meizu": return "Meizu";
+                case "lenovo": return "Lenovo/Motorola";
+                case "samsung": return "Samsung";
                 case "nothing": return "Nothing";
-                case "rog": return "华硕ROG";
+                case "rog": return "ASUS ROG";
                 case "lg": return "LG";
-                case "smartisan": return "锤子";
-                case "xtc": return "小天才";
+                case "smartisan": return "Smartisan";
+                case "xtc": return "XTC";
                 case "360": return "360";
                 case "bbk": return "BBK";
-                case "royole": return "柔宇";
+                case "royole": return "Royole";
                 case "oplus": return "OPPO/OnePlus/Realme";
                 default: return brand;
             }
         }
 
         /// <summary>
-        /// 预热常用类型，避免首次使用时 JIT 编译延迟
+        /// Prewarm common types to avoid JIT compilation delay during first use
         /// </summary>
         private static void PrewarmTypes()
         {
@@ -306,12 +304,12 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[PreloadManager] 类型预热失败 (非关键): {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[PreloadManager] Type prewarm failed (Non-critical): {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 轻量级预热 - 仅预热核心类型，减少内存占用
+        /// Lightweight prewarm - only prewarm core types to reduce memory usage
         /// </summary>
         private static void PrewarmTypesLight()
         {
@@ -323,7 +321,7 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[PreloadManager] 轻量预热失败 (非关键): {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[PreloadManager] Lightweight prewarm failed (Non-critical): {ex.Message}");
             }
         }
     }

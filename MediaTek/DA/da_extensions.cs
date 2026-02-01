@@ -1,10 +1,15 @@
 // ============================================================================
-// LoveAlways - MediaTek DA Extensions 支持框架
+// LoveAlways - MediaTek DA Extensions Support Framework
 // MediaTek Download Agent Extensions Support Framework
 // ============================================================================
-// 参考: Penumbra 文档 https://shomy.is-a.dev/penumbra/Mediatek/Common/DA/DA-Extensions
-// DA Extensions由bkerler开发，用于移除厂商DA的限制，恢复RPMB/寄存器访问等功能
+// Reference: Penumbra documentation https://shomy.is-a.dev/penumbra/Mediatek/Common/DA/DA-Extensions
+// DA Extensions developed by bkerler, used to remove manufacturer DA restrictions, restore RPMB/register access, etc.
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using LoveAlways.MediaTek.Models;
@@ -12,44 +17,44 @@ using LoveAlways.MediaTek.Models;
 namespace LoveAlways.MediaTek.DA
 {
     /// <summary>
-    /// DA Extensions 配置
+    /// DA Extensions Configuration
     /// </summary>
     public class DaExtensionsConfig
     {
         /// <summary>
-        /// 标准加载地址 (DRAM空间)
+        /// Standard load address (DRAM space)
         /// </summary>
         public const uint STANDARD_LOAD_ADDR = 0x68000000;
         
         /// <summary>
-        /// 低内存设备加载地址 (XFlash协议)
-        /// 参考: https://github.com/bkerler/mtkclient/pull/1563
+        /// Low memory device load address (XFlash protocol)
+        /// Reference: https://github.com/bkerler/mtkclient/pull/1563
         /// </summary>
         public const uint LOW_MEM_LOAD_ADDR = 0x4FFF0000;
         
         /// <summary>
-        /// DA2通常加载地址
+        /// DA2 usual load address
         /// </summary>
         public const uint DA2_LOAD_ADDR = 0x40000000;
         
         /// <summary>
-        /// DA1通常加载地址范围
+        /// DA1 usual load address range
         /// </summary>
         public const uint DA1_MEM_START = 0x00200000;
         public const uint DA1_MEM_END = 0x00300000;
 
         /// <summary>
-        /// 是否使用低内存地址
+        /// Whether to use low memory address
         /// </summary>
         public bool UseLowMemoryAddress { get; set; }
 
         /// <summary>
-        /// Extensions二进制数据
+        /// Extensions binary data
         /// </summary>
         public byte[] ExtensionsBinary { get; set; }
 
         /// <summary>
-        /// 获取加载地址
+        /// Get load address
         /// </summary>
         public uint GetLoadAddress()
         {
@@ -58,34 +63,34 @@ namespace LoveAlways.MediaTek.DA
     }
 
     /// <summary>
-    /// XFlash (V5) DA Extensions 命令
-    /// 命令范围: 0x0F0000 - 0x0FFFFF
+    /// XFlash (V5) DA Extensions Commands
+    /// Command range: 0x0F0000 - 0x0FFFFF
     /// </summary>
     public static class XFlashExtensionCommands
     {
         public const uint CMD_RANGE_START = 0x0F0000;
         public const uint CMD_RANGE_END   = 0x0FFFFF;
 
-        // RPMB操作
+        // RPMB operations
         public const uint CMD_READ_RPMB   = 0x0F0001;
         public const uint CMD_WRITE_RPMB  = 0x0F0002;
 
-        // 寄存器访问
+        // Register access
         public const uint CMD_READ_REG    = 0x0F0003;
         public const uint CMD_WRITE_REG   = 0x0F0004;
         public const uint CMD_READ_REG16  = 0x0F0005;
         public const uint CMD_WRITE_REG16 = 0x0F0006;
 
-        // SEJ (Security Engine) 操作
+        // SEJ (Security Engine) operations
         public const uint CMD_SEJ_DECRYPT = 0x0F0007;
         public const uint CMD_SEJ_ENCRYPT = 0x0F0008;
 
-        // 内存操作
+        // Memory operations
         public const uint CMD_READ_MEM    = 0x0F0009;
         public const uint CMD_WRITE_MEM   = 0x0F000A;
 
         /// <summary>
-        /// 检查命令是否为Extensions命令
+        /// Check if command is an Extensions command
         /// </summary>
         public static bool IsExtensionCommand(uint command)
         {
@@ -94,70 +99,70 @@ namespace LoveAlways.MediaTek.DA
     }
 
     /// <summary>
-    /// XML (V6) DA Extensions 命令
-    /// 使用XML协议的命令字符串
+    /// XML (V6) DA Extensions Commands
+    /// Command strings using XML protocol
     /// </summary>
     public static class XmlExtensionCommands
     {
-        // RPMB操作
+        // RPMB operations
         public const string CMD_READ_RPMB = "CMD:READ-RPMB";
         public const string CMD_WRITE_RPMB = "CMD:WRITE-RPMB";
 
-        // 寄存器访问
+        // Register access
         public const string CMD_READ_REG = "CMD:READ-REGISTER";
         public const string CMD_WRITE_REG = "CMD:WRITE-REGISTER";
 
-        // SEJ操作
+        // SEJ operations
         public const string CMD_SEJ = "CMD:SEJ-OPERATION";
 
-        // 内存操作
+        // Memory operations
         public const string CMD_READ_MEM = "CMD:READ-MEMORY";
         public const string CMD_WRITE_MEM = "CMD:WRITE-MEMORY";
     }
 
     /// <summary>
-    /// DA Extensions 兼容性检测
+    /// DA Extensions Compatibility Detection
     /// </summary>
     public static class DaExtensionsCompatibility
     {
         /// <summary>
-        /// 检查设备是否支持DA Extensions
+        /// Check if device supports DA Extensions
         /// 
-        /// 要求:
-        /// 1. 必须能够加载修补过的DA（至少自定义DA2）
-        /// 2. Carbonara漏洞未被修补（2024年后的设备可能已修补）
-        /// 3. 设备未启用严格的DA验证
+        /// Requirements:
+        /// 1. Must be able to load patched DA (at least custom DA2)
+        /// 2. Carbonara exploit not patched (devices after 2024 may have been patched)
+        /// 3. Device does not have strict DA validation enabled
         /// </summary>
         public static bool SupportsExtensions(MtkDeviceInfo deviceInfo)
         {
             if (deviceInfo == null)
                 return false;
 
-            // 检查是否为V5/V6 DA（Extensions只支持这两种）
+            // Check if it is V5/V6 DA (Extensions only support these two)
             var daMode = deviceInfo.DaMode;
             if (daMode != 5 && daMode != 6)  // 5=XFlash, 6=XML
                 return false;
 
-            // TODO: 添加Carbonara修补检测
+            // TODO: Add Carbonara patch detection
             // if (IsCarbonaraPatched(deviceInfo))
             //     return false;
 
-            // 2024年后的设备可能不支持
-            // 这里需要更详细的芯片/日期检测
+            // Devices after 2024 may not support it
+            // Needs more detailed chip/date detection here
             return true;
         }
 
         /// <summary>
-        /// 检查DA是否已修补Carbonara（影响Extensions加载）
-        /// 参考: Penumbra文档 - 2024年后修补了boot_to硬编码地址
+        /// Check if DA has been Carbonara-patched (affects Extensions loading)
+        /// Reference: Penumbra docs - boot_to hardcoded address patched after 2024
         /// </summary>
         public static bool IsCarbonaraPatched(byte[] da2Data)
         {
             if (da2Data == null || da2Data.Length < 0x1000)
-                return true;  // 保守策略：无法确认时假设已修补
+                return true;  // Conservative policy: assume patched if cannot confirm
 
-            // 检查是否包含硬编码的0x40000000地址（修补后的特征）
-            // 修补后的DA2会强制使用0x40000000作为boot_to地址
+            // Check if it contains hardcoded 0x40000000 address (patched feature)
+            // Patched DA2 will force use 0x40000000 as boot_to address
             byte[] hardcodedAddr = { 0x00, 0x00, 0x00, 0x40 };  // 0x40000000 LE
             
             int count = 0;
@@ -172,17 +177,17 @@ namespace LoveAlways.MediaTek.DA
                 }
             }
 
-            // 如果出现多次硬编码地址，可能是修补后的DA
+            // If multiple hardcoded addresses appear, it might be a patched DA
             return count > 3;
         }
 
         /// <summary>
-        /// 判断设备是否为低内存设备
-        /// 低内存设备需要使用特殊的Extensions加载地址
+        /// Determine if device is a low memory device
+        /// Low memory devices need special Extensions load address
         /// </summary>
         public static bool IsLowMemoryDevice(ushort hwCode)
         {
-            // 通常入门级芯片（如MT6739, MT6761等）内存较小
+            // Usually entry-level chips (like MT6739, MT6761, etc.) have small memory
             return hwCode switch
             {
                 0x0699 => true,  // MT6739
@@ -194,107 +199,107 @@ namespace LoveAlways.MediaTek.DA
     }
 
     /// <summary>
-    /// DA Extensions 状态
+    /// DA Extensions Status
     /// </summary>
     public enum ExtensionsStatus
     {
-        /// <summary>未加载</summary>
+        /// <summary>Not loaded</summary>
         NotLoaded,
         
-        /// <summary>加载中</summary>
+        /// <summary>Loading</summary>
         Loading,
         
-        /// <summary>已加载</summary>
+        /// <summary>Loaded</summary>
         Loaded,
         
-        /// <summary>不支持</summary>
+        /// <summary>Not supported</summary>
         NotSupported,
         
-        /// <summary>加载失败</summary>
+        /// <summary>Load failed</summary>
         LoadFailed
     }
 
     /// <summary>
-    /// DA Extensions 管理器（接口定义）
+    /// DA Extensions Manager (Interface definition)
     /// </summary>
     public interface IDaExtensionsManager
     {
-        /// <summary>当前Extensions状态</summary>
+        /// <summary>Current Extensions status</summary>
         ExtensionsStatus Status { get; }
 
-        /// <summary>检查是否支持Extensions</summary>
+        /// <summary>Check if Extensions are supported</summary>
         bool IsSupported();
 
-        /// <summary>加载Extensions到设备</summary>
+        /// <summary>Load Extensions to device</summary>
         bool LoadExtensions(DaExtensionsConfig config);
 
-        /// <summary>卸载Extensions</summary>
+        /// <summary>Unload Extensions</summary>
         void UnloadExtensions();
 
-        /// <summary>读取RPMB</summary>
+        /// <summary>Read RPMB</summary>
         byte[] ReadRpmb(uint address, uint length);
 
-        /// <summary>写入RPMB</summary>
+        /// <summary>Write RPMB</summary>
         bool WriteRpmb(uint address, byte[] data);
 
-        /// <summary>读取寄存器</summary>
+        /// <summary>Read register</summary>
         uint ReadRegister(uint address);
 
-        /// <summary>写入寄存器</summary>
+        /// <summary>Write register</summary>
         bool WriteRegister(uint address, uint value);
 
-        /// <summary>SEJ解密</summary>
+        /// <summary>SEJ decrypt</summary>
         byte[] SejDecrypt(byte[] data);
 
-        /// <summary>SEJ加密</summary>
+        /// <summary>SEJ encrypt</summary>
         byte[] SejEncrypt(byte[] data);
     }
 
     /// <summary>
-    /// DA Extensions 工具类
+    /// DA Extensions Utility Class
     /// </summary>
     public static class DaExtensionsHelper
     {
         /// <summary>
-        /// 获取推荐的Extensions配置
+        /// Get recommended Extensions configuration
         /// </summary>
         public static DaExtensionsConfig GetRecommendedConfig(ushort hwCode, MtkDeviceInfo deviceInfo)
         {
             var config = new DaExtensionsConfig
             {
                 UseLowMemoryAddress = DaExtensionsCompatibility.IsLowMemoryDevice(hwCode),
-                // ExtensionsBinary 需要从外部加载
             };
+            // ExtensionsBinary needs to be loaded externally
 
             return config;
         }
 
         /// <summary>
-        /// 验证Extensions二进制是否有效
+        /// Verify if Extensions binary is valid
         /// </summary>
         public static bool ValidateExtensionsBinary(byte[] binary)
         {
             if (binary == null || binary.Length < 0x1000)
                 return false;
 
-            // TODO: 添加更详细的验证逻辑
-            // 例如：检查ELF头、魔术值等
+            // TODO: Add more detailed validation logic
+            // For example: check ELF header, magic values, etc.
 
             return true;
         }
 
         /// <summary>
-        /// 获取Extensions版本信息
+        /// Get Extensions version information
         /// </summary>
         public static string GetExtensionsVersion()
         {
-            // TODO: 从Extensions二进制中提取版本信息
+            // TODO: Extract version info from Extensions binary
             return "1.0.0";
         }
     }
 
     /// <summary>
-    /// DA Extensions 异常
+    /// DA Extensions Exception
     /// </summary>
     public class DaExtensionsException : Exception
     {

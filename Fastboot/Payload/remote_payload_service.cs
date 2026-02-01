@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,9 +16,9 @@ using System.Threading.Tasks;
 namespace LoveAlways.Fastboot.Payload
 {
     /// <summary>
-    /// 云端 Payload 服务
-    /// 支持从远程 URL 直接解析和提取 OTA 包中的分区
-    /// 参考 oplus_ota_tool_gui.py 实现
+    /// Cloud Payload Service
+    /// Supports direct parsing and extraction of partitions from OTA packages via remote URLs
+    /// Reference: oplus_ota_tool_gui.py implementation
     /// </summary>
     public class RemotePayloadService : IDisposable
     {
@@ -76,20 +81,20 @@ namespace LoveAlways.Fastboot.Payload
             _progress = progress;
             _logDetail = logDetail ?? (msg => { });
 
-            // 创建 HttpClientHandler 来处理自动重定向和解压缩
+            // Create HttpClientHandler to handle automatic redirects and decompression
             var handler = new HttpClientHandler
             {
-                AllowAutoRedirect = false, // 手动处理重定向
-                AutomaticDecompression = DecompressionMethods.None // 不自动解压缩
+                AllowAutoRedirect = false, // Handle redirects manually
+                AutomaticDecompression = DecompressionMethods.None // No automatic decompression
             };
             
             _httpClient = new HttpClient(handler);
             _httpClient.Timeout = TimeSpan.FromMinutes(30);
-            SetUserAgent(null); // 使用默认 User-Agent
+            SetUserAgent(null); // Use default User-Agent
         }
 
         /// <summary>
-        /// 设置自定义 User-Agent
+        /// Set custom User-Agent
         /// </summary>
         public void SetUserAgent(string userAgent)
         {
@@ -110,17 +115,17 @@ namespace LoveAlways.Fastboot.Payload
         #region Public Methods
 
         /// <summary>
-        /// 获取真实下载链接 (处理重定向)
+        /// Get real download URL (handle redirects)
         /// </summary>
         public async Task<(string RealUrl, DateTime? ExpiresTime)> GetRedirectUrlAsync(string url, CancellationToken ct = default)
         {
-            // 如果不是 downloadCheck 链接，直接返回
+            // If not a downloadCheck link, return directly
             if (!url.Contains("downloadCheck?"))
             {
                 return (url, ParseExpiresTime(url));
             }
 
-            _log("正在获取真实下载链接...");
+            _log("Getting real download link...");
 
             for (int attempt = 0; attempt < 3; attempt++)
             {
@@ -129,13 +134,13 @@ namespace LoveAlways.Fastboot.Payload
                     var request = new HttpRequestMessage(HttpMethod.Get, url);
                     var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 
-                    // 检查重定向
+                    // Check for redirects
                     if ((int)response.StatusCode >= 301 && (int)response.StatusCode <= 308)
                     {
                         var location = response.Headers.Location?.ToString();
                         if (!string.IsNullOrEmpty(location))
                         {
-                            _log("✓ 成功获取真实链接");
+                            _log("✓ Successfully obtained real link");
                             return (location, ParseExpiresTime(location));
                         }
                     }
@@ -146,11 +151,11 @@ namespace LoveAlways.Fastboot.Payload
                 }
                 catch (TaskCanceledException)
                 {
-                    _log($"超时，重试 {attempt + 1}/3...");
+                    _log($"Timeout, retrying {attempt + 1}/3...");
                 }
                 catch (Exception ex)
                 {
-                    _log($"请求失败: {ex.Message}");
+                    _log($"Request failed: {ex.Message}");
                 }
             }
 
@@ -158,13 +163,13 @@ namespace LoveAlways.Fastboot.Payload
         }
 
         /// <summary>
-        /// 从 URL 加载 Payload 信息 (不下载整个文件)
+        /// Load Payload info from URL (does not download the entire file)
         /// </summary>
         public async Task<bool> LoadFromUrlAsync(string url, CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(url))
             {
-                _log("URL 不能为空");
+                _log("URL cannot be empty");
                 return false;
             }
 
@@ -174,16 +179,16 @@ namespace LoveAlways.Fastboot.Payload
                 _partitions.Clear();
                 IsLoaded = false;
 
-                _log($"正在连接: {GetUrlHost(url)}");
+                _log($"Connecting: {GetUrlHost(url)}");
 
-                // 1. 获取文件总大小 (使用 HEAD 请求)
+                // 1. Get total file size (using HEAD request)
                 var headRequest = new HttpRequestMessage(HttpMethod.Head, url);
                 var headResponse = await _httpClient.SendAsync(headRequest, HttpCompletionOption.ResponseHeadersRead, ct);
                 
                 if (!headResponse.IsSuccessStatusCode)
                 {
-                    // HEAD 请求失败，尝试用 GET 请求只读取头部
-                    _logDetail("HEAD 请求失败，尝试 GET 请求...");
+                    // HEAD request failed, try GET request and read only the header
+                    _logDetail("HEAD request failed, trying GET request...");
                     var getRequest = new HttpRequestMessage(HttpMethod.Get, url);
                     getRequest.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 0);
                     var getResponse = await _httpClient.SendAsync(getRequest, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -194,7 +199,7 @@ namespace LoveAlways.Fastboot.Payload
                     }
                     else if (!getResponse.IsSuccessStatusCode)
                     {
-                        _log($"无法访问 URL: HTTP {(int)headResponse.StatusCode}");
+                        _log($"URL inaccessible: HTTP {(int)headResponse.StatusCode}");
                         return false;
                     }
                     else
@@ -208,52 +213,52 @@ namespace LoveAlways.Fastboot.Payload
                 }
                 if (_totalSize == 0)
                 {
-                    _log("无法获取文件大小");
+                    _log("Unable to get file size");
                     return false;
                 }
 
-                _log($"文件大小: {FormatSize(_totalSize)}");
+                _log($"File size: {FormatSize(_totalSize)}");
 
-                // 2. 判断是 ZIP 还是直接的 payload.bin
+                // 2. Determine if it's ZIP or direct payload.bin
                 string urlPath = url.Split('?')[0].ToLowerInvariant();
                 bool isZip = urlPath.EndsWith(".zip") || urlPath.Contains("ota");
 
                 if (isZip)
                 {
-                    _log("解析 ZIP 结构...");
+                    _log("Parsing ZIP structure...");
                     await ParseZipStructureAsync(url, ct);
                 }
                 else
                 {
-                    // 直接是 payload.bin
+                    // Direct payload.bin
                     _payloadDataOffset = 0;
                 }
 
-                // 3. 解析 Payload 头部和 Manifest
+                // 3. Parse Payload header and Manifest
                 await ParsePayloadHeaderAsync(url, ct);
 
                 IsLoaded = true;
-                _log($"✓ 成功解析: {_partitions.Count} 个分区");
+                _log($"✓ Successfully parsed: {_partitions.Count} partitions");
 
                 return true;
             }
             catch (Exception ex)
             {
-                _log($"加载失败: {ex.Message}");
-                _logDetail($"加载错误: {ex}");
+                _log($"Load failed: {ex.Message}");
+                _logDetail($"Load error: {ex}");
                 return false;
             }
         }
 
         /// <summary>
-        /// 从云端提取分区到本地文件
+        /// Extract partition from cloud to local file
         /// </summary>
         public async Task<bool> ExtractPartitionAsync(string partitionName, string outputPath,
             CancellationToken ct = default)
         {
             if (!IsLoaded)
             {
-                _log("请先加载 Payload");
+                _log("Please load Payload first");
                 return false;
             }
 
@@ -262,13 +267,13 @@ namespace LoveAlways.Fastboot.Payload
 
             if (partition == null)
             {
-                _log($"未找到分区: {partitionName}");
+                _log($"Partition not found: {partitionName}");
                 return false;
             }
 
             try
             {
-                _log($"开始提取 '{partitionName}' ({FormatSize((long)partition.Size)})");
+                _log($"Starting to extract '{partitionName}' ({FormatSize((long)partition.Size)})");
 
                 string outputDir = Path.GetDirectoryName(outputPath);
                 if (!Directory.Exists(outputDir))
@@ -278,56 +283,56 @@ namespace LoveAlways.Fastboot.Payload
                 int processedOps = 0;
                 long downloadedBytes = 0;
                 
-                // 速度计算相关
+                // Speed calculation related
                 var startTime = DateTime.Now;
                 var lastSpeedUpdateTime = startTime;
                 long lastSpeedUpdateBytes = 0;
                 double currentSpeed = 0;
-
+                
                 using (var outputStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write))
                 {
-                    // 预分配文件大小
+                    // Pre-allocate file size
                     outputStream.SetLength((long)partition.Size);
-
+                    
                     foreach (var operation in partition.Operations)
                     {
                         ct.ThrowIfCancellationRequested();
-
+                        
                         byte[] decompressedData = null;
-
+                        
                         if (operation.DataLength > 0)
                         {
-                            // 下载操作数据
+                            // Download operation data
                             long absStart = _dataStartOffset + (long)operation.DataOffset;
                             long absEnd = absStart + (long)operation.DataLength - 1;
-
+                            
                             byte[] compressedData = await FetchRangeAsync(_currentUrl, absStart, absEnd, ct);
                             downloadedBytes += compressedData.Length;
-
-                            // 解压数据
+                            
+                            // Decompress data
                             decompressedData = DecompressData(operation.Type, compressedData,
                                 (long)operation.DstNumBlocks * _blockSize);
                         }
                         else if (operation.Type == OP_ZERO)
                         {
-                            // ZERO 操作
+                            // ZERO operation
                             long totalBlocks = (long)operation.DstNumBlocks;
                             decompressedData = new byte[totalBlocks * _blockSize];
                         }
-
+                        
                         if (decompressedData != null)
                         {
-                            // 写入目标位置
+                            // Write to target position
                             long dstOffset = (long)operation.DstStartBlock * _blockSize;
                             outputStream.Seek(dstOffset, SeekOrigin.Begin);
                             outputStream.Write(decompressedData, 0, 
                                 Math.Min(decompressedData.Length, (int)((long)operation.DstNumBlocks * _blockSize)));
                         }
-
+                        
                         processedOps++;
                         double percent = 100.0 * processedOps / totalOps;
                         
-                        // 计算速度 (每秒更新一次)
+                        // Calculate speed (update once per second)
                         var now = DateTime.Now;
                         var timeSinceLastUpdate = (now - lastSpeedUpdateTime).TotalSeconds;
                         if (timeSinceLastUpdate >= 1.0)
@@ -339,7 +344,7 @@ namespace LoveAlways.Fastboot.Payload
                         }
                         else if (currentSpeed == 0 && downloadedBytes > 0)
                         {
-                            // 初始速度估算
+                            // Initial speed estimate
                             var elapsed = (now - startTime).TotalSeconds;
                             if (elapsed > 0.1)
                             {
@@ -360,36 +365,36 @@ namespace LoveAlways.Fastboot.Payload
                             SpeedBytesPerSecond = currentSpeed,
                             ElapsedTime = elapsedTime
                         });
-
+                        
                         if (processedOps % 50 == 0)
                         {
-                            _logDetail($"进度: {processedOps}/{totalOps} ({percent:F1}%)");
+                            _logDetail($"Progress: {processedOps}/{totalOps} ({percent:F1}%)");
                         }
                     }
                 }
-
+                
                 var totalTime = DateTime.Now - startTime;
                 double avgSpeed = downloadedBytes / Math.Max(totalTime.TotalSeconds, 0.1);
-                _log($"✓ 提取完成: {Path.GetFileName(outputPath)}");
-                _log($"下载数据: {FormatSize(downloadedBytes)}, 用时: {totalTime.TotalSeconds:F1}秒, 平均速度: {FormatSize((long)avgSpeed)}/s");
+                _log($"✓ Extraction complete: {Path.GetFileName(outputPath)}");
+                _log($"Downloaded data: {FormatSize(downloadedBytes)}, time taken: {totalTime.TotalSeconds:F1}s, average speed: {FormatSize((long)avgSpeed)}/s");
 
                 return true;
             }
             catch (OperationCanceledException)
             {
-                _log("提取已取消");
+                _log("Extraction cancelled");
                 return false;
             }
             catch (Exception ex)
             {
-                _log($"提取失败: {ex.Message}");
-                _logDetail($"提取错误: {ex}");
+                _log($"Extraction failed: {ex.Message}");
+                _logDetail($"Extraction error: {ex}");
                 return false;
             }
         }
 
         /// <summary>
-        /// 流式刷写事件参数
+        /// Stream flash event arguments
         /// </summary>
         public class StreamFlashProgressEventArgs : EventArgs
         {
@@ -406,7 +411,7 @@ namespace LoveAlways.Fastboot.Payload
             
             private static string FormatSpeed(double speed)
             {
-                if (speed <= 0) return "计算中...";
+                if (speed <= 0) return "Calculating...";
                 string[] units = { "B/s", "KB/s", "MB/s", "GB/s" };
                 int unitIndex = 0;
                 while (speed >= 1024 && unitIndex < units.Length - 1)
@@ -426,16 +431,16 @@ namespace LoveAlways.Fastboot.Payload
         }
         
         /// <summary>
-        /// 流式刷写进度事件
+        /// Stream flash progress event
         /// </summary>
         public event EventHandler<StreamFlashProgressEventArgs> StreamFlashProgressChanged;
 
         /// <summary>
-        /// 从云端提取分区并直接刷写到设备
+        /// Extract partition from cloud and flash directly to device
         /// </summary>
-        /// <param name="partitionName">分区名</param>
-        /// <param name="flashCallback">刷写回调，参数：临时文件路径，返回：是否成功，已刷写字节数，用时</param>
-        /// <param name="ct">取消令牌</param>
+        /// <param name="partitionName">Partition name</param>
+        /// <param name="flashCallback">Flash callback, parameters: temporary file path, returns: whether successful, bytes flashed, time taken</param>
+        /// <param name="ct">Cancellation token</param>
         public async Task<bool> ExtractAndFlashPartitionAsync(
             string partitionName, 
             Func<string, Task<(bool success, long bytesFlashed, double elapsedSeconds)>> flashCallback,
@@ -443,7 +448,7 @@ namespace LoveAlways.Fastboot.Payload
         {
             if (!IsLoaded)
             {
-                _log("请先加载 Payload");
+                _log("Please load Payload first");
                 return false;
             }
 
@@ -452,18 +457,18 @@ namespace LoveAlways.Fastboot.Payload
 
             if (partition == null)
             {
-                _log($"未找到分区: {partitionName}");
+                _log($"Partition not found: {partitionName}");
                 return false;
             }
 
-            // 创建临时文件
+            // Create temporary file
             string tempPath = Path.Combine(Path.GetTempPath(), $"payload_{partitionName}_{Guid.NewGuid():N}.img");
             
             try
             {
-                _log($"开始下载 '{partitionName}' ({FormatSize((long)partition.Size)})");
+                _log($"Starting download '{partitionName}' ({FormatSize((long)partition.Size)})");
 
-                // 下载阶段
+                // Download phase
                 var downloadStartTime = DateTime.Now;
                 long downloadedBytes = 0;
                 int totalOps = partition.Operations.Count;
@@ -509,7 +514,7 @@ namespace LoveAlways.Fastboot.Payload
 
                         processedOps++;
                         
-                        // 计算下载速度
+                        // Calculate download speed
                         var now = DateTime.Now;
                         var timeSinceLastUpdate = (now - lastSpeedUpdateTime).TotalSeconds;
                         if (timeSinceLastUpdate >= 1.0)
@@ -525,7 +530,7 @@ namespace LoveAlways.Fastboot.Payload
                             if (elapsed > 0.1) downloadSpeed = downloadedBytes / elapsed;
                         }
                         
-                        double downloadPercent = 50.0 * processedOps / totalOps; // 下载占 50%
+                        double downloadPercent = 50.0 * processedOps / totalOps; // Download takes 50%
                         
                         StreamFlashProgressChanged?.Invoke(this, new StreamFlashProgressEventArgs
                         {
@@ -539,12 +544,12 @@ namespace LoveAlways.Fastboot.Payload
                         });
                     }
                 }
-
+                
                 var downloadTime = DateTime.Now - downloadStartTime;
-                _log($"下载完成: {FormatSize(downloadedBytes)}, 用时: {downloadTime.TotalSeconds:F1}秒");
-
-                // 刷写阶段
-                _log($"开始刷写 '{partitionName}'...");
+                _log($"Download complete: {FormatSize(downloadedBytes)}, time taken: {downloadTime.TotalSeconds:F1}s");
+                
+                // Flash phase
+                _log($"Starting to flash '{partitionName}'...");
                 
                 StreamFlashProgressChanged?.Invoke(this, new StreamFlashProgressEventArgs
                 {
@@ -574,29 +579,29 @@ namespace LoveAlways.Fastboot.Payload
 
                 if (flashSuccess)
                 {
-                    _log($"✓ 刷写成功: {partitionName} (Fastboot 速度: {FormatSize((long)flashSpeed)}/s)");
+                    _log($"✓ Flash successful: {partitionName} (Fastboot speed: {FormatSize((long)flashSpeed)}/s)");
                 }
                 else
                 {
-                    _log($"✗ 刷写失败: {partitionName}");
+                    _log($"✗ Flash failed: {partitionName}");
                 }
 
                 return flashSuccess;
             }
             catch (OperationCanceledException)
             {
-                _log("操作已取消");
+                _log("Operation cancelled");
                 return false;
             }
             catch (Exception ex)
             {
-                _log($"操作失败: {ex.Message}");
-                _logDetail($"错误详情: {ex}");
+                _log($"Operation failed: {ex.Message}");
+                _logDetail($"Error details: {ex}");
                 return false;
             }
             finally
             {
-                // 清理临时文件
+                // Clean up temporary file
                 try
                 {
                     if (File.Exists(tempPath))
@@ -607,7 +612,7 @@ namespace LoveAlways.Fastboot.Payload
         }
 
         /// <summary>
-        /// 获取摘要信息
+        /// Get summary info
         /// </summary>
         public RemotePayloadSummary GetSummary()
         {
@@ -624,7 +629,7 @@ namespace LoveAlways.Fastboot.Payload
         }
 
         /// <summary>
-        /// 关闭
+        /// Close
         /// </summary>
         public void Close()
         {
@@ -637,15 +642,15 @@ namespace LoveAlways.Fastboot.Payload
         #endregion
 
         #region Private Methods - ZIP Parsing
-
+        
         private async Task ParseZipStructureAsync(string url, CancellationToken ct)
         {
-            // 读取文件尾部查找 EOCD
+            // Read file tail to find EOCD
             int readSize = (int)Math.Min(65536, _totalSize);
             long startOffset = _totalSize - readSize;
             byte[] tailData = await FetchRangeAsync(url, startOffset, _totalSize - 1, ct);
-
-            // 查找 EOCD 签名
+            
+            // Find EOCD signature
             int eocdPos = -1;
             for (int i = tailData.Length - 22; i >= 0; i--)
             {
@@ -655,15 +660,15 @@ namespace LoveAlways.Fastboot.Payload
                     break;
                 }
             }
-
+            
             if (eocdPos < 0)
-                throw new Exception("无法找到 ZIP EOCD 记录");
+                throw new Exception("Unable to find ZIP EOCD record");
 
             long eocdOffset = startOffset + eocdPos;
             bool isZip64 = false;
             long zip64EocdOffset = 0;
-
-            // 检查 ZIP64
+            
+            // Check for ZIP64
             if (eocdPos >= 20)
             {
                 int locatorStart = eocdPos - 20;
@@ -674,14 +679,14 @@ namespace LoveAlways.Fastboot.Payload
                 }
             }
 
-            // 解析 EOCD 获取中央目录位置
+            // Parse EOCD to get central directory location
             long centralDirOffset, centralDirSize;
 
             if (isZip64)
             {
                 byte[] zip64EocdData = await FetchRangeAsync(url, zip64EocdOffset, zip64EocdOffset + 100, ct);
                 if (BitConverter.ToUInt32(zip64EocdData, 0) != ZIP64_EOCD_SIG)
-                    throw new Exception("ZIP64 EOCD 签名不匹配");
+                    throw new Exception("ZIP64 EOCD signature mismatch");
 
                 centralDirSize = (long)BitConverter.ToUInt64(zip64EocdData, 40);
                 centralDirOffset = (long)BitConverter.ToUInt64(zip64EocdData, 48);
@@ -692,11 +697,11 @@ namespace LoveAlways.Fastboot.Payload
                 centralDirOffset = BitConverter.ToUInt32(tailData, eocdPos + 16);
             }
 
-            // 下载中央目录
+            // Download central directory
             byte[] centralDirData = await FetchRangeAsync(url, centralDirOffset,
                 centralDirOffset + centralDirSize - 1, ct);
-
-            // 查找 payload.bin
+            
+            // Find payload.bin
             int pos = 0;
             while (pos < centralDirData.Length - 4)
             {
@@ -711,8 +716,8 @@ namespace LoveAlways.Fastboot.Payload
                 uint localHeaderOffset = BitConverter.ToUInt32(centralDirData, pos + 42);
 
                 string filename = Encoding.UTF8.GetString(centralDirData, pos + 46, filenameLen);
-
-                // 处理 ZIP64 扩展字段
+                
+                // Process ZIP64 extra fields
                 if (uncompressedSize == 0xFFFFFFFF || compressedSize == 0xFFFFFFFF || localHeaderOffset == 0xFFFFFFFF)
                 {
                     int extraStart = pos + 46 + filenameLen;
@@ -748,24 +753,24 @@ namespace LoveAlways.Fastboot.Payload
 
                 if (filename.Equals("payload.bin", StringComparison.OrdinalIgnoreCase))
                 {
-                    // 读取本地文件头
+                    // Read local file header
                     byte[] lfhData = await FetchRangeAsync(url, localHeaderOffset, localHeaderOffset + 30, ct);
-
+                    
                     if (BitConverter.ToUInt32(lfhData, 0) != ZIP_LOCAL_FILE_HEADER_SIG)
-                        throw new Exception("本地文件头签名不匹配");
+                        throw new Exception("Local file header signature mismatch");
 
                     ushort lfhFilenameLen = BitConverter.ToUInt16(lfhData, 26);
                     ushort lfhExtraLen = BitConverter.ToUInt16(lfhData, 28);
-
+                    
                     _payloadDataOffset = localHeaderOffset + 30 + lfhFilenameLen + lfhExtraLen;
-                    _logDetail($"payload.bin 数据偏移: 0x{_payloadDataOffset:X}");
+                    _logDetail($"payload.bin data offset: 0x{_payloadDataOffset:X}");
                     return;
                 }
 
                 pos += 46 + filenameLen + extraLen + commentLen;
             }
 
-            throw new Exception("ZIP 中未找到 payload.bin");
+            throw new Exception("payload.bin not found in ZIP");
         }
 
         #endregion
@@ -774,34 +779,34 @@ namespace LoveAlways.Fastboot.Payload
 
         private async Task ParsePayloadHeaderAsync(string url, CancellationToken ct)
         {
-            // 读取 Payload 头部 (24 bytes for v2)
+            // Read Payload header (24 bytes for v2)
             byte[] headerData = await FetchRangeAsync(url, _payloadDataOffset, _payloadDataOffset + 23, ct);
-
-            // 验证 Magic
+            
+            // Verify Magic
             uint magic = ReadBigEndianUInt32(headerData, 0);
             if (magic != PAYLOAD_MAGIC)
-                throw new Exception($"无效的 Payload 魔数: 0x{magic:X8}");
+                throw new Exception($"Invalid Payload magic: 0x{magic:X8}");
 
             ulong version = ReadBigEndianUInt64(headerData, 4);
             ulong manifestLen = ReadBigEndianUInt64(headerData, 12);
             uint metadataSignatureLen = version >= 2 ? ReadBigEndianUInt32(headerData, 20) : 0;
             int payloadHeaderLen = version >= 2 ? 24 : 20;
 
-            _logDetail($"Payload 版本: {version}");
-            _logDetail($"Manifest 大小: {manifestLen} bytes");
+            _logDetail($"Payload version: {version}");
+            _logDetail($"Manifest size: {manifestLen} bytes");
 
-            // 下载 Manifest
+            // Download Manifest
             long manifestOffset = _payloadDataOffset + payloadHeaderLen;
-            _log($"下载 Manifest ({FormatSize((long)manifestLen)})...");
+            _log($"Downloading Manifest ({FormatSize((long)manifestLen)})...");
             byte[] manifestData = await FetchRangeAsync(url, manifestOffset, 
                 manifestOffset + (long)manifestLen - 1, ct);
 
-            // 解析 Manifest
+            // Parse Manifest
             ParseManifest(manifestData);
 
-            // 计算数据起始位置
+            // Calculate data start position
             _dataStartOffset = _payloadDataOffset + payloadHeaderLen + (long)manifestLen + metadataSignatureLen;
-            _logDetail($"数据起始偏移: 0x{_dataStartOffset:X}");
+            _logDetail($"Data start offset: 0x{_dataStartOffset:X}");
         }
 
         private void ParseManifest(byte[] data)
@@ -939,16 +944,16 @@ namespace LoveAlways.Fastboot.Payload
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(start, end);
 
-            // 使用 ResponseHeadersRead 避免预先缓冲整个响应
+            // Use ResponseHeadersRead to avoid pre-buffering the entire response
             var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             
             if (response.StatusCode != HttpStatusCode.PartialContent && response.StatusCode != HttpStatusCode.OK)
                 throw new Exception($"HTTP {(int)response.StatusCode}");
 
-            // 计算需要读取的字节数
+            // Calculate the number of bytes to read
             long bytesToRead = end - start + 1;
             
-            // 如果服务器支持 Range 请求 (206)，直接读取内容
+            // If the server supports Range requests (206), read content directly
             if (response.StatusCode == HttpStatusCode.PartialContent)
             {
                 using (var stream = await response.Content.ReadAsStreamAsync())
@@ -970,21 +975,21 @@ namespace LoveAlways.Fastboot.Payload
             }
             else
             {
-                // 服务器返回 200 OK (不支持 Range)，需要跳过并只读取指定范围
+                // Server returns 200 OK (Range not supported), need to skip and read only the specified range
                 using (var stream = await response.Content.ReadAsStreamAsync())
                 {
-                    // 跳过 start 之前的字节
+                    // Skip bytes before start
                     byte[] skipBuffer = new byte[81920];
                     long skipped = 0;
                     while (skipped < start)
                     {
                         int toSkip = (int)Math.Min(start - skipped, skipBuffer.Length);
                         int read = await stream.ReadAsync(skipBuffer, 0, toSkip, ct);
-                        if (read == 0) throw new Exception("无法跳过到指定位置");
+                        if (read == 0) throw new Exception("Unable to skip to specified position");
                         skipped += read;
                     }
-
-                    // 读取指定范围的数据
+                    
+                    // Read data in the specified range
                     byte[] buffer = new byte[bytesToRead];
                     int totalRead = 0;
                     while (totalRead < bytesToRead)
@@ -1078,15 +1083,15 @@ namespace LoveAlways.Fastboot.Payload
                     return data;
 
                 case OP_REPLACE_XZ:
-                    // XZ 解压
+                    // XZ decompression
                     try
                     {
                         using (var input = new MemoryStream(data))
                         using (var output = new MemoryStream())
                         {
-                            // 使用简单的 LZMA 解压（需要 System.IO.Compression 或第三方库）
-                            // 这里返回原始数据，实际使用需要实现 XZ 解压
-                            _logDetail("XZ 解压暂未实现，返回原始数据");
+                            // Use simple LZMA decompression (requires System.IO.Compression or third-party library)
+                            // Here we return raw data, actual use requires implementing XZ decompression
+                            _logDetail("XZ decompression not yet implemented, returning raw data");
                             return data;
                         }
                     }
@@ -1096,8 +1101,8 @@ namespace LoveAlways.Fastboot.Payload
                     }
 
                 case OP_REPLACE_BZ:
-                    // BZip2 解压
-                    _logDetail("BZip2 解压暂未实现，返回原始数据");
+                    // BZip2 decompression
+                    _logDetail("BZip2 decompression not yet implemented, returning raw data");
                     return data;
 
                 case OP_ZERO:
@@ -1132,14 +1137,14 @@ namespace LoveAlways.Fastboot.Payload
         }
 
         /// <summary>
-        /// 简单的 URL 查询字符串解析
+        /// Simple URL query string parsing
         /// </summary>
         private Dictionary<string, string> ParseQueryString(string query)
         {
             var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (string.IsNullOrEmpty(query)) return result;
 
-            // 去掉开头的 ?
+            // Remove leading ?
             if (query.StartsWith("?"))
                 query = query.Substring(1);
 
@@ -1206,7 +1211,7 @@ namespace LoveAlways.Fastboot.Payload
     #region Data Classes
 
     /// <summary>
-    /// 远程 Payload 分区信息
+    /// Remote Payload Partition Information
     /// </summary>
     public class RemotePayloadPartition
     {
@@ -1233,7 +1238,7 @@ namespace LoveAlways.Fastboot.Payload
     }
 
     /// <summary>
-    /// 远程 Payload 操作
+    /// Remote Payload Operation
     /// </summary>
     public class RemotePayloadOperation
     {
@@ -1245,7 +1250,7 @@ namespace LoveAlways.Fastboot.Payload
     }
 
     /// <summary>
-    /// 远程提取进度
+    /// Remote Extraction Progress
     /// </summary>
     public class RemoteExtractProgress
     {
@@ -1258,13 +1263,13 @@ namespace LoveAlways.Fastboot.Payload
         public TimeSpan ElapsedTime { get; set; }
         
         /// <summary>
-        /// 格式化的速度显示
+        /// Formatted speed display
         /// </summary>
         public string SpeedFormatted
         {
             get
             {
-                if (SpeedBytesPerSecond <= 0) return "计算中...";
+                if (SpeedBytesPerSecond <= 0) return "Calculating...";
                 
                 string[] units = { "B/s", "KB/s", "MB/s", "GB/s" };
                 double speed = SpeedBytesPerSecond;
@@ -1280,7 +1285,7 @@ namespace LoveAlways.Fastboot.Payload
     }
 
     /// <summary>
-    /// 远程 Payload 摘要
+    /// Remote Payload Summary
     /// </summary>
     public class RemotePayloadSummary
     {

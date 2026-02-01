@@ -1,11 +1,16 @@
 // ============================================================================
-// LoveAlways - Sahara 协议完整实现
-// Sahara Protocol - 高通 EDL 模式第一阶段引导协议
+// LoveAlways - Sahara Protocol Complete Implementation
+// Sahara Protocol - Qualcomm EDL Mode First Stage Boot Protocol
 // ============================================================================
-// 模块: Qualcomm.Protocol
-// 功能: 处理 Sahara 握手、芯片信息读取、Programmer 上传
-// 支持: V1/V2/V3 协议版本
+// Module: Qualcomm.Protocol
+// Features: Handle Sahara handshake, chip info reading, Programmer upload
+// Support: V1/V2/V3 protocol versions
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Diagnostics;
@@ -19,62 +24,62 @@ using LoveAlways.Qualcomm.Database;
 
 namespace LoveAlways.Qualcomm.Protocol
 {
-    #region 协议枚举定义
+    #region Protocol Enum Definitions
 
     /// <summary>
-    /// Sahara 命令 ID
+    /// Sahara Command ID
     /// </summary>
     public enum SaharaCommand : uint
     {
         Hello = 0x01,
         HelloResponse = 0x02,
-        ReadData = 0x03,            // 32位读取 (老设备)
+        ReadData = 0x03,            // 32-bit read (Old devices)
         EndImageTransfer = 0x04,
         Done = 0x05,
         DoneResponse = 0x06,
-        Reset = 0x07,               // 硬重置 (重启设备)
+        Reset = 0x07,               // Hard reset (Reboot device)
         ResetResponse = 0x08,
         MemoryDebug = 0x09,
         MemoryRead = 0x0A,
-        CommandReady = 0x0B,        // 命令模式就绪
-        SwitchMode = 0x0C,          // 切换模式
-        Execute = 0x0D,             // 执行命令
-        ExecuteData = 0x0E,         // 命令数据响应
-        ExecuteResponse = 0x0F,     // 命令响应确认
+        CommandReady = 0x0B,        // Command mode ready
+        SwitchMode = 0x0C,          // Switch mode
+        Execute = 0x0D,             // Execute command
+        ExecuteData = 0x0E,         // Command data response
+        ExecuteResponse = 0x0F,     // Command response acknowledgment
         MemoryDebug64 = 0x10,
         MemoryRead64 = 0x11,
-        ReadData64 = 0x12,          // 64位读取 (新设备)
-        ResetStateMachine = 0x13    // 状态机重置 (软重置)
+        ReadData64 = 0x12,          // 64-bit read (New devices)
+        ResetStateMachine = 0x13    // State machine reset (Soft reset)
     }
 
     /// <summary>
-    /// Sahara 模式
+    /// Sahara Mode
     /// </summary>
     public enum SaharaMode : uint
     {
         ImageTransferPending = 0x0,
         ImageTransferComplete = 0x1,
         MemoryDebug = 0x2,
-        Command = 0x3               // 命令模式 (读取信息)
+        Command = 0x3               // Command mode (Read info)
     }
 
     /// <summary>
-    /// Sahara 执行命令 ID
+    /// Sahara Exec Command ID
     /// </summary>
     public enum SaharaExecCommand : uint
     {
-        SerialNumRead = 0x01,       // 序列号
-        MsmHwIdRead = 0x02,         // HWID (仅 V1/V2)
+        SerialNumRead = 0x01,       // Serial number
+        MsmHwIdRead = 0x02,         // HWID (V1/V2 only)
         OemPkHashRead = 0x03,       // PK Hash
-        SblInfoRead = 0x06,         // SBL 信息 (V3)
-        SblSwVersion = 0x07,        // SBL 版本 (V1/V2)
-        PblSwVersion = 0x08,        // PBL 版本
-        ChipIdV3Read = 0x0A,        // V3 芯片信息 (包含 HWID)
-        SerialNumRead64 = 0x14      // 64位序列号
+        SblInfoRead = 0x06,         // SBL info (V3)
+        SblSwVersion = 0x07,        // SBL version (V1/V2)
+        PblSwVersion = 0x08,        // PBL version
+        ChipIdV3Read = 0x0A,        // V3 chip info (includes HWID)
+        SerialNumRead64 = 0x14      // 64-bit serial number
     }
 
     /// <summary>
-    /// Sahara 状态码
+    /// Sahara Status Code
     /// </summary>
     public enum SaharaStatus : uint
     {
@@ -111,15 +116,15 @@ namespace LoveAlways.Qualcomm.Protocol
         ExecuteCommandInvalidParam = 0x1E,
         AccessDenied = 0x1F,
         InvalidClientCommand = 0x20,
-        HashTableAuthFailure = 0x21,    // Loader 签名不匹配
-        HashVerificationFailure = 0x22, // 镜像被篡改
-        HashTableNotFound = 0x23,       // 镜像未签名
+        HashTableAuthFailure = 0x21,    // Loader signature mismatch
+        HashVerificationFailure = 0x22, // Image tampered
+        HashTableNotFound = 0x23,       // Image unsigned
         MaxErrors = 0x29
     }
 
     #endregion
 
-    #region 协议结构体
+    #region Protocol Structures
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct SaharaHelloResponse
@@ -148,7 +153,7 @@ namespace LoveAlways.Qualcomm.Protocol
     #endregion
 
     /// <summary>
-    /// Sahara 状态辅助类
+    /// Sahara Status Helper Class
     /// </summary>
     public static class SaharaStatusHelper
     {
@@ -156,18 +161,18 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             switch (status)
             {
-                case SaharaStatus.Success: return "成功";
-                case SaharaStatus.InvalidCommand: return "无效命令";
-                case SaharaStatus.ProtocolMismatch: return "协议不匹配";
-                case SaharaStatus.UnexpectedImageId: return "镜像 ID 不匹配";
-                case SaharaStatus.ReceiveTimeout: return "接收超时";
-                case SaharaStatus.TransmitTimeout: return "发送超时";
-                case SaharaStatus.HashTableAuthFailure: return "签名验证失败: Loader 与设备不匹配";
-                case SaharaStatus.HashVerificationFailure: return "完整性校验失败: 镜像可能被篡改";
-                case SaharaStatus.HashTableNotFound: return "找不到签名数据: 镜像未签名";
-                case SaharaStatus.CommandExecuteFailure: return "命令执行失败";
-                case SaharaStatus.AccessDenied: return "命令不支持";
-                default: return string.Format("未知错误 (0x{0:X2})", (uint)status);
+                case SaharaStatus.Success: return "Success";
+                case SaharaStatus.InvalidCommand: return "Invalid command";
+                case SaharaStatus.ProtocolMismatch: return "Protocol mismatch";
+                case SaharaStatus.UnexpectedImageId: return "Image ID mismatch";
+                case SaharaStatus.ReceiveTimeout: return "Receive timeout";
+                case SaharaStatus.TransmitTimeout: return "Transmit timeout";
+                case SaharaStatus.HashTableAuthFailure: return "Signature verification failed: Loader and device mismatch";
+                case SaharaStatus.HashVerificationFailure: return "Integrity check failed: Image may be tampered";
+                case SaharaStatus.HashTableNotFound: return "Signature data not found: Image unsigned";
+                case SaharaStatus.CommandExecuteFailure: return "Command execution failed";
+                case SaharaStatus.AccessDenied: return "Command not supported";
+                default: return string.Format("Unknown error (0x{0:X2})", (uint)status);
             }
         }
 
@@ -188,7 +193,7 @@ namespace LoveAlways.Qualcomm.Protocol
     }
 
     /// <summary>
-    /// Sahara 协议客户端 - 完整版 (支持 V1/V2/V3)
+    /// Sahara Protocol Client - Full Version (Support V1/V2/V3)
     /// </summary>
     public class SaharaClient : IDisposable
     {
@@ -197,25 +202,25 @@ namespace LoveAlways.Qualcomm.Protocol
         private readonly Action<string> _logDetail;
         private bool _disposed;
 
-        // 配置
+        // Configuration
         private const int MAX_BUFFER_SIZE = 4096;
         private const int READ_TIMEOUT_MS = 30000;
         private const int HELLO_TIMEOUT_MS = 30000;
         
-        // 看门狗配置
-        private const int WATCHDOG_TIMEOUT_SECONDS = 45;  // 看门狗超时时间
-        private const int WATCHDOG_STALL_THRESHOLD = 3;   // 连续无响应次数阈值
+        // Watchdog configuration
+        private const int WATCHDOG_TIMEOUT_SECONDS = 45;  // Watchdog timeout
+        private const int WATCHDOG_STALL_THRESHOLD = 3;   // Consecutive no-response count threshold
         private Watchdog _watchdog;
-        private volatile int _watchdogStallCount = 0;       // 使用 volatile 保证线程可见性
-        private volatile bool _watchdogTriggeredReset = false; // 使用 volatile 保证线程可见性
+        private volatile int _watchdogStallCount = 0;       // Use volatile for thread visibility
+        private volatile bool _watchdogTriggeredReset = false; // Use volatile for thread visibility
 
-        // 协议状态
+        // Protocol state
         public uint ProtocolVersion { get; private set; }
         public uint ProtocolVersionSupported { get; private set; }
         public SaharaMode CurrentMode { get; private set; }
         public bool IsConnected { get; private set; }
 
-        // 芯片信息
+        // Chip info
         public string ChipSerial { get; private set; }
         public string ChipHwId { get; private set; }
         public string ChipPkHash { get; private set; }
@@ -225,16 +230,16 @@ namespace LoveAlways.Qualcomm.Protocol
         private bool _doneSent = false;
         private bool _skipCommandMode = false;
 
-        // 预读取的 Hello 数据
+        // Pre-read Hello data
         private byte[] _pendingHelloData = null;
         
         /// <summary>
-        /// 看门狗超时事件 (外部可订阅以获取通知)
+        /// Watchdog timeout event (External can subscribe for notifications)
         /// </summary>
         public event EventHandler<WatchdogTimeoutEventArgs> OnWatchdogTimeout;
         
         /// <summary>
-        /// 是否跳过命令模式（某些设备不支持命令模式，强制跳过可避免 InvalidCommand 错误）
+        /// Whether to skip command mode (Some devices don't support command mode, force skip to avoid InvalidCommand error)
         /// </summary>
         public bool SkipCommandMode 
         { 
@@ -242,7 +247,7 @@ namespace LoveAlways.Qualcomm.Protocol
             set { _skipCommandMode = value; } 
         }
 
-        // 传输进度
+        // Transfer progress
         private long _totalSent = 0;
         private Action<double> _progressCallback;
 
@@ -250,7 +255,7 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             _port = port;
             _log = log ?? delegate { };
-            _logDetail = logDetail ?? _log;  // 如果没有指定，默认使用 _log
+            _logDetail = logDetail ?? _log;  // If not specified, default to _log
             _progressCallback = progressCallback;
             ProtocolVersion = 2;
             ProtocolVersionSupported = 1;
@@ -260,12 +265,12 @@ namespace LoveAlways.Qualcomm.Protocol
             ChipPkHash = "";
             ChipInfo = new QualcommChipInfo();
             
-            // 初始化看门狗
+            // Initialize watchdog
             InitializeWatchdog();
         }
         
         /// <summary>
-        /// 初始化看门狗
+        /// Initialize watchdog
         /// </summary>
         private void InitializeWatchdog()
         {
@@ -274,48 +279,48 @@ namespace LoveAlways.Qualcomm.Protocol
         }
         
         /// <summary>
-        /// 看门狗超时处理
+        /// Watchdog timeout handler
         /// </summary>
         private void HandleWatchdogTimeout(object sender, WatchdogTimeoutEventArgs e)
         {
             _watchdogStallCount++;
-            _log($"[Sahara] ⚠ 看门狗检测到卡死 (第 {_watchdogStallCount} 次，已等待 {e.ElapsedTime.TotalSeconds:F0}秒)");
+            _log($"[Sahara] ⚠ Watchdog detected freeze (#{_watchdogStallCount}, waited {e.ElapsedTime.TotalSeconds:F0}s)");
             
-            // 通知外部订阅者
+            // Notify external subscribers
             OnWatchdogTimeout?.Invoke(this, e);
             
             if (_watchdogStallCount >= WATCHDOG_STALL_THRESHOLD)
             {
-                _log("[Sahara] 看门狗触发自动重置...");
+                _log("[Sahara] Watchdog triggering auto reset...");
                 _watchdogTriggeredReset = true;
-                e.ShouldReset = false; // 停止看门狗，由重置逻辑接管
+                e.ShouldReset = false; // Stop watchdog, let reset logic take over
             }
             else
             {
-                // 尝试发送重置命令但继续监控
-                _logDetail("[Sahara] 看门狗尝试软重置...");
+                // Try sending reset command but continue monitoring
+                _logDetail("[Sahara] Watchdog attempting soft reset...");
                 try
                 {
-                    SendReset(); // 发送 ResetStateMachine
+                    SendReset(); // Send ResetStateMachine
                 }
                 catch (Exception ex)
                 {
-                    _logDetail($"[Sahara] 软重置失败: {ex.Message}");
+                    _logDetail($"[Sahara] Soft reset failed: {ex.Message}");
                 }
             }
         }
         
         /// <summary>
-        /// 喂狗 - 收到有效数据时调用
+        /// Feed watchdog - Call when valid data received
         /// </summary>
         private void FeedWatchdog()
         {
             _watchdog?.Feed();
-            _watchdogStallCount = 0; // 收到有效数据，重置卡死计数
+            _watchdogStallCount = 0; // Valid data received, reset freeze count
         }
 
         /// <summary>
-        /// 设置预读取的 Hello 数据
+        /// Set pre-read Hello data
         /// </summary>
         public void SetPendingHelloData(byte[] data)
         {
@@ -323,21 +328,21 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 仅获取设备信息 (不上传 Loader)
-        /// 用于云端自动匹配
+        /// Get device info only (Don't upload Loader)
+        /// Used for cloud auto-matching
         /// </summary>
-        /// <param name="ct">取消令牌</param>
-        /// <returns>是否成功获取设备信息</returns>
+        /// <param name="ct">Cancellation token</param>
+        /// <returns>Whether successfully obtained device info</returns>
         public async Task<bool> GetDeviceInfoOnlyAsync(CancellationToken ct = default(CancellationToken))
         {
             try
             {
-                _logDetail("[Sahara] 获取设备信息 (不上传 Loader)...");
+                _logDetail("[Sahara] Getting device info (without uploading Loader)...");
                 
-                // 读取 Hello 包
+                // Read Hello packet
                 byte[] header = null;
                 
-                // 检查是否有预读取的 Hello 数据
+                // Check if there's pre-read Hello data
                 if (_pendingHelloData != null && _pendingHelloData.Length >= 8)
                 {
                     header = new byte[8];
@@ -350,71 +355,71 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 if (header == null)
                 {
-                    _logDetail("[Sahara] 无法接收 Hello 包");
+                    _logDetail("[Sahara] Cannot receive Hello packet");
                     return false;
                 }
 
                 uint cmdId = BitConverter.ToUInt32(header, 0);
                 uint pktLen = BitConverter.ToUInt32(header, 4);
 
-                if ((SaharaCommand)cmdId != SaharaCommand.Hello)
+                if ((SaharaCommand)cmdId !=SaharaCommand.Hello)
                 {
-                    _logDetail($"[Sahara] 收到非 Hello 包: 0x{cmdId:X}");
+                    _logDetail($"[Sahara] Received non-Hello packet: 0x{cmdId:X}");
                     return false;
                 }
 
-                // 处理 Hello 包以获取设备信息
+                // Process Hello packet to get device info
                 await HandleHelloAsync(pktLen, ct);
                 
-                // 验证是否获取到芯片信息
+                // Verify chip info obtained
                 if (ChipInfo == null || string.IsNullOrEmpty(ChipInfo.PkHash))
                 {
-                    _logDetail("[Sahara] 芯片信息不完整");
+                    _logDetail("[Sahara] Chip info incomplete");
                     return false;
                 }
                 
-                _logDetail("[Sahara] ✓ 设备信息获取成功");
+                _logDetail("[Sahara] ✓ Device info obtained successfully");
                 _deviceInfoObtained = true;
                 return true;
             }
             catch (Exception ex)
             {
-                _logDetail($"[Sahara] 获取设备信息异常: {ex.Message}");
+                _logDetail($"[Sahara] Device info retrieval exception: {ex.Message}");
                 return false;
             }
         }
         
-        // 标记是否已获取设备信息
+        // Flag whether device info obtained
         private bool _deviceInfoObtained = false;
         
         /// <summary>
-        /// 继续上传 Loader (在 GetDeviceInfoOnlyAsync 之后调用)
+        /// Continue uploading Loader (Call after GetDeviceInfoOnlyAsync)
         /// </summary>
-        /// <param name="loaderData">Loader 数据</param>
-        /// <param name="ct">取消令牌</param>
-        /// <returns>是否成功</returns>
+        /// <param name="loaderData">Loader data</param>
+        /// <param name="ct">Cancellation token</param>
+        /// <returns>Whether successful</returns>
         public async Task<bool> UploadLoaderAsync(byte[] loaderData, CancellationToken ct = default(CancellationToken))
         {
             if (!_deviceInfoObtained)
             {
-                _log("[Sahara] 请先调用 GetDeviceInfoOnlyAsync");
+                _log("[Sahara] Please call GetDeviceInfoOnlyAsync first");
                 return false;
             }
             
             if (loaderData == null || loaderData.Length == 0)
             {
-                _log("[Sahara] Loader 数据为空");
+                _log("[Sahara] Loader data is empty");
                 return false;
             }
             
-            _log($"[Sahara] 上传 Loader ({loaderData.Length / 1024} KB)...");
+            _log($"[Sahara] Uploading Loader ({loaderData.Length / 1024} KB)...");
             
             try
             {
-                // 发送 Hello Response 开始传输
+                // Send Hello Response to start transfer
                 await SendHelloResponseAsync(2, 1, SaharaMode.ImageTransferPending, ct);
                 
-                // 继续 Sahara 数据传输循环
+                // Continue Sahara data transfer loop
                 bool done = false;
                 int loopGuard = 0;
                 int endImageTxCount = 0;
@@ -434,7 +439,7 @@ namespace LoveAlways.Qualcomm.Protocol
                         timeoutCount++;
                         if (timeoutCount >= 5)
                         {
-                            _log("[Sahara] 设备无响应");
+                            _log("[Sahara] Device not responding");
                             return false;
                         }
                         await Task.Delay(500, ct);
@@ -467,7 +472,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                     case SaharaCommand.DoneResponse:
                         if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        _log("[Sahara] ✅ Loader 上传成功");
+                        _log("[Sahara] ✅ Loader uploaded successfully");
                         done = true;
                         IsConnected = true;
                         break;
@@ -483,94 +488,94 @@ namespace LoveAlways.Qualcomm.Protocol
             }
             catch (Exception ex)
             {
-                _log($"[Sahara] Loader 上传异常: {ex.Message}");
+                _log($"[Sahara] Loader upload exception: {ex.Message}");
                 return false;
             }
         }
 
         /// <summary>
-        /// 握手并上传 Loader (失败时自动尝试重置) - 从内存数据
+        /// Handshake and upload Loader (Auto retry reset on failure) - From memory data
         /// </summary>
-        /// <param name="loaderData">引导文件数据 (byte[])</param>
-        /// <param name="loaderName">引导名称 (用于日志显示)</param>
-        /// <param name="ct">取消令牌</param>
-        /// <param name="maxRetries">最大重试次数</param>
+        /// <param name="loaderData">Boot file data (byte[])</param>
+        /// <param name="loaderName">Boot name (for log display)</param>
+        /// <param name="ct">Cancellation token</param>
+        /// <param name="maxRetries">Max retry count</param>
         public async Task<bool> HandshakeAndUploadAsync(byte[] loaderData, string loaderName, CancellationToken ct = default(CancellationToken), int maxRetries = 2)
         {
             if (loaderData == null || loaderData.Length == 0)
-                throw new ArgumentException("引导数据为空");
+                throw new ArgumentException("Boot data is empty");
 
-            _log(string.Format("[Sahara] 加载内嵌引导: {0} ({1} KB)", loaderName, loaderData.Length / 1024));
+            _log(string.Format("[Sahara] Loading embedded boot: {0} ({1} KB)", loaderName, loaderData.Length / 1024));
             return await HandshakeAndUploadCoreAsync(loaderData, ct, maxRetries);
         }
 
         /// <summary>
-        /// 握手并上传 Loader (失败时自动尝试重置) - 从文件路径
+        /// Handshake and upload Loader (Auto retry reset on failure) - From file path
         /// </summary>
-        /// <param name="loaderPath">引导文件路径</param>
-        /// <param name="ct">取消令牌</param>
-        /// <param name="maxRetries">最大重试次数 (默认2次，即最多尝试3次)</param>
+        /// <param name="loaderPath">Boot file path</param>
+        /// <param name="ct">Cancellation token</param>
+        /// <param name="maxRetries">Max retry count (default 2, max 3 attempts)</param>
         public async Task<bool> HandshakeAndUploadAsync(string loaderPath, CancellationToken ct = default(CancellationToken), int maxRetries = 2)
         {
             if (!File.Exists(loaderPath))
-                throw new FileNotFoundException("引导 文件不存在", loaderPath);
+                throw new FileNotFoundException("Boot file does not exist", loaderPath);
 
             byte[] fileBytes = File.ReadAllBytes(loaderPath);
-            _log(string.Format("[Sahara] 加载引导: {0} ({1} KB)", Path.GetFileName(loaderPath), fileBytes.Length / 1024));
+            _log(string.Format("[Sahara] Loading boot: {0} ({1} KB)", Path.GetFileName(loaderPath), fileBytes.Length / 1024));
             return await HandshakeAndUploadCoreAsync(fileBytes, ct, maxRetries);
         }
 
         /// <summary>
-        /// 握手上传核心逻辑
+        /// Handshake upload core logic
         /// </summary>
         private async Task<bool> HandshakeAndUploadCoreAsync(byte[] fileBytes, CancellationToken ct, int maxRetries)
         {
-            // 如果看门狗触发过重置，增加额外重试次数
+            // If watchdog triggered reset, increase extra retry count
             int effectiveMaxRetries = maxRetries;
             
-            // 尝试握手，失败时自动重置并重试
+            // Attempt handshake, auto reset and retry on failure
             for (int attempt = 0; attempt <= effectiveMaxRetries; attempt++)
             {
                 if (ct.IsCancellationRequested) return false;
                 
                 if (attempt > 0)
                 {
-                    // 判断是否由看门狗触发的重置
+                    // Check if reset triggered by watchdog
                     bool wasWatchdogReset = _watchdogTriggeredReset;
                     
                     if (wasWatchdogReset)
                     {
-                        _log($"[Sahara] 看门狗触发重置，执行硬重置 (第 {attempt} 次重试)...");
+                        _log($"[Sahara] Watchdog triggered reset, executing hard reset (retry #{attempt})...");
                         
-                        // 看门狗触发时使用更激进的重置方式
+                        // Use more aggressive reset when watchdog triggered
                         PurgeBuffer();
-                        SendHardReset(); // 发送硬重置命令
-                        await Task.Delay(1000, ct); // 等待设备重启
+                        SendHardReset(); // Send hard reset command
+                        await Task.Delay(1000, ct); // Wait for device reboot
                         
-                        // 额外增加一次重试机会
+                        // Add extra retry opportunity
                         if (attempt == effectiveMaxRetries && effectiveMaxRetries < maxRetries + 2)
                         {
                             effectiveMaxRetries++;
-                            _log("[Sahara] 看门狗触发，增加额外重试机会");
+                            _log("[Sahara] Watchdog triggered, adding extra retry opportunity");
                         }
                     }
                     else
                     {
-                        _log(string.Format("[Sahara] 握手失败，尝试重置 Sahara 状态 (第 {0} 次重试)...", attempt));
+                        _log(string.Format("[Sahara] Handshake failed, attempting Sahara state reset (retry #{0})...", attempt));
                     }
                     
-                    // 尝试重置 Sahara 状态机
+                    // Attempt Sahara state machine reset
                     bool resetOk = await TryResetSaharaAsync(ct);
                     if (resetOk)
                     {
-                        _log("[Sahara] ✓ 状态机重置成功，重新开始握手...");
+                        _log("[Sahara] ✓ State machine reset successful, restarting handshake...");
                     }
                     else
                     {
-                        _log("[Sahara] 状态机重置未确认，继续尝试握手...");
+                        _log("[Sahara] State machine reset not confirmed, continuing handshake attempt...");
                     }
                     
-                    // 重置内部状态
+                    // Reset internal state
                     _chipInfoRead = false;
                     _pendingHelloData = null;
                     _doneSent = false;
@@ -586,17 +591,17 @@ namespace LoveAlways.Qualcomm.Protocol
                 if (success)
                 {
                     if (attempt > 0)
-                        _log(string.Format("[Sahara] ✓ 重试成功 (第 {0} 次尝试)", attempt + 1));
+                        _log(string.Format("[Sahara] ✓ Retry successful (attempt #{0})", attempt + 1));
                     return true;
                 }
             }
             
-            _log("[Sahara] ❌ 多次握手均失败，可能需要断电重启设备");
+            _log("[Sahara] ❌ Multiple handshake attempts failed, may need to power cycle device");
             return false;
         }
 
         /// <summary>
-        /// 内部握手和加载
+        /// Internal handshake and load
         /// </summary>
         private async Task<bool> HandshakeAndLoadInternalAsync(byte[] fileBytes, CancellationToken ct)
         {
@@ -610,8 +615,8 @@ namespace LoveAlways.Qualcomm.Protocol
             _watchdogStallCount = 0;
             var sw = Stopwatch.StartNew();
             
-            // 启动看门狗
-            _watchdog?.Start("Sahara 握手");
+            // Start watchdog
+            _watchdog?.Start("Sahara handshake");
 
             try
             {
@@ -620,21 +625,21 @@ namespace LoveAlways.Qualcomm.Protocol
                     if (ct.IsCancellationRequested)
                         return false;
                     
-                    // 检查看门狗是否触发了重置
+                    // Check if watchdog triggered reset
                     if (_watchdogTriggeredReset)
                     {
-                        _log("[Sahara] 看门狗触发重置，退出握手循环");
-                        return false; // 返回 false 让外层重试逻辑接管
+                        _log("[Sahara] Watchdog triggered reset, exiting handshake loop");
+                        return false; // Return false to let outer retry logic take over
                     }
 
                     byte[] header = null;
 
-                    // 检查是否有预读取的 Hello 数据
+                    // Check if there's pre-read Hello data
                     if (loopGuard == 1 && _pendingHelloData != null && _pendingHelloData.Length >= 8)
                     {
                         header = new byte[8];
                         Array.Copy(_pendingHelloData, 0, header, 0, 8);
-                        FeedWatchdog(); // 有预读数据，喂狗
+                        FeedWatchdog(); // Has pre-read data, feed watchdog
                     }
                     else
                     {
@@ -647,7 +652,7 @@ namespace LoveAlways.Qualcomm.Protocol
                         timeoutCount++;
                         if (timeoutCount >= 5)
                         {
-                            _log("[Sahara] 设备无响应");
+                            _log("[Sahara] Device not responding");
                             return false;
                         }
 
@@ -659,7 +664,7 @@ namespace LoveAlways.Qualcomm.Protocol
                         continue;
                     }
 
-                    // 收到有效数据，喂狗
+                    // Valid data received, feed watchdog
                     FeedWatchdog();
                     timeoutCount = 0;
                     uint cmdId = BitConverter.ToUInt32(header, 0);
@@ -672,11 +677,11 @@ namespace LoveAlways.Qualcomm.Protocol
                         continue;
                     }
 
-                    // 调试日志：显示收到的命令 (ReadData 除外，因为太频繁)
+                    // Debug log: Display received command (Except ReadData, too frequent)
                     if ((SaharaCommand)cmdId != SaharaCommand.ReadData && 
                         (SaharaCommand)cmdId != SaharaCommand.ReadData64)
                     {
-                        _logDetail(string.Format("[Sahara] 收到: Cmd=0x{0:X2} ({1}), Len={2}", 
+                        _logDetail(string.Format("[Sahara] Received: Cmd=0x{0:X2} ({1}), Len={2}", 
                             cmdId, (SaharaCommand)cmdId, pktLen));
                     }
 
@@ -706,21 +711,21 @@ namespace LoveAlways.Qualcomm.Protocol
 
                     case SaharaCommand.DoneResponse:
                         if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        _log("[Sahara] ✅ 引导加载成功");
+                        _log("[Sahara] ✅ Boot loaded successfully");
                         done = true;
                         IsConnected = true;
-                        FeedWatchdog(); // 成功完成，喂狗
+                        FeedWatchdog(); // Successfully completed, feed watchdog
                         break;
 
                     case SaharaCommand.CommandReady:
                         if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        _log("[Sahara] 收到 CommandReady，切换到传输模式");
+                        _log("[Sahara] Received CommandReady, switching to transfer mode");
                         SendSwitchMode(SaharaMode.ImageTransferPending);
                         FeedWatchdog();
                         break;
 
                     default:
-                        _log(string.Format("[Sahara] 未知命令: 0x{0:X2}", cmdId));
+                        _log(string.Format("[Sahara] Unknown command: 0x{0:X2}", cmdId));
                         if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
                         break;
                     }
@@ -730,7 +735,7 @@ namespace LoveAlways.Qualcomm.Protocol
             }
             finally
             {
-                // 停止看门狗
+                // Stop watchdog
                 _watchdog?.Stop();
             }
         }
@@ -743,7 +748,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 处理 Hello 包 (参考 tools 项目优化)
+        /// Handle Hello packet (Optimized per tools project)
         /// </summary>
         private async Task HandleHelloAsync(uint pktLen, CancellationToken ct)
         {
@@ -766,10 +771,10 @@ namespace LoveAlways.Qualcomm.Protocol
             ProtocolVersion = BitConverter.ToUInt32(body, 0);
             uint deviceMode = body.Length >= 12 ? BitConverter.ToUInt32(body, 12) : 0;
             
-            // 详细日志 (与 tools 项目对齐)
-            _logDetail(string.Format("[Sahara] 收到 HELLO (版本={0}, 模式={1})", ProtocolVersion, deviceMode));
+            // Detailed log (Aligned with tools project)
+            _logDetail(string.Format("[Sahara] Received HELLO (Version={0}, Mode={1})", ProtocolVersion, deviceMode));
 
-            // 尝试读取芯片信息 (仅首次，且设备处于传输模式)
+            // Try reading chip info (First time only, and device in transfer mode)
             if (!_chipInfoRead && deviceMode == (uint)SaharaMode.ImageTransferPending)
             {
                 _chipInfoRead = true;
@@ -777,20 +782,20 @@ namespace LoveAlways.Qualcomm.Protocol
                 
                 if (enteredCommandMode)
                 {
-                    // 成功进入命令模式并读取了信息，已发送 SwitchMode
-                    // 设备会重新发送 Hello，不要在这里发送 HelloResponse
-                    _logDetail("[Sahara] 等待设备重新发送 Hello...");
+                    // Successfully entered command mode and read info, already sent SwitchMode
+                    // Device will resend Hello, don't send HelloResponse here
+                    _logDetail("[Sahara] Waiting for device to resend Hello...");
                     return;
                 }
             }
 
-            // 发送 HelloResponse 进入传输模式
-            _logDetail("[Sahara] 发送 HelloResponse (传输模式)");
+            // Send HelloResponse to enter transfer mode
+            _logDetail("[Sahara] Sending HelloResponse (Transfer mode)");
             SendHelloResponse(SaharaMode.ImageTransferPending);
         }
 
         /// <summary>
-        /// 处理 32 位读取请求
+        /// Handle 32-bit read request
         /// </summary>
         private async Task HandleReadData32Async(uint pktLen, byte[] fileBytes, CancellationToken ct)
         {
@@ -808,13 +813,13 @@ namespace LoveAlways.Qualcomm.Protocol
             _totalSent += length;
             double percent = (double)_totalSent * 100 / fileBytes.Length;
             
-            // 调用进度回调（进度条显示，不需要日志）
+            // Call progress callback (Progress bar display, no log needed)
             if (_progressCallback != null)
                 _progressCallback(percent);
         }
 
         /// <summary>
-        /// 处理 64 位读取请求
+        /// Handle 64-bit read request
         /// </summary>
         private async Task HandleReadData64Async(uint pktLen, byte[] fileBytes, CancellationToken ct)
         {
@@ -832,13 +837,13 @@ namespace LoveAlways.Qualcomm.Protocol
             _totalSent += (long)length;
             double percent = (double)_totalSent * 100 / fileBytes.Length;
             
-            // 调用进度回调（进度条显示，不需要日志）
+            // Call progress callback (Progress bar display, no log needed)
             if (_progressCallback != null)
                 _progressCallback(percent);
         }
 
         /// <summary>
-        /// 处理镜像传输结束 (参考 tools 项目优化)
+        /// Handle end of image transfer (Optimized per tools project)
         /// </summary>
         private async Task<Tuple<bool, bool, int>> HandleEndImageTransferAsync(uint pktLen, int endImageTxCount, CancellationToken ct)
         {
@@ -846,7 +851,7 @@ namespace LoveAlways.Qualcomm.Protocol
             
             if (endImageTxCount > 10) 
             {
-                _log("[Sahara] 收到过多 EndImageTransfer 命令");
+                _log("[Sahara] Received too many EndImageTransfer commands");
                 return Tuple.Create(false, false, endImageTxCount);
             }
 
@@ -865,13 +870,13 @@ namespace LoveAlways.Qualcomm.Protocol
             if (endStatus != 0)
             {
                 var status = (SaharaStatus)endStatus;
-                _log(string.Format("[Sahara] ❌ 传输失败: {0}", SaharaStatusHelper.GetErrorMessage(status)));
+                _log(string.Format("[Sahara] ❌ Transfer failed: {0}", SaharaStatusHelper.GetErrorMessage(status)));
                 
-                // [关键] 如果是 InvalidCommand，可能是命令模式导致的状态不同步
-                // 下次连接时尝试跳过命令模式
+                // [Critical] If InvalidCommand, may be state desync caused by command mode
+                // Try skipping command mode on next connection
                 if (status == SaharaStatus.InvalidCommand)
                 {
-                    _log("[Sahara] 提示: 此错误通常由设备状态残留导致，重试时将自动恢复");
+                    _log("[Sahara] Hint: This error usually caused by device state residue, will auto-recover on retry");
                 }
                 
                 return Tuple.Create(false, false, endImageTxCount);
@@ -879,7 +884,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
             if (!_doneSent)
             {
-                _logDetail("[Sahara] 镜像传输完成，发送 Done");
+                _logDetail("[Sahara] Image transfer complete, sending Done");
                 SendDone();
                 _doneSent = true;
             }
@@ -888,27 +893,27 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 安全读取芯片信息 - 支持 V1/V2/V3 (参考 tools 项目优化)
+        /// Safe chip info reading -  Support V1/V2/V3 (Optimized per tools project)
         /// </summary>
         private async Task<bool> TryReadChipInfoSafeAsync(CancellationToken ct)
         {
             if (_skipCommandMode) 
             {
-                _logDetail("[Sahara] 跳过命令模式");
+                _logDetail("[Sahara] Skip ping command mode");
                 return false;
             }
 
             try
             {
-                // 发送 HelloResponse 请求进入命令模式
-                _logDetail(string.Format("[Sahara] 尝试进入命令模式 (v{0})...", ProtocolVersion));
+                // Send HelloResponse to request command mode entry
+                _logDetail(string.Format("[Sahara] Attempting command mode entry (v{0})...", ProtocolVersion));
                 SendHelloResponse(SaharaMode.Command);
 
-                // 等待响应
+                // Wait for response
                 var header = await ReadBytesAsync(8, 2000, ct);
                 if (header == null) 
                 {
-                    _logDetail("[Sahara] 命令模式无响应");
+                    _logDetail("[Sahara] Command mode no response");
                     return false;
                 }
 
@@ -918,12 +923,12 @@ namespace LoveAlways.Qualcomm.Protocol
                 if ((SaharaCommand)cmdId == SaharaCommand.CommandReady)
                 {
                     if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                    _logDetail("[Sahara] 设备接受命令模式");
+                    _logDetail("[Sahara] Device accepted command mode");
                     
                     await ReadChipInfoCommandsAsync(ct);
                     
-                    // 切换回传输模式
-                    _logDetail("[Sahara] 切换回传输模式...");
+                    // Switch back to transfer mode
+                    _logDetail("[Sahara] Switching back to transfer mode...");
                     SendSwitchMode(SaharaMode.ImageTransferPending);
                     await Task.Delay(50, ct);
                     return true;
@@ -931,45 +936,45 @@ namespace LoveAlways.Qualcomm.Protocol
                 else if ((SaharaCommand)cmdId == SaharaCommand.ReadData ||
                          (SaharaCommand)cmdId == SaharaCommand.ReadData64)
                 {
-                    // 设备拒绝命令模式，直接开始数据传输
-                    _logDetail(string.Format("[Sahara] 设备拒绝命令模式 (v{0})", ProtocolVersion));
+                    // Device rejected command mode, directly start data transfer
+                    _logDetail(string.Format("[Sahara] Device rejected command mode (v{0})", ProtocolVersion));
                     if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
                     _skipCommandMode = true;
                     return false;
                 }
                 else if ((SaharaCommand)cmdId == SaharaCommand.EndImageTransfer)
                 {
-                    // [关键修复] 设备可能处于残留状态，直接发送了 EndImageTransfer
-                    // 这种情况下需要重置状态机
-                    _logDetail("[Sahara] 设备状态异常 (收到 EndImageTransfer)，需要重置");
+                    // [Critical Fix] Device may be in residual state, directly sent EndImageTransfer
+                    // In this case need to reset state machine
+                    _logDetail("[Sahara] Device state abnormal (received EndImageTransfer), needs reset");
                     if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
                     _skipCommandMode = true;
                     return false;
                 }
                 else
                 {
-                    _logDetail(string.Format("[Sahara] 命令模式未知响应: 0x{0:X2}", cmdId));
+                    _logDetail(string.Format("[Sahara] Command mode unknown response: 0x{0:X2}", cmdId));
                     if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                _log(string.Format("[Sahara] 芯片信息读取失败: {0}", ex.Message));
+                _log(string.Format("[Sahara] Chip info reading failed: {0}", ex.Message));
                 return false;
             }
         }
 
         /// <summary>
-        /// 读取芯片信息 - V1/V2/V3 版本区分
-        /// [关键] 所有命令失败时静默跳过，不影响握手
+        /// Read chip info - V1/V2/V3 version distinction
+        /// [Critical] Silently skip when all commands fail, don't affect handshake
         /// </summary>
         private async Task ReadChipInfoCommandsAsync(CancellationToken ct)
         {
-            // 1. 首先显示协议版本
+            // 1. First display protocol version
             _log(string.Format("- Sahara version  : {0}", ProtocolVersion));
             
-            // 2. 读取序列号 (cmd=0x01)
+            // 2. Read serial number (cmd=0x01)
             var serialData = await ExecuteCommandSafeAsync(SaharaExecCommand.SerialNumRead, ct);
             if (serialData != null && serialData.Length >= 4)
             {
@@ -980,7 +985,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 _log(string.Format("- Chip Serial Number : {0}", ChipSerial));
             }
 
-            // 3. 读取 PK Hash (cmd=0x03)
+            // 3. Read PK Hash (cmd=0x03)
             var pkhash = await ExecuteCommandSafeAsync(SaharaExecCommand.OemPkHashRead, ct);
             if (pkhash != null && pkhash.Length > 0)
             {
@@ -996,15 +1001,15 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
             }
 
-            // 4. 读取 HWID - V1/V2 和 V3 使用不同的命令
+            // 4. Read HWID - V1/V2 and V3 use different commands
             if (ProtocolVersion < 3)
             {
-                // V1/V2: 使用 cmd=0x02 (MsmHwIdRead)
+                // V1/V2: Use cmd=0x02 (MsmHwIdRead)
                 var hwidData = await ExecuteCommandSafeAsync(SaharaExecCommand.MsmHwIdRead, ct);
                 if (hwidData != null && hwidData.Length >= 8)
                     ProcessHwIdData(hwidData);
                     
-                // V1/V2: 读取 SBL 版本 (cmd=0x07)，失败跳过
+                // V1/V2: Read SBL version (cmd=0x07), skip on failure
                 var sblVer = await ExecuteCommandSafeAsync(SaharaExecCommand.SblSwVersion, ct);
                 if (sblVer != null && sblVer.Length >= 4)
                 {
@@ -1014,7 +1019,7 @@ namespace LoveAlways.Qualcomm.Protocol
             }
             else
             {
-                // V3: 尝试 cmd=0x0A，失败跳过
+                // V3: Try cmd=0x0A, skip on failure
                 var extInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.ChipIdV3Read, ct);
                 if (extInfo != null && extInfo.Length >= 44)
                 {
@@ -1022,7 +1027,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
                 else
                 {
-                    // cmd=0x0A 不支持，尝试从 PK Hash 推断厂商
+                    // cmd=0x0A not supported, try inferring vendor from PK Hash
                     if (!string.IsNullOrEmpty(ChipPkHash))
                     {
                         ChipInfo.Vendor = QualcommDatabase.GetVendorByPkHash(ChipPkHash);
@@ -1033,25 +1038,25 @@ namespace LoveAlways.Qualcomm.Protocol
                     }
                 }
                 
-                // V3: 读取 SBL 信息 (cmd=0x06)，失败跳过
+                // V3: Read SBL info (cmd=0x06), skip on failure
                 var sblInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.SblInfoRead, ct);
                 if (sblInfo != null && sblInfo.Length >= 4)
                 {
                     ProcessSblInfo(sblInfo);
                 }
             }
-            // 注: PBL 版本读取 (cmd=0x08) 已移除，部分设备不支持会导致握手失败
+            // Note: PBL version read (cmd=0x08) removed, some devices don't support it and cause handshake failure
         }
         
         /// <summary>
-        /// 处理 SBL 信息 (V3 专用, cmd=0x06)
+        /// Process SBL info (V3 specific, cmd=0x06)
         /// </summary>
         private void ProcessSblInfo(byte[] sblInfo)
         {
-            // SBL Info 返回格式:
-            // 偏移 0: Serial Number (4字节)
-            // 偏移 4: MSM HW ID (8字节) - V3 可能包含
-            // 偏移 12+: 其他扩展信息
+            // SBL Info return format:
+            // Offset 0: Serial Number (4 bytes)
+            // Offset 4: MSM HW ID (8 bytes) - V3 may include
+            // Offset 12+: Other extended info
             
             if (sblInfo.Length >= 4)
             {
@@ -1068,7 +1073,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
             }
             
-            // 如果有更多数据，尝试解析 OEM 信息
+            // If more data available, try parsing OEM info
             if (sblInfo.Length >= 16)
             {
                 uint oemField1 = BitConverter.ToUInt32(sblInfo, 8);
@@ -1081,19 +1086,19 @@ namespace LoveAlways.Qualcomm.Protocol
         }
         
         /// <summary>
-        /// 在上传引导前显示芯片信息摘要
-        /// 注: 详细信息已在 ReadChipInfoCommandsAsync 中输出
+        /// Display chip info summary before uploading boot
+        /// Note: Detailed info already output in ReadChipInfoCommandsAsync
         /// </summary>
         private void LogChipInfoBeforeUpload()
         {
             if (ChipInfo == null) return;
             
-            // 只输出摘要，详细信息已在读取时输出
-            _logDetail("[Sahara] 芯片信息读取完成");
+            // Only output summary, detailed info already output during reading
+            _logDetail("[Sahara] Chip info reading complete");
         }
 
         /// <summary>
-        /// 处理 V1/V2 HWID 数据 (参考 tools 项目)
+        /// Process V1/V2 HWID data (Reference tools project)
         /// </summary>
         private void ProcessHwIdData(byte[] hwidData)
         {
@@ -1101,11 +1106,11 @@ namespace LoveAlways.Qualcomm.Protocol
             ChipHwId = hwid.ToString("x16");
             ChipInfo.HwIdHex = "0x" + ChipHwId.ToUpperInvariant();
 
-            // V1/V2 HWID 格式:
-            // Bits 0-31:  MSM_ID (芯片ID，完整 32 位)
-            // Bits 32-47: OEM_ID (厂商ID)
-            // Bits 48-63: MODEL_ID (型号ID)
-            uint msmId = (uint)(hwid & 0xFFFFFFFF);  // 完整 32 位
+            // V1/V2 HWID format:
+            // Bits 0-31:  MSM_ID (Chip ID, full 32 bits)
+            // Bits 32-47: OEM_ID (Vendor ID)
+            // Bits 48-63: MODEL_ID (Model ID)
+            uint msmId = (uint)(hwid & 0xFFFFFFFF);  // Full 32 bits
             ushort oemId = (ushort)((hwid >> 32) & 0xFFFF);
             ushort modelId = (ushort)((hwid >> 48) & 0xFFFF);
 
@@ -1115,45 +1120,45 @@ namespace LoveAlways.Qualcomm.Protocol
             ChipInfo.ChipName = QualcommDatabase.GetChipName(msmId);
             ChipInfo.Vendor = QualcommDatabase.GetVendorName(oemId);
 
-            // 日志输出 (与 tools 项目格式对齐)
+            // Log output (Format aligned with tools project)
             _log(string.Format("- MSM HWID : 0x{0:x} | model_id:0x{1:x4} | oem_id:{2:X4} {3}",
                 msmId, modelId, oemId, ChipInfo.Vendor));
 
             if (ChipInfo.ChipName != "Unknown")
-                _log(string.Format("- CHIP : {0}", ChipInfo.ChipName));
+                _log(string.Format("- CHIP : {0}",ChipInfo.ChipName));
 
             _log(string.Format("- HW_ID : {0}", ChipHwId));
         }
 
         /// <summary>
-        /// [关键] 处理 V3 扩展信息 (cmd=0x0A 返回)
-        /// 参考: tools 项目的标准实现
-        /// V3 返回 84 字节数据:
-        /// - 偏移 0: Chip Identifier V3 (4字节)
-        /// - 偏移 36: MSM_ID (4字节)
-        /// - 偏移 40: OEM_ID (2字节)
-        /// - 偏移 42: MODEL_ID (2字节)
-        /// - 偏移 44: 备用 OEM_ID (如果偏移40为0)
+        /// [Critical] Process V3 extended info (cmd=0x0A return)
+        /// Reference: Standard implementation from tools project
+        /// V3 returns 84 bytes data:
+        /// - Offset 0: Chip Identifier V3 (4 bytes)
+        /// - Offset 36: MSM_ID (4 bytes)
+        /// - Offset 40: OEM_ID (2 bytes)
+        /// - Offset 42: MODEL_ID (2 bytes)
+        /// - Offset 44: Backup OEM_ID (if offset 40 is 0)
         /// </summary>
         private void ProcessV3ExtendedInfo(byte[] extInfo)
         {
-            // 读取 Chip Identifier V3
+            // Read Chip Identifier V3
             uint chipIdV3 = BitConverter.ToUInt32(extInfo, 0);
             if (chipIdV3 != 0)
             {
                 _log(string.Format("- Chip Identifier V3 : {0:x8}", chipIdV3));
             }
 
-            // V3 标准格式: 偏移 36-44
+            // V3 standard format: Offset 36-44
             if (extInfo.Length >= 44)
             {
                 uint rawMsm = BitConverter.ToUInt32(extInfo, 36);
                 ushort rawOem = BitConverter.ToUInt16(extInfo, 40);
                 ushort rawModel = BitConverter.ToUInt16(extInfo, 42);
 
-                uint msmId = rawMsm;  // 使用完整 32 位 MSM ID
+                uint msmId = rawMsm;  // Use full 32-bit MSM ID
 
-                // 检查备用 OEM_ID 位置 (偏移44)
+                // Check backup OEM_ID position (offset 44)
                 if (rawOem == 0 && extInfo.Length >= 46)
                 {
                     ushort altOemId = BitConverter.ToUInt16(extInfo, 44);
@@ -1163,7 +1168,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 if (msmId != 0 || rawOem != 0)
                 {
-                    // 保存到 ChipInfo
+                    // Save to ChipInfo
                     ChipInfo.MsmId = msmId;
                     ChipInfo.OemId = rawOem;
                     ChipInfo.ModelId = rawModel;
@@ -1173,7 +1178,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     ChipHwId = string.Format("00{0:x6}{1:x4}{2:x4}", msmId, rawOem, rawModel).ToLower();
                     ChipInfo.HwIdHex = "0x" + ChipHwId.ToUpperInvariant();
 
-                    // 日志输出 (与 tools 项目格式对齐)
+                    // Log output (Format aligned with tools project)
                     _log(string.Format("- MSM HWID : 0x{0:x} | model_id:0x{1:x4} | oem_id:{2:X4} {3}",
                         msmId, rawModel, rawOem, ChipInfo.Vendor));
 
@@ -1186,7 +1191,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 安全执行命令
+        /// Safe command execution
         /// </summary>
         private async Task<byte[]> ExecuteCommandSafeAsync(SaharaExecCommand cmd, CancellationToken ct)
         {
@@ -1194,14 +1199,14 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 int timeout = cmd == SaharaExecCommand.SblInfoRead ? 5000 : 2000;
 
-                // 发送 Execute
+                // Send Execute
                 var execPacket = new byte[12];
                 WriteUInt32(execPacket, 0, (uint)SaharaCommand.Execute);
                 WriteUInt32(execPacket, 4, 12);
                 WriteUInt32(execPacket, 8, (uint)cmd);
                 _port.Write(execPacket);
 
-                // 读取响应头
+                // Read response header
                 var header = await ReadBytesAsync(8, timeout, ct);
                 if (header == null) return null;
 
@@ -1223,7 +1228,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 if (dataCmd != (uint)cmd || dataLen == 0) return null;
 
-                // 发送确认
+                // Send confirmation
                 var respPacket = new byte[12];
                 WriteUInt32(respPacket, 0, (uint)SaharaCommand.ExecuteResponse);
                 WriteUInt32(respPacket, 4, 12);
@@ -1239,7 +1244,7 @@ namespace LoveAlways.Qualcomm.Protocol
             }
         }
 
-        #region 发送方法
+        #region Send Methods
 
         private void SendHelloResponse(SaharaMode mode)
         {
@@ -1271,7 +1276,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 发送软复位命令 (ResetStateMachine) - 重置状态机，设备会重新发送 Hello
+        /// Send soft reset command (ResetStateMachine) - Reset state machine, device will resend Hello
         /// </summary>
         public void SendReset()
         {
@@ -1282,7 +1287,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
         
         /// <summary>
-        /// 发送硬复位命令 (Reset) - 完全重启设备
+        /// Send hard reset command (Reset) - Completely restart device
         /// </summary>
         public void SendHardReset()
         {
@@ -1293,30 +1298,30 @@ namespace LoveAlways.Qualcomm.Protocol
         }
         
         /// <summary>
-        /// 尝试重置卡住的 Sahara 状态
+        /// Try resetting stuck Sahara state
         /// </summary>
-        /// <param name="ct">取消令牌</param>
-        /// <returns>是否成功收到新的 Hello 包</returns>
+        /// <param name="ct">Cancellation token</param>
+        /// <returns>Whether successfully received new Hello packet</returns>
         public async Task<bool> TryResetSaharaAsync(CancellationToken ct = default(CancellationToken))
         {
-            _logDetail("[Sahara] 尝试重置 Sahara 状态...");
+            _logDetail("[Sahara] Attempting Sahara state reset...");
             
-            // 方法 1: 发送 ResetStateMachine 命令
-            _logDetail("[Sahara] 方法1: 发送 ResetStateMachine...");
+            // Method 1: Send ResetStateMachine command
+            _logDetail("[Sahara] Method 1: Sending ResetStateMachine...");
             PurgeBuffer();
             SendReset();
             await Task.Delay(500, ct);
             
-            // 检查是否收到新的 Hello
+            // Check if new Hello received
             var hello = await TryReadHelloAsync(2000, ct);
             if (hello != null)
             {
-                _logDetail("[Sahara] ✓ 收到新的 Hello 包，状态已重置");
+                _logDetail("[Sahara] ✓ Received new Hello packet, state reset");
                 return true;
             }
             
-            // 方法 2: 发送 Hello Response 尝试重新同步
-            _logDetail("[Sahara] 方法2: 发送 Hello Response 尝试重新同步...");
+            // Method 2: Send Hello Response to attempt resync
+            _logDetail("[Sahara] Method 2: Sending Hello Response to attempt resync...");
             PurgeBuffer();
             await SendHelloResponseAsync(2, 1, SaharaMode.ImageTransferPending, ct);
             await Task.Delay(300, ct);
@@ -1324,18 +1329,18 @@ namespace LoveAlways.Qualcomm.Protocol
             hello = await TryReadHelloAsync(2000, ct);
             if (hello != null)
             {
-                _logDetail("[Sahara] ✓ 收到新的 Hello 包，状态已重置");
+                _logDetail("[Sahara] ✓ Received new Hello packet, state reset");
                 return true;
             }
             
-            // 方法 3: 端口信号重置 (DTR/RTS)
-            _logDetail("[Sahara] 方法3: 端口信号重置...");
+            // Method 3: Port signal reset (DTR/RTS)
+            _logDetail("[Sahara] Method 3: Port signal reset...");
             try
             {
                 _port.Close();
                 await Task.Delay(200, ct);
                 
-                // 重新打开端口并清空缓冲区
+                // Reopen port and clear buffer
                 string portName = _port.PortName;
                 if (!string.IsNullOrEmpty(portName))
                 {
@@ -1345,22 +1350,22 @@ namespace LoveAlways.Qualcomm.Protocol
                     hello = await TryReadHelloAsync(3000, ct);
                     if (hello != null)
                     {
-                        _logDetail("[Sahara] ✓ 端口重置后收到 Hello 包");
+                        _logDetail("[Sahara] ✓ Received Hello packet after port reset");
                         return true;
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logDetail("[Sahara] 端口重置异常: " + ex.Message);
+                _logDetail("[Sahara] Port reset exception: " + ex.Message);
             }
             
-            _log("[Sahara] ❌ 无法重置 Sahara 状态，设备可能需要断电重启");
+            _log("[Sahara] ❌ Cannot reset Sahara state, device may need power cycle");
             return false;
         }
         
         /// <summary>
-        /// 尝试读取 Hello 包 (用于检测状态重置)
+        /// Try reading Hello packet (For detecting state reset)
         /// </summary>
         private async Task<byte[]> TryReadHelloAsync(int timeoutMs, CancellationToken ct)
         {
@@ -1376,7 +1381,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
         
         /// <summary>
-        /// 发送 Hello Response
+        /// Send Hello Response
         /// </summary>
         private async Task SendHelloResponseAsync(uint version, uint versionSupported, SaharaMode mode, CancellationToken ct)
         {
@@ -1414,7 +1419,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 工具方法
+        #region Utility Methods
 
         private async Task<byte[]> ReadBytesAsync(int count, int timeoutMs, CancellationToken ct)
         {
@@ -1443,7 +1448,7 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 _disposed = true;
                 
-                // 释放看门狗
+                // Release watchdog
                 if (_watchdog != null)
                 {
                     _watchdog.OnTimeout -= HandleWatchdogTimeout;

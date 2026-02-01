@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - Form1 展讯模块部分类
+// LoveAlways - Form1 Spreadtrum Module Partial Class
 // Spreadtrum/Unisoc Module Partial Class
 // ============================================================================
 
@@ -19,12 +19,12 @@ namespace LoveAlways
 {
     public partial class Form1
     {
-        // ========== 展讯控制器 ==========
+        // ========== Spreadtrum Controller ==========
         private SpreadtrumUIController _spreadtrumController;
         private uint _selectedChipId = 0;
         
         /// <summary>
-        /// 安全调用 UI 更新（处理窗口已关闭的情况）
+        /// Safe UI Update Invoke (Handle Window Closed)
         /// </summary>
         private void SafeInvoke(Action action)
         {
@@ -42,17 +42,17 @@ namespace LoveAlways
             catch (InvalidOperationException) { }
         }
         
-        // 自定义 FDL 配置
+        // Custom FDL Configuration
         private string _customFdl1Path = null;
         private string _customFdl2Path = null;
         private uint _customFdl1Addr = 0;
         private uint _customFdl2Addr = 0;
         
-        // 检测到的设备
+        // Detected Device
         private string _detectedSprdPort = null;
         private LoveAlways.Spreadtrum.Common.SprdDeviceMode _detectedSprdMode = LoveAlways.Spreadtrum.Common.SprdDeviceMode.Unknown;
 
-        // 芯片列表 - 从数据库动态加载
+        // Chip List - Loaded Dynamically from Database
         private static Dictionary<string, uint> _sprdChipList;
         private static Dictionary<string, uint> SprdChipList
         {
@@ -61,16 +61,16 @@ namespace LoveAlways
                 if (_sprdChipList == null)
                 {
                     _sprdChipList = new Dictionary<string, uint>();
-                    _sprdChipList.Add("自动检测", 0);
+                    _sprdChipList.Add("Auto Detect", 0);
                     
-                    // 从数据库按系列加载芯片
+                    // Load Chips by Series from Database
                     var chipsBySeries = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetChipsBySeries();
                     foreach (var series in chipsBySeries.OrderBy(s => s.Key))
                     {
-                        // 添加系列分隔符
+                        // Add Series Separator
                         _sprdChipList.Add($"── {series.Key} ──", 0xFFFF);
                         
-                        // 添加该系列的芯片
+                        // Add Chips in Series
                         foreach (var chip in series.Value.OrderBy(c => c.ChipName))
                         {
                             string displayName = chip.HasExploit 
@@ -85,35 +85,35 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 初始化展讯模块
+        /// Initialize Spreadtrum Module
         /// </summary>
         private void InitializeSpreadtrumModule()
         {
             try
             {
-                // 初始化芯片选择列表
+                // Initialize Chip Selector
                 InitializeChipSelector();
 
-                // 创建展讯控制器
+                // Create Spreadtrum Controller
                 _spreadtrumController = new SpreadtrumUIController(
                     (msg, color) => AppendLog(msg, color),
                     msg => AppendLogDetail(msg));
 
-                // 绑定事件
+                // Bind Events
                 BindSpreadtrumEvents();
 
-                // 注意: 设备监听在切换到展讯标签页时启动，避免与其他模块冲突
+                // Note: Device monitoring starts when switching to Spreadtrum tab to avoid conflicts
 
-                AppendLog("[展讯] 模块初始化完成", Color.Green);
+                AppendLog("[Spreadtrum] Module Initialized", Color.Green);
             }
             catch (Exception ex)
             {
-                AppendLog($"[展讯] 初始化失败: {ex.Message}", Color.Red);
+                AppendLog($"[Spreadtrum] Initialize Failed: {ex.Message}", Color.Red);
             }
         }
         
         /// <summary>
-        /// 扫描并显示设备管理器中的所有 COM 端口 (调试用)
+        /// Scan and Show All COM Ports in Device Manager (For Debugging)
         /// </summary>
         private void SprdScanAllComPorts()
         {
@@ -122,25 +122,25 @@ namespace LoveAlways
                 var detector = new SprdPortDetector();
                 detector.OnLog += msg => AppendLog(msg, Color.Gray);
                 
-                AppendLog("[设备管理器] 扫描所有 COM 端口...", Color.Cyan);
+                AppendLog("[Device Manager] Scanning all COM ports...", Color.Cyan);
                 var ports = detector.ScanAllComPorts();
                 
                 if (ports.Count == 0)
                 {
-                    AppendLog("[设备管理器] 未发现任何 COM 端口", Color.Orange);
+                    AppendLog("[Device Manager] No COM ports found", Color.Orange);
                     return;
                 }
                 
-                AppendLog(string.Format("[设备管理器] 发现 {0} 个 COM 端口:", ports.Count), Color.Green);
+                AppendLog(string.Format("[Device Manager] Found {0} COM ports:", ports.Count), Color.Green);
                 
                 foreach (var port in ports)
                 {
-                    string sprdFlag = port.IsSprdDetected ? " ★展讯★" : "";
+                    string sprdFlag = port.IsSprdDetected ? " ★Spreadtrum★" : "";
                     Color color = port.IsSprdDetected ? Color.Lime : Color.White;
                     
                     AppendLog(string.Format("  {0}: VID={1:X4} PID={2:X4}{3}", 
                         port.ComPort, port.Vid, port.Pid, sprdFlag), color);
-                    AppendLog(string.Format("    名称: {0}", port.Name), Color.Gray);
+                    AppendLog(string.Format("    Name: {0}", port.Name), Color.Gray);
                     
                     if (!string.IsNullOrEmpty(port.HardwareId))
                     {
@@ -148,28 +148,28 @@ namespace LoveAlways
                     }
                 }
                 
-                // 统计
+                // Stats
                 int sprdCount = 0;
                 foreach (var p in ports)
                 {
                     if (p.IsSprdDetected) sprdCount++;
                 }
                 
-                AppendLog(string.Format("[设备管理器] 总计: {0} 个端口, {1} 个识别为展讯", 
+                AppendLog(string.Format("[Device Manager] Total: {0} ports, {1} identified as Spreadtrum", 
                     ports.Count, sprdCount), Color.Cyan);
             }
             catch (Exception ex)
             {
-                AppendLog(string.Format("[设备管理器] 扫描异常: {0}", ex.Message), Color.Red);
+                AppendLog(string.Format("[Device Manager] Scan Exception: {0}", ex.Message), Color.Red);
             }
         }
 
         /// <summary>
-        /// 初始化芯片选择器
+        /// Initialize Chip Selector
         /// </summary>
         private void InitializeChipSelector()
         {
-            // 填充芯片列表
+            // Fill Chip List
             var items = new List<object>();
             foreach (var chip in SprdChipList)
             {
@@ -177,33 +177,33 @@ namespace LoveAlways
             }
             sprdSelectChip.Items.Clear();
             sprdSelectChip.Items.AddRange(items.ToArray());
-            sprdSelectChip.SelectedIndex = 0; // 默认"自动检测"
+            sprdSelectChip.SelectedIndex = 0; // Default "Auto Detect"
             
-            // 初始化设备选择为空
+            // Initialize Device Selection Empty
             sprdSelectDevice.Items.Clear();
-            sprdSelectDevice.Items.Add("自动检测");
+            sprdSelectDevice.Items.Add("Auto Detect");
             sprdSelectDevice.SelectedIndex = 0;
         }
 
         /// <summary>
-        /// 更新设备列表（根据选择的芯片，直接扫描有 FDL 文件的目录）
+        /// Update Device List (Scan directories with FDL files based on selected chip)
         /// </summary>
         private void UpdateDeviceList(string chipName)
         {
-            // 确保在 UI 线程执行
+            // Ensure execution on UI thread
             if (InvokeRequired)
             {
                 Invoke(new Action(() => UpdateDeviceList(chipName)));
                 return;
             }
             
-            // 准备设备列表
+            // Prepare Device List
             var items = new List<object>();
-            items.Add("自动检测");
+            items.Add("Auto Detect");
             
-            if (!string.IsNullOrEmpty(chipName) && chipName != "自动检测")
+            if (!string.IsNullOrEmpty(chipName) && chipName != "Auto Detect")
             {
-                // 直接从文件系统扫描有 FDL 的设备目录
+                // Scan device directories with FDL files directly from file system
                 var deviceDirs = ScanFdlDeviceDirectories(chipName);
                 
                 foreach (var deviceName in deviceDirs.OrderBy(d => d))
@@ -213,19 +213,19 @@ namespace LoveAlways
                 
                 if (deviceDirs.Count > 0)
                 {
-                    AppendLog($"[展讯] 可选设备: {deviceDirs.Count} 个", Color.Gray);
+                    AppendLog($"[Spreadtrum] Available Devices: {deviceDirs.Count}", Color.Gray);
                 }
                 else
                 {
-                    AppendLog($"[展讯] {chipName} 暂无可用设备 FDL", Color.Orange);
+                    AppendLog($"[Spreadtrum] {chipName} No Available Device FDL", Color.Orange);
                 }
             }
             
-            // 一次性更新
+            // Update at once
             sprdSelectDevice.Items.Clear();
             sprdSelectDevice.Items.AddRange(items.ToArray());
             
-            // 设置默认选择
+            // Set Default Selection
             if (sprdSelectDevice.Items.Count > 0)
             {
                 sprdSelectDevice.SelectedIndex = 0;
@@ -233,14 +233,14 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 扫描芯片目录下有 FDL 文件的设备目录
+        /// Scan device directories with FDL files under chip directory
         /// </summary>
         private List<string> ScanFdlDeviceDirectories(string chipName)
         {
             var result = new List<string>();
             string baseDir = GetSprdResourcesBasePath();
             
-            // 根据芯片获取搜索路径
+            // Get search path by chip
             var searchPaths = GetChipSearchPaths(chipName);
             
             foreach (var searchPath in searchPaths)
@@ -249,15 +249,15 @@ namespace LoveAlways
                 if (!Directory.Exists(fullPath))
                     continue;
                 
-                // 遍历子目录
+                // Iterate subdirectories
                 foreach (var dir in Directory.GetDirectories(fullPath))
                 {
-                    // 检查该目录是否有 fdl1 或 fdl2 文件
+                    // Check if directory has FDL1 or FDL2 files
                     var fdlFiles = Directory.GetFiles(dir, "fdl*.bin", SearchOption.AllDirectories);
                     if (fdlFiles.Length > 0)
                     {
                         string deviceName = Path.GetFileName(dir);
-                        // 排除纯数字或特殊目录
+                        // Exclude purely numeric or special directories
                         if (!string.IsNullOrEmpty(deviceName) && 
                             !deviceName.All(char.IsDigit) &&
                             deviceName != "max" && deviceName != "1" && deviceName != "2")
@@ -272,7 +272,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 获取芯片的 FDL 搜索路径列表
+        /// Get FDL Search Paths for Chip
         /// </summary>
         private List<string> GetChipSearchPaths(string chipName)
         {
@@ -318,7 +318,7 @@ namespace LoveAlways
                     paths.Add(@"other\udx710");
                     break;
                 default:
-                    // 尝试通用搜索
+                    // Try generic search
                     paths.Add(chipName.ToLower());
                     break;
             }
@@ -327,18 +327,18 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 获取 SPD 资源基础路径
+        /// Get SPD Resource Base Path
         /// </summary>
         private string GetSprdResourcesBasePath()
         {
-            // 尝试多个可能的路径
+            // Try multiple possible paths
             var candidates = new[]
             {
-                // 1. 当前目录下的 SprdResources
+                // 1. SprdResources in current directory
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SprdResources", "sprd_fdls"),
-                // 2. 项目根目录（调试时）
+                // 2. Project root (debugging)
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "SprdResources", "sprd_fdls"),
-                // 3. 上级目录
+                // 3. Parent directory
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "SprdResources", "sprd_fdls")
             };
             
@@ -349,12 +349,12 @@ namespace LoveAlways
                     return fullPath;
             }
             
-            // 默认返回第一个（可能不存在）
+            // Default return first (may not exist)
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SprdResources", "sprd_fdls");
         }
 
         /// <summary>
-        /// 查找设备的 FDL 文件
+        /// Find FDL Files for Device
         /// </summary>
         private (string fdl1, string fdl2) FindDeviceFdlFiles(string chipName, string deviceName)
         {
@@ -370,15 +370,15 @@ namespace LoveAlways
                 if (!Directory.Exists(deviceDir))
                     continue;
                 
-                // 查找 FDL1
+                // Find FDL1
                 var fdl1Files = Directory.GetFiles(deviceDir, "fdl1*.bin", SearchOption.AllDirectories);
                 if (fdl1Files.Length > 0)
                 {
-                    // 优先选择签名版本
+                    // Prefer signed version
                     fdl1 = fdl1Files.FirstOrDefault(f => f.Contains("-sign")) ?? fdl1Files[0];
                 }
                 
-                // 查找 FDL2
+                // Find FDL2
                 var fdl2Files = Directory.GetFiles(deviceDir, "fdl2*.bin", SearchOption.AllDirectories);
                 if (fdl2Files.Length > 0)
                 {
@@ -393,19 +393,19 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 绑定展讯事件
+        /// Bind Spreadtrum Events
         /// </summary>
         private void BindSpreadtrumEvents()
         {
-            // 芯片选择变化
+            // Chip Selection Changed
             sprdSelectChip.SelectedIndexChanged += (s, e) =>
             {
                 string selected = sprdSelectChip.SelectedValue?.ToString() ?? "";
                 
-                // 去掉 ★ 标记
+                // Remove ★ mark
                 string chipName = selected.Replace(" ★", "").Trim();
                 
-                // 跳过分隔符
+                // Skip Separator
                 if (selected.StartsWith("──"))
                     return;
                 
@@ -414,46 +414,46 @@ namespace LoveAlways
                     _selectedChipId = chipId;
                     if (chipId > 0)
                     {
-                        // 从数据库获取芯片详细信息
+                        // Get Chip Details from Database
                         var chipInfo = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetChipById(chipId);
                         if (chipInfo != null)
                         {
                             string exploitInfo = chipInfo.HasExploit ? $" [Exploit: {chipInfo.ExploitId}]" : "";
-                            AppendLog($"[展讯] 选择芯片: {chipInfo.DisplayName}{exploitInfo}", Color.Cyan);
-                                                          AppendLog($"[展讯] 默认地址 - FDL1: {chipInfo.Fdl1AddressHex}, FDL2: {chipInfo.Fdl2AddressHex}", Color.Gray);
-                            AppendLog($"[展讯] 提示: 可在下方自行选择 FDL 文件覆盖默认配置", Color.Gray);
+                            AppendLog($"[Spreadtrum] Select Chip: {chipInfo.DisplayName}{exploitInfo}", Color.Cyan);
+                            AppendLog($"[Spreadtrum] Default Addr - FDL1: {chipInfo.Fdl1AddressHex}, FDL2: {chipInfo.Fdl2AddressHex}", Color.Gray);
+                            AppendLog($"[Spreadtrum] Tip: You can select FDL files below to override default config", Color.Gray);
                             
                             _spreadtrumController?.SetChipId(chipId);
                             
-                            // 设置 FDL 默认地址 (保留已选择的文件路径)
+                            // Set FDL Default Address (Keep selected file path)
                             _customFdl1Addr = chipInfo.Fdl1Address;
                             _customFdl2Addr = chipInfo.Fdl2Address;
                             _spreadtrumController?.SetCustomFdl1(_customFdl1Path, _customFdl1Addr);
                             _spreadtrumController?.SetCustomFdl2(_customFdl2Path, _customFdl2Addr);
                             
-                            // 保持 FDL 文件输入启用，地址使用芯片默认值
+                            // Keep FDL inputs enabled, use chip default address
                             SetFdlInputsEnabled(false, clearPaths: false);
                             
-                            // 自动填充地址显示 (仅当地址框为空时)
+                            // Auto fill address (Only when address box is empty)
                             if (string.IsNullOrEmpty(input5.Text))
                                 input5.Text = chipInfo.Fdl1AddressHex;
                             if (string.IsNullOrEmpty(input10.Text))
                                 input10.Text = chipInfo.Fdl2AddressHex;
                             
-                            // 更新设备列表
+                            // Update Device List
                             UpdateDeviceList(chipInfo.ChipName);
                         }
                         else
                         {
-                            // 回退到旧方式
+                            // Fallback to old method
                             uint fdl1Addr = SprdPlatform.GetFdl1Address(chipId);
                             uint fdl2Addr = SprdPlatform.GetFdl2Address(chipId);
-                            AppendLog($"[展讯] 选择芯片: {chipName}", Color.Cyan);
-                            AppendLog($"[展讯] 默认地址 - FDL1: 0x{fdl1Addr:X}, FDL2: 0x{fdl2Addr:X}", Color.Gray);
-                            AppendLog($"[展讯] 提示: 可在下方自行选择 FDL 文件覆盖默认配置", Color.Gray);
+                            AppendLog($"[Spreadtrum] Select Chip: {chipName}", Color.Cyan);
+                            AppendLog($"[Spreadtrum] Default Addr - FDL1: 0x{fdl1Addr:X}, FDL2: 0x{fdl2Addr:X}", Color.Gray);
+                            AppendLog($"[Spreadtrum] Tip: You can select FDL files below to override default config", Color.Gray);
                             _spreadtrumController?.SetChipId(chipId);
                             
-                            // 设置 FDL 默认地址 (保留已选择的文件路径)
+                            // Set FDL Default Address (Keep selected file path)
                             _customFdl1Addr = fdl1Addr;
                             _customFdl2Addr = fdl2Addr;
                             _spreadtrumController?.SetCustomFdl1(_customFdl1Path, _customFdl1Addr);
@@ -465,125 +465,125 @@ namespace LoveAlways
                             if (string.IsNullOrEmpty(input10.Text))
                                 input10.Text = $"0x{fdl2Addr:X}";
                             
-                            // 更新设备列表
+                            // Update Device List
                             UpdateDeviceList(chipName);
                         }
                     }
                     else
                     {
-                        // 自动检测模式，完全启用自定义 FDL 输入
-                        AppendLog("[展讯] 芯片设置为自动检测，请自行配置 FDL", Color.Gray);
+                        // Auto Detect Mode, fully enable custom FDL input
+                        AppendLog("[Spreadtrum] Chip set to Auto Detect, please config FDL manually", Color.Gray);
                         _spreadtrumController?.SetChipId(0);
                         
-                        // 启用所有 FDL 输入
+                        // Enable all FDL inputs
                         SetFdlInputsEnabled(true, clearPaths: true);
                         
-                        // 清空地址
+                        // Clear Address
                         input5.Text = "";
                         input10.Text = "";
                         
-                        // 清空设备列表
+                        // Clear Device List
                         UpdateDeviceList(null);
                     }
                 }
             };
             
-            // 设备选择变化
-            // 双击设备选择器 = 扫描所有 COM 端口 (调试)
+            // Device Selection Changed
+            // Double Click Device Selector = Scan All COM Ports (Debug)
             sprdSelectDevice.DoubleClick += (s, e) => SprdScanAllComPorts();
             
             sprdSelectDevice.SelectedIndexChanged += (s, e) =>
             {
                 string selected = sprdSelectDevice.SelectedValue?.ToString() ?? "";
                 
-                if (selected == "自动检测" || string.IsNullOrEmpty(selected))
+                if (selected == "Auto Detect" || string.IsNullOrEmpty(selected))
                 {
                     _customFdl1Path = null;
                     _customFdl2Path = null;
                     input2.Text = "";
                     input4.Text = "";
-                    AppendLog("[展讯] 设备设置为自动检测", Color.Gray);
+                    AppendLog("[Spreadtrum] Device set to Auto Detect", Color.Gray);
                     return;
                 }
                 
-                // 设备名就是目录名
+                // Device name is directory name
                 string deviceName = selected;
                 
-                // 获取当前选中的芯片名称
+                // Get currently selected chip name
                 string chipSelected = sprdSelectChip.SelectedValue?.ToString() ?? "";
                 string chipName = chipSelected.Replace(" ★", "").Trim();
                 
-                // 直接从文件系统查找 FDL 文件
+                // Find FDL files directly from file system
                 var fdlPaths = FindDeviceFdlFiles(chipName, deviceName);
                 
                 if (fdlPaths.fdl1 != null || fdlPaths.fdl2 != null)
                 {
-                    AppendLog($"[展讯] 选择设备: {deviceName}", Color.Cyan);
+                    AppendLog($"[Spreadtrum] Select Device: {deviceName}", Color.Cyan);
                     
                     if (fdlPaths.fdl1 != null)
                     {
                         _customFdl1Path = fdlPaths.fdl1;
                         input2.Text = Path.GetFileName(fdlPaths.fdl1);
-                        AppendLog($"[展讯] FDL1: {Path.GetFileName(fdlPaths.fdl1)}", Color.Gray);
+                        AppendLog($"[Spreadtrum] FDL1: {Path.GetFileName(fdlPaths.fdl1)}", Color.Gray);
                     }
                     
                     if (fdlPaths.fdl2 != null)
                     {
                         _customFdl2Path = fdlPaths.fdl2;
                         input4.Text = Path.GetFileName(fdlPaths.fdl2);
-                        AppendLog($"[展讯] FDL2: {Path.GetFileName(fdlPaths.fdl2)}", Color.Gray);
+                        AppendLog($"[Spreadtrum] FDL2: {Path.GetFileName(fdlPaths.fdl2)}", Color.Gray);
                     }
                     
-                    // 更新控制器
+                    // Update Controller
                     _spreadtrumController?.SetCustomFdl1(_customFdl1Path, _customFdl1Addr);
                     _spreadtrumController?.SetCustomFdl2(_customFdl2Path, _customFdl2Addr);
                 }
                 else
                 {
-                    AppendLog($"[展讯] 未找到设备 FDL: {deviceName}", Color.Orange);
+                    AppendLog($"[Spreadtrum] Device FDL Not Found: {deviceName}", Color.Orange);
                 }
             };
 
-            // PAC 文件输入框双击浏览
+            // Double Click PAC Input to Browse
             sprdInputPac.DoubleClick += (s, e) => SprdBrowsePac();
 
-            // ========== FDL 自定义配置 ==========
+            // ========== FDL Custom Config ==========
             
-            // FDL1 文件浏览 (双击 input2)
+            // FDL1 File Browse (Double Click input2)
             input2.DoubleClick += (s, e) =>
             {
                 using (var ofd = new OpenFileDialog())
                 {
-                    ofd.Title = "选择 FDL1 文件";
-                    ofd.Filter = "FDL 文件 (*.bin)|*.bin|所有文件 (*.*)|*.*";
+                    ofd.Title = "Select FDL1 File";
+                    ofd.Filter = "FDL File (*.bin)|*.bin|All Files (*.*)|*.*";
                     if (ofd.ShowDialog() == DialogResult.OK)
                     {
                         input2.Text = ofd.FileName;
                         _customFdl1Path = ofd.FileName;
-                        AppendLog($"[展讯] FDL1 文件: {Path.GetFileName(ofd.FileName)}", Color.Cyan);
+                        AppendLog($"[Spreadtrum] FDL1 File: {Path.GetFileName(ofd.FileName)}", Color.Cyan);
                         _spreadtrumController?.SetCustomFdl1(_customFdl1Path, _customFdl1Addr);
                     }
                 }
             };
 
-            // FDL2 文件浏览 (双击 input4)
+            // FDL2 File Browse (Double Click input4)
             input4.DoubleClick += (s, e) =>
             {
                 using (var ofd = new OpenFileDialog())
                 {
-                    ofd.Title = "选择 FDL2 文件";
-                    ofd.Filter = "FDL 文件 (*.bin)|*.bin|所有文件 (*.*)|*.*";
+                    ofd.Title = "Select FDL2 File";
+                    ofd.Filter = "FDL File (*.bin)|*.bin|All Files (*.*)|*.*";
                     if (ofd.ShowDialog() == DialogResult.OK)
                     {
                         input4.Text = ofd.FileName;
                         _customFdl2Path = ofd.FileName;
-                        AppendLog($"[展讯] FDL2 文件: {Path.GetFileName(ofd.FileName)}", Color.Cyan);
+                        AppendLog($"[Spreadtrum] FDL2 File: {Path.GetFileName(ofd.FileName)}", Color.Cyan);
                         _spreadtrumController?.SetCustomFdl2(_customFdl2Path, _customFdl2Addr);
                     }
                 }
             };
 
-            // FDL1 地址输入 (input5)
+            // FDL1 Address Input (input5)
             input5.TextChanged += (s, e) =>
             {
                 string text = input5.Text.Trim();
@@ -594,7 +594,7 @@ namespace LoveAlways
                 }
             };
 
-            // FDL2 地址输入 (input10)
+            // FDL2 Address Input (input10)
             input10.TextChanged += (s, e) =>
             {
                 string text = input10.Text.Trim();
@@ -605,25 +605,25 @@ namespace LoveAlways
                 }
             };
 
-            // 写入分区 (支持单个/多个/整个PAC)
+            // Write Partition (Support Single/Multi/Whole PAC)
             sprdBtnWritePartition.Click += async (s, e) => await SprdWritePartitionAsync();
 
-            // 读取分区 (支持单个/多个)
+            // Read Partition (Support Single/Multi)
             sprdBtnReadPartition.Click += async (s, e) => await SprdReadPartitionAsync();
 
-            // 擦除分区
+            // Erase Partition
             sprdBtnErasePartition.Click += async (s, e) => await SprdErasePartitionAsync();
 
-            // 提取 PAC
+            // Extract PAC
             sprdBtnExtract.Click += async (s, e) => await SprdExtractPacAsync();
 
-            // 重启设备
+            // Reboot Device
             sprdBtnReboot.Click += async (s, e) => await _spreadtrumController.RebootDeviceAsync();
 
-            // 读取分区表
+            // Read GPT
             sprdBtnReadGpt.Click += async (s, e) => await SprdReadPartitionTableAsync();
 
-            // 全选
+            // Select All
             sprdChkSelectAll.CheckedChanged += (s, e) =>
             {
                 foreach (ListViewItem item in sprdListPartitions.Items)
@@ -632,7 +632,7 @@ namespace LoveAlways
                 }
             };
 
-            // ========== 第二行操作按钮 ==========
+            // ========== Second Row Operation Buttons ==========
             sprdBtnReadImei.Click += async (s, e) => await SprdReadImeiAsync();
             sprdBtnWriteImei.Click += async (s, e) => await SprdWriteImeiAsync();
             sprdBtnBackupCalib.Click += async (s, e) => await SprdBackupCalibrationAsync();
@@ -641,24 +641,24 @@ namespace LoveAlways
             sprdBtnUnlockBL.Click += async (s, e) => await SprdUnlockBootloaderAsync();
             sprdBtnNvManager.Click += async (s, e) => await SprdOpenNvManagerAsync();
 
-            // 设备连接事件 - 检测到设备时只显示信息，不自动连接
+            // Device Connected Event - Show info only, no auto connect
             _spreadtrumController.OnDeviceConnected += dev =>
             {
                 SafeInvoke(() =>
                 {
-                    AppendLog($"[展讯] 检测到设备: {dev.ComPort} ({dev.Mode})", Color.Green);
+                    AppendLog($"[Spreadtrum] Device Detected: {dev.ComPort} ({dev.Mode})", Color.Green);
                     
-                    // 保存检测到的端口
+                    // Save Detected Port
                     _detectedSprdPort = dev.ComPort;
                     _detectedSprdMode = dev.Mode;
                     
-                    // 更新右侧信息面板
+                    // Update Right Info Panel
                     UpdateSprdInfoPanel();
                     
                     if (dev.Mode == LoveAlways.Spreadtrum.Common.SprdDeviceMode.Download)
                     {
-                        AppendLog($"[展讯] 设备已进入下载模式", Color.Cyan);
-                        AppendLog("[展讯] 请选择芯片型号或加载 PAC，然后点击[读取分区表]", Color.Yellow);
+                        AppendLog($"[Spreadtrum] Device entered Download Mode", Color.Cyan);
+                        AppendLog("[Spreadtrum] Please select chip model or load PAC, then click [Read GPT]", Color.Yellow);
                     }
                 });
             };
@@ -667,26 +667,26 @@ namespace LoveAlways
             {
                 SafeInvoke(() =>
                 {
-                    AppendLog($"[展讯] 设备断开: {dev.ComPort}", Color.Orange);
+                    AppendLog($"[Spreadtrum] Device Disconnected: {dev.ComPort}", Color.Orange);
                     
-                    // 清空检测到的端口
+                    // Clear Detected Port
                     _detectedSprdPort = null;
                     _detectedSprdMode = LoveAlways.Spreadtrum.Common.SprdDeviceMode.Unknown;
                     
-                    // 更新右侧信息面板
+                    // Update Right Info Panel
                     UpdateSprdInfoPanel();
                 });
             };
 
-            // PAC 加载事件
+            // PAC Loaded Event
             _spreadtrumController.OnPacLoaded += pac =>
             {
                 SafeInvoke(() =>
                 {
-                    // 更新分区列表标题
-                    sprdGroupPartitions.Text = $"分区列表 - {pac.Header.ProductName} ({pac.Files.Count} 个文件)";
+                    // Update Partition List Title
+                    sprdGroupPartitions.Text = $"Partition List - {pac.Header.ProductName} ({pac.Files.Count} Files)";
 
-                    // 更新分区列表
+                    // Update Partition List
                     sprdListPartitions.Items.Clear();
                     foreach (var file in pac.Files)
                     {
@@ -699,15 +699,15 @@ namespace LoveAlways
                         item.SubItems.Add(file.Type.ToString());
                         item.SubItems.Add(file.Address > 0 ? $"0x{file.Address:X}" : "--");
                         item.SubItems.Add($"0x{file.DataOffset:X}");
-                        item.SubItems.Add(file.IsSparse ? "是" : "否");
+                        item.SubItems.Add(file.IsSparse ? "Yes" : "No");
                         item.Tag = file;
 
-                        // 默认选中非 FDL/XML/Userdata 文件
+                        // Default select non-FDL/XML/Userdata files
                         bool shouldCheck = file.Type != PacFileType.FDL1 && 
                                           file.Type != PacFileType.FDL2 &&
                                           file.Type != PacFileType.XML;
                         
-                        // 如果勾选了跳过 Userdata
+                        // If Skip Userdata is checked
                         if (sprdChkSkipUserdata.Checked && file.Type == PacFileType.UserData)
                             shouldCheck = false;
 
@@ -717,7 +717,7 @@ namespace LoveAlways
                 });
             };
 
-            // 状态变化事件 - 使用右侧面板显示
+            // State Changed Event - Use Right Panel Display
             _spreadtrumController.OnStateChanged += state =>
             {
                 SafeInvoke(() =>
@@ -726,62 +726,62 @@ namespace LoveAlways
                     switch (state)
                     {
                         case SprdDeviceState.Connected:
-                            statusText = "[展讯] 设备已连接 (ROM)";
-                            uiLabel8.Text = "当前操作：展讯 ROM 模式";
+                            statusText = "[Spreadtrum] Device Connected (ROM)";
+                            uiLabel8.Text = "Current Op: Spreadtrum ROM Mode";
                             break;
                         case SprdDeviceState.Fdl1Loaded:
-                            statusText = "[展讯] FDL1 已加载";
-                            uiLabel8.Text = "当前操作：FDL1 已加载";
+                            statusText = "[Spreadtrum] FDL1 Loaded";
+                            uiLabel8.Text = "Current Op: FDL1 Loaded";
                             break;
                         case SprdDeviceState.Fdl2Loaded:
-                            statusText = "[展讯] FDL2 已加载 (可刷机)";
-                            uiLabel8.Text = "当前操作：展讯 FDL2 就绪";
+                            statusText = "[Spreadtrum] FDL2 Loaded (Ready to Flash)";
+                            uiLabel8.Text = "Current Op: Spreadtrum FDL2 Ready";
                             break;
                         case SprdDeviceState.Disconnected:
-                            statusText = "[展讯] 设备未连接";
-                            uiLabel8.Text = "当前操作：等待设备";
+                            statusText = "[Spreadtrum] Device Disconnected";
+                            uiLabel8.Text = "Current Op: Waiting for Device";
                             SprdClearDeviceInfo();
                             break;
                         case SprdDeviceState.Error:
-                            statusText = "[展讯] 设备错误";
-                            uiLabel8.Text = "当前操作：设备错误";
+                            statusText = "[Spreadtrum] Device Error";
+                            uiLabel8.Text = "Current Op: Device Error";
                             break;
                     }
                     if (!string.IsNullOrEmpty(statusText))
                         AppendLog(statusText, state == SprdDeviceState.Error ? Color.Red : Color.Cyan);
                 });
 
-                // FDL2 加载后，不再自动读取分区表（由用户操作触发）
-                // 这样可以避免多次重复调用导致卡死
+                // After FDL2 loaded, do not auto read partition table (Triggered by user)
+                // This avoids freezing due to multiple calls
             };
 
-            // 分区表加载事件
+            // Partition Table Loaded Event
             _spreadtrumController.OnPartitionTableLoaded += partitions =>
             {
                 SafeInvoke(() =>
                 {
-                    // 更新分区列表标题
-                    sprdGroupPartitions.Text = $"分区表 (设备) - {partitions.Count} 个分区";
+                    // Update Partition List Title
+                    sprdGroupPartitions.Text = $"Partition Table (Device) - {partitions.Count} Partitions";
 
-                    // 清空并填充分区列表
+                    // Clear and Fill Partition List
                     sprdListPartitions.Items.Clear();
                     foreach (var part in partitions)
                     {
                         var item = new ListViewItem(part.Name);
-                        item.SubItems.Add("--");  // 文件名 (设备分区没有文件名)
+                        item.SubItems.Add("--");  // File Name (Device partition has no file name)
                         item.SubItems.Add(FormatSize(part.Size));
                         item.SubItems.Add("Partition");
-                        item.SubItems.Add($"0x{part.Offset:X}");  // 偏移作为地址
+                        item.SubItems.Add($"0x{part.Offset:X}");  // Offset as Address
                         item.SubItems.Add($"0x{part.Offset:X}");
                         item.SubItems.Add("--");  // Sparse
                         item.Tag = part;
-                        item.Checked = false;  // 默认不选中
+                        item.Checked = false;  // Default unchecked
                         sprdListPartitions.Items.Add(item);
                     }
                 });
             };
 
-            // 进度事件
+            // Progress Event
             _spreadtrumController.OnProgress += (current, total) =>
             {
                 SafeInvoke(() =>
@@ -791,7 +791,7 @@ namespace LoveAlways
                 });
             };
 
-            // 分区搜索
+            // Partition Search
             sprdSelectSearch.TextChanged += (s, e) =>
             {
                 string search = sprdSelectSearch.Text.ToLower();
@@ -803,13 +803,13 @@ namespace LoveAlways
                 }
             };
 
-            // ========== 双击分区选择外部镜像刷写 ==========
+            // ========== Double Click Partition to Select External Image to Flash ==========
             sprdListPartitions.DoubleClick += async (s, e) =>
             {
                 if (sprdListPartitions.SelectedItems.Count == 0)
                     return;
 
-                // 获取选中的分区
+                // Get Selected Partitions
                 var selectedPartitions = new List<string>();
                 foreach (ListViewItem item in sprdListPartitions.SelectedItems)
                 {
@@ -818,43 +818,43 @@ namespace LoveAlways
 
                 if (selectedPartitions.Count == 1)
                 {
-                    // 单个分区 - 选择单个镜像
+                    // Single Partition - Select Single Image
                     await SprdFlashSinglePartitionAsync(selectedPartitions[0]);
                 }
                 else
                 {
-                    // 多个分区 - 选择文件夹
+                    // Multiple Partitions - Select Folder
                     await SprdFlashMultiplePartitionsAsync(selectedPartitions);
                 }
             };
         }
 
         /// <summary>
-        /// 刷写单个分区 (选择外部镜像)
+        /// Flash Single Partition (Select External Image)
         /// </summary>
         private async Task SprdFlashSinglePartitionAsync(string partitionName)
         {
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = $"选择 {partitionName} 分区镜像";
-                ofd.Filter = "镜像文件 (*.img;*.bin)|*.img;*.bin|所有文件 (*.*)|*.*";
+                ofd.Title = $"Select {partitionName} Partition Image";
+                ofd.Filter = "Image File (*.img;*.bin)|*.img;*.bin|All Files (*.*)|*.*";
 
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     var result = MessageBox.Show(
-                        $"确定要将 {Path.GetFileName(ofd.FileName)} 刷写到 {partitionName} 分区吗？\n\n此操作不可撤销！",
-                        "确认刷写",
+                        $"Are you sure you want to flash {Path.GetFileName(ofd.FileName)} to {partitionName} partition?\n\nThis operation cannot be undone!",
+                        "Confirm Flash",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Warning);
 
                     if (result == DialogResult.Yes)
                     {
-                        AppendLog($"[展讯] 刷写分区: {partitionName} <- {Path.GetFileName(ofd.FileName)}", Color.Cyan);
+                        AppendLog($"[Spreadtrum] Flash Partition: {partitionName} <- {Path.GetFileName(ofd.FileName)}", Color.Cyan);
                         bool success = await _spreadtrumController.FlashImageFileAsync(partitionName, ofd.FileName);
                         
                         if (success)
                         {
-                            MessageBox.Show($"分区 {partitionName} 刷写成功！", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show($"Partition {partitionName} flashed successfully!", "Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                     }
                 }
@@ -862,22 +862,22 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 刷写多个分区 (从文件夹匹配)
+        /// Flash Multiple Partitions (Match from Folder)
         /// </summary>
         private async Task SprdFlashMultiplePartitionsAsync(List<string> partitionNames)
         {
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = $"选择包含镜像文件的文件夹\n将自动匹配: {string.Join(", ", partitionNames)}";
+                fbd.Description = $"Select folder containing image files\nWill auto match: {string.Join(", ", partitionNames)}";
 
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
-                    // 查找匹配的文件
+                    // Find Matched Files
                     var matchedFiles = new Dictionary<string, string>();
 
                     foreach (var partName in partitionNames)
                     {
-                        // 尝试多种文件名格式
+                        // Try multiple file name formats
                         string[] patterns = new[]
                         {
                             $"{partName}.img",
@@ -899,19 +899,19 @@ namespace LoveAlways
 
                     if (matchedFiles.Count == 0)
                     {
-                        MessageBox.Show("未找到匹配的镜像文件！\n\n文件名应为: 分区名.img 或 分区名.bin", "未找到文件", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("No matched image files found!\n\nFilenames should be: partition_name.img or partition_name.bin", "Files Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
 
-                    // 显示匹配结果
-                    var msg = $"找到 {matchedFiles.Count}/{partitionNames.Count} 个匹配文件:\n\n";
+                    // Show Match Results
+                    var msg = $"Found {matchedFiles.Count}/{partitionNames.Count} matched files:\n\n";
                     foreach (var kvp in matchedFiles)
                     {
                         msg += $"  {kvp.Key} <- {Path.GetFileName(kvp.Value)}\n";
                     }
-                    msg += "\n确定要刷写吗？此操作不可撤销！";
+                    msg += "\nAre you sure you want to flash? This operation cannot be undone!";
 
-                    var result = MessageBox.Show(msg, "确认刷写", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    var result = MessageBox.Show(msg, "Confirm Flash", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
 
                     if (result == DialogResult.Yes)
                     {
@@ -922,14 +922,14 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 浏览 PAC 文件
+        /// Browse PAC File
         /// </summary>
         private void SprdBrowsePac()
         {
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = "选择展讯 PAC 固件包";
-                ofd.Filter = "PAC 固件包 (*.pac)|*.pac|所有文件 (*.*)|*.*";
+                ofd.Title = "Select Spreadtrum PAC Firmware Package";
+                ofd.Filter = "PAC Firmware Package (*.pac)|*.pac|All Files (*.*)|*.*";
 
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
@@ -940,28 +940,28 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 写入分区 - 简化版，直接从分区表选择
+        /// Write Partition - Simplified, direct select from partition table
         /// </summary>
         private async System.Threading.Tasks.Task SprdWritePartitionAsync()
         {
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 请先连接设备", Color.Orange);
+                AppendLog("[Spreadtrum] Please connect device first", Color.Orange);
                 return;
             }
 
-            // 获取选中的分区名
+            // Get Selected Partition Name
             var partitions = GetSprdSelectedPartitions();
             
-            // 没有选中分区时，提供选择
+            // When no partition selected, provide selection
             if (partitions.Count == 0)
             {
-                // 如果有 PAC，询问是否刷写整个 PAC
+                // If PAC exists, ask whether to flash entire PAC
                 if (_spreadtrumController.CurrentPac != null)
                 {
                     var confirm = MessageBox.Show(
-                        "未选择分区。是否刷写整个 PAC 固件包？",
-                        "写入分区",
+                        "No partition selected. Flash entire PAC package?",
+                        "Write Partition",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Question);
                     
@@ -972,32 +972,32 @@ namespace LoveAlways
                     return;
                 }
                 
-                AppendLog("[展讯] 请在分区表中选择要写入的分区", Color.Orange);
+                AppendLog("[Spreadtrum] Please select partition to write in partition table", Color.Orange);
                 return;
             }
 
-            // 单个分区 - 选择单个文件
+            // Single Partition - Select Single File
             if (partitions.Count == 1)
             {
                 string partName = partitions[0].name;
                 using (var ofd = new OpenFileDialog())
                 {
-                    ofd.Title = $"选择要写入 {partName} 分区的文件";
-                    ofd.Filter = "镜像文件 (*.img;*.bin)|*.img;*.bin|所有文件 (*.*)|*.*";
+                    ofd.Title = $"Select file to write to {partName} partition";
+                    ofd.Filter = "Image File (*.img;*.bin)|*.img;*.bin|All Files (*.*)|*.*";
 
                     if (ofd.ShowDialog() == DialogResult.OK)
                     {
-                        AppendLog($"[展讯] 写入 {partName}...", Color.Cyan);
+                        AppendLog($"[Spreadtrum] Writing {partName}...", Color.Cyan);
                         await _spreadtrumController.FlashPartitionAsync(partName, ofd.FileName);
                     }
                 }
                 return;
             }
 
-            // 多个分区 - 选择目录，自动匹配文件名
+            // Multiple Partitions - Select Directory, Auto Match File Name
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = $"选择包含 {partitions.Count} 个分区镜像的目录\n(文件名需与分区名匹配，如 boot.img)";
+                fbd.Description = $"Select directory containing {partitions.Count} partition images\n(File name must match partition name, e.g. boot.img)";
                 
                 if (fbd.ShowDialog() != DialogResult.OK) return;
 
@@ -1006,7 +1006,7 @@ namespace LoveAlways
 
                 foreach (var (partName, _) in partitions)
                 {
-                    // 自动查找匹配的文件
+                    // Auto Find Matched Files
                     string imgPath = System.IO.Path.Combine(inputDir, $"{partName}.img");
                     string binPath = System.IO.Path.Combine(inputDir, $"{partName}.bin");
                     string filePath = System.IO.File.Exists(imgPath) ? imgPath : 
@@ -1014,19 +1014,19 @@ namespace LoveAlways
 
                     if (filePath == null)
                     {
-                        AppendLog($"[展讯] 跳过 {partName} (未找到文件)", Color.Gray);
+                        AppendLog($"[Spreadtrum] Skip {partName} (File Not Found)", Color.Gray);
                         skip++;
                         continue;
                     }
 
-                    AppendLog($"[展讯] 写入 {partName}...", Color.Cyan);
+                    AppendLog($"[Spreadtrum] Writing {partName}...", Color.Cyan);
                     if (await _spreadtrumController.FlashPartitionAsync(partName, filePath))
                         success++;
                     else
                         fail++;
                 }
 
-                AppendLog($"[展讯] 写入完成: {success} 成功, {fail} 失败, {skip} 跳过", 
+                AppendLog($"[Spreadtrum] Write Complete: {success} Success, {fail} Failed, {skip} Skipped", 
                     fail > 0 ? Color.Orange : Color.Green);
             }
         }
@@ -1034,27 +1034,27 @@ namespace LoveAlways
         private enum WriteMode { Cancel, SingleImage, MultipleImages, EntirePac }
 
         /// <summary>
-        /// 显示写入模式选择对话框 (已弃用，保留兼容)
+        /// Show Write Mode Dialog (Deprecated, Keep Compatible)
         /// </summary>
         private WriteMode ShowWriteModeDialog(int selectedCount)
         {
-            // 简化后不再使用此对话框
+            // Simplified, no longer use this dialog
             return WriteMode.Cancel;
         }
 
         /// <summary>
-        /// 写入单个镜像文件到选中的分区
+        /// Write Single Image File to Selected Partition
         /// </summary>
         private async System.Threading.Tasks.Task SprdWriteSingleImageAsync(List<string> selectedPartitions)
         {
-            // 如果没有选中分区，让用户选择
+            // If no partition selected, let user select
             string targetPartition;
             if (selectedPartitions.Count == 0)
             {
-                // 让用户输入分区名
+                // Let user input partition name
                 targetPartition = Microsoft.VisualBasic.Interaction.InputBox(
-                    "请输入目标分区名称:",
-                    "选择分区",
+                    "Please input target partition name:",
+                    "Select Partition",
                     "boot",
                     -1, -1);
                 if (string.IsNullOrEmpty(targetPartition))
@@ -1066,11 +1066,11 @@ namespace LoveAlways
             }
             else
             {
-                // 多个选中，依次写入
+                // Multiple selected, write sequentially
                 using (var ofd = new OpenFileDialog())
                 {
-                    ofd.Title = "选择镜像文件";
-                    ofd.Filter = "镜像文件 (*.img;*.bin)|*.img;*.bin|所有文件 (*.*)|*.*";
+                    ofd.Title = "Select Image File";
+                    ofd.Filter = "Image File (*.img;*.bin)|*.img;*.bin|All Files (*.*)|*.*";
                     ofd.Multiselect = true;
 
                     if (ofd.ShowDialog() != DialogResult.OK)
@@ -1079,80 +1079,80 @@ namespace LoveAlways
                     if (ofd.FileNames.Length != selectedPartitions.Count)
                     {
                         MessageBox.Show(
-                            $"选择的文件数量 ({ofd.FileNames.Length}) 与分区数量 ({selectedPartitions.Count}) 不匹配！\n\n" +
-                            "请确保文件数量与选中的分区数量一致。",
-                            "错误",
+                            $"Selected file count ({ofd.FileNames.Length}) does not match partition count ({selectedPartitions.Count})!\n\n" +
+                            "Please ensure number of files matches number of selected partitions.",
+                            "Error",
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
                         return;
                     }
 
                     var confirm = MessageBox.Show(
-                        $"确定要将 {ofd.FileNames.Length} 个文件写入对应分区吗？\n\n此操作不可撤销！",
-                        "确认写入",
+                        $"Are you sure you want to write {ofd.FileNames.Length} files to corresponding partitions?\n\nThis operation cannot be undone!",
+                        "Confirm Write",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Warning);
 
                     if (confirm != DialogResult.Yes)
                         return;
 
-                    // 按顺序写入
+                    // Write in order
                     for (int i = 0; i < selectedPartitions.Count; i++)
                     {
-                        AppendLog($"[展讯] 写入 {selectedPartitions[i]}...", Color.Cyan);
+                        AppendLog($"[Spreadtrum] Writing {selectedPartitions[i]}...", Color.Cyan);
                         bool success = await _spreadtrumController.FlashImageFileAsync(
                             selectedPartitions[i], ofd.FileNames[i]);
                         if (!success)
                         {
-                            AppendLog($"[展讯] 写入 {selectedPartitions[i]} 失败", Color.Red);
+                            AppendLog($"[Spreadtrum] Write {selectedPartitions[i]} Failed", Color.Red);
                             return;
                         }
                     }
-                    AppendLog("[展讯] 所有分区写入完成", Color.Green);
+                    AppendLog("[Spreadtrum] All Partitions Write Complete", Color.Green);
                     return;
                 }
             }
 
-            // 单个分区写入
+            // Single Partition Write
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = $"选择要写入到 {targetPartition} 的镜像文件";
-                ofd.Filter = "镜像文件 (*.img;*.bin)|*.img;*.bin|所有文件 (*.*)|*.*";
+                ofd.Title = $"Select image file to write to {targetPartition}";
+                ofd.Filter = "Image File (*.img;*.bin)|*.img;*.bin|All Files (*.*)|*.*";
 
                 if (ofd.ShowDialog() != DialogResult.OK)
                     return;
 
                 var confirm = MessageBox.Show(
-                    $"确定要将 \"{System.IO.Path.GetFileName(ofd.FileName)}\" 写入到分区 \"{targetPartition}\" 吗？\n\n此操作不可撤销！",
-                    "确认写入",
+                    $"Are you sure you want to write \"{System.IO.Path.GetFileName(ofd.FileName)}\" to partition \"{targetPartition}\"?\n\nThis operation cannot be undone!",
+                    "Confirm Write",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Warning);
 
                 if (confirm != DialogResult.Yes)
                     return;
 
-                AppendLog($"[展讯] 写入 {targetPartition}...", Color.Cyan);
+                AppendLog($"[Spreadtrum] Writing {targetPartition}...", Color.Cyan);
                 bool success = await _spreadtrumController.FlashImageFileAsync(targetPartition, ofd.FileName);
                 if (success)
-                    AppendLog($"[展讯] {targetPartition} 写入完成", Color.Green);
+                    AppendLog($"[Spreadtrum] {targetPartition} Write Complete", Color.Green);
             }
         }
 
         /// <summary>
-        /// 批量写入多个镜像文件 (自动匹配分区名)
+        /// Batch Write Multiple Image Files (Auto Match Partition Name)
         /// </summary>
         private async System.Threading.Tasks.Task SprdWriteMultipleImagesAsync()
         {
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = "选择镜像文件 (文件名应为分区名)";
-                ofd.Filter = "镜像文件 (*.img;*.bin)|*.img;*.bin|所有文件 (*.*)|*.*";
+                ofd.Title = "Select Image File (Filename should be partition name)";
+                ofd.Filter = "Image File (*.img;*.bin)|*.img;*.bin|All Files (*.*)|*.*";
                 ofd.Multiselect = true;
 
                 if (ofd.ShowDialog() != DialogResult.OK)
                     return;
 
-                // 构建分区-文件映射
+                // Build partition-file map
                 var partitionFiles = new Dictionary<string, string>();
                 foreach (var file in ofd.FileNames)
                 {
@@ -1162,33 +1162,33 @@ namespace LoveAlways
 
                 string fileList = string.Join("\n", partitionFiles.Keys);
                 var confirm = MessageBox.Show(
-                    $"将要写入以下 {partitionFiles.Count} 个分区:\n\n{fileList}\n\n确定继续吗？",
-                    "确认批量写入",
+                    $"Will write to the following {partitionFiles.Count} partitions:\n\n{fileList}\n\nAre you sure to continue?",
+                    "Confirm Batch Write",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Warning);
 
                 if (confirm != DialogResult.Yes)
                     return;
 
-                AppendLog($"[展讯] 开始批量写入 {partitionFiles.Count} 个分区...", Color.Cyan);
+                AppendLog($"[Spreadtrum] Start Batch Write {partitionFiles.Count} Partitions...", Color.Cyan);
                 bool success = await _spreadtrumController.FlashMultipleImagesAsync(partitionFiles);
                 if (success)
-                    AppendLog("[展讯] 批量写入完成", Color.Green);
+                    AppendLog("[Spreadtrum] Batch Write Complete", Color.Green);
             }
         }
 
         /// <summary>
-        /// 刷写整个 PAC 固件包
+        /// Flash Entire PAC Firmware Package
         /// </summary>
         private async System.Threading.Tasks.Task SprdWriteEntirePacAsync()
         {
             if (_spreadtrumController.CurrentPac == null)
             {
-                AppendLog("[展讯] 请先选择 PAC 固件包", Color.Orange);
+                AppendLog("[Spreadtrum] Please select PAC Firmware Package first", Color.Orange);
                 return;
             }
 
-            // 获取选中的分区 (勾选的)
+            // Get Selected Partitions (Checked)
             var selectedPartitions = new List<string>();
             foreach (ListViewItem item in sprdListPartitions.CheckedItems)
             {
@@ -1197,17 +1197,17 @@ namespace LoveAlways
 
             if (selectedPartitions.Count == 0)
             {
-                // 没有勾选，刷写所有分区
+                // No checked, flash all partitions
                 var result = MessageBox.Show(
-                    "没有选中任何分区，将刷写 PAC 中的所有分区。\n\n确定继续吗？",
-                    "确认刷机",
+                    "No partition selected, will flash all partitions in PAC.\n\nAre you sure to continue?",
+                    "Confirm Flash",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Warning);
 
                 if (result != DialogResult.Yes)
                     return;
 
-                // 添加所有分区
+                // Add all partitions
                 foreach (ListViewItem item in sprdListPartitions.Items)
                 {
                     selectedPartitions.Add(item.Text);
@@ -1216,8 +1216,8 @@ namespace LoveAlways
             else
             {
                 var result = MessageBox.Show(
-                    $"确定要刷写 {selectedPartitions.Count} 个分区吗？\n\n此操作不可撤销！",
-                    "确认刷机",
+                    $"Are you sure you want to flash {selectedPartitions.Count} partitions?\n\nThis operation cannot be undone!",
+                    "Confirm Flash",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Warning);
 
@@ -1225,21 +1225,21 @@ namespace LoveAlways
                     return;
             }
 
-            // 如果未连接，先等待连接
+            // If not connected, wait for connection
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 等待设备连接，请将设备连接到电脑 (按住音量下键)...", Color.Yellow);
+                AppendLog("[Spreadtrum] Waiting for device connection, please connect device to PC (Hold Volume Down)...", Color.Yellow);
                 bool connected = await _spreadtrumController.WaitAndConnectAsync(60);
                 if (!connected)
                 {
-                    AppendLog("[展讯] 设备连接超时", Color.Red);
+                    AppendLog("[Spreadtrum] Device Connection Timeout", Color.Red);
                     return;
                 }
             }
 
             bool success = await _spreadtrumController.StartFlashAsync(selectedPartitions);
 
-            // 刷机后重启
+            // Reboot after flash
             if (success && sprdChkRebootAfter.Checked)
             {
                 await _spreadtrumController.RebootDeviceAsync();
@@ -1247,67 +1247,67 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 读取分区表 - 自动完成连接、FDL下载、读取全流程
+        /// Read GPT - Auto Connect, Download FDL, Read Process
         /// </summary>
         private async System.Threading.Tasks.Task SprdReadPartitionTableAsync()
         {
-            // 1. 检查连接状态，未连接则尝试连接检测到的设备
+            // 1. Check connection status, try connecting to detected device if not connected
             if (!_spreadtrumController.IsConnected)
             {
                 if (string.IsNullOrEmpty(_detectedSprdPort))
                 {
-                    AppendLog("[展讯] 未检测到设备，请将设备连接到电脑并进入下载模式", Color.Orange);
-                    AppendLog("[展讯] (关机状态下按住音量下键，然后连接 USB)", Color.Gray);
+                    AppendLog("[Spreadtrum] Device not detected, please connect device to PC and enter Download Mode", Color.Orange);
+                    AppendLog("[Spreadtrum] (Hold Volume Down while Power Off, then connect USB)", Color.Gray);
                     return;
                 }
                 
-                AppendLog($"[展讯] 正在连接设备: {_detectedSprdPort}...", Color.Cyan);
+                AppendLog($"[Spreadtrum] Connecting device: {_detectedSprdPort}...", Color.Cyan);
                 bool connected = await _spreadtrumController.ConnectDeviceAsync(_detectedSprdPort);
                 if (!connected)
                 {
-                    AppendLog("[展讯] 设备连接失败", Color.Red);
+                    AppendLog("[Spreadtrum] Device Connection Failed", Color.Red);
                     return;
                 }
-                AppendLog("[展讯] 设备连接成功", Color.Green);
+                AppendLog("[Spreadtrum] Device Connected Successfully", Color.Green);
             }
 
-            // 2. 如果已在 FDL2 模式，直接读取分区表
+            // 2. If already in FDL2 mode, read partition table directly
             if (_spreadtrumController.CurrentStage == FdlStage.FDL2)
             {
-                AppendLog("[展讯] 正在读取分区表...", Color.Cyan);
+                AppendLog("[Spreadtrum] Reading Partition Table...", Color.Cyan);
                 await _spreadtrumController.ReadPartitionTableAsync();
                 return;
             }
 
-            // 3. BROM 模式需要下载 FDL
+            // 3. BROM Mode needs FDL download
             if (_spreadtrumController.IsBromMode)
             {
-                AppendLog("[展讯] 设备处于 BROM 模式，需要下载 FDL...", Color.Yellow);
+                AppendLog("[Spreadtrum] Device in BROM mode, downloading FDL...", Color.Yellow);
                 
-                // 检查 FDL 来源优先级：PAC > 自定义 FDL > 数据库芯片配置
+                // Check FDL Source Priority: PAC > Custom FDL > Database Chip Config
                 bool hasFdlConfig = false;
                 
-                // 方式1：PAC 中的 FDL (最高优先级)
+                // Method 1: FDL in PAC (Highest Priority)
                 if (_spreadtrumController.CurrentPac != null)
                 {
-                    AppendLog("[展讯] 使用 PAC 中的 FDL 初始化设备...", Color.Cyan);
+                    AppendLog("[Spreadtrum] Initialize device using FDL in PAC...", Color.Cyan);
                     hasFdlConfig = true;
                 }
-                // 方式2：用户自定义 FDL 文件 (第二优先级)
+                // Method 2: User Custom FDL File (Second Priority)
                 else if (!string.IsNullOrEmpty(_customFdl1Path) && System.IO.File.Exists(_customFdl1Path) &&
                          !string.IsNullOrEmpty(_customFdl2Path) && System.IO.File.Exists(_customFdl2Path))
                 {
-                    AppendLog("[展讯] 使用自定义 FDL 文件...", Color.Cyan);
-                    AppendLog($"[展讯] FDL1: {System.IO.Path.GetFileName(_customFdl1Path)}", Color.Gray);
-                    AppendLog($"[展讯] FDL2: {System.IO.Path.GetFileName(_customFdl2Path)}", Color.Gray);
+                    AppendLog("[Spreadtrum] Using Custom FDL File...", Color.Cyan);
+                    AppendLog($"[Spreadtrum] FDL1: {System.IO.Path.GetFileName(_customFdl1Path)}", Color.Gray);
+                    AppendLog($"[Spreadtrum] FDL2: {System.IO.Path.GetFileName(_customFdl2Path)}", Color.Gray);
                     
-                    // 如果选择了芯片，使用芯片的地址配置
+                    // If chip selected, use chip address config
                     if (_selectedChipId > 0 && _selectedChipId != 0xFFFF)
                     {
                         var chipInfo = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetChipById(_selectedChipId);
                         if (chipInfo != null)
                         {
-                            AppendLog($"[展讯] 使用芯片地址配置: {chipInfo.ChipName}", Color.Gray);
+                            AppendLog($"[Spreadtrum] Using Chip Address Config: {chipInfo.ChipName}", Color.Gray);
                             _spreadtrumController.SetCustomFdl1(_customFdl1Path, chipInfo.Fdl1Address);
                             _spreadtrumController.SetCustomFdl2(_customFdl2Path, chipInfo.Fdl2Address);
                         }
@@ -1324,20 +1324,20 @@ namespace LoveAlways
                     }
                     hasFdlConfig = true;
                 }
-                // 方式3：数据库芯片配置 (第三优先级)
+                // Method 3: Database Chip Config (Third Priority)
                 else if (_selectedChipId > 0 && _selectedChipId != 0xFFFF)
                 {
                     var chipInfo = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetChipById(_selectedChipId);
                     if (chipInfo != null)
                     {
-                        AppendLog($"[展讯] 使用芯片配置: {chipInfo.ChipName}", Color.Cyan);
-                        AppendLog($"[展讯] FDL1 地址: {chipInfo.Fdl1AddressHex}, FDL2 地址: {chipInfo.Fdl2AddressHex}", Color.Gray);
+                        AppendLog($"[Spreadtrum] Using Chip Config: {chipInfo.ChipName}", Color.Cyan);
+                        AppendLog($"[Spreadtrum] FDL1 Addr: {chipInfo.Fdl1AddressHex}, FDL2 Addr: {chipInfo.Fdl2AddressHex}", Color.Gray);
                         
-                        // 检查是否有该芯片的设备 FDL 文件
+                        // Check if there is device FDL file for this chip
                         var devices = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetDeviceNames(chipInfo.ChipName);
                         if (devices.Length > 0)
                         {
-                            // 使用第一个设备的 FDL（或让用户选择）
+                            // Use first device FDL (or let user select)
                             var deviceFdl = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetDeviceFdlsByChip(chipInfo.ChipName).FirstOrDefault();
                             if (deviceFdl != null)
                             {
@@ -1346,7 +1346,7 @@ namespace LoveAlways
                                 
                                 if (System.IO.File.Exists(fdl1Path) && System.IO.File.Exists(fdl2Path))
                                 {
-                                    AppendLog($"[展讯] 使用设备 FDL: {deviceFdl.DeviceName}", Color.Gray);
+                                    AppendLog($"[Spreadtrum] Using Device FDL: {deviceFdl.DeviceName}", Color.Gray);
                                     _spreadtrumController.SetCustomFdl1(fdl1Path, chipInfo.Fdl1Address);
                                     _spreadtrumController.SetCustomFdl2(fdl2Path, chipInfo.Fdl2Address);
                                     hasFdlConfig = true;
@@ -1356,9 +1356,9 @@ namespace LoveAlways
                         
                         if (!hasFdlConfig)
                         {
-                            // 数据库没有 FDL，提示用户手动选择
-                            AppendLog("[展讯] 数据库中未找到该芯片的 FDL 文件", Color.Orange);
-                            AppendLog("[展讯] 请双击 FDL1/FDL2 输入框选择文件", Color.Orange);
+                            // Database has no FDL, prompt user to select manually
+                            AppendLog("[Spreadtrum] FDL file for this chip not found in database", Color.Orange);
+                            AppendLog("[Spreadtrum] Please double click FDL1/FDL2 input box to select file", Color.Orange);
                             return;
                         }
                     }
@@ -1366,72 +1366,72 @@ namespace LoveAlways
                 
                 if (!hasFdlConfig)
                 {
-                    AppendLog("[展讯] 错误: 没有可用的 FDL 配置", Color.Red);
-                    AppendLog("[展讯] 请执行以下任一操作:", Color.Orange);
-                    AppendLog("[展讯]   1. 加载 PAC 固件包", Color.Gray);
-                    AppendLog("[展讯]   2. 双击 FDL1/FDL2 输入框选择文件", Color.Gray);
-                    AppendLog("[展讯]   3. 选择芯片型号 (数据库中需要有对应的 FDL)", Color.Gray);
+                    AppendLog("[Spreadtrum] Error: No available FDL config", Color.Red);
+                    AppendLog("[Spreadtrum] Please perform one of the following:", Color.Orange);
+                    AppendLog("[Spreadtrum]   1. Load PAC Firmware Package", Color.Gray);
+                    AppendLog("[Spreadtrum]   2. Double click FDL1/FDL2 input box to select file", Color.Gray);
+                    AppendLog("[Spreadtrum]   3. Select Chip Model (Database needs corresponding FDL)", Color.Gray);
                     return;
                 }
                 
-                // 初始化设备（下载 FDL1 和 FDL2）
-                AppendLog("[展讯] 正在初始化设备 (下载 FDL)...", Color.Yellow);
+                // Initialize Device (Download FDL1 and FDL2)
+                AppendLog("[Spreadtrum] Initializing Device (Downloading FDL)...", Color.Yellow);
                 bool initialized = await _spreadtrumController.InitializeDeviceAsync();
                 if (!initialized)
                 {
-                    AppendLog("[展讯] 设备初始化失败", Color.Red);
+                    AppendLog("[Spreadtrum] Device Initialization Failed", Color.Red);
                     return;
                 }
-                AppendLog("[展讯] 设备初始化完成", Color.Green);
+                AppendLog("[Spreadtrum] Device Initialization Complete", Color.Green);
             }
 
-            // 4. 读取分区表
-            AppendLog("[展讯] 正在读取分区表...", Color.Cyan);
+            // 4. Read GPT
+            AppendLog("[Spreadtrum] Reading Partition Table...", Color.Cyan);
             await _spreadtrumController.ReadPartitionTableAsync();
         }
 
         /// <summary>
-        /// 读取分区 - 简化版，直接从分区表选择
+        /// Read Partition - Simplified, direct select from partition table
         /// </summary>
         private async System.Threading.Tasks.Task SprdReadPartitionAsync()
         {
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 请先连接设备", Color.Orange);
+                AppendLog("[Spreadtrum] Please connect device first", Color.Orange);
                 return;
             }
 
-            // 获取选中的分区 (勾选优先，否则使用蓝色选中)
+            // Get Selected Partitions (Checked first, otherwise use selected)
             var partitions = GetSprdSelectedPartitions();
             if (partitions.Count == 0)
             {
-                AppendLog("[展讯] 请在分区表中选择要读取的分区", Color.Orange);
+                AppendLog("[Spreadtrum] Please select partition to read in partition table", Color.Orange);
                 return;
             }
 
-            // 单个分区 - 选择保存文件
+            // Single Partition - Select Save File
             if (partitions.Count == 1)
             {
                 var (partName, size) = partitions[0];
                 using (var sfd = new SaveFileDialog())
                 {
-                    sfd.Title = $"保存 {partName}";
+                    sfd.Title = $"Save {partName}";
                     sfd.FileName = $"{partName}.img";
-                    sfd.Filter = "镜像文件 (*.img)|*.img|所有文件 (*.*)|*.*";
+                    sfd.Filter = "Image File (*.img)|*.img|All Files (*.*)|*.*";
 
                     if (sfd.ShowDialog() == DialogResult.OK)
                     {
-                        AppendLog($"[展讯] 读取分区 {partName}...", Color.Cyan);
+                        AppendLog($"[Spreadtrum] Reading partition {partName}...", Color.Cyan);
                         await _spreadtrumController.ReadPartitionToFileAsync(partName, sfd.FileName, size);
                     }
                 }
                 return;
             }
 
-            // 多个分区 - 选择保存目录
+            // Multiple Partitions - Select Save Directory
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = $"选择保存 {partitions.Count} 个分区的目录";
+                fbd.Description = $"Select directory to save {partitions.Count} partitions";
                 
                 if (fbd.ShowDialog() != DialogResult.OK) return;
 
@@ -1441,7 +1441,7 @@ namespace LoveAlways
                 foreach (var (partName, size) in partitions)
                 {
                     string outputPath = System.IO.Path.Combine(outputDir, $"{partName}.img");
-                    AppendLog($"[展讯] 读取 {partName}...", Color.Cyan);
+                    AppendLog($"[Spreadtrum] Reading {partName}...", Color.Cyan);
                     
                     if (await _spreadtrumController.ReadPartitionToFileAsync(partName, outputPath, size))
                         success++;
@@ -1449,19 +1449,19 @@ namespace LoveAlways
                         fail++;
                 }
 
-                AppendLog($"[展讯] 读取完成: {success} 成功, {fail} 失败", 
+                AppendLog($"[Spreadtrum] Read Complete: {success} Success, {fail} Failed", 
                     fail > 0 ? Color.Orange : Color.Green);
             }
         }
 
         /// <summary>
-        /// 获取展讯分区表中选中的分区 (勾选优先，否则使用选中)
+        /// Get Selected Partitions in Spreadtrum Partition Table (Checked first, otherwise use selected)
         /// </summary>
         private List<(string name, uint size)> GetSprdSelectedPartitions()
         {
             var result = new List<(string name, uint size)>();
             
-            // 勾选优先，否则使用蓝色选中
+            // Checked first, otherwise use blue selected
             var items = sprdListPartitions.CheckedItems.Count > 0 
                 ? (System.Collections.IEnumerable)sprdListPartitions.CheckedItems 
                 : sprdListPartitions.SelectedItems;
@@ -1470,14 +1470,14 @@ namespace LoveAlways
             {
                 string partName = item.Text;
                 
-                // 获取分区大小 (优先从控制器获取真实大小)
+                // Get Partition Size (Prefer real size from controller)
                 uint size = _spreadtrumController.GetPartitionSize(partName);
                 
-                // 如果没有，从列表解析
+                // If not, parse from list
                 if (size == 0 && item.SubItems.Count > 2)
                     TryParseSize(item.SubItems[2].Text, out size);
                 
-                // 默认 100MB
+                // Default 100MB
                 if (size == 0)
                     size = 100 * 1024 * 1024;
                 
@@ -1488,7 +1488,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 解析大小字符串 (如 "100 MB", "1.5 GB")
+        /// Parse Size String (e.g. "100 MB", "1.5 GB")
         /// </summary>
         private bool TryParseSize(string sizeText, out uint size)
         {
@@ -1525,7 +1525,7 @@ namespace LoveAlways
                 }
                 else
                 {
-                    // 尝试直接解析为数字
+                    // Try parse as number directly
                     size = uint.Parse(sizeText);
                     return true;
                 }
@@ -1537,32 +1537,32 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 擦除分区 - 简化版，支持批量擦除
+        /// Erase Partition - Simplified, support batch erase
         /// </summary>
         private async System.Threading.Tasks.Task SprdErasePartitionAsync()
         {
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 请先连接设备", Color.Orange);
+                AppendLog("[Spreadtrum] Please connect device first", Color.Orange);
                 return;
             }
 
             var partitions = GetSprdSelectedPartitions();
             if (partitions.Count == 0)
             {
-                AppendLog("[展讯] 请在分区表中选择要擦除的分区", Color.Orange);
+                AppendLog("[Spreadtrum] Please select partition to erase in partition table", Color.Orange);
                 return;
             }
 
-            // 确认擦除
+            // Confirm Erase
             string partNames = string.Join(", ", partitions.ConvertAll(p => p.name));
             string message = partitions.Count == 1 
-                ? $"确定要擦除分区 \"{partitions[0].name}\" 吗？"
-                : $"确定要擦除 {partitions.Count} 个分区吗？\n\n{partNames}";
+                ? $"Are you sure to erase partition \"{partitions[0].name}\"?"
+                : $"Are you sure to erase {partitions.Count} partitions?\n\n{partNames}";
 
             var result = MessageBox.Show(
-                message + "\n\n此操作不可撤销！",
-                "确认擦除",
+                message + "\n\nThis operation cannot be undone!",
+                "Confirm Erase",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
 
@@ -1571,7 +1571,7 @@ namespace LoveAlways
             int success = 0, fail = 0;
             foreach (var (partName, _) in partitions)
             {
-                AppendLog($"[展讯] 擦除 {partName}...", Color.Yellow);
+                AppendLog($"[Spreadtrum] Erasing {partName}...", Color.Yellow);
                 if (await _spreadtrumController.ErasePartitionAsync(partName))
                     success++;
                 else
@@ -1580,35 +1580,35 @@ namespace LoveAlways
 
             if (partitions.Count > 1)
             {
-                AppendLog($"[展讯] 擦除完成: {success} 成功, {fail} 失败", 
+                AppendLog($"[Spreadtrum] Erase Complete: {success} Success, {fail} Failed", 
                     fail > 0 ? Color.Orange : Color.Green);
             }
         }
 
         /// <summary>
-        /// 提取 PAC 文件
+        /// Extract PAC File
         /// </summary>
         private async System.Threading.Tasks.Task SprdExtractPacAsync()
         {
             if (_spreadtrumController.CurrentPac == null)
             {
-                AppendLog("[展讯] 请先选择 PAC 固件包", Color.Orange);
+                AppendLog("[Spreadtrum] Please select PAC Firmware Package first", Color.Orange);
                 return;
             }
 
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = "选择提取目录";
+                fbd.Description = "Select Extraction Directory";
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     await _spreadtrumController.ExtractPacAsync(fbd.SelectedPath);
-                    AppendLog($"[展讯] PAC 提取完成: {fbd.SelectedPath}", Color.Green);
+                    AppendLog($"[Spreadtrum] PAC Extraction Complete: {fbd.SelectedPath}", Color.Green);
                 }
             }
         }
 
         /// <summary>
-        /// 格式化文件大小
+        /// Format File Size
         /// </summary>
         private string FormatSize(ulong size)
         {
@@ -1622,7 +1622,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 解析十六进制地址 (支持 0x 前缀)
+        /// Parse Hex Address (Support 0x prefix)
         /// </summary>
         private bool TryParseHexAddress(string text, out uint address)
         {
@@ -1632,7 +1632,7 @@ namespace LoveAlways
 
             text = text.Trim();
             
-            // 移除 0x 或 0X 前缀
+            // Remove 0x or 0X prefix
             if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 text = text.Substring(2);
 
@@ -1640,24 +1640,24 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 设置 FDL 输入控件的启用状态
+        /// Set FDL Input Control Enable State
         /// </summary>
-        /// <param name="enabled">是否启用</param>
-        /// <param name="clearPaths">是否清除已选择的文件路径</param>
+        /// <param name="enabled">Enabled</param>
+        /// <param name="clearPaths">Clear previously selected file paths</param>
         private void SetFdlInputsEnabled(bool enabled, bool clearPaths = false)
         {
-            // FDL1 文件 - 始终启用，允许用户覆盖
+            // FDL1 File - Always enabled, allow user overwrite
             input2.Enabled = true;
-            // FDL2 文件 - 始终启用，允许用户覆盖
+            // FDL2 File - Always enabled, allow user overwrite
             input4.Enabled = true;
-            // FDL1 地址 - 根据参数决定
+            // FDL1 Address - Decided by param
             input5.Enabled = enabled;
-            // FDL2 地址 - 根据参数决定
+            // FDL2 Address - Decided by param
             input10.Enabled = enabled;
 
             if (clearPaths)
             {
-                // 仅在明确要求时清除文件路径
+                // Clear file paths only when explicitly requested
                 _customFdl1Path = null;
                 _customFdl2Path = null;
                 input2.Text = "";
@@ -1666,123 +1666,123 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 自动检测安全信息和漏洞
+        /// Auto Detect Security Info and Vulnerability
         /// </summary>
         private async Task SprdAutoDetectSecurityAsync()
         {
             try
             {
-                AppendLog("[展讯] 自动检测安全信息...", Color.Gray);
+                AppendLog("[Spreadtrum] Auto detecting security info...", Color.Gray);
 
-                // 1. 读取安全信息
+                // 1. Read Security Info
                 var secInfo = await _spreadtrumController.GetSecurityInfoAsync();
                 if (secInfo != null)
                 {
-                    // 显示安全状态
+                    // Show Security Status
                     if (!secInfo.IsSecureBootEnabled)
                     {
-                        AppendLog("[展讯] ✓ 安全启动: 未启用 (Unfused) - 可刷写任意固件", Color.Green);
+                        AppendLog("[Spreadtrum] ✓ Secure Boot: Disabled (Unfused) - Can flash any firmware", Color.Green);
                     }
                     else
                     {
-                        AppendLog("[展讯] 安全启动: 已启用", Color.Yellow);
+                        AppendLog("[Spreadtrum] Secure Boot: Enabled", Color.Yellow);
                         
                         if (secInfo.IsEfuseLocked)
-                            AppendLog("[展讯]   eFuse: 已锁定", Color.Gray);
+                            AppendLog("[Spreadtrum]   eFuse: Locked", Color.Gray);
                         
                         if (secInfo.IsAntiRollbackEnabled)
-                            AppendLog($"[展讯]   防回滚: 已启用 (版本 {secInfo.SecurityVersion})", Color.Gray);
+                            AppendLog($"[Spreadtrum]   Anti-Rollback: Enabled (Ver {secInfo.SecurityVersion})", Color.Gray);
                     }
                 }
 
-                // 2. 自动检测漏洞
+                // 2. Auto Detect Vulnerability
                 var vulnResult = _spreadtrumController.CheckVulnerability();
                 if (vulnResult != null && vulnResult.HasVulnerability)
                 {
-                    AppendLog($"[展讯] ✓ 检测到 {vulnResult.AvailableExploits.Count} 个可用漏洞", Color.Yellow);
-                    AppendLog($"[展讯]   推荐: {vulnResult.RecommendedExploit}", Color.Gray);
+                    AppendLog($"[Spreadtrum] ✓ Detected {vulnResult.AvailableExploits.Count} available exploits", Color.Yellow);
+                    AppendLog($"[Spreadtrum]   Recommended: {vulnResult.RecommendedExploit}", Color.Gray);
                 }
 
-                // 3. 读取 Flash 信息
+                // 3. Read Flash Info
                 var flashInfo = await _spreadtrumController.GetFlashInfoAsync();
                 if (flashInfo != null)
                 {
-                    AppendLog($"[展讯] Flash: {flashInfo}", Color.Gray);
+                    AppendLog($"[Spreadtrum] Flash: {flashInfo}", Color.Gray);
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"[展讯] 安全检测异常: {ex.Message}", Color.Orange);
+                AppendLog($"[Spreadtrum] Security Detect Exception: {ex.Message}", Color.Orange);
             }
         }
 
         /// <summary>
-        /// 更新右上角设备信息
+        /// Update Device Info (Top Right)
         /// </summary>
         private async Task SprdUpdateDeviceInfoAsync()
         {
             try
             {
-                // 读取芯片信息
+                // Read Chip Info
                 string chipName = await _spreadtrumController.ReadChipInfoAsync();
                 if (!string.IsNullOrEmpty(chipName))
                 {
                     SafeInvoke(() =>
                     {
-                        uiLabel9.Text = $"品牌：Spreadtrum/Unisoc";
-                        uiLabel11.Text = $"芯片：{chipName}";
+                        uiLabel9.Text = $"Brand: Spreadtrum/Unisoc";
+                        uiLabel11.Text = $"Chip: {chipName}";
                     });
                 }
 
-                // 读取 Flash 信息
+                // Read Flash Info
                 var flashInfo = await _spreadtrumController.GetFlashInfoAsync();
                 if (flashInfo != null)
                 {
                     SafeInvoke(() =>
                     {
-                        uiLabel13.Text = $"存储：{flashInfo}";
+                        uiLabel13.Text = $"Storage: {flashInfo}";
                     });
                 }
 
-                // 尝试读取 IMEI
+                // Try Read IMEI
                 string imei = await _spreadtrumController.ReadImeiAsync();
                 if (!string.IsNullOrEmpty(imei))
                 {
                     SafeInvoke(() =>
                     {
-                        uiLabel10.Text = $"IMEI：{imei}";
+                        uiLabel10.Text = $"IMEI: {imei}";
                     });
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"[展讯] 读取设备信息异常: {ex.Message}", Color.Orange);
+                AppendLog($"[Spreadtrum] Read Device Info Exception: {ex.Message}", Color.Orange);
             }
         }
 
         /// <summary>
-        /// 清空设备信息显示
+        /// Clear Device Info Display
         /// </summary>
         private void SprdClearDeviceInfo()
         {
-            uiLabel9.Text = "平台：Spreadtrum";
-            uiLabel11.Text = "芯片：等待连接";
-            uiLabel13.Text = "阶段：--";
-            uiLabel10.Text = "IMEI：--";
-            uiLabel3.Text = "端口：等待连接";
-            uiLabel12.Text = "模式：--";
-            uiLabel14.Text = "状态：未连接";
+            uiLabel9.Text = "Platform: Spreadtrum";
+            uiLabel11.Text = "Chip: Waiting";
+            uiLabel13.Text = "Stage: --";
+            uiLabel10.Text = "IMEI: --";
+            uiLabel3.Text = "Port: Waiting";
+            uiLabel12.Text = "Mode: --";
+            uiLabel14.Text = "Status: Disconnected";
         }
 
         /// <summary>
-        /// 更新右侧信息面板为展讯专用显示
+        /// Update Right Info Panel for Spreadtrum Display
         /// </summary>
         private void UpdateSprdInfoPanel()
         {
             if (_spreadtrumController != null && _spreadtrumController.IsConnected)
             {
-                // 已连接状态
-                string chipName = "未知";
+                // Connected State
+                string chipName = "Unknown";
                 uint chipId = _spreadtrumController.GetChipId();
                 if (chipId > 0)
                 {
@@ -1791,51 +1791,51 @@ namespace LoveAlways
                 
                 string stageStr = _spreadtrumController.CurrentStage.ToString();
                 
-                uiLabel9.Text = "平台：Spreadtrum";
-                uiLabel11.Text = $"芯片：{chipName}";
-                uiLabel13.Text = $"阶段：{stageStr}";
-                uiLabel10.Text = "IMEI：--";
-                uiLabel3.Text = $"端口：{_detectedSprdPort ?? "--"}";
-                uiLabel12.Text = $"模式：{_detectedSprdMode}";
-                uiLabel14.Text = "状态：已连接";
+                uiLabel9.Text = "Platform: Spreadtrum";
+                uiLabel11.Text = $"Chip: {chipName}";
+                uiLabel13.Text = $"Stage: {stageStr}";
+                uiLabel10.Text = "IMEI: --";
+                uiLabel3.Text = $"Port: {_detectedSprdPort ?? "--"}";
+                uiLabel12.Text = $"Mode: {_detectedSprdMode}";
+                uiLabel14.Text = "Status: Connected";
             }
             else if (!string.IsNullOrEmpty(_detectedSprdPort))
             {
-                // 检测到设备但未连接
-                uiLabel9.Text = "平台：Spreadtrum";
-                uiLabel11.Text = "芯片：等待初始化";
-                uiLabel13.Text = "阶段：--";
-                uiLabel10.Text = "IMEI：--";
-                uiLabel3.Text = $"端口：{_detectedSprdPort}";
-                uiLabel12.Text = $"模式：{_detectedSprdMode}";
-                uiLabel14.Text = "状态：待连接";
+                // Device detected but not connected
+                uiLabel9.Text = "Platform: Spreadtrum";
+                uiLabel11.Text = "Chip: Waiting Init";
+                uiLabel13.Text = "Stage: --";
+                uiLabel10.Text = "IMEI: --";
+                uiLabel3.Text = $"Port: {_detectedSprdPort}";
+                uiLabel12.Text = $"Mode: {_detectedSprdMode}";
+                uiLabel14.Text = "Status: Pending Connect";
             }
             else
             {
-                // 未检测到设备
+                // Device not detected
                 SprdClearDeviceInfo();
             }
         }
 
-        #region IMEI 读写
+        #region IMEI Read/Write
 
         /// <summary>
-        /// 备份校准数据
+        /// Backup Calibration Data
         /// </summary>
         private async Task SprdBackupCalibrationAsync()
         {
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 请先连接设备", Color.Orange);
+                AppendLog("[Spreadtrum] Please connect device first", Color.Orange);
                 return;
             }
 
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = "选择校准数据备份目录";
+                fbd.Description = "Select Calibration Data Backup Directory";
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
-                    AppendLog("[展讯] 开始备份校准数据...", Color.Cyan);
+                    AppendLog("[Spreadtrum] Backing up calibration data...", Color.Cyan);
                     bool success = await _spreadtrumController.BackupCalibrationDataAsync(fbd.SelectedPath);
                     if (success)
                     {
@@ -1846,30 +1846,30 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 恢复校准数据
+        /// Restore Calibration Data
         /// </summary>
         private async Task SprdRestoreCalibrationAsync()
         {
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 请先连接设备", Color.Orange);
+                AppendLog("[Spreadtrum] Please connect device first", Color.Orange);
                 return;
             }
 
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = "选择包含校准数据备份的目录";
+                fbd.Description = "Select directory containing calibration backup";
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     var result = MessageBox.Show(
-                        "确定要恢复校准数据吗？\n\n此操作将覆盖设备当前的校准数据！",
-                        "确认恢复",
+                        "Are you sure you want to restore calibration data?\n\nThis will overwrite current calibration data!",
+                        "Confirm Restore",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Warning);
 
                     if (result == DialogResult.Yes)
                     {
-                        AppendLog("[展讯] 开始恢复校准数据...", Color.Cyan);
+                        AppendLog("[Spreadtrum] Restoring calibration data...", Color.Cyan);
                         await _spreadtrumController.RestoreCalibrationDataAsync(fbd.SelectedPath);
                     }
                 }
@@ -1877,206 +1877,206 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 恢复出厂设置
+        /// Factory Reset
         /// </summary>
         private async Task SprdFactoryResetAsync()
         {
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 请先连接设备", Color.Orange);
+                AppendLog("[Spreadtrum] Please connect device first", Color.Orange);
                 return;
             }
 
             var result = MessageBox.Show(
-                "确定要恢复出厂设置吗？\n\n此操作将擦除以下数据：\n- 用户数据 (userdata)\n- 缓存 (cache)\n- 元数据 (metadata)\n\n此操作不可撤销！",
-                "确认恢复出厂",
+                "Are you sure you want to factory reset?\n\nThis will erase:\n- Userdata (userdata)\n- Cache (cache)\n- Metadata (metadata)\n\nThis operation cannot be undone!",
+                "Confirm Factory Reset",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
 
             if (result == DialogResult.Yes)
             {
-                AppendLog("[展讯] 执行恢复出厂设置...", Color.Yellow);
+                AppendLog("[Spreadtrum] Performing factory reset...", Color.Yellow);
                 bool success = await _spreadtrumController.FactoryResetAsync();
                 if (success)
                 {
-                    MessageBox.Show("恢复出厂设置完成！\n\n设备将自动重启。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Factory reset complete!\n\nDevice will reboot automatically.", "Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     await _spreadtrumController.RebootDeviceAsync();
                 }
             }
         }
 
         /// <summary>
-        /// 读取 IMEI
+        /// Read IMEI
         /// </summary>
         private async Task SprdReadImeiAsync()
         {
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 请先连接设备", Color.Orange);
+                AppendLog("[Spreadtrum] Please connect device first", Color.Orange);
                 return;
             }
 
-            AppendLog("[展讯] 读取 IMEI...", Color.Cyan);
+            AppendLog("[Spreadtrum] Reading IMEI...", Color.Cyan);
             
             string imei = await _spreadtrumController.ReadImeiAsync();
             if (!string.IsNullOrEmpty(imei))
             {
-                AppendLog($"[展讯] IMEI: {imei}", Color.Green);
+                AppendLog($"[Spreadtrum] IMEI: {imei}", Color.Green);
                 SafeInvoke(() =>
                 {
-                    uiLabel10.Text = $"IMEI：{imei}";
+                    uiLabel10.Text = $"IMEI: {imei}";
                 });
                 
-                // 复制到剪贴板
+                // Copy to clipboard
                 Clipboard.SetText(imei);
-                AppendLog("[展讯] IMEI 已复制到剪贴板", Color.Gray);
+                AppendLog("[Spreadtrum] IMEI copied to clipboard", Color.Gray);
             }
             else
             {
-                AppendLog("[展讯] 读取 IMEI 失败", Color.Red);
+                AppendLog("[Spreadtrum] Read IMEI Failed", Color.Red);
             }
         }
 
         /// <summary>
-        /// 写入 IMEI
+        /// Write IMEI
         /// </summary>
         private async Task SprdWriteImeiAsync()
         {
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 请先连接设备", Color.Orange);
+                AppendLog("[Spreadtrum] Please connect device first", Color.Orange);
                 return;
             }
 
-            // 弹出输入框
+            // Pop input box
             string newImei = Microsoft.VisualBasic.Interaction.InputBox(
-                "请输入新的 IMEI (15位数字):",
-                "写入 IMEI",
+                "Please input new IMEI (15 digits):",
+                "Write IMEI",
                 "",
                 -1, -1);
 
             if (string.IsNullOrEmpty(newImei))
             {
-                AppendLog("[展讯] 取消写入 IMEI", Color.Gray);
+                AppendLog("[Spreadtrum] Write IMEI Cancelled", Color.Gray);
                 return;
             }
 
-            // 验证 IMEI 格式
+            // Validate IMEI format
             newImei = newImei.Trim();
             if (newImei.Length != 15 || !newImei.All(char.IsDigit))
             {
-                AppendLog("[展讯] IMEI 格式错误，应为15位数字", Color.Red);
-                MessageBox.Show("IMEI 格式错误！\n\nIMEI 应为15位数字", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                AppendLog("[Spreadtrum] IMEI format error, must be 15 digits", Color.Red);
+                MessageBox.Show("IMEI format error!\n\nIMEI must be 15 digits", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            // 确认
+            // Confirm
             var result = MessageBox.Show(
-                $"确定要将 IMEI 写入为:\n\n{newImei}\n\n此操作可能影响设备网络功能！",
-                "确认写入 IMEI",
+                $"Are you sure you want to write IMEI as:\n\n{newImei}\n\nThis may affect network functionality!",
+                "Confirm Write IMEI",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
 
             if (result != DialogResult.Yes)
                 return;
 
-            AppendLog($"[展讯] 写入 IMEI: {newImei}...", Color.Yellow);
+            AppendLog($"[Spreadtrum] Writing IMEI: {newImei}...", Color.Yellow);
 
             bool success = await _spreadtrumController.WriteImeiAsync(newImei);
             if (success)
             {
-                AppendLog("[展讯] IMEI 写入成功", Color.Green);
+                AppendLog("[Spreadtrum] IMEI Write Success", Color.Green);
                 SafeInvoke(() =>
                 {
-                    uiLabel10.Text = $"IMEI：{newImei}";
+                    uiLabel10.Text = $"IMEI: {newImei}";
                 });
-                MessageBox.Show("IMEI 写入成功！\n\n建议重启设备使更改生效。", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("IMEI Write Success!\n\nReboot recommended to take effect.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
-                AppendLog("[展讯] IMEI 写入失败", Color.Red);
-                MessageBox.Show("IMEI 写入失败！\n\n请检查设备连接状态。", "失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                AppendLog("[Spreadtrum] IMEI Write Failed", Color.Red);
+                MessageBox.Show("IMEI Write Failed!\n\nPlease check device connection.", "Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         #endregion
 
-        #region NV 读写
+        #region NV Read/Write
 
         /// <summary>
-        /// 打开 NV 管理器对话框
+        /// Open NV Manager Dialog
         /// </summary>
         private Task SprdOpenNvManagerAsync()
         {
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 请先连接设备", Color.Orange);
+                AppendLog("[Spreadtrum] Please connect device first", Color.Orange);
                 return Task.CompletedTask;
             }
 
-            // 显示 NV 操作选择菜单
+            // Show NV Operation Selection Menu
             var menu = new ContextMenuStrip();
-            menu.Items.Add("读取蓝牙地址", null, async (s, e) => await SprdReadNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_BT_ADDR, "蓝牙地址"));
-            menu.Items.Add("读取WiFi地址", null, async (s, e) => await SprdReadNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_WIFI_ADDR, "WiFi地址"));
-            menu.Items.Add("读取序列号", null, async (s, e) => await SprdReadNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_SERIAL_NUMBER, "序列号"));
+            menu.Items.Add("Read Bluetooth Address", null, async (s, e) => await SprdReadNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_BT_ADDR, "Bluetooth Address"));
+            menu.Items.Add("Read WiFi Address", null, async (s, e) => await SprdReadNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_WIFI_ADDR, "WiFi Address"));
+            menu.Items.Add("Read Serial Number", null, async (s, e) => await SprdReadNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_SERIAL_NUMBER, "Serial Number"));
             menu.Items.Add("-");
-            menu.Items.Add("写入蓝牙地址...", null, async (s, e) => await SprdWriteNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_BT_ADDR, "蓝牙地址", 6));
-            menu.Items.Add("写入WiFi地址...", null, async (s, e) => await SprdWriteNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_WIFI_ADDR, "WiFi地址", 6));
+            menu.Items.Add("Write Bluetooth Address...", null, async (s, e) => await SprdWriteNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_BT_ADDR, "Bluetooth Address", 6));
+            menu.Items.Add("Write WiFi Address...", null, async (s, e) => await SprdWriteNvAsync(LoveAlways.Spreadtrum.Protocol.SprdNvItems.NV_WIFI_ADDR, "WiFi Address", 6));
             menu.Items.Add("-");
-            menu.Items.Add("读取自定义NV项...", null, async (s, e) => await SprdReadCustomNvAsync());
-            menu.Items.Add("写入自定义NV项...", null, async (s, e) => await SprdWriteCustomNvAsync());
+            menu.Items.Add("Read Custom NV Item...", null, async (s, e) => await SprdReadCustomNvAsync());
+            menu.Items.Add("Write Custom NV Item...", null, async (s, e) => await SprdWriteCustomNvAsync());
             
-            // 在按钮位置显示菜单
+            // Show menu at button position
             menu.Show(Cursor.Position);
             return Task.CompletedTask;
         }
 
         /// <summary>
-        /// 读取指定 NV 项
+        /// Read Specific NV Item
         /// </summary>
         private async Task SprdReadNvAsync(ushort itemId, string itemName)
         {
-            AppendLog($"[展讯] 读取 NV 项: {itemName} (ID={itemId})...", Color.Cyan);
+            AppendLog($"[Spreadtrum] Reading NV Item: {itemName} (ID={itemId})...", Color.Cyan);
 
             var data = await _spreadtrumController.ReadNvItemAsync(itemId);
             if (data != null && data.Length > 0)
             {
                 string hexStr = BitConverter.ToString(data).Replace("-", ":");
-                AppendLog($"[展讯] {itemName}: {hexStr}", Color.Green);
+                AppendLog($"[Spreadtrum] {itemName}: {hexStr}", Color.Green);
                 
-                // 复制到剪贴板
+                // Copy to clipboard
                 Clipboard.SetText(hexStr);
-                AppendLog("[展讯] 已复制到剪贴板", Color.Gray);
+                AppendLog("[Spreadtrum] Copied to clipboard", Color.Gray);
                 
-                MessageBox.Show($"{itemName}:\n\n{hexStr}\n\n已复制到剪贴板", "NV 读取", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"{itemName}:\n\n{hexStr}\n\nCopied to clipboard", "NV Read", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
-                AppendLog($"[展讯] 读取 {itemName} 失败", Color.Red);
+                AppendLog($"[Spreadtrum] Read {itemName} Failed", Color.Red);
             }
         }
 
         /// <summary>
-        /// 写入指定 NV 项 (MAC 地址格式)
+        /// Write Specific NV Item (MAC Address Format)
         /// </summary>
         private async Task SprdWriteNvAsync(ushort itemId, string itemName, int expectedLength)
         {
             string input = Microsoft.VisualBasic.Interaction.InputBox(
-                $"请输入 {itemName}:\n\n格式: XX:XX:XX:XX:XX:XX (6字节十六进制)",
-                $"写入 {itemName}",
+                $"Please input {itemName}:\n\nFormat: XX:XX:XX:XX:XX:XX (6 bytes hex)",
+                $"Write {itemName}",
                 "",
                 -1, -1);
 
             if (string.IsNullOrEmpty(input))
                 return;
 
-            // 解析 MAC 地址格式
+            // Parse MAC Address Format
             input = input.Trim().ToUpper().Replace("-", ":").Replace(" ", ":");
             string[] parts = input.Split(':');
             
             if (parts.Length != expectedLength)
             {
-                MessageBox.Show($"格式错误！\n\n应为 {expectedLength} 字节", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Format Error!\n\nShould be {expectedLength} bytes", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -2090,42 +2090,42 @@ namespace LoveAlways
             }
             catch
             {
-                MessageBox.Show("格式错误！\n\n请使用十六进制格式", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Format Error!\n\nPlease use Hex format", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             var confirm = MessageBox.Show(
-                $"确定要写入 {itemName}?\n\n{input}",
-                "确认写入",
+                $"Are you sure to write {itemName}?\n\n{input}",
+                "Confirm Write",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
 
             if (confirm != DialogResult.Yes)
                 return;
 
-            AppendLog($"[展讯] 写入 NV 项: {itemName}...", Color.Yellow);
+            AppendLog($"[Spreadtrum] Writing NV Item: {itemName}...", Color.Yellow);
 
             bool success = await _spreadtrumController.WriteNvItemAsync(itemId, data);
             if (success)
             {
-                AppendLog($"[展讯] {itemName} 写入成功", Color.Green);
-                MessageBox.Show($"{itemName} 写入成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                AppendLog($"[Spreadtrum] {itemName} Write Success", Color.Green);
+                MessageBox.Show($"{itemName} Write Success!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
-                AppendLog($"[展讯] {itemName} 写入失败", Color.Red);
-                MessageBox.Show($"{itemName} 写入失败！", "失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                AppendLog($"[Spreadtrum] {itemName} Write Failed", Color.Red);
+                MessageBox.Show($"{itemName} Write Failed!", "Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         /// <summary>
-        /// 读取自定义 NV 项
+        /// Read Custom NV Item
         /// </summary>
         private async Task SprdReadCustomNvAsync()
         {
             string input = Microsoft.VisualBasic.Interaction.InputBox(
-                "请输入 NV 项 ID (0-65535):",
-                "读取自定义 NV",
+                "Please input NV Item ID (0-65535):",
+                "Read Custom NV",
                 "0",
                 -1, -1);
 
@@ -2135,7 +2135,7 @@ namespace LoveAlways
             ushort itemId;
             if (!ushort.TryParse(input.Trim(), out itemId))
             {
-                // 尝试解析十六进制
+                // Try Parse Hex
                 if (input.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 {
                     try
@@ -2144,26 +2144,26 @@ namespace LoveAlways
                     }
                     catch
                     {
-                        MessageBox.Show("ID 格式错误！", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("ID Format Error!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
                 }
                 else
                 {
-                    MessageBox.Show("ID 格式错误！", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("ID Format Error!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
             }
 
-            AppendLog($"[展讯] 读取 NV 项 ID={itemId}...", Color.Cyan);
+            AppendLog($"[Spreadtrum] Reading NV Item ID={itemId}...", Color.Cyan);
 
             var data = await _spreadtrumController.ReadNvItemAsync(itemId);
             if (data != null && data.Length > 0)
             {
                 string hexStr = BitConverter.ToString(data).Replace("-", " ");
-                AppendLog($"[展讯] NV[{itemId}]: {hexStr}", Color.Green);
+                AppendLog($"[Spreadtrum] NV[{itemId}]: {hexStr}", Color.Green);
                 
-                // 尝试解码为字符串
+                // Try decode as string
                 string asciiStr = "";
                 try
                 {
@@ -2173,29 +2173,29 @@ namespace LoveAlways
 
                 Clipboard.SetText(hexStr);
                 
-                string msg = $"NV[{itemId}] 长度: {data.Length} 字节\n\n";
+                string msg = $"NV[{itemId}] Length: {data.Length} bytes\n\n";
                 msg += $"HEX: {hexStr}\n\n";
                 if (!string.IsNullOrEmpty(asciiStr) && asciiStr.All(c => c >= 0x20 && c < 0x7F))
                     msg += $"ASCII: {asciiStr}\n\n";
-                msg += "HEX 已复制到剪贴板";
+                msg += "HEX copied to clipboard";
                 
-                MessageBox.Show(msg, "NV 读取", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(msg, "NV Read", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
-                AppendLog($"[展讯] 读取 NV[{itemId}] 失败", Color.Red);
-                MessageBox.Show($"读取 NV[{itemId}] 失败！\n\n该项可能不存在", "失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                AppendLog($"[Spreadtrum] Read NV[{itemId}] Failed", Color.Red);
+                MessageBox.Show($"Read NV[{itemId}] Failed!\n\nItem may not exist", "Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
         /// <summary>
-        /// 写入自定义 NV 项
+        /// Write Custom NV Item
         /// </summary>
         private async Task SprdWriteCustomNvAsync()
         {
             string idInput = Microsoft.VisualBasic.Interaction.InputBox(
-                "请输入 NV 项 ID (0-65535):",
-                "写入自定义 NV",
+                "Please input NV Item ID (0-65535):",
+                "Write Custom NV",
                 "0",
                 -1, -1);
 
@@ -2208,25 +2208,25 @@ namespace LoveAlways
                 if (idInput.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 {
                     try { itemId = Convert.ToUInt16(idInput.Substring(2), 16); }
-                    catch { MessageBox.Show("ID 格式错误！", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
+                    catch { MessageBox.Show("ID Format Error!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
                 }
                 else
                 {
-                    MessageBox.Show("ID 格式错误！", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("ID Format Error!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
             }
 
             string dataInput = Microsoft.VisualBasic.Interaction.InputBox(
-                "请输入数据 (十六进制，空格分隔):\n\n例如: 01 02 03 04 05 06",
-                $"写入 NV[{itemId}]",
+                "Please input data (Hex, space separated):\n\nExample: 01 02 03 04 05 06",
+                $"Write NV[{itemId}]",
                 "",
                 -1, -1);
 
             if (string.IsNullOrEmpty(dataInput))
                 return;
 
-            // 解析十六进制数据
+            // Parse Hex Data
             byte[] data;
             try
             {
@@ -2235,153 +2235,153 @@ namespace LoveAlways
             }
             catch
             {
-                MessageBox.Show("数据格式错误！\n\n请使用十六进制格式，空格分隔", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Data Format Error!\n\nPlease use Hex format, space separated", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             var confirm = MessageBox.Show(
-                $"确定要写入 NV[{itemId}]?\n\n长度: {data.Length} 字节\n数据: {BitConverter.ToString(data).Replace("-", " ")}",
-                "确认写入",
+                $"Are you sure you want to write NV[{itemId}]?\n\nLength: {data.Length} bytes\nData: {BitConverter.ToString(data).Replace("-", " ")}",
+                "Confirm Write",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
 
             if (confirm != DialogResult.Yes)
                 return;
 
-            AppendLog($"[展讯] 写入 NV[{itemId}]...", Color.Yellow);
+            AppendLog($"[Spreadtrum] Writing NV[{itemId}]...", Color.Yellow);
 
             bool success = await _spreadtrumController.WriteNvItemAsync(itemId, data);
             if (success)
             {
-                AppendLog($"[展讯] NV[{itemId}] 写入成功", Color.Green);
-                MessageBox.Show($"NV[{itemId}] 写入成功！", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                AppendLog($"[Spreadtrum] NV[{itemId}] Write Success", Color.Green);
+                MessageBox.Show($"NV[{itemId}] Write Success!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
-                AppendLog($"[展讯] NV[{itemId}] 写入失败", Color.Red);
-                MessageBox.Show($"NV[{itemId}] 写入失败！", "失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                AppendLog($"[Spreadtrum] NV[{itemId}] Write Failed", Color.Red);
+                MessageBox.Show($"NV[{itemId}] Write Failed!", "Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         #endregion
 
-        #region Bootloader 解锁
+        #region Bootloader Unlock
 
         /// <summary>
-        /// 解锁 Bootloader
+        /// Unlock Bootloader
         /// </summary>
         private async Task SprdUnlockBootloaderAsync()
         {
             if (!_spreadtrumController.IsConnected)
             {
-                AppendLog("[展讯] 请先连接设备", Color.Orange);
+                AppendLog("[Spreadtrum] Please connect device first", Color.Orange);
                 return;
             }
 
-            // 获取当前锁定状态
-            AppendLog("[展讯] 检查 Bootloader 状态...", Color.Cyan);
+            // Get Current Lock Status
+            AppendLog("[Spreadtrum] Checking Bootloader Status...", Color.Cyan);
             var blStatus = await _spreadtrumController.GetBootloaderStatusAsync();
             
             if (blStatus == null)
             {
-                AppendLog("[展讯] 无法获取 Bootloader 状态", Color.Red);
+                AppendLog("[Spreadtrum] Failed to get Bootloader Status", Color.Red);
                 return;
             }
 
             if (blStatus.IsUnlocked)
             {
-                AppendLog("[展讯] Bootloader 已经解锁", Color.Green);
-                MessageBox.Show("Bootloader 已经解锁！\n\n无需重复操作。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                AppendLog("[Spreadtrum] Bootloader already unlocked", Color.Green);
+                MessageBox.Show("Bootloader already unlocked!\n\nNo repetition required.", "Tip", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            // 显示警告
+            // Show Warning
             var result = MessageBox.Show(
-                "⚠️ 警告：解锁 Bootloader 将导致以下后果：\n\n" +
-                "1. 设备所有数据将被清除\n" +
-                "2. 设备将失去保修资格\n" +
-                "3. 部分支付/银行类应用可能无法使用\n" +
-                "4. OTA 更新可能失效\n\n" +
-                $"设备型号: {blStatus.DeviceModel}\n" +
-                $"安全版本: {blStatus.SecurityVersion}\n" +
-                $"Unfused: {(blStatus.IsUnfused ? "是" : "否")}\n\n" +
-                "确定要继续解锁吗？",
-                "解锁 Bootloader",
+                "⚠️ WARNING: Unlocking Bootloader will have the following consequences:\n\n" +
+                "1. All user data will be erased\n" +
+                "2. Device warranty may be voided\n" +
+                "3. Some payment/banking apps may not work\n" +
+                "4. OTA updates may fail\n\n" +
+                $"Device Model: {blStatus.DeviceModel}\n" +
+                $"Security Version: {blStatus.SecurityVersion}\n" +
+                $"Unfused: {(blStatus.IsUnfused ? "Yes" : "No")}\n\n" +
+                "Are you sure to continue unlocking?",
+                "Unlock Bootloader",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
 
             if (result != DialogResult.Yes)
             {
-                AppendLog("[展讯] 取消解锁操作", Color.Gray);
+                AppendLog("[Spreadtrum] Unlock Cancelled", Color.Gray);
                 return;
             }
 
-            // 二次确认
+            // Double Confirm
             string confirmCode = Microsoft.VisualBasic.Interaction.InputBox(
-                "请输入 \"UNLOCK\" 确认解锁:",
-                "确认解锁",
+                "Please input \"UNLOCK\" to confirm:",
+                "Confirm Unlock",
                 "",
                 -1, -1);
 
             if (confirmCode?.ToUpper() != "UNLOCK")
             {
-                AppendLog("[展讯] 确认码错误，取消操作", Color.Orange);
+                AppendLog("[Spreadtrum] Confirm code error, operation cancelled", Color.Orange);
                 return;
             }
 
-            AppendLog("[展讯] 开始解锁 Bootloader...", Color.Yellow);
+            AppendLog("[Spreadtrum] Starting Unlock Bootloader...", Color.Yellow);
 
-            // 检查是否可以利用漏洞解锁
+            // Check if exploit unlock is possible
             if (blStatus.IsUnfused)
             {
-                AppendLog("[展讯] 检测到 Unfused 设备，使用签名绕过解锁", Color.Cyan);
+                AppendLog("[Spreadtrum] Unfused device detected, using signature bypass unlock", Color.Cyan);
                 bool success = await _spreadtrumController.UnlockBootloaderAsync(true);
                 if (success)
                 {
-                    AppendLog("[展讯] Bootloader 解锁成功！", Color.Green);
-                    MessageBox.Show("Bootloader 解锁成功！\n\n设备将重启到 Fastboot 模式。", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    AppendLog("[Spreadtrum] Bootloader Unlock Success!", Color.Green);
+                    MessageBox.Show("Bootloader Unlock Success!\n\nDevice will reboot to Fastboot mode.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
-                    AppendLog("[展讯] 解锁失败", Color.Red);
-                    MessageBox.Show("Bootloader 解锁失败！\n\n请检查设备支持情况。", "失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    AppendLog("[Spreadtrum] Unlock Failed", Color.Red);
+                    MessageBox.Show("Bootloader Unlock Failed!\n\nPlease check device support.", "Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             else
             {
-                // 需要厂商解锁码
+                // Need Manufacturer Unlock Code
                 string unlockCode = Microsoft.VisualBasic.Interaction.InputBox(
-                    "此设备需要厂商解锁码。\n\n请输入解锁码 (16位十六进制):\n\n提示: 可从厂商官网申请",
-                    "输入解锁码",
+                    "This device needs manufacturer unlock code.\n\nPlease input code (16 hex chars):\n\nTip: You can apply from manufacturer website",
+                    "Input Unlock Code",
                     "",
                     -1, -1);
 
                 if (string.IsNullOrEmpty(unlockCode))
                 {
-                    AppendLog("[展讯] 取消解锁操作", Color.Gray);
+                    AppendLog("[Spreadtrum] Unlock Cancelled", Color.Gray);
                     return;
                 }
 
                 unlockCode = unlockCode.Trim().ToUpper();
                 
-                // 验证格式
+                // Validate Format
                 if (unlockCode.Length != 16 || !System.Text.RegularExpressions.Regex.IsMatch(unlockCode, "^[0-9A-F]+$"))
                 {
-                    AppendLog("[展讯] 解锁码格式错误", Color.Red);
-                    MessageBox.Show("解锁码格式错误！\n\n应为16位十六进制字符", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    AppendLog("[Spreadtrum] Unlock Code Format Error", Color.Red);
+                    MessageBox.Show("Unlock Code Format Error!\n\nShould be 16 hex chars", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
                 bool success = await _spreadtrumController.UnlockBootloaderWithCodeAsync(unlockCode);
                 if (success)
                 {
-                    AppendLog("[展讯] Bootloader 解锁成功！", Color.Green);
-                    MessageBox.Show("Bootloader 解锁成功！\n\n设备将重启。", "成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    AppendLog("[Spreadtrum] Bootloader Unlock Success!", Color.Green);
+                    MessageBox.Show("Bootloader Unlock Success!\n\nDevice will reboot.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
-                    AppendLog("[展讯] 解锁失败，解锁码可能不正确", Color.Red);
-                    MessageBox.Show("Bootloader 解锁失败！\n\n解锁码可能不正确，或设备不支持解锁。", "失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    AppendLog("[Spreadtrum] Unlock Failed, code may be incorrect", Color.Red);
+                    MessageBox.Show("Bootloader Unlock Failed!\n\nCode may be incorrect, or device not supported.", "Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -2389,35 +2389,35 @@ namespace LoveAlways
         #endregion
 
         /// <summary>
-        /// 备份选中的分区 (支持多个)
+        /// Backup Selected Partitions (Support Multiple)
         /// </summary>
         private async Task SprdBackupSelectedPartitionsAsync()
         {
             if (sprdListPartitions.CheckedItems.Count == 0)
             {
-                AppendLog("[展讯] 请勾选要备份的分区", Color.Orange);
+                AppendLog("[Spreadtrum] Please check partitions to backup", Color.Orange);
                 return;
             }
 
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = "选择备份保存目录";
+                fbd.Description = "Select Backup Save Directory";
 
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     int total = sprdListPartitions.CheckedItems.Count;
                     int success = 0;
 
-                    AppendLog($"[展讯] 开始备份 {total} 个分区...", Color.Cyan);
+                    AppendLog($"[Spreadtrum] Starting backup {total} partitions...", Color.Cyan);
 
                     foreach (ListViewItem item in sprdListPartitions.CheckedItems)
                     {
                         string partName = item.Text;
                         string outputPath = Path.Combine(fbd.SelectedPath, $"{partName}.img");
 
-                        AppendLog($"[展讯] 备份: {partName}...", Color.White);
+                        AppendLog($"[Spreadtrum] Backup: {partName}...", Color.White);
 
-                        // 获取分区大小
+                        // Get Partition Size
                         uint size = 0;
                         if (item.Tag is SprdPartitionInfo partInfo)
                         {
@@ -2428,19 +2428,19 @@ namespace LoveAlways
                         if (result)
                         {
                             success++;
-                            AppendLog($"[展讯] {partName} 备份成功", Color.Gray);
+                            AppendLog($"[Spreadtrum] {partName} Backup Success", Color.Gray);
                         }
                         else
                         {
-                            AppendLog($"[展讯] {partName} 备份失败", Color.Orange);
+                            AppendLog($"[Spreadtrum] {partName} Backup Failed", Color.Orange);
                         }
                     }
 
-                    AppendLog($"[展讯] 备份完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
+                    AppendLog($"[Spreadtrum] Backup Complete: {success}/{total} Success", success == total ? Color.Green : Color.Orange);
 
                     if (success > 0)
                     {
-                        // 打开备份目录
+                        // Open Backup Directory
                         System.Diagnostics.Process.Start("explorer.exe", fbd.SelectedPath);
                     }
                 }

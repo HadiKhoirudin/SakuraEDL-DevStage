@@ -1,6 +1,6 @@
 // ============================================================================
-// LoveAlways - Rawprogram XML 解析器 (优化版)
-// 支持: rawprogram*.xml, patch*.xml, erase, zeroout, 负扇区, 槽位感知
+// LoveAlways - Rawprogram XML Parser (optimized version)
+// Supports: rawprogram*.xml, patch*.xml, erase, zeroout, negative sector, slot-aware
 // ============================================================================
 
 using System;
@@ -21,12 +21,12 @@ namespace LoveAlways.Qualcomm.Common
         public long NumSectors { get; set; }
         public int SectorSize { get; set; }
         public long FileOffset { get; set; }        // file_sector_offset * SectorSize
-        public long FileSectorOffset { get; set; }  // 文件偏移扇区数
+        public long FileSectorOffset { get; set; }  // File offset in sectors
         public bool IsSparse { get; set; }
         public bool ReadBackVerify { get; set; }
         public TaskType Type { get; set; }
-        public string PartiGuid { get; set; }       // 分区 GUID
-        public int Priority { get; set; }           // 写入优先级 (越小越先)
+        public string PartiGuid { get; set; }       // Partition GUID
+        public int Priority { get; set; }           // Write priority (smaller is earlier)
 
         public FlashTask()
         {
@@ -40,7 +40,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         public long Size { get { return NumSectors * SectorSize; } }
-        public long ActualFileSize { get; set; }    // 实际文件大小 (用于 Sparse)
+        public long ActualFileSize { get; set; }    // Actual file size (for Sparse)
 
         public string FormattedSize
         {
@@ -55,7 +55,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 是否需要负扇区解析
+        /// Whether negative sector resolution is needed
         /// </summary>
         public bool NeedsNegativeSectorResolve { get { return StartSector < 0; } }
     }
@@ -80,7 +80,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 是否需要负扇区解析
+        /// Whether negative sector resolution is needed
         /// </summary>
         public bool NeedsNegativeSectorResolve { get { return StartSector < 0; } }
     }
@@ -93,10 +93,10 @@ namespace LoveAlways.Qualcomm.Common
         public List<string> PatchFiles { get; set; }
         public List<PatchEntry> PatchEntries { get; set; }
         public string ProgrammerPath { get; set; }
-        public string DigestPath { get; set; }      // VIP Digest 文件
-        public string SignaturePath { get; set; }   // VIP Signature 文件
+        public string DigestPath { get; set; }      // VIP Digest file
+        public string SignaturePath { get; set; }   // VIP Signature file
         public int MaxLun { get; set; }
-        public string DetectedSlot { get; set; }    // 检测到的槽位 (a/b)
+        public string DetectedSlot { get; set; }    // Detected slot (a/b)
 
         public FlashPackageInfo()
         {
@@ -117,7 +117,7 @@ namespace LoveAlways.Qualcomm.Common
         public bool HasVipAuth { get { return !string.IsNullOrEmpty(DigestPath) && !string.IsNullOrEmpty(SignaturePath); } }
 
         /// <summary>
-        /// 按优先级排序任务 (GPT 最先, 然后按 LUN + StartSector)
+        /// Sort tasks by priority (GPT first, then by LUN + StartSector)
         /// </summary>
         public List<FlashTask> GetSortedTasks()
         {
@@ -132,7 +132,7 @@ namespace LoveAlways.Qualcomm.Common
     {
         private readonly Action<string> _log;
         private readonly string _basePath;
-        private Dictionary<string, string> _fileCache;  // 文件名 -> 完整路径 缓存
+        private Dictionary<string, string> _fileCache;  // Filename -> Full path cache
 
         private static readonly HashSet<string> SensitivePartitions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -141,7 +141,7 @@ namespace LoveAlways.Qualcomm.Common
             "keymaster", "cmnlib", "cmnlib64", "devcfg", "qupfw", "uefisecapp", "apdp", "msadp", "dip", "storsec"
         };
 
-        // GPT 相关分区 (需要优先写入)
+        // GPT related partitions (need to be written first)
         private static readonly HashSet<string> GptPartitions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "PrimaryGPT", "BackupGPT", "gpt_main0", "gpt_main1", "gpt_main2", "gpt_main3", "gpt_main4", "gpt_main5",
@@ -159,37 +159,37 @@ namespace LoveAlways.Qualcomm.Common
         {
             var info = new FlashPackageInfo { PackagePath = _basePath };
 
-            // 预建文件缓存
+            // Pre-build file cache
             BuildFileCache();
 
-            // 查找 rawprogram 文件 (支持多种命名)
+            // Find rawprogram files (supports multiple naming conventions)
             var rawprogramFiles = FindRawprogramFiles();
 
             if (rawprogramFiles.Count == 0)
             {
-                _log("[RawprogramParser] 未找到 rawprogram*.xml 文件");
+                _log("[RawprogramParser] rawprogram*.xml file not found");
                 return info;
             }
 
             info.RawprogramFiles.AddRange(rawprogramFiles);
             info.ProgrammerPath = FindProgrammer();
 
-            // 查找 VIP 认证文件
+            // Find VIP authentication files
             info.DigestPath = FindVipFile("Digest", "digest");
             info.SignaturePath = FindVipFile("Sign", "signature", "Signature");
 
-            // 解析所有 rawprogram 文件
+            // Parse all rawprogram files
             foreach (var file in rawprogramFiles)
             {
-                _log(string.Format("[RawprogramParser] 解析: {0}", Path.GetFileName(file)));
+                _log(string.Format("[RawprogramParser] Parsing: {0}", Path.GetFileName(file)));
                 var tasks = ParseRawprogramXml(file);
                 
                 foreach (var task in tasks)
                 {
-                    // 去重 (按 LUN + StartSector + Label)
+                    // Deduplicate (by LUN + StartSector + Label)
                     if (!info.Tasks.Any(t => t.Lun == task.Lun && t.StartSector == task.StartSector && t.Label == task.Label))
                     {
-                        // 设置优先级
+                        // Set priority
                         if (GptPartitions.Contains(task.Label) || task.Label.StartsWith("gpt_"))
                         {
                             task.Priority = task.Label.Contains("Primary") || task.Label.Contains("main") ? 1 : 2;
@@ -205,10 +205,10 @@ namespace LoveAlways.Qualcomm.Common
                 }
             }
 
-            // 检测槽位
+            // Detect slot
             info.DetectedSlot = DetectSlotFromTasks(info.Tasks);
 
-            // 加载 patch 文件
+            // Load patch files
             var patchFiles = Directory.GetFiles(_basePath, "patch*.xml", SearchOption.AllDirectories)
                 .OrderBy(f => f).ToList();
             
@@ -221,19 +221,19 @@ namespace LoveAlways.Qualcomm.Common
 
             info.MaxLun = info.Tasks.Count > 0 ? info.Tasks.Max(t => t.Lun) : 0;
             
-            _log(string.Format("[RawprogramParser] 加载完成: {0} 个任务, {1} 个补丁, 槽位: {2}", 
+            _log(string.Format("[RawprogramParser] Load completed: {0} tasks, {1} patches, slot: {2}", 
                 info.TotalTasks, info.PatchEntries.Count, 
-                string.IsNullOrEmpty(info.DetectedSlot) ? "未知" : info.DetectedSlot));
+                string.IsNullOrEmpty(info.DetectedSlot) ? "Unknown" : info.DetectedSlot));
 
             return info;
         }
 
-        // 搜索深度限制
+        // Search depth limit
         private const int MAX_SEARCH_DEPTH = 5;
         private const int MAX_FILES_TO_CACHE = 10000;
 
         /// <summary>
-        /// 预建文件缓存 (加速查找, 限制深度)
+        /// Pre-build file cache (accelerate search, limit depth)
         /// </summary>
         private void BuildFileCache()
         {
@@ -246,7 +246,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 递归构建文件缓存 (带深度限制)
+        /// Recursively build file cache (with depth limit)
         /// </summary>
         private void BuildFileCacheRecursive(string dir, int depth)
         {
@@ -255,7 +255,7 @@ namespace LoveAlways.Qualcomm.Common
 
             try
             {
-                // 添加当前目录的文件
+                // Add files in current directory
                 foreach (var file in Directory.GetFiles(dir))
                 {
                     if (_fileCache.Count >= MAX_FILES_TO_CACHE)
@@ -266,10 +266,10 @@ namespace LoveAlways.Qualcomm.Common
                         _fileCache[name] = file;
                 }
 
-                // 递归子目录
+                // Recursively search subdirectories
                 foreach (var subDir in Directory.GetDirectories(dir))
                 {
-                    // 跳过隐藏目录和常见无关目录
+                    // Skip hidden directories and common irrelevant directories
                     string dirName = Path.GetFileName(subDir);
                     if (dirName.StartsWith(".") || 
                         dirName.Equals("node_modules", StringComparison.OrdinalIgnoreCase) ||
@@ -283,7 +283,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 查找 rawprogram 文件 (支持多种命名格式)
+        /// Find rawprogram files (supports multiple naming formats)
         /// </summary>
         private List<string> FindRawprogramFiles()
         {
@@ -304,7 +304,7 @@ namespace LoveAlways.Qualcomm.Common
                 catch { }
             }
 
-            // 按 LUN 数字排序 (rawprogram0.xml, rawprogram1.xml, ...)
+            // Sort by LUN number (rawprogram0.xml, rawprogram1.xml, ...)
             return files.OrderBy(f => {
                 string name = Path.GetFileNameWithoutExtension(f);
                 int num;
@@ -314,7 +314,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 查找 VIP 认证文件
+        /// Find VIP authentication file
         /// </summary>
         private string FindVipFile(params string[] keywords)
         {
@@ -338,7 +338,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 从任务列表检测槽位
+        /// Detect slot from task list
         /// </summary>
         private string DetectSlotFromTasks(List<FlashTask> tasks)
         {
@@ -370,7 +370,7 @@ namespace LoveAlways.Qualcomm.Common
                 var root = doc.Root;
                 if (root == null) return tasks;
 
-                // 解析 <program> 元素
+                // Parse <program> element
                 foreach (var elem in root.Elements("program"))
                 {
                     var task = ParseProgramElement(elem, filePath);
@@ -378,7 +378,7 @@ namespace LoveAlways.Qualcomm.Common
                         tasks.Add(task);
                 }
 
-                // 解析 <erase> 元素
+                // Parse <erase> element
                 foreach (var elem in root.Elements("erase"))
                 {
                     var task = ParseEraseElement(elem);
@@ -386,7 +386,7 @@ namespace LoveAlways.Qualcomm.Common
                         tasks.Add(task);
                 }
 
-                // 解析 <zeroout> 元素
+                // Parse <zeroout> element
                 foreach (var elem in root.Elements("zeroout"))
                 {
                     var task = ParseZerooutElement(elem);
@@ -396,25 +396,25 @@ namespace LoveAlways.Qualcomm.Common
             }
             catch (Exception ex)
             {
-                _log(string.Format("[RawprogramParser] 解析失败: {0}", ex.Message));
+                _log(string.Format("[RawprogramParser] Parse failed: {0}", ex.Message));
             }
 
             return tasks;
         }
 
         /// <summary>
-        /// 解析 program 元素
+        /// Parse program element
         /// </summary>
         private FlashTask ParseProgramElement(XElement elem, string xmlPath)
         {
             string filename = GetAttr(elem, "filename", "");
             string label = GetAttr(elem, "label", "");
             
-            // 跳过 0: 开头的虚拟文件名
+            // Skip virtual filenames starting with 0:
             if (!string.IsNullOrEmpty(filename) && filename.StartsWith("0:"))
                 return null;
 
-            // 跳过空文件名且无 label 的条目
+            // Skip entries with empty filename and no label
             if (string.IsNullOrEmpty(filename) && string.IsNullOrEmpty(label))
                 return null;
 
@@ -436,7 +436,7 @@ namespace LoveAlways.Qualcomm.Common
 
             task.FileOffset = task.FileSectorOffset * task.SectorSize;
 
-            // 计算实际文件大小
+            // Calculate actual file size
             if (!string.IsNullOrEmpty(task.FilePath) && File.Exists(task.FilePath))
             {
                 try
@@ -457,21 +457,21 @@ namespace LoveAlways.Qualcomm.Common
                 catch { }
             }
 
-            // NumSectors 为 0 时尝试其他方式计算
+            // When NumSectors is 0, try other calculation methods
             if (task.NumSectors == 0)
             {
-                // 从 size_in_KB 计算
+                // Calculate from size_in_KB
                 double sizeInKb;
                 if (double.TryParse(GetAttr(elem, "size_in_KB", "0"), out sizeInKb) && sizeInKb > 0)
                 {
                     task.NumSectors = (long)(sizeInKb * 1024 / task.SectorSize);
                 }
-                // 从文件大小计算
+                // Calculate from file size
                 else if (task.ActualFileSize > 0)
                 {
                     task.NumSectors = (task.ActualFileSize + task.SectorSize - 1) / task.SectorSize;
                 }
-                // GPT 默认大小
+                // GPT default size
                 else if (task.Label == "PrimaryGPT" && task.StartSector == 0)
                 {
                     task.NumSectors = 6;
@@ -482,7 +482,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 解析 erase 元素
+        /// Parse erase element
         /// </summary>
         private FlashTask ParseEraseElement(XElement elem)
         {
@@ -498,12 +498,12 @@ namespace LoveAlways.Qualcomm.Common
                 StartSector = GetLongAttr(elem, "start_sector", 0),
                 NumSectors = GetLongAttr(elem, "num_partition_sectors", 0),
                 SectorSize = GetIntAttr(elem, "SECTOR_SIZE_IN_BYTES", 4096),
-                Priority = 50  // erase 中等优先级
+                Priority = 50  // erase medium priority
             };
         }
 
         /// <summary>
-        /// 解析 zeroout 元素
+        /// Parse zeroout element
         /// </summary>
         private FlashTask ParseZerooutElement(XElement elem)
         {
@@ -524,7 +524,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 解析 Patch XML 文件
+        /// Parse Patch XML file
         /// </summary>
         public List<PatchEntry> ParsePatchXml(string filePath)
         {
@@ -541,7 +541,7 @@ namespace LoveAlways.Qualcomm.Common
                     string what = GetAttr(elem, "what", "");
                     string value = GetAttr(elem, "value", "");
                     
-                    // 跳过空补丁
+                    // Skip empty patches
                     if (string.IsNullOrWhiteSpace(value) && string.IsNullOrWhiteSpace(what))
                         continue;
 
@@ -560,11 +560,11 @@ namespace LoveAlways.Qualcomm.Common
                 }
                 
                 if (patches.Count > 0)
-                    _log(string.Format("[RawprogramParser] {0}: {1} 个补丁", Path.GetFileName(filePath), patches.Count));
+                    _log(string.Format("[RawprogramParser] {0}: {1} patches", Path.GetFileName(filePath), patches.Count));
             }
             catch (Exception ex)
             {
-                _log(string.Format("[RawprogramParser] 解析 Patch 失败: {0}", ex.Message));
+                _log(string.Format("[RawprogramParser] Parse Patch failed: {0}", ex.Message));
             }
 
             return patches;
@@ -572,11 +572,11 @@ namespace LoveAlways.Qualcomm.Common
 
         public string FindProgrammer()
         {
-            // 按优先级搜索
+            // Search by priority
             var patterns = new[] { 
                 "prog_ufs_*.mbn", "prog_ufs_*.elf", "prog_ufs_*.melf",   // UFS
                 "prog_emmc_*.mbn", "prog_emmc_*.elf", "prog_emmc_*.melf", // eMMC
-                "prog_*.mbn", "prog_*.elf", "prog_*.melf",               // 通用
+                "prog_*.mbn", "prog_*.elf", "prog_*.melf",               // Generic
                 "programmer*.mbn", "programmer*.elf", "programmer*.melf",
                 "firehose*.mbn", "firehose*.elf", "firehose*.melf",
                 "*firehose*.mbn", "*firehose*.elf", "*firehose*.melf"
@@ -589,7 +589,7 @@ namespace LoveAlways.Qualcomm.Common
                     var files = Directory.GetFiles(_basePath, pattern, SearchOption.AllDirectories);
                     if (files.Length > 0)
                     {
-                        // 优先返回 DDR 版本
+                        // Prioritize returning DDR version
                         var ddrFile = files.FirstOrDefault(f => f.IndexOf("ddr", StringComparison.OrdinalIgnoreCase) >= 0);
                         return ddrFile ?? files[0];
                     }
@@ -601,12 +601,12 @@ namespace LoveAlways.Qualcomm.Common
 
         private string FindFile(string filename, string xmlPath)
         {
-            // 1. 从缓存查找
+            // 1. Search from cache
             string cached;
             if (_fileCache.TryGetValue(filename, out cached))
                 return cached;
 
-            // 2. XML 同目录
+            // 2. XML same directory
             string xmlDir = Path.GetDirectoryName(xmlPath);
             string path = Path.Combine(xmlDir, filename);
             if (File.Exists(path))
@@ -615,7 +615,7 @@ namespace LoveAlways.Qualcomm.Common
                 return path;
             }
 
-            // 3. 基础目录
+            // 3. Base directory
             path = Path.Combine(_basePath, filename);
             if (File.Exists(path))
             {
@@ -623,7 +623,7 @@ namespace LoveAlways.Qualcomm.Common
                 return path;
             }
 
-            // 4. 槽位变体 (system_a.img -> system.img)
+            // 4. Slot variant (system_a.img -> system.img)
             if (filename.Contains("_a.") || filename.Contains("_b."))
             {
                 string altName = filename.Replace("_a.", ".").Replace("_b.", ".");
@@ -634,7 +634,7 @@ namespace LoveAlways.Qualcomm.Common
                 }
             }
 
-            // 5. 深度搜索 (已在缓存中)
+            // 5. Deep search (already in cache)
             return "";
         }
 
@@ -649,7 +649,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 获取分区的绝对物理偏移 (字节)
+        /// Get absolute physical offset of partition (bytes)
         /// </summary>
         public static long GetAbsoluteOffset(FlashTask task)
         {
@@ -671,7 +671,7 @@ namespace LoveAlways.Qualcomm.Common
             string value = attr.Value;
             int result;
             
-            // 处理十六进制
+            // Handle hexadecimal
             if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 return int.TryParse(value.Substring(2), System.Globalization.NumberStyles.HexNumber, null, out result) ? result : defaultValue;
             
@@ -685,19 +685,19 @@ namespace LoveAlways.Qualcomm.Common
             string value = attr.Value;
             long result;
 
-            // 处理 NUM_DISK_SECTORS-N 公式
+            // Handle NUM_DISK_SECTORS-N formula
             if (value.Contains("NUM_DISK_SECTORS"))
             {
                 if (value.Contains("-"))
                 {
                     string offsetStr = value.Split('-')[1].TrimEnd('.');
                     if (long.TryParse(offsetStr, out result))
-                        return -result; // 负数表示从末尾倒数
+                        return -result; // Negative number means counting from the end
                 }
                 return -1; 
             }
 
-            // 处理十六进制
+            // Handle hexadecimal
             if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 return long.TryParse(value.Substring(2), System.Globalization.NumberStyles.HexNumber, null, out result) ? result : defaultValue;
             

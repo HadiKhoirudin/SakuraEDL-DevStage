@@ -1,8 +1,13 @@
 // ============================================================================
-// LoveAlways - 展讯统一资源包管理器
-// 整合 Exploit、FDL、配置等资源的打包/加载
-// 支持 SPAK v2 格式
+// LoveAlways - Spreadtrum Unified Resource Pack Manager
+// Pack/Load resources like Exploit, FDL, Config, etc.
+// Supports SPAK v2 format
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -15,21 +20,21 @@ using System.Text;
 namespace LoveAlways.Spreadtrum.Resources
 {
     /// <summary>
-    /// 展讯统一资源包管理器
-    /// 格式: SPAK v2
+    /// Spreadtrum Unified Resource Pack Manager
+    /// Format: SPAK v2
     /// 
     /// +------------------+
-    /// | Header (32 B)    | 魔数 "SPAK", 版本, 条目数, 标志, 校验和
+    /// | Header (32 B)    | Magic "SPAK", Version, Entry Count, Flags, Checksum
     /// +------------------+
-    /// | Entry Table      | 每条目 128 字节
+    /// | Entry Table      | 128 bytes per entry
     /// | (N × 128 B)      |
     /// +------------------+
-    /// | Compressed Data  | GZip 压缩的资源数据
+    /// | Compressed Data  | GZip compressed resource data
     /// +------------------+
     /// </summary>
     public static class SprdPakManager
     {
-        #region 常量定义
+        #region Constants
 
         private const uint PAK_MAGIC = 0x4B415053;  // "SPAK"
         private const uint PAK_VERSION = 0x0200;     // v2.0
@@ -38,29 +43,29 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 资源类型
+        #region Resource Types
 
         /// <summary>
-        /// 资源类型
+        /// Resource Type
         /// </summary>
         public enum ResourceType : uint
         {
             Unknown = 0,
             Exploit = 1,        // Exploit payload
-            Fdl1 = 2,           // FDL1 文件
-            Fdl2 = 3,           // FDL2 文件
-            ChipData = 4,       // 芯片数据
-            Config = 5,         // 配置文件
-            Script = 6,         // 脚本文件
-            Firmware = 7        // 固件文件
+            Fdl1 = 2,           // FDL1 file
+            Fdl2 = 3,           // FDL2 file
+            ChipData = 4,       // Chip data
+            Config = 5,         // Config file
+            Script = 6,         // Script file
+            Firmware = 7        // Firmware file
         }
 
         #endregion
 
-        #region 数据结构
+        #region Data Structures
 
         /// <summary>
-        /// PAK 文件头
+        /// PAK File Header
         /// </summary>
         public class PakHeader
         {
@@ -101,21 +106,21 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// PAK 条目
+        /// PAK Entry
         /// </summary>
         public class PakEntry
         {
-            public string Name { get; set; }          // 32: 资源名称
-            public string Category { get; set; }      // 16: 分类 (芯片名/设备名)
-            public string SubCategory { get; set; }   // 16: 子分类
-            public uint DataOffset { get; set; }      // 4: 数据偏移
-            public uint CompressedSize { get; set; }  // 4: 压缩后大小
-            public uint OriginalSize { get; set; }    // 4: 原始大小
+            public string Name { get; set; }          // 32: Resource name
+            public string Category { get; set; }      // 16: Category (Chip name/Device name)
+            public string SubCategory { get; set; }   // 16: Subcategory
+            public uint DataOffset { get; set; }      // 4: Data offset
+            public uint CompressedSize { get; set; }  // 4: Compressed size
+            public uint OriginalSize { get; set; }    // 4: Original size
             public uint Checksum { get; set; }        // 4: CRC32
-            public ResourceType Type { get; set; }    // 4: 资源类型
-            public uint Flags { get; set; }           // 4: 标志
-            public uint Address { get; set; }         // 4: 加载地址 (FDL 专用)
-            public byte[] Reserved { get; set; } = new byte[36]; // 36: 保留
+            public ResourceType Type { get; set; }    // 4: Resource type
+            public uint Flags { get; set; }           // 4: Flags
+            public uint Address { get; set; }         // 4: Load address (FDL specific)
+            public byte[] Reserved { get; set; } = new byte[36]; // 36: Reserved
 
             public bool IsCompressed => (Flags & 0x01) != 0;
             public string Key => $"{Category}/{SubCategory}/{Name}".ToLower();
@@ -171,7 +176,7 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 状态管理
+        #region Status Management
 
         private static readonly object _lock = new object();
         private static Dictionary<string, PakEntry> _entries = new Dictionary<string, PakEntry>();
@@ -180,27 +185,27 @@ namespace LoveAlways.Spreadtrum.Resources
         private static readonly Assembly _assembly = Assembly.GetExecutingAssembly();
 
         /// <summary>
-        /// 是否已加载资源包
+        /// Whether resource pack is loaded
         /// </summary>
         public static bool IsLoaded => _loadedPakPath != null;
 
         /// <summary>
-        /// 已加载的条目数量
+        /// Number of loaded entries
         /// </summary>
         public static int EntryCount => _entries.Count;
 
         /// <summary>
-        /// 默认资源包路径
+        /// Default resource pack path
         /// </summary>
         public static string DefaultPakPath => Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory, "SprdResources", "sprd.pak");
 
         #endregion
 
-        #region 加载资源包
+        #region Load Resource Pack
 
         /// <summary>
-        /// 加载资源包
+        /// Load resource pack
         /// </summary>
         public static bool LoadPak(string pakPath = null)
         {
@@ -218,14 +223,14 @@ namespace LoveAlways.Spreadtrum.Resources
                     using (var fs = new FileStream(pakPath, FileMode.Open, FileAccess.Read, FileShare.Read))
                     using (var br = new BinaryReader(fs))
                     {
-                        // 读取头部
+                        // Read header
                         var headerData = br.ReadBytes(HEADER_SIZE);
                         var header = PakHeader.FromBytes(headerData);
 
                         if (header.Magic != PAK_MAGIC)
                             throw new InvalidDataException("Invalid SPAK magic");
 
-                        // 读取条目
+                        // Read entries
                         _entries.Clear();
                         _cache.Clear();
 
@@ -248,7 +253,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 卸载资源包
+        /// Unload resource pack
         /// </summary>
         public static void UnloadPak()
         {
@@ -262,10 +267,10 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 获取资源
+        #region Get Resources
 
         /// <summary>
-        /// 获取资源数据
+        /// Get resource data
         /// </summary>
         public static byte[] GetResource(string category, string subCategory, string name)
         {
@@ -274,11 +279,11 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取 FDL 数据
+        /// Get FDL data
         /// </summary>
         public static byte[] GetFdlData(string chipName, string deviceName, bool isFdl1)
         {
-            // 尝试多种命名格式
+            // Try multiple naming formats
             string[] names = isFdl1
                 ? new[] { "fdl1-sign.bin", "fdl1.bin", "fdl1" }
                 : new[] { "fdl2-sign.bin", "fdl2.bin", "fdl2" };
@@ -290,7 +295,7 @@ namespace LoveAlways.Spreadtrum.Resources
                     return data;
             }
 
-            // 尝试通用设备
+            // Try generic device
             foreach (var name in names)
             {
                 var data = GetResource(chipName, "generic", name);
@@ -298,40 +303,40 @@ namespace LoveAlways.Spreadtrum.Resources
                     return data;
             }
 
-            // 从嵌入资源加载
+            // Load from embedded resources
             return null;
         }
 
         /// <summary>
-        /// 获取 Exploit 数据
+        /// Get Exploit data
         /// </summary>
         public static byte[] GetExploitData(string exploitId)
         {
-            // 从资源包
+            // From resource pack
             var data = GetResource("exploit", "payload", $"exploit_{exploitId}.bin");
             if (data != null)
                 return data;
 
-            // 从嵌入资源
+            // From embedded resources
             return LoadEmbeddedResource($"exploit_{exploitId}.bin");
         }
 
         /// <summary>
-        /// 根据键值获取数据
+        /// Get data by key
         /// </summary>
         private static byte[] GetResourceByKey(string key)
         {
             lock (_lock)
             {
-                // 检查缓存
+                // Check cache
                 if (_cache.TryGetValue(key, out var cached))
                     return cached;
 
-                // 检查条目
+                // Check entries
                 if (!_entries.TryGetValue(key, out var entry))
                     return null;
 
-                // 读取数据
+                // Read data
                 if (string.IsNullOrEmpty(_loadedPakPath))
                     return null;
 
@@ -347,7 +352,7 @@ namespace LoveAlways.Spreadtrum.Resources
                             ? Decompress(compressedData)
                             : compressedData;
 
-                        // 验证校验和
+                        // Verify checksum
                         if (CalculateCrc32(data) != entry.Checksum)
                             return null;
 
@@ -363,7 +368,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 从嵌入资源加载
+        /// Load from embedded resources
         /// </summary>
         private static byte[] LoadEmbeddedResource(string resourceName)
         {
@@ -374,7 +379,7 @@ namespace LoveAlways.Spreadtrum.Resources
                 {
                     if (stream == null)
                     {
-                        // 尝试其他名称
+                        // Try other names
                         foreach (var name in _assembly.GetManifestResourceNames())
                         {
                             if (name.EndsWith(resourceName, StringComparison.OrdinalIgnoreCase))
@@ -410,10 +415,10 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 查询方法
+        #region Query Methods
 
         /// <summary>
-        /// 获取所有芯片名称
+        /// Get all chip names
         /// </summary>
         public static string[] GetChipNames()
         {
@@ -429,7 +434,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取芯片的所有设备
+        /// Get all devices for a chip
         /// </summary>
         public static string[] GetDeviceNames(string chipName)
         {
@@ -445,7 +450,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取所有 Exploit 名称
+        /// Get all exploit names
         /// </summary>
         public static string[] GetExploitNames()
         {
@@ -456,14 +461,13 @@ namespace LoveAlways.Spreadtrum.Resources
                     .Select(e => e.Name)
                     .ToList();
 
-                // 添加嵌入的 exploit
-                names.AddRange(new[] { "exploit_4ee8.bin", "exploit_65015f08.bin", "exploit_65015f48.bin" });
+                // Add embedded exploits                names.AddRange(new[] { "exploit_4ee8.bin", "exploit_65015f08.bin", "exploit_65015f48.bin" });
                 return names.Distinct().ToArray();
             }
         }
 
         /// <summary>
-        /// 检查是否有指定资源
+        /// Check if a resource exists
         /// </summary>
         public static bool HasResource(string category, string subCategory, string name)
         {
@@ -475,7 +479,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取 FDL 条目信息
+        /// Get FDL entry info
         /// </summary>
         public static PakEntry GetFdlEntry(string chipName, string deviceName, bool isFdl1)
         {
@@ -497,10 +501,10 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 构建资源包
+        #region Build Resource Pack
 
         /// <summary>
-        /// 从 FDL 目录构建资源包
+        /// Build resource pack from FDL directory
         /// </summary>
         public static void BuildPak(string fdlSourceDir, string outputPath, bool compress = true)
         {
@@ -508,7 +512,7 @@ namespace LoveAlways.Spreadtrum.Resources
             var dataBlocks = new List<byte[]>();
             uint dataOffset = 0;
 
-            // 遍历 FDL 目录
+            // Iterate FDL directory
             if (Directory.Exists(fdlSourceDir))
             {
                 foreach (var file in Directory.GetFiles(fdlSourceDir, "*.bin", SearchOption.AllDirectories))
@@ -521,14 +525,14 @@ namespace LoveAlways.Spreadtrum.Resources
                     var chipName = parts[0];
                     var deviceName = parts.Length >= 3 ? parts[parts.Length - 2] : "generic";
 
-                    // 读取文件
+                    // Read file
                     var originalData = File.ReadAllBytes(file);
                     var checksum = CalculateCrc32(originalData);
 
-                    // 压缩
+                    // Compress
                     byte[] compressedData = compress ? Compress(originalData) : originalData;
 
-                    // 判断类型
+                    // Determine type
                     var type = fileName.ToLower().Contains("fdl1") ? ResourceType.Fdl1
                              : fileName.ToLower().Contains("fdl2") ? ResourceType.Fdl2
                              : fileName.ToLower().Contains("exploit") ? ResourceType.Exploit
@@ -552,21 +556,21 @@ namespace LoveAlways.Spreadtrum.Resources
                 }
             }
 
-            // 计算偏移
+            // Calculate offsets
             uint entryTableStart = HEADER_SIZE;
             uint dataStart = entryTableStart + (uint)(entries.Count * ENTRY_SIZE);
 
-            // 更新偏移
+            // Update offsets
             for (int i = 0; i < entries.Count; i++)
             {
                 entries[i].DataOffset += dataStart;
             }
 
-            // 写入文件
+            // Write to file
             using (var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write))
             using (var bw = new BinaryWriter(fs))
             {
-                // 头部
+                // Header
                 var header = new PakHeader
                 {
                     Magic = PAK_MAGIC,
@@ -577,13 +581,13 @@ namespace LoveAlways.Spreadtrum.Resources
                 };
                 bw.Write(header.ToBytes());
 
-                // 条目表
+                // Entry table
                 foreach (var entry in entries)
                 {
                     bw.Write(entry.ToBytes());
                 }
 
-                // 数据
+                // Data
                 foreach (var data in dataBlocks)
                 {
                     bw.Write(data);
@@ -592,7 +596,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 解包到目录
+        /// Extract pack to directory
         /// </summary>
         public static void ExtractPak(string pakPath, string outputDir)
         {
@@ -628,12 +632,12 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 临时文件
+        #region Temporary Files
 
         private static string _tempDir;
 
         /// <summary>
-        /// 提取 FDL 到临时文件
+        /// Extract FDL to temporary file
         /// </summary>
         public static string ExtractFdlToTemp(string chipName, string deviceName, bool isFdl1)
         {
@@ -656,7 +660,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 清理临时文件
+        /// Cleanup temporary files
         /// </summary>
         public static void CleanupTemp()
         {
@@ -669,7 +673,7 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 压缩/解压/CRC
+        #region Compression/Decompression/CRC
 
         private static byte[] Compress(byte[] data)
         {

@@ -1,10 +1,15 @@
 // ============================================================================
-// LoveAlways - MediaTek 端口检测器
+// LoveAlways - MediaTek Port Detector
 // MediaTek Port Detector
 // ============================================================================
-// 自动检测 MTK 设备 USB 端口
-// 支持 BROM 模式和 Preloader 模式
+// Automatically detects USB ports for MediaTek devices
+// Supports BROM mode and Preloader mode
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -18,7 +23,7 @@ using System.Threading.Tasks;
 namespace LoveAlways.MediaTek.Common
 {
     /// <summary>
-    /// MTK 端口检测器
+    /// MediaTek Port Detector
     /// </summary>
     public class MtkPortDetector : IDisposable
     {
@@ -29,7 +34,7 @@ namespace LoveAlways.MediaTek.Common
         private bool _isMonitoring;
         private bool _disposed;
 
-        // MTK 设备 VID/PID
+        // MediaTek Device VID/PID
         private static readonly (int Vid, int Pid, string Description)[] MtkDeviceIds = new[]
         {
             (0x0E8D, 0x0003, "MTK BROM"),
@@ -47,7 +52,7 @@ namespace LoveAlways.MediaTek.Common
             (0x2A45, 0x0C02, "Meizu MTK"),  // Meizu MTK devices
         };
 
-        // 事件
+        // Events
         public event Action<MtkPortInfo> OnDeviceArrived;
         public event Action<string> OnDeviceRemoved;
 
@@ -56,10 +61,10 @@ namespace LoveAlways.MediaTek.Common
             _log = log ?? delegate { };
         }
 
-        #region 端口检测
+        #region Port Detection
 
         /// <summary>
-        /// 获取所有 MTK 设备端口
+        /// Get all MediaTek device ports
         /// </summary>
         public List<MtkPortInfo> GetMtkPorts()
         {
@@ -67,7 +72,7 @@ namespace LoveAlways.MediaTek.Common
 
             try
             {
-                // 方法 1: 使用 WMI 查询 USB 设备
+                // Method 1: Use WMI to query USB devices
                 using (var searcher = new ManagementObjectSearcher(
                     "SELECT * FROM Win32_PnPEntity WHERE ClassGuid='{4d36e978-e325-11ce-bfc1-08002be10318}'"))
                 {
@@ -79,18 +84,18 @@ namespace LoveAlways.MediaTek.Common
                             string name = obj["Name"]?.ToString() ?? "";
                             string caption = obj["Caption"]?.ToString() ?? "";
 
-                            // 检查是否为 MTK 设备
+                            // Check if it is a MediaTek device
                             var portInfo = ParseMtkDevice(deviceId, name, caption);
                             if (portInfo != null)
                             {
                                 ports.Add(portInfo);
                             }
                         }
-                        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[MTK Port] 检测端口异常: {ex.Message}"); }
+                        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[MTK Port] Detect port exception: {ex.Message}"); }
                     }
                 }
 
-                // 方法 2: 扫描串口
+                // Method 2: Scan serial ports
                 foreach (string portName in SerialPort.GetPortNames())
                 {
                     if (!ports.Any(p => p.ComPort == portName))
@@ -105,27 +110,27 @@ namespace LoveAlways.MediaTek.Common
             }
             catch (Exception ex)
             {
-                _log($"[MTK Port] 端口检测错误: {ex.Message}");
+                _log($"[MTK Port] Port detection error: {ex.Message}");
             }
 
             return ports;
         }
 
         /// <summary>
-        /// 解析 MTK 设备信息 - 双重验证 (VID + 设备名称)
+        /// Parse MediaTek device info - Double validation (VID + Device name)
         /// </summary>
         private MtkPortInfo ParseMtkDevice(string deviceId, string name, string caption)
         {
             string nameUpper = name.ToUpper();
             string captionUpper = caption.ToUpper();
             
-            // ========== 第一步: 硬排除其他平台 ==========
+            // ========== Step 1: Hard exclude other platforms ==========
             
-            // 排除展讯设备 (VID 0x1782)
+            // Exclude Spreadtrum devices (VID 0x1782)
             if (deviceId.ToUpper().Contains("VID_1782"))
                 return null;
             
-            // 排除展讯设备关键字
+            // Exclude Spreadtrum device keywords
             string[] sprdKeywords = { "SPRD", "SPREADTRUM", "UNISOC", "U2S DIAG", "SCI USB2SERIAL" };
             foreach (var kw in sprdKeywords)
             {
@@ -133,11 +138,11 @@ namespace LoveAlways.MediaTek.Common
                     return null;
             }
             
-            // 排除高通设备 (VID 0x05C6)
+            // Exclude Qualcomm devices (VID 0x05C6)
             if (deviceId.ToUpper().Contains("VID_05C6"))
                 return null;
             
-            // 排除高通设备关键字
+            // Exclude Qualcomm device keywords
             string[] qcKeywords = { "QUALCOMM", "QDL", "QHSUSB", "QDLOADER" };
             foreach (var kw in qcKeywords)
             {
@@ -145,11 +150,11 @@ namespace LoveAlways.MediaTek.Common
                     return null;
             }
             
-            // 排除 ADB/Fastboot
+            // Exclude ADB/Fastboot
             if (nameUpper.Contains("ADB INTERFACE") || nameUpper.Contains("FASTBOOT"))
                 return null;
             
-            // ========== 第二步: 解析 VID/PID ==========
+            // ========== Step 2: Parse VID/PID ==========
             
             var vidMatch = Regex.Match(deviceId, @"VID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase);
             var pidMatch = Regex.Match(deviceId, @"PID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase);
@@ -160,12 +165,12 @@ namespace LoveAlways.MediaTek.Common
             int vid = Convert.ToInt32(vidMatch.Groups[1].Value, 16);
             int pid = Convert.ToInt32(pidMatch.Groups[1].Value, 16);
             
-            // ========== 第三步: 双重验证 MTK 设备 ==========
+            // ========== Step 3: Double validate MediaTek device ==========
             
-            // MTK 专属 VID (0x0E8D)
+            // MediaTek specific VID (0x0E8D)
             bool hasMtkVid = (vid == 0x0E8D);
             
-            // MTK 专属设备名称关键字
+            // MediaTek specific device name keywords
             string[] mtkKeywords = { "MEDIATEK", "MTK", "PRELOADER", "DA USB", "BROM" };
             bool hasMtkKeyword = false;
             foreach (var kw in mtkKeywords)
@@ -177,25 +182,25 @@ namespace LoveAlways.MediaTek.Common
                 }
             }
             
-            // 情况1: VID 0x0E8D = 确认是 MTK (无需关键字)
+            // Case 1: VID 0x0E8D = Confirmed MTK (no keyword needed)
             if (hasMtkVid)
             {
-                // 继续处理
+                // Continue processing
             }
-            // 情况2: 已知厂商 MTK 设备 (VID + PID 组合)
+            // Case 2: Known manufacturer MTK device (VID + PID combination)
             else
             {
                 var mtkDevice = MtkDeviceIds.FirstOrDefault(d => d.Vid == vid && d.Pid == pid);
                 if (mtkDevice.Vid == 0)
                 {
-                    // 不是已知的 MTK 设备组合
-                    // 检查是否有 MTK 关键字
+                    // Not a known MediaTek device combination
+                    // Check if it has MediaTek keywords
                     if (!hasMtkKeyword)
                         return null;
                 }
             }
 
-            // ========== 第四步: 提取 COM 端口号 ==========
+            // ========== Step 4: Extract COM port number ==========
             
             var comMatch = Regex.Match(name, @"\(COM(\d+)\)", RegexOptions.IgnoreCase);
             if (!comMatch.Success)
@@ -207,7 +212,7 @@ namespace LoveAlways.MediaTek.Common
             if (string.IsNullOrEmpty(comPort))
                 return null;
             
-            // ========== 第五步: 确定设备模式 ==========
+            // ========== Step 5: Determine device mode ==========
             
             var knownDevice = MtkDeviceIds.FirstOrDefault(d => d.Vid == vid && d.Pid == pid);
             string description = knownDevice.Description ?? name;
@@ -228,7 +233,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 探测端口是否为 MTK 设备
+        /// Probe if port is a MediaTek device
         /// </summary>
         private MtkPortInfo ProbePort(string portName)
         {
@@ -240,7 +245,7 @@ namespace LoveAlways.MediaTek.Common
                     port.WriteTimeout = 500;
                     port.Open();
 
-                    // 发送 MTK 握手字节
+                    // Send MediaTek handshake byte
                     port.Write(new byte[] { 0xA0 }, 0, 1);
                     Thread.Sleep(50);
 
@@ -249,7 +254,7 @@ namespace LoveAlways.MediaTek.Common
                         byte[] response = new byte[port.BytesToRead];
                         port.Read(response, 0, response.Length);
 
-                        // 检查是否为 MTK 响应
+                        // Check if it is a MediaTek response
                         if (response.Any(b => b == 0x5F || b == 0xA0))
                         {
                             return new MtkPortInfo
@@ -269,10 +274,10 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region 热插拔监控
+        #region Hotplug Monitoring
 
         /// <summary>
-        /// 启动设备监控
+        /// Start device monitoring
         /// </summary>
         public void StartMonitoring()
         {
@@ -283,7 +288,7 @@ namespace LoveAlways.MediaTek.Common
             {
                 _cts = new CancellationTokenSource();
 
-                // 设备插入监控
+                // Device arrival monitoring
                 var insertQuery = new WqlEventQuery(
                     "SELECT * FROM __InstanceCreationEvent WITHIN 2 " +
                     "WHERE TargetInstance ISA 'Win32_PnPEntity' " +
@@ -293,7 +298,7 @@ namespace LoveAlways.MediaTek.Common
                 _insertWatcher.EventArrived += OnDeviceInserted;
                 _insertWatcher.Start();
 
-                // 设备移除监控
+                // Device removal monitoring
                 var removeQuery = new WqlEventQuery(
                     "SELECT * FROM __InstanceDeletionEvent WITHIN 2 " +
                     "WHERE TargetInstance ISA 'Win32_PnPEntity' " +
@@ -304,16 +309,16 @@ namespace LoveAlways.MediaTek.Common
                 _removeWatcher.Start();
 
                 _isMonitoring = true;
-                _log("[MTK Port] 设备监控已启动");
+                _log("[MTK Port] Device monitoring started");
             }
             catch (Exception ex)
             {
-                _log($"[MTK Port] 启动监控失败: {ex.Message}");
+                _log($"[MTK Port] Start monitoring failed: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 停止设备监控
+        /// Stop device monitoring
         /// </summary>
         public void StopMonitoring()
         {
@@ -333,13 +338,13 @@ namespace LoveAlways.MediaTek.Common
                 _removeWatcher = null;
 
                 _isMonitoring = false;
-                _log("[MTK Port] 设备监控已停止");
+                _log("[MTK Port] Device monitoring stopped");
             }
             catch { }
         }
 
         /// <summary>
-        /// 设备插入事件处理
+        /// Device insertion event handler
         /// </summary>
         private void OnDeviceInserted(object sender, EventArrivedEventArgs e)
         {
@@ -353,7 +358,7 @@ namespace LoveAlways.MediaTek.Common
                 var portInfo = ParseMtkDevice(deviceId, name, caption);
                 if (portInfo != null)
                 {
-                    _log($"[MTK Port] 检测到设备: {portInfo.ComPort} ({portInfo.Description})");
+                    _log($"[MTK Port] Device detected: {portInfo.ComPort} ({portInfo.Description})");
                     OnDeviceArrived?.Invoke(portInfo);
                 }
             }
@@ -361,7 +366,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 设备移除事件处理
+        /// Device removal event handler
         /// </summary>
         private void OnDeviceRemovedEvent(object sender, EventArrivedEventArgs e)
         {
@@ -374,7 +379,7 @@ namespace LoveAlways.MediaTek.Common
                 if (comMatch.Success)
                 {
                     string comPort = $"COM{comMatch.Groups[1].Value}";
-                    _log($"[MTK Port] 设备已移除: {comPort}");
+                    _log($"[MTK Port] Device removed: {comPort}");
                     OnDeviceRemoved?.Invoke(comPort);
                 }
             }
@@ -383,14 +388,14 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region 异步等待设备
+        #region Asynchronously wait for device
 
         /// <summary>
-        /// 等待 MTK 设备连接
+        /// Wait for MediaTek device connection
         /// </summary>
         public async Task<MtkPortInfo> WaitForDeviceAsync(int timeoutMs = 60000, CancellationToken ct = default)
         {
-            _log("[MTK Port] 等待设备连接...");
+            _log("[MTK Port] Waiting for device connection...");
             
             var tcs = new TaskCompletionSource<MtkPortInfo>();
             
@@ -404,15 +409,15 @@ namespace LoveAlways.MediaTek.Common
                 OnDeviceArrived += OnArrived;
                 StartMonitoring();
 
-                // 先检查是否已有设备
+                // Check if device is already connected first
                 var existingPorts = GetMtkPorts();
                 if (existingPorts.Count > 0)
                 {
-                    _log($"[MTK Port] 发现已连接设备: {existingPorts[0].ComPort}");
+                    _log($"[MTK Port] Found connected device: {existingPorts[0].ComPort}");
                     return existingPorts[0];
                 }
 
-                // 等待新设备
+                // Wait for new device
                 using (var cts = CancellationTokenSource.CreateLinkedTokenSource(ct))
                 {
                     cts.CancelAfter(timeoutMs);
@@ -432,7 +437,7 @@ namespace LoveAlways.MediaTek.Common
                     catch (OperationCanceledException) { }
                 }
 
-                _log("[MTK Port] 等待设备超时");
+                _log("[MTK Port] Wait for device timeout");
                 return null;
             }
             finally
@@ -442,7 +447,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 等待特定类型的 MTK 设备
+        /// Wait for specific type of MediaTek device
         /// </summary>
         public async Task<MtkPortInfo> WaitForBromDeviceAsync(int timeoutMs = 60000, CancellationToken ct = default)
         {
@@ -458,7 +463,7 @@ namespace LoveAlways.MediaTek.Common
                 
                 if (bromPort != null)
                 {
-                    _log($"[MTK Port] 发现 BROM 设备: {bromPort.ComPort}");
+                    _log($"[MTK Port] Found BROM device: {bromPort.ComPort}");
                     return bromPort;
                 }
 
@@ -470,10 +475,10 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         /// <summary>
-        /// 检查端口是否可用
+        /// Check if port is available
         /// </summary>
         public static bool IsPortAvailable(string portName)
         {
@@ -492,7 +497,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 获取端口友好名称
+        /// Get port friendly name
         /// </summary>
         public static string GetPortFriendlyName(string portName)
         {
@@ -530,11 +535,11 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// MTK 端口信息
+    /// MediaTek Port Info
     /// </summary>
     public class MtkPortInfo
     {
-        /// <summary>COM 端口名</summary>
+        /// <summary>COM port name</summary>
         public string ComPort { get; set; }
         
         /// <summary>USB VID</summary>
@@ -543,33 +548,33 @@ namespace LoveAlways.MediaTek.Common
         /// <summary>USB PID</summary>
         public int Pid { get; set; }
         
-        /// <summary>设备 ID</summary>
+        /// <summary>Device ID</summary>
         public string DeviceId { get; set; }
         
-        /// <summary>设备描述</summary>
+        /// <summary>Device description</summary>
         public string Description { get; set; }
         
-        /// <summary>是否为 BROM 模式</summary>
+        /// <summary>Whether in BROM mode</summary>
         public bool IsBromMode { get; set; }
         
-        /// <summary>是否为 Preloader 模式</summary>
+        /// <summary>Whether in Preloader mode</summary>
         public bool IsPreloaderMode { get; set; }
         
         /// <summary>
-        /// 显示名称
+        /// Display name
         /// </summary>
         public string DisplayName => $"{ComPort} - {Description}";
         
         /// <summary>
-        /// 模式描述
+        /// Mode description
         /// </summary>
         public string ModeDescription
         {
             get
             {
-                if (IsBromMode) return "BROM 模式";
-                if (IsPreloaderMode) return "Preloader 模式";
-                return "未知模式";
+                if (IsBromMode) return "BROM Mode";
+                if (IsPreloaderMode) return "Preloader Mode";
+                return "Unknown Mode";
             }
         }
 

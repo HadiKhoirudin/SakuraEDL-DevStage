@@ -1,9 +1,9 @@
 // ============================================================================
-// LoveAlways - GPT 分区表解析器 (借鉴 gpttool 逻辑)
+// LoveAlways - GPT Partition Table Parser (inspired by gpttool logic)
 // GPT Partition Table Parser - Enhanced version based on gpttool
 // ============================================================================
-// 模块: Qualcomm.Common
-// 功能: 解析 GPT 分区表，支持自动扇区大小检测、CRC校验、槽位检测
+// Module: Qualcomm.Common
+// Function: Parse GPT partition table, supports auto sector size detection, CRC verification, slot detection
 // ============================================================================
 
 using System;
@@ -16,32 +16,32 @@ using LoveAlways.Qualcomm.Models;
 namespace LoveAlways.Qualcomm.Common
 {
     /// <summary>
-    /// GPT Header 信息
+    /// GPT Header Info
     /// </summary>
     public class GptHeaderInfo
     {
         public string Signature { get; set; }           // "EFI PART"
-        public uint Revision { get; set; }              // 版本 (通常 0x00010000)
-        public uint HeaderSize { get; set; }            // Header 大小 (通常 92)
+        public uint Revision { get; set; }              // Revision (usually 0x00010000)
+        public uint HeaderSize { get; set; }            // Header size (usually 92)
         public uint HeaderCrc32 { get; set; }           // Header CRC32
-        public ulong MyLba { get; set; }                // 当前 Header LBA
-        public ulong AlternateLba { get; set; }         // 备份 Header LBA
-        public ulong FirstUsableLba { get; set; }       // 第一个可用 LBA
-        public ulong LastUsableLba { get; set; }        // 最后可用 LBA
-        public string DiskGuid { get; set; }            // 磁盘 GUID
-        public ulong PartitionEntryLba { get; set; }    // 分区条目起始 LBA
-        public uint NumberOfPartitionEntries { get; set; }  // 分区条目数量
-        public uint SizeOfPartitionEntry { get; set; }  // 每条目大小 (通常 128)
-        public uint PartitionEntryCrc32 { get; set; }   // 分区条目 CRC32
+        public ulong MyLba { get; set; }                // Current Header LBA
+        public ulong AlternateLba { get; set; }         // Alternate Header LBA
+        public ulong FirstUsableLba { get; set; }       // First usable LBA
+        public ulong LastUsableLba { get; set; }        // Last usable LBA
+        public string DiskGuid { get; set; }            // Disk GUID
+        public ulong PartitionEntryLba { get; set; }    // Partition entry start LBA
+        public uint NumberOfPartitionEntries { get; set; }  // Number of partition entries
+        public uint SizeOfPartitionEntry { get; set; }  // Size per entry (usually 128)
+        public uint PartitionEntryCrc32 { get; set; }   // Partition entry CRC32
         
         public bool IsValid { get; set; }
         public bool CrcValid { get; set; }
-        public string GptType { get; set; }             // "gptmain" 或 "gptbackup"
-        public int SectorSize { get; set; }             // 扇区大小 (512 或 4096)
+        public string GptType { get; set; }             // "gptmain" or "gptbackup"
+        public int SectorSize { get; set; }             // Sector size (512 or 4096)
     }
 
     /// <summary>
-    /// 槽位信息
+    /// Slot Info
     /// </summary>
     public class SlotInfo
     {
@@ -51,7 +51,7 @@ namespace LoveAlways.Qualcomm.Common
     }
 
     /// <summary>
-    /// GPT 解析结果
+    /// GPT Parse Result
     /// </summary>
     public class GptParseResult
     {
@@ -70,21 +70,21 @@ namespace LoveAlways.Qualcomm.Common
     }
 
     /// <summary>
-    /// GPT 分区表解析器 (借鉴 gpttool)
+    /// GPT Partition Table Parser (inspired by gpttool)
     /// </summary>
     public class GptParser
     {
         private readonly Action<string> _log;
         private readonly Action<string> _logDetail;
         
-        // GPT 签名
+        // GPT Signature
         private static readonly byte[] GPT_SIGNATURE = Encoding.ASCII.GetBytes("EFI PART");
         
-        // A/B 分区属性标志
+        // A/B partition attribute flags
         private const int AB_FLAG_OFFSET = 6;
         private const int AB_PARTITION_ATTR_SLOT_ACTIVE = 0x1 << 2;
 
-        // 静态 CRC32 表 (避免每次重新生成)
+        // Static CRC32 table (avoids regenerating every time)
         private static readonly uint[] CRC32_TABLE = GenerateStaticCrc32Table();
 
         public GptParser(Action<string> log = null, Action<string> logDetail = null)
@@ -93,10 +93,10 @@ namespace LoveAlways.Qualcomm.Common
             _logDetail = logDetail ?? _log;
         }
 
-        #region 主要解析方法
+        #region Main Parsing Methods
 
         /// <summary>
-        /// 解析 GPT 数据
+        /// Parse GPT Data
         /// </summary>
         public GptParseResult Parse(byte[] gptData, int lun, int defaultSectorSize = 4096)
         {
@@ -106,28 +106,28 @@ namespace LoveAlways.Qualcomm.Common
             {
                 if (gptData == null || gptData.Length < 512)
                 {
-                    result.ErrorMessage = "GPT 数据过小";
+                    result.ErrorMessage = "GPT data too small";
                     return result;
                 }
 
-                // 1. 查找 GPT Header 并自动检测扇区大小
+                // 1. Find GPT Header and auto detect sector size
                 int headerOffset = FindGptHeader(gptData);
                 if (headerOffset < 0)
                 {
-                    result.ErrorMessage = "未找到 GPT 签名";
+                    result.ErrorMessage = "GPT signature not found";
                     return result;
                 }
 
-                // 2. 解析 GPT Header
+                // 2. Parse GPT Header
                 var header = ParseGptHeader(gptData, headerOffset, defaultSectorSize);
                 if (!header.IsValid)
                 {
-                    result.ErrorMessage = "GPT Header 无效";
+                    result.ErrorMessage = "GPT Header invalid";
                     return result;
                 }
                 result.Header = header;
 
-                // 3. 自动检测扇区大小 (参考 gpttool)
+                // 3. Auto detect sector size (reference gpttool)
                 // Disk_SecSize_b_Dec = HeaderArea_Start_InF_b_Dec / HeaderArea_Start_Sec_Dec
                 if (header.MyLba > 0 && headerOffset > 0)
                 {
@@ -135,17 +135,17 @@ namespace LoveAlways.Qualcomm.Common
                     if (detectedSectorSize == 512 || detectedSectorSize == 4096)
                     {
                         header.SectorSize = detectedSectorSize;
-                        _logDetail(string.Format("[GPT] 自动检测扇区大小: {0} 字节 (Header偏移={1}, MyLBA={2})", 
+                        _logDetail(string.Format("[GPT] Auto detected sector size: {0} bytes (Header offset={1}, MyLBA={2})", 
                             detectedSectorSize, headerOffset, header.MyLba));
                     }
                     else
                     {
-                        // 尝试根据分区条目 LBA 推断
+                        // Try to infer according to partition entry LBA
                         if (header.PartitionEntryLba == 2)
                         {
-                            // 标准情况: 分区条目紧跟 Header
+                            // Standard case: partition entry follows header
                             header.SectorSize = defaultSectorSize;
-                            _logDetail(string.Format("[GPT] 使用默认扇区大小: {0} 字节", defaultSectorSize));
+                            _logDetail(string.Format("[GPT] Using default sector size: {0} bytes", defaultSectorSize));
                         }
                         else
                         {
@@ -156,26 +156,26 @@ namespace LoveAlways.Qualcomm.Common
                 else
                 {
                     header.SectorSize = defaultSectorSize;
-                    _logDetail(string.Format("[GPT] MyLBA=0，使用默认扇区大小: {0} 字节", defaultSectorSize));
+                    _logDetail(string.Format("[GPT] MyLBA=0, using default sector size: {0} bytes", defaultSectorSize));
                 }
 
-                // 4. 验证 CRC (可选)
+                // 4. Verify CRC (optional)
                 header.CrcValid = VerifyCrc32(gptData, headerOffset, header);
 
-                // 5. 解析分区条目
+                // 5. Parse partition entries
                 result.Partitions = ParsePartitionEntries(gptData, headerOffset, header, lun);
 
-                // 6. 检测 A/B 槽位
+                // 6. Detect A/B slots
                 result.SlotInfo = DetectSlot(result.Partitions);
 
                 result.Success = true;
-                _logDetail(string.Format("[GPT] LUN{0}: {1} 个分区, 槽位: {2}",
+                _logDetail(string.Format("[GPT] LUN{0}: {1} partitions, slot: {2}",
                     lun, result.Partitions.Count, result.SlotInfo.CurrentSlot));
             }
             catch (Exception ex)
             {
                 result.ErrorMessage = ex.Message;
-                _log(string.Format("[GPT] 解析异常: {0}", ex.Message));
+                _log(string.Format("[GPT] Parse exception: {0}", ex.Message));
             }
 
             return result;
@@ -183,31 +183,31 @@ namespace LoveAlways.Qualcomm.Common
 
         #endregion
 
-        #region GPT Header 解析
+        #region GPT Header Parsing
 
         /// <summary>
-        /// 查找 GPT Header 位置
+        /// Find GPT Header position
         /// </summary>
         private int FindGptHeader(byte[] data)
         {
-            // 常见偏移位置
+            // Common offset locations
             int[] searchOffsets = { 4096, 512, 0, 4096 * 2, 512 * 2 };
 
             foreach (int offset in searchOffsets)
             {
                 if (offset + 92 <= data.Length && MatchSignature(data, offset))
                 {
-                    _logDetail(string.Format("[GPT] 在偏移 {0} 处找到 GPT Header", offset));
+                    _logDetail(string.Format("[GPT] Found GPT Header at offset {0}", offset));
                     return offset;
                 }
             }
 
-            // 暴力搜索 (每 512 字节)
+            // Brute force search (every 512 bytes)
             for (int i = 0; i <= data.Length - 92; i += 512)
             {
                 if (MatchSignature(data, i))
                 {
-                    _logDetail(string.Format("[GPT] 暴力搜索: 在偏移 {0} 处找到 GPT Header", i));
+                    _logDetail(string.Format("[GPT] Brute force search: found GPT Header at offset {0}", i));
                     return i;
                 }
             }
@@ -216,7 +216,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 匹配 GPT 签名
+        /// Match GPT signature
         /// </summary>
         private bool MatchSignature(byte[] data, int offset)
         {
@@ -230,7 +230,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 解析 GPT Header
+        /// Parse GPT Header
         /// </summary>
         private GptHeaderInfo ParseGptHeader(byte[] data, int offset, int defaultSectorSize)
         {
@@ -241,7 +241,7 @@ namespace LoveAlways.Qualcomm.Common
 
             try
             {
-                // 签名 (0-8)
+                // Signature (0-8)
                 header.Signature = Encoding.ASCII.GetString(data, offset, 8);
                 if (header.Signature != "EFI PART")
                 {
@@ -249,45 +249,45 @@ namespace LoveAlways.Qualcomm.Common
                     return header;
                 }
 
-                // 版本 (8-12)
+                // Revision (8-12)
                 header.Revision = BitConverter.ToUInt32(data, offset + 8);
-
-                // Header 大小 (12-16)
+                
+                // Header size (12-16)
                 header.HeaderSize = BitConverter.ToUInt32(data, offset + 12);
-
+                
                 // Header CRC32 (16-20)
                 header.HeaderCrc32 = BitConverter.ToUInt32(data, offset + 16);
-
-                // 保留 (20-24)
-
+                
+                // Reserved (20-24)
+                
                 // MyLBA (24-32)
                 header.MyLba = BitConverter.ToUInt64(data, offset + 24);
-
+                
                 // AlternateLBA (32-40)
                 header.AlternateLba = BitConverter.ToUInt64(data, offset + 32);
-
+                
                 // FirstUsableLBA (40-48)
                 header.FirstUsableLba = BitConverter.ToUInt64(data, offset + 40);
-
+                
                 // LastUsableLBA (48-56)
                 header.LastUsableLba = BitConverter.ToUInt64(data, offset + 48);
-
+                
                 // DiskGUID (56-72)
                 header.DiskGuid = FormatGuid(data, offset + 56);
-
+                
                 // PartitionEntryLBA (72-80)
                 header.PartitionEntryLba = BitConverter.ToUInt64(data, offset + 72);
-
+                
                 // NumberOfPartitionEntries (80-84)
                 header.NumberOfPartitionEntries = BitConverter.ToUInt32(data, offset + 80);
-
+                
                 // SizeOfPartitionEntry (84-88)
                 header.SizeOfPartitionEntry = BitConverter.ToUInt32(data, offset + 84);
-
+                
                 // PartitionEntryCRC32 (88-92)
                 header.PartitionEntryCrc32 = BitConverter.ToUInt32(data, offset + 88);
-
-                // 判断 GPT 类型
+                
+                // Determine GPT type
                 if (header.MyLba != 0 && header.AlternateLba != 0)
                 {
                     header.GptType = header.MyLba < header.AlternateLba ? "gptmain" : "gptbackup";
@@ -313,10 +313,10 @@ namespace LoveAlways.Qualcomm.Common
 
         #endregion
 
-        #region 分区条目解析
+        #region Partition Entry Parsing
 
         /// <summary>
-        /// 解析分区条目
+        /// Parse Partition Entries
         /// </summary>
         private List<PartitionInfo> ParsePartitionEntries(byte[] data, int headerOffset, GptHeaderInfo header, int lun)
         {
@@ -326,79 +326,79 @@ namespace LoveAlways.Qualcomm.Common
             {
                 int sectorSize = header.SectorSize > 0 ? header.SectorSize : 4096;
                 
-                _logDetail(string.Format("[GPT] LUN{0} 开始解析分区条目 (数据长度={1}, HeaderOffset={2}, SectorSize={3})", 
+                _logDetail(string.Format("[GPT] LUN{0} start parsing partition entries (data length={1}, HeaderOffset={2}, SectorSize={3})", 
                     lun, data.Length, headerOffset, sectorSize));
-                _logDetail(string.Format("[GPT] Header信息: PartitionEntryLba={0}, NumberOfEntries={1}, EntrySize={2}, FirstUsableLba={3}",
+                _logDetail(string.Format("[GPT] Header info: PartitionEntryLba={0}, NumberOfEntries={1}, EntrySize={2}, FirstUsableLba={3}",
                     header.PartitionEntryLba, header.NumberOfPartitionEntries, header.SizeOfPartitionEntry, header.FirstUsableLba));
-
-                // ========== 计算分区条目起始位置 - 多种策略 ==========
+                
+                // ========== Calculate partition entry start position - Multiple strategies ==========
                 int entryOffset = -1;
                 string usedStrategy = "";
                 
-                // 策略1: 使用 Header 中指定的 PartitionEntryLba
+                // Strategy 1: Use PartitionEntryLba specified in Header
                 if (header.PartitionEntryLba > 0)
                 {
                     long calcOffset = (long)header.PartitionEntryLba * sectorSize;
                     if (calcOffset > 0 && calcOffset < data.Length - 128)
                     {
-                        // 验证该偏移是否有有效的分区条目
+                        // Verify if this offset has valid partition entries
                         if (HasValidPartitionEntry(data, (int)calcOffset))
                         {
                             entryOffset = (int)calcOffset;
-                            usedStrategy = string.Format("策略1 (PartitionEntryLba): {0} * {1} = {2}", 
+                            usedStrategy = string.Format("Strategy 1 (PartitionEntryLba): {0} * {1} = {2}", 
                                 header.PartitionEntryLba, sectorSize, entryOffset);
                         }
                         else
                         {
-                            _logDetail(string.Format("[GPT] 策略1 计算偏移 {0} 无有效分区，尝试其他策略", calcOffset));
+                            _logDetail(string.Format("[GPT] Strategy 1 calculated offset {0} has no valid partition, trying other strategies", calcOffset));
                         }
                     }
                 }
                 
-                // 策略2: 尝试不同扇区大小计算
+                // Strategy 2: Try different sector size calculations
                 if (entryOffset < 0 && header.PartitionEntryLba > 0)
                 {
                     int[] trySectorSizes = { 512, 4096 };
                     foreach (int trySectorSize in trySectorSizes)
                     {
-                        if (trySectorSize == sectorSize) continue; // 跳过已尝试的
+                        if (trySectorSize == sectorSize) continue; // Skip already tried
                         
                         long calcOffset = (long)header.PartitionEntryLba * trySectorSize;
                         if (calcOffset > 0 && calcOffset < data.Length - 128 && HasValidPartitionEntry(data, (int)calcOffset))
                         {
                             entryOffset = (int)calcOffset;
-                            sectorSize = trySectorSize; // 更新扇区大小
+                            sectorSize = trySectorSize; // Update sector size
                             header.SectorSize = trySectorSize;
-                            usedStrategy = string.Format("策略2 (尝试扇区大小{0}B): {1} * {0} = {2}", 
+                            usedStrategy = string.Format("Strategy 2 (Try sector size {0}B): {1} * {0} = {2}", 
                                 trySectorSize, header.PartitionEntryLba, entryOffset);
                             break;
                         }
                     }
                 }
                 
-                // 策略3: 小米/OPPO 等设备使用 512B 扇区，分区条目通常在 LBA 2 = 1024
+                // Strategy 3: Xiaomi/OPPO devices use 512B sectors, partition entries usually at LBA 2 = 1024
                 if (entryOffset < 0)
                 {
                     int xiaomiOffset = 1024; // LBA 2 * 512B
                     if (xiaomiOffset < data.Length - 128 && HasValidPartitionEntry(data, xiaomiOffset))
                     {
                         entryOffset = xiaomiOffset;
-                        usedStrategy = string.Format("策略3 (512B扇区标准): 偏移 {0}", entryOffset);
+                        usedStrategy = string.Format("Strategy 3 (512B sector standard): offset {0}", entryOffset);
                     }
                 }
                 
-                // 策略4: 4KB 扇区，分区条目在 LBA 2 = 8192
+                // Strategy 4: 4KB sectors, partition entries at LBA 2 = 8192
                 if (entryOffset < 0)
                 {
                     int ufsOffset = 8192; // LBA 2 * 4096B
                     if (ufsOffset < data.Length - 128 && HasValidPartitionEntry(data, ufsOffset))
                     {
                         entryOffset = ufsOffset;
-                        usedStrategy = string.Format("策略4 (4KB扇区标准): 偏移 {0}", entryOffset);
+                        usedStrategy = string.Format("Strategy 4 (4KB sector standard): offset {0}", entryOffset);
                     }
                 }
                 
-                // 策略5: Header 后紧跟分区条目 (不同扇区大小)
+                // Strategy 5: Partition entries follow Header (different sector sizes)
                 if (entryOffset < 0)
                 {
                     int[] tryGaps = { 512, 4096, 1024, 2048 };
@@ -408,36 +408,36 @@ namespace LoveAlways.Qualcomm.Common
                         if (relativeOffset < data.Length - 128 && HasValidPartitionEntry(data, relativeOffset))
                         {
                             entryOffset = relativeOffset;
-                            usedStrategy = string.Format("策略5 (Header+{0}): {1} + {0} = {2}", 
+                            usedStrategy = string.Format("Strategy 5 (Header+{0}): {1} + {0} = {2}", 
                                 gap, headerOffset, entryOffset);
                             break;
                         }
                     }
                 }
                 
-                // 策略6: 暴力探测更多常见偏移
+                // Strategy 6: Brute force probe more common offsets
                 if (entryOffset < 0)
                 {
-                    // 常见偏移：各种扇区大小和 LBA 组合
+                    // Common offsets: various combinations of sector sizes and LBAs
                     int[] commonOffsets = { 
-                        1024, 8192, 4096, 2048, 512,           // 基本偏移
-                        4096 * 2, 512 * 4, 512 * 6,            // LBA 2 变体
-                        16384, 32768,                          // 大扇区/大偏移
-                        headerOffset + 92,                      // Header 紧随（无填充）
-                        headerOffset + 128                      // Header 紧随（128对齐）
+                        1024, 8192, 4096, 2048, 512,           // Basic offsets
+                        4096 * 2, 512 * 4, 512 * 6,            // LBA 2 variants
+                        16384, 32768,                          // Large sector/large offset
+                        headerOffset + 92,                      // Follows Header (no padding)
+                        headerOffset + 128                      // Follows Header (128 aligned)
                     };
                     foreach (int tryOffset in commonOffsets)
                     {
                         if (tryOffset > 0 && tryOffset < data.Length - 128 && HasValidPartitionEntry(data, tryOffset))
                         {
                             entryOffset = tryOffset;
-                            usedStrategy = string.Format("策略6 (暴力探测): 偏移 {0}", entryOffset);
+                            usedStrategy = string.Format("Strategy 6 (Brute force probe): offset {0}", entryOffset);
                             break;
                         }
                     }
                 }
                 
-                // 策略7: 从 Header 后开始每 128 字节搜索第一个有效分区
+                // Strategy 7: Search for the first valid partition every 128 bytes after Header
                 if (entryOffset < 0)
                 {
                     for (int searchOffset = headerOffset + 92; searchOffset < data.Length - 128 && searchOffset < headerOffset + 32768; searchOffset += 128)
@@ -445,16 +445,16 @@ namespace LoveAlways.Qualcomm.Common
                         if (HasValidPartitionEntry(data, searchOffset))
                         {
                             entryOffset = searchOffset;
-                            usedStrategy = string.Format("策略7 (搜索): 偏移 {0}", entryOffset);
+                            usedStrategy = string.Format("Strategy 7 (Search): offset {0}", entryOffset);
                             break;
                         }
                     }
                 }
                 
-                // 最终检查
+                // Final check
                 if (entryOffset < 0 || entryOffset >= data.Length - 128)
                 {
-                    _logDetail(string.Format("[GPT] 无法确定有效的分区条目偏移, 尝试的最后 entryOffset={0}, dataLen={1}", entryOffset, data.Length));
+                    _logDetail(string.Format("[GPT] Cannot determine valid partition entry offset, last attempted entryOffset={0}, dataLen={1}", entryOffset, data.Length));
                     return partitions;
                 }
                 
@@ -462,71 +462,71 @@ namespace LoveAlways.Qualcomm.Common
 
                 int entrySize = (int)header.SizeOfPartitionEntry;
                 if (entrySize <= 0 || entrySize > 512) entrySize = 128;
-
-                // ========== 计算分区条目数量 ==========
+                
+                // ========== Calculate number of partition entries ==========
                 int headerEntries = (int)header.NumberOfPartitionEntries;
                 
-                // 验证 Header 指定的分区数量是否合理
-                // 有些设备 Header 中的 NumberOfPartitionEntries 可能是 0 或不正确
+                // Verify if the number of partitions specified in Header is reasonable
+                // Some device Header NumberOfPartitionEntries might be 0 or incorrect
                 if (headerEntries <= 0 || headerEntries > 1024)
                 {
-                    headerEntries = 128; // 默认值
-                    _logDetail(string.Format("[GPT] Header.NumberOfPartitionEntries 异常({0})，使用默认值 128", 
+                    headerEntries = 128; // Default value
+                    _logDetail(string.Format("[GPT] Header.NumberOfPartitionEntries abnormal ({0}), using default value 128", 
                         header.NumberOfPartitionEntries));
                 }
                 
-                // gpttool 方式: ParEntriesArea_Size = (FirstUsableLba - PartitionEntryLba) * SectorSize
+                // gpttool method: ParEntriesArea_Size = (FirstUsableLba - PartitionEntryLba) * SectorSize
                 int actualAvailableEntries = 0;
                 if (header.FirstUsableLba > header.PartitionEntryLba && header.PartitionEntryLba > 0)
                 {
                     long parEntriesAreaSize = (long)(header.FirstUsableLba - header.PartitionEntryLba) * sectorSize;
                     actualAvailableEntries = (int)(parEntriesAreaSize / entrySize);
-                    _logDetail(string.Format("[GPT] gpttool方式: ({0}-{1})*{2}/{3}={4}", 
+                    _logDetail(string.Format("[GPT] gpttool method: ({0}-{1})*{2}/{3}={4}", 
                         header.FirstUsableLba, header.PartitionEntryLba, sectorSize, entrySize, actualAvailableEntries));
                 }
                 
-                // 从数据长度计算可扫描的最大条目数
+                // Calculate max scannable entries from data length
                 int maxFromData = Math.Max(0, (data.Length - entryOffset) / entrySize);
                 
-                // ========== 综合计算最大扫描数量 ==========
-                // 1. 首先使用 Header 指定的数量
-                // 2. 如果 gpttool 方式计算的数量更大，使用更大的值（某些设备 Header 信息不准确）
-                // 3. 不超过数据容量
-                // 4. 合理上限 1024（小米等设备可能有很多分区）
+                // ========== Comprehensive calculation of max scan quantity ==========
+                // 1. First use the number specified in Header
+                // 2. If gpttool method calculates a larger quantity, use the larger value (some device Header information is inaccurate)
+                // 3. Do not exceed data capacity
+                // 4. Reasonable upper limit 1024 (Xiaomi and other devices might have many partitions)
                 int maxEntries = headerEntries;
                 
-                // 如果 gpttool 计算的数量显著大于 Header 指定的数量，使用 gpttool 的值
+                // If the number calculated by gpttool is significantly greater than the number specified in the Header, use the gpttool value
                 if (actualAvailableEntries > headerEntries && actualAvailableEntries <= 1024)
                 {
                     maxEntries = actualAvailableEntries;
-                    _logDetail(string.Format("[GPT] 使用 gpttool 计算的条目数 {0} (大于 Header 指定的 {1})", 
+                    _logDetail(string.Format("[GPT] Using gpttool calculated entry count {0} (greater than Header specified {1})", 
                         actualAvailableEntries, headerEntries));
                 }
                 
-                // 确保不超过数据容量
+                // Ensure it does not exceed data capacity
                 maxEntries = Math.Min(maxEntries, maxFromData);
                 
-                // 合理上限
+                // Reasonable upper limit
                 maxEntries = Math.Min(maxEntries, 1024);
                 
-                // 确保至少扫描 128 个条目（标准值）
+                // Ensure at least 128 entries are scanned (standard value)
                 maxEntries = Math.Max(maxEntries, Math.Min(128, maxFromData));
-
-                _logDetail(string.Format("[GPT] 分区条目: 偏移={0}, 大小={1}, Header数量={2}, gpttool={3}, 数据容量={4}, 最终扫描={5}", 
+                
+                _logDetail(string.Format("[GPT] Partition entries: offset={0}, size={1}, Header count={2}, gpttool={3}, data capacity={4}, final scan={5}", 
                     entryOffset, entrySize, headerEntries, actualAvailableEntries, maxFromData, maxEntries));
 
                 int parsedCount = 0;
                 int totalEmptyCount = 0;
                 
-                // ========== 两遍扫描策略 ==========
-                // 第一遍: 扫描所有条目，找出有效分区
+                // ========== Two-pass scan strategy ==========
+                // First pass: scan all entries, find valid partitions
                 var validEntries = new List<int>();
                 for (int i = 0; i < maxEntries; i++)
                 {
                     int offset = entryOffset + i * entrySize;
                     if (offset + 128 > data.Length) break;
-
-                    // 检查分区类型 GUID 是否为空
+                    
+                    // Check if partition type GUID is empty
                     bool isEmpty = true;
                     for (int j = 0; j < 16; j++)
                     {
@@ -547,22 +547,22 @@ namespace LoveAlways.Qualcomm.Common
                     }
                 }
                 
-                _logDetail(string.Format("[GPT] 第一遍扫描: 找到 {0} 个非空条目, {1} 个空条目", 
+                _logDetail(string.Format("[GPT] First pass scan: found {0} non-empty entries, {1} empty entries", 
                     validEntries.Count, totalEmptyCount));
                 
-                // 第二遍: 解析有效的分区条目
+                // Second pass: parse valid partition entries
                 foreach (int i in validEntries)
                 {
                     int offset = entryOffset + i * entrySize;
                     
-                    // 解析分区条目
+                    // Parse partition entry
                     var partition = ParsePartitionEntry(data, offset, lun, sectorSize, i + 1);
                     if (partition != null && !string.IsNullOrWhiteSpace(partition.Name))
                     {
                         partitions.Add(partition);
                         parsedCount++;
                         
-                        // 详细日志：记录每个解析到的分区
+                        // Detailed log: record each parsed partition
                         if (parsedCount <= 10 || parsedCount % 20 == 0)
                         {
                             _logDetail(string.Format("[GPT] #{0}: {1} @ LBA {2}-{3} ({4})", 
@@ -572,53 +572,53 @@ namespace LoveAlways.Qualcomm.Common
                     }
                 }
                 
-                // 如果没有找到分区，尝试备用策略：不依赖 Header 信息，直接扫描整个数据
+                // If no partitions found, try fallback strategy: scan entire data without depending on Header info
                 if (parsedCount == 0 && data.Length > entryOffset + 128)
                 {
-                    _logDetail("[GPT] 标准解析失败，尝试备用策略：暴力扫描分区条目");
+                    _logDetail("[GPT] Standard parsing failed, trying fallback strategy: brute force scan partition entries");
                     
-                    // 从 entryOffset 开始，每 128 字节检查一次
+                    // Starting from entryOffset, check every 128 bytes
                     for (int offset = entryOffset; offset + 128 <= data.Length; offset += 128)
                     {
-                        // 检查是否有有效的分区名称
+                        // Check if there is a valid partition name
                         if (HasValidPartitionEntry(data, offset))
                         {
                             var partition = ParsePartitionEntry(data, offset, lun, sectorSize, parsedCount + 1);
                             if (partition != null && !string.IsNullOrWhiteSpace(partition.Name))
                             {
-                                // 检查是否重复
+                                // Check for duplicates
                                 if (!partitions.Any(p => p.Name == partition.Name && p.StartSector == partition.StartSector))
                                 {
                                     partitions.Add(partition);
                                     parsedCount++;
-                                    _logDetail(string.Format("[GPT] 备用策略找到: {0} @ offset {1}", partition.Name, offset));
+                                    _logDetail(string.Format("[GPT] Fallback strategy found: {0} @ offset {1}", partition.Name, offset));
                                 }
                             }
                         }
                         
-                        // 防止无限循环
+                        // Prevent infinite loop
                         if (parsedCount > 256) break;
                     }
                 }
                 
-                _logDetail(string.Format("[GPT] LUN{0} 解析完成: {1} 个有效分区", lun, parsedCount));
+                _logDetail(string.Format("[GPT] LUN{0} parsing completed: {1} valid partitions", lun, parsedCount));
             }
             catch (Exception ex)
             {
-                _log(string.Format("[GPT] 解析分区条目异常: {0}", ex.Message));
+                _log(string.Format("[GPT] Parse partition entry exception: {0}", ex.Message));
             }
 
             return partitions;
         }
         
         /// <summary>
-        /// 检查是否有有效的分区条目
+        /// Check for valid partition entries
         /// </summary>
         private bool HasValidPartitionEntry(byte[] data, int offset)
         {
             if (offset + 128 > data.Length) return false;
             
-            // 检查分区类型 GUID 是否为非空
+            // Check if partition type GUID is non-empty
             bool hasData = false;
             for (int i = 0; i < 16; i++)
             {
@@ -630,7 +630,7 @@ namespace LoveAlways.Qualcomm.Common
             }
             if (!hasData) return false;
             
-            // 检查分区名称是否可读
+            // Check if partition name is readable
             try
             {
                 string name = Encoding.Unicode.GetString(data, offset + 56, 72).TrimEnd('\0');
@@ -643,28 +643,28 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 解析单个分区条目
+        /// Parse single partition entry
         /// </summary>
         private PartitionInfo ParsePartitionEntry(byte[] data, int offset, int lun, int sectorSize, int index)
         {
             try
             {
-                // 分区类型 GUID (0-16)
+                // Partition type GUID (0-16)
                 string typeGuid = FormatGuid(data, offset);
-
-                // 分区唯一 GUID (16-32)
+                
+                // Partition unique GUID (16-32)
                 string uniqueGuid = FormatGuid(data, offset + 16);
-
-                // 起始 LBA (32-40)
+                
+                // Start LBA (32-40)
                 long startLba = BitConverter.ToInt64(data, offset + 32);
-
-                // 结束 LBA (40-48)
+                
+                // End LBA (40-48)
                 long endLba = BitConverter.ToInt64(data, offset + 40);
-
-                // 属性 (48-56)
+                
+                // Attributes (48-56)
                 ulong attributes = BitConverter.ToUInt64(data, offset + 48);
-
-                // 分区名称 UTF-16LE (56-128)
+                
+                // Partition name UTF-16LE (56-128)
                 string name = Encoding.Unicode.GetString(data, offset + 56, 72).TrimEnd('\0');
 
                 if (string.IsNullOrWhiteSpace(name))
@@ -681,7 +681,7 @@ namespace LoveAlways.Qualcomm.Common
                     UniqueGuid = uniqueGuid,
                     Attributes = attributes,
                     EntryIndex = index,
-                    GptEntriesStartSector = 2  // GPT 条目通常从 LBA 2 开始
+                    GptEntriesStartSector = 2  // GPT entries usually start from LBA 2
                 };
             }
             catch
@@ -692,10 +692,10 @@ namespace LoveAlways.Qualcomm.Common
 
         #endregion
 
-        #region A/B 槽位检测
+        #region A/B Slot Detection
 
         /// <summary>
-        /// 检测 A/B 槽位状态
+        /// Detect A/B slot status
         /// </summary>
         private SlotInfo DetectSlot(List<PartitionInfo> partitions)
         {
@@ -705,8 +705,8 @@ namespace LoveAlways.Qualcomm.Common
                 OtherSlot = "nonexistent",
                 HasAbPartitions = false
             };
-
-            // 查找带 _a 或 _b 后缀的分区
+            
+            // Find partitions with _a or _b suffix
             var abPartitions = partitions.Where(p =>
                 p.Name.EndsWith("_a") || p.Name.EndsWith("_b")).ToList();
 
@@ -715,16 +715,16 @@ namespace LoveAlways.Qualcomm.Common
 
             info.HasAbPartitions = true;
             info.CurrentSlot = "undefined";
-
-            // 检测关键分区的槽位状态 (boot, system, vendor 等)
+            
+            // Detect slot status of key partitions (boot, system, vendor, etc.)
             var keyPartitions = new[] { "boot", "system", "vendor", "abl", "xbl", "dtbo" };
             var checkPartitions = abPartitions.Where(p => {
                 string baseName = p.Name.EndsWith("_a") ? p.Name.Substring(0, p.Name.Length - 2) :
                                   p.Name.EndsWith("_b") ? p.Name.Substring(0, p.Name.Length - 2) : p.Name;
                 return keyPartitions.Contains(baseName.ToLower());
             }).ToList();
-
-            // 如果没有关键分区，使用所有 A/B 分区 (排除 vendor_boot)
+            
+            // If no key partitions, use all A/B partitions (exclude vendor_boot)
             if (checkPartitions.Count == 0)
             {
                 checkPartitions = abPartitions.Where(p =>
@@ -740,10 +740,10 @@ namespace LoveAlways.Qualcomm.Common
                 bool isSuccessful = IsSlotSuccessful(p.Attributes);
                 bool isUnbootable = IsSlotUnbootable(p.Attributes);
                 
-                // 调试日志：打印关键分区的属性
+                // Debug log: print attributes of key partitions
                 if (keyPartitions.Any(k => p.Name.StartsWith(k, StringComparison.OrdinalIgnoreCase)))
                 {
-                    _logDetail(string.Format("[GPT] 槽位检测: {0} attr=0x{1:X16} active={2} success={3} unboot={4}",
+                    _logDetail(string.Format("[GPT] Slot detection: {0} attr=0x{1:X16} active={2} success={3} unboot={4}",
                         p.Name, p.Attributes, isActive, isSuccessful, isUnbootable));
                 }
                 
@@ -752,8 +752,8 @@ namespace LoveAlways.Qualcomm.Common
                 else if (p.Name.EndsWith("_b") && isActive)
                     slotBActive++;
             }
-
-            _logDetail(string.Format("[GPT] 槽位统计: A激活={0}, B激活={1} (检查了{2}个分区)", 
+            
+            _logDetail(string.Format("[GPT] Slot statistics: A active={0}, B active={1} ({2} partitions checked)", 
                 slotAActive, slotBActive, checkPartitions.Count));
 
             if (slotAActive > slotBActive)
@@ -773,11 +773,11 @@ namespace LoveAlways.Qualcomm.Common
             }
             else if (slotAActive == 0 && slotBActive == 0 && checkPartitions.Count > 0)
             {
-                // 没有激活标志，尝试使用 successful 标志判断
+                // No active flag, try to judge using successful flag
                 int slotASuccessful = checkPartitions.Count(p => p.Name.EndsWith("_a") && IsSlotSuccessful(p.Attributes));
                 int slotBSuccessful = checkPartitions.Count(p => p.Name.EndsWith("_b") && IsSlotSuccessful(p.Attributes));
                 
-                _logDetail(string.Format("[GPT] 无激活标志，使用 successful: A={0}, B={1}", slotASuccessful, slotBSuccessful));
+                _logDetail(string.Format("[GPT] No active flag, using successful: A={0}, B={1}", slotASuccessful, slotBSuccessful));
                 
                 if (slotASuccessful > slotBSuccessful)
                 {
@@ -795,11 +795,11 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 检查槽位是否激活 (bit 50 in attributes)
+        /// Check if slot is active (bit 50 in attributes)
         /// </summary>
         private bool IsSlotActive(ulong attributes)
         {
-            // A/B 属性在 attributes 的高字节部分
+            // A/B attributes are in the high byte part of attributes
             // Bit 48: Priority bit 0
             // Bit 49: Priority bit 1
             // Bit 50: Active
@@ -810,7 +810,7 @@ namespace LoveAlways.Qualcomm.Common
         }
         
         /// <summary>
-        /// 检查槽位是否启动成功 (bit 51 in attributes)
+        /// Check if slot successfully booted (bit 51 in attributes)
         /// </summary>
         private bool IsSlotSuccessful(ulong attributes)
         {
@@ -819,7 +819,7 @@ namespace LoveAlways.Qualcomm.Common
         }
         
         /// <summary>
-        /// 检查槽位是否不可启动 (bit 52 in attributes)
+        /// Check if slot is unbootable (bit 52 in attributes)
         /// </summary>
         private bool IsSlotUnbootable(ulong attributes)
         {
@@ -829,20 +829,20 @@ namespace LoveAlways.Qualcomm.Common
 
         #endregion
 
-        #region CRC32 校验
+        #region CRC32 Verification
 
         /// <summary>
-        /// 验证 CRC32
+        /// Verify CRC32
         /// </summary>
         private bool VerifyCrc32(byte[] data, int headerOffset, GptHeaderInfo header)
         {
             try
             {
-                // 计算 Header CRC (需要先将 CRC 字段置零)
+                // Calculate Header CRC (CRC field needs to be zeroed out first)
                 byte[] headerData = new byte[header.HeaderSize];
                 Array.Copy(data, headerOffset, headerData, 0, (int)header.HeaderSize);
                 
-                // 将 CRC 字段置零
+                // Zero out the CRC field
                 headerData[16] = 0;
                 headerData[17] = 0;
                 headerData[18] = 0;
@@ -852,7 +852,7 @@ namespace LoveAlways.Qualcomm.Common
                 
                 if (calculatedCrc != header.HeaderCrc32)
                 {
-                    _logDetail(string.Format("[GPT] Header CRC 不匹配: 计算={0:X8}, 存储={1:X8}",
+                    _logDetail(string.Format("[GPT] Header CRC mismatch: Calculated={0:X8}, Stored={1:X8}",
                         calculatedCrc, header.HeaderCrc32));
                     return false;
                 }
@@ -866,7 +866,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// CRC32 计算 (使用静态表)
+        /// CRC32 Calculation (using static table)
         /// </summary>
         private uint CalculateCrc32(byte[] data)
         {
@@ -882,7 +882,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 静态初始化 CRC32 表 (程序启动时只生成一次)
+        /// Statically initialize CRC32 table (generated only once at program startup)
         /// </summary>
         private static uint[] GenerateStaticCrc32Table()
         {
@@ -907,17 +907,18 @@ namespace LoveAlways.Qualcomm.Common
 
         #endregion
 
-        #region GUID 格式化
+        #region GUID Formatting
 
         /// <summary>
-        /// 格式化 GUID (混合端序)
+        /// Format GUID (mixed endian format)
         /// </summary>
         private string FormatGuid(byte[] data, int offset)
         {
-            // GPT GUID 格式: 前3部分小端序，后2部分大端序
-            // 格式: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+
+            // GPT GUID Format: 前3部分小端序，后2部分大端序
+            // Format: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
             var sb = new StringBuilder();
-            
+
             // 第1部分 (4字节, 小端序)
             for (int i = 3; i >= 0; i--)
                 sb.AppendFormat("{0:X2}", data[offset + i]);

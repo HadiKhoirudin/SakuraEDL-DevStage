@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -7,8 +12,8 @@ using System.Threading.Tasks;
 namespace LoveAlways.Fastboot.Common
 {
     /// <summary>
-    /// Fastboot 命令执行器
-    /// 封装 fastboot.exe 命令行工具
+    /// Fastboot Command Executor
+    /// Encapsulates the fastboot.exe command line tool
     /// </summary>
     public class FastbootCommand : IDisposable
     {
@@ -20,7 +25,7 @@ namespace LoveAlways.Fastboot.Common
         public StreamWriter StdIn { get; private set; }
 
         /// <summary>
-        /// 设置 fastboot.exe 路径
+        /// Set fastboot.exe path
         /// </summary>
         public static void SetFastbootPath(string path)
         {
@@ -28,29 +33,29 @@ namespace LoveAlways.Fastboot.Common
         }
 
         /// <summary>
-        /// 获取 fastboot.exe 路径
+        /// Get fastboot.exe path
         /// </summary>
         public static string GetFastbootPath()
         {
             if (string.IsNullOrEmpty(_fastbootPath))
             {
-                // 默认在程序目录下查找
+                // Search in the program directory by default
                 _fastbootPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fastboot.exe");
             }
             return _fastbootPath;
         }
 
         /// <summary>
-        /// 创建 Fastboot 命令实例
+        /// Create House Fastboot command instance
         /// </summary>
-        /// <param name="serial">设备序列号（可为null表示使用默认设备）</param>
-        /// <param name="action">要执行的命令</param>
+        /// <param name="serial">Device serial number (can be null for default device)</param>
+        /// <param name="action">Command to execute</param>
         public FastbootCommand(string serial, string action)
         {
             string fastbootExe = GetFastbootPath();
             if (!File.Exists(fastbootExe))
             {
-                throw new FileNotFoundException("fastboot.exe 不存在", fastbootExe);
+                throw new FileNotFoundException("fastboot.exe does not exist", fastbootExe);
             }
 
             _process = new Process();
@@ -73,7 +78,7 @@ namespace LoveAlways.Fastboot.Common
         }
 
         /// <summary>
-        /// 等待命令执行完成
+        /// Wait for command execution to complete
         /// </summary>
         public void WaitForExit()
         {
@@ -81,7 +86,7 @@ namespace LoveAlways.Fastboot.Common
         }
 
         /// <summary>
-        /// 等待命令执行完成（带超时）
+        /// Wait for command execution to complete (with timeout)
         /// </summary>
         public bool WaitForExit(int milliseconds)
         {
@@ -89,12 +94,12 @@ namespace LoveAlways.Fastboot.Common
         }
 
         /// <summary>
-        /// 获取退出码
+        /// Get exit code
         /// </summary>
         public int ExitCode => _process?.ExitCode ?? -1;
 
         /// <summary>
-        /// 异步执行命令并返回输出
+        /// Asynchronously execute command and return output
         /// </summary>
         public static async Task<FastbootResult> ExecuteAsync(string serial, string action, 
             CancellationToken ct = default, Action<string> onOutput = null)
@@ -108,7 +113,7 @@ namespace LoveAlways.Fastboot.Common
                     var stdoutBuilder = new System.Text.StringBuilder();
                     var stderrBuilder = new System.Text.StringBuilder();
                     
-                    // 实时读取输出
+                    // Read output in real-time
                     var stdoutTask = Task.Run(async () =>
                     {
                         string line;
@@ -131,10 +136,10 @@ namespace LoveAlways.Fastboot.Common
                         }
                     }, ct);
 
-                    // 等待进程结束和输出读取完成
+                    // Wait for process termination and output reading completion
                     await Task.WhenAll(stdoutTask, stderrTask);
                     
-                    // 确保进程结束
+                    // Ensure process termination
                     if (!cmd._process.HasExited)
                     {
                         cmd._process.WaitForExit(5000);
@@ -149,7 +154,7 @@ namespace LoveAlways.Fastboot.Common
             catch (OperationCanceledException)
             {
                 result.Success = false;
-                result.StdErr = "操作已取消";
+                result.StdErr = "Operation cancelled";
             }
             catch (Exception ex)
             {
@@ -161,7 +166,7 @@ namespace LoveAlways.Fastboot.Common
         }
         
         /// <summary>
-        /// 异步执行命令并支持进度回调
+        /// Asynchronously execute command with progress callback support
         /// </summary>
         public static async Task<FastbootResult> ExecuteWithProgressAsync(string serial, string action, 
             CancellationToken ct = default, Action<string> onOutput = null, Action<FlashProgress> onProgress = null)
@@ -176,7 +181,7 @@ namespace LoveAlways.Fastboot.Common
                     var stderrBuilder = new System.Text.StringBuilder();
                     var stdoutBuilder = new System.Text.StringBuilder();
                     
-                    // 实时读取 stderr（fastboot 主要输出在这里）
+                    // Read stderr in real-time (fastboot main output is here)
                     var stderrTask = Task.Run(async () =>
                     {
                         string line;
@@ -186,7 +191,7 @@ namespace LoveAlways.Fastboot.Common
                             stderrBuilder.AppendLine(line);
                             onOutput?.Invoke(line);
                             
-                            // 解析进度
+                            // Parse progress
                             ParseProgressFromLine(line, progress);
                             onProgress?.Invoke(progress);
                         }
@@ -218,7 +223,7 @@ namespace LoveAlways.Fastboot.Common
             catch (OperationCanceledException)
             {
                 result.Success = false;
-                result.StdErr = "操作已取消";
+                result.StdErr = "Operation cancelled";
             }
             catch (Exception ex)
             {
@@ -230,14 +235,14 @@ namespace LoveAlways.Fastboot.Common
         }
         
         /// <summary>
-        /// 从 fastboot 输出行解析进度
+        /// Parse progress from fastboot output line
         /// </summary>
         private static void ParseProgressFromLine(string line, FlashProgress progress)
         {
             if (string.IsNullOrEmpty(line)) return;
             
-            // 解析 Sending 行: Sending 'boot_a' (65536 KB)
-            // 或 Sending sparse 'system' 1/12 (393216 KB)
+            // Parse Sending line: Sending 'boot_a' (65536 KB)
+            // Or Sending sparse 'system' 1/12 (393216 KB)
             var sendingMatch = System.Text.RegularExpressions.Regex.Match(
                 line, @"Sending(?:\s+sparse)?\s+'([^']+)'(?:\s+(\d+)/(\d+))?\s+\((\d+)\s*KB\)");
             
@@ -261,7 +266,7 @@ namespace LoveAlways.Fastboot.Common
                 return;
             }
             
-            // 解析 Writing 行: Writing 'boot_a'
+            // Parse Writing line: Writing 'boot_a'
             var writingMatch = System.Text.RegularExpressions.Regex.Match(line, @"Writing\s+'([^']+)'");
             if (writingMatch.Success)
             {
@@ -270,13 +275,13 @@ namespace LoveAlways.Fastboot.Common
                 return;
             }
             
-            // 解析 OKAY 行: OKAY [  1.234s]
+            // Parse OKAY line: OKAY [  1.234s]
             var okayMatch = System.Text.RegularExpressions.Regex.Match(line, @"OKAY\s+\[\s*([\d.]+)s\]");
             if (okayMatch.Success)
             {
                 progress.ElapsedSeconds = double.Parse(okayMatch.Groups[1].Value);
                 
-                // 计算速度
+                // Calculate speed
                 if (progress.Phase == "Sending" && progress.ElapsedSeconds > 0 && progress.SizeKB > 0)
                 {
                     progress.SpeedKBps = progress.SizeKB / progress.ElapsedSeconds;
@@ -286,7 +291,7 @@ namespace LoveAlways.Fastboot.Common
         }
 
         /// <summary>
-        /// 同步执行命令并返回输出
+        /// Synchronously execute command and return output
         /// </summary>
         public static FastbootResult Execute(string serial, string action)
         {
@@ -337,7 +342,7 @@ namespace LoveAlways.Fastboot.Common
     }
 
     /// <summary>
-    /// Fastboot 命令执行结果
+    /// Fastboot Command Execution Result
     /// </summary>
     public class FastbootResult
     {
@@ -347,58 +352,58 @@ namespace LoveAlways.Fastboot.Common
         public int ExitCode { get; set; }
 
         /// <summary>
-        /// 获取所有输出（stdout + stderr）
+        /// Get all output (stdout + stderr)
         /// </summary>
         public string AllOutput => string.IsNullOrEmpty(StdOut) ? StdErr : $"{StdOut}\n{StdErr}";
     }
     
     /// <summary>
-    /// Fastboot 刷写进度信息
+    /// Fastboot Flashing Progress Information
     /// </summary>
     public class FlashProgress
     {
         /// <summary>
-        /// 分区名称
+        /// Partition name
         /// </summary>
         public string PartitionName { get; set; }
         
         /// <summary>
-        /// 当前阶段: Sending, Writing
+        /// Current phase: Sending, Writing
         /// </summary>
         public string Phase { get; set; }
         
         /// <summary>
-        /// 当前块 (Sparse 镜像)
+        /// Current chunk (Sparse image)
         /// </summary>
         public int CurrentChunk { get; set; } = 1;
         
         /// <summary>
-        /// 总块数 (Sparse 镜像)
+        /// Total chunks (Sparse image)
         /// </summary>
         public int TotalChunks { get; set; } = 1;
         
         /// <summary>
-        /// 当前块大小 (KB)
+        /// Current chunk size (KB)
         /// </summary>
         public long SizeKB { get; set; }
         
         /// <summary>
-        /// 当前操作耗时 (秒)
+        /// Current operation duration (seconds)
         /// </summary>
         public double ElapsedSeconds { get; set; }
         
         /// <summary>
-        /// 传输速度 (KB/s)
+        /// Transfer speed (KB/s)
         /// </summary>
         public double SpeedKBps { get; set; }
         
         /// <summary>
-        /// 进度百分比 (0-100)
+        /// Progress percentage (0-100)
         /// </summary>
         public double Percent { get; set; }
         
         /// <summary>
-        /// 格式化的速度显示
+        /// Formatted speed display
         /// </summary>
         public string SpeedFormatted
         {

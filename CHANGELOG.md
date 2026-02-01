@@ -1,6 +1,5 @@
-# 更新日志 / Changelog
-
-所有重要更改都会记录在此文件中。
+# Changelog
+All notable changes to this project will be documented in this file.
 
 ## [3.0.0] - 2026-01-27
 

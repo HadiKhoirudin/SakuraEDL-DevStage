@@ -1,10 +1,15 @@
 // ============================================================================
-// LoveAlways - 分区信息模型
-// Partition Info Model - GPT 分区数据结构
+// LoveAlways - Partition Info Model
+// Partition Info Model - GPT Partition Data Structure
 // ============================================================================
-// 模块: Qualcomm.Models
-// 功能: 存储分区的 LUN、名称、大小、扇区等信息
+// Module: Qualcomm.Models
+// Function: Stores partition LUN, name, size, sectors, etc.
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.ComponentModel;
@@ -13,7 +18,7 @@ using System.IO;
 namespace LoveAlways.Qualcomm.Models
 {
     /// <summary>
-    /// 分区信息模型
+    /// Partition info model
     /// </summary>
     public class PartitionInfo : INotifyPropertyChanged
     {
@@ -31,27 +36,27 @@ namespace LoveAlways.Qualcomm.Models
         public int Lun { get; set; }
 
         /// <summary>
-        /// 分区名称
+        /// Partition Name
         /// </summary>
         public string Name { get; set; }
 
         /// <summary>
-        /// 起始扇区
+        /// Start Sector
         /// </summary>
         public long StartSector { get; set; }
 
         /// <summary>
-        /// 扇区数量
+        /// Number of Sectors
         /// </summary>
         public long NumSectors { get; set; }
 
         /// <summary>
-        /// 扇区大小 (通常为 512 或 4096)
+        /// Sector Size (usually 512 or 4096)
         /// </summary>
         public int SectorSize { get; set; }
 
         /// <summary>
-        /// 分区大小 (字节)
+        /// Partition Size (Bytes)
         /// </summary>
         public long Size
         {
@@ -59,33 +64,33 @@ namespace LoveAlways.Qualcomm.Models
         }
 
         /// <summary>
-        /// 分区类型 GUID
+        /// Partition Type GUID
         /// </summary>
         public string TypeGuid { get; set; }
 
         /// <summary>
-        /// 分区唯一 GUID
+        /// Partition Unique GUID
         /// </summary>
         public string UniqueGuid { get; set; }
 
         /// <summary>
-        /// 分区属性
+        /// Partition Attributes
         /// </summary>
         public ulong Attributes { get; set; }
 
         /// <summary>
-        /// GPT 条目索引 (用于 patch 操作)
+        /// GPT Entry Index (used for patch operations)
         /// </summary>
         public int EntryIndex { get; set; } = -1;
 
         /// <summary>
-        /// GPT 条目起始扇区 (通常为 2)
+        /// GPT Entries Start Sector (usually 2)
         /// </summary>
         public long GptEntriesStartSector { get; set; } = 2;
 
         private bool _isSelected;
         /// <summary>
-        /// 是否选中 (用于 UI)
+        /// Whether selected (for UI)
         /// </summary>
         public bool IsSelected
         {
@@ -102,7 +107,7 @@ namespace LoveAlways.Qualcomm.Models
 
         private string _customFilePath = "";
         /// <summary>
-        /// 自定义刷写文件路径
+        /// Custom flash file path
         /// </summary>
         public string CustomFilePath
         {
@@ -120,7 +125,7 @@ namespace LoveAlways.Qualcomm.Models
         }
 
         /// <summary>
-        /// 自定义文件名
+        /// Custom file name
         /// </summary>
         public string CustomFileName
         {
@@ -128,7 +133,7 @@ namespace LoveAlways.Qualcomm.Models
         }
 
         /// <summary>
-        /// 是否有自定义文件
+        /// Whether there is a custom file
         /// </summary>
         public bool HasCustomFile
         {
@@ -136,7 +141,7 @@ namespace LoveAlways.Qualcomm.Models
         }
 
         /// <summary>
-        /// 结束扇区
+        /// End Sector
         /// </summary>
         public long EndSector
         {
@@ -144,7 +149,7 @@ namespace LoveAlways.Qualcomm.Models
         }
 
         /// <summary>
-        /// 格式化的大小字符串 (不足1MB按KB，满1GB按GB)
+        /// Formatted size string (KB if < 1MB, GB if >= 1GB)
         /// </summary>
         public string FormattedSize
         {
@@ -162,7 +167,7 @@ namespace LoveAlways.Qualcomm.Models
         }
 
         /// <summary>
-        /// 位置信息
+        /// Location info
         /// </summary>
         public string Location
         {
@@ -184,7 +189,7 @@ namespace LoveAlways.Qualcomm.Models
     }
 
     /// <summary>
-    /// 刷写分区信息 (用于刷写操作)
+    /// Flash partition info (used for flash operations)
     /// </summary>
     public class FlashPartitionInfo
     {

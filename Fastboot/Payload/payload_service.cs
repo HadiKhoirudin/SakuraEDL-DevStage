@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,8 +13,8 @@ using System.Threading.Tasks;
 namespace LoveAlways.Fastboot.Payload
 {
     /// <summary>
-    /// Payload 服务
-    /// 提供 payload.bin 解析、分区提取、直接刷写等高级功能
+    /// Payload Service
+    /// Provides advanced functions such as payload.bin parsing, partition extraction, and direct flashing
     /// </summary>
     public class PayloadService : IDisposable
     {
@@ -28,27 +33,27 @@ namespace LoveAlways.Fastboot.Payload
         #region Properties
         
         /// <summary>
-        /// 是否已加载 Payload
+        /// Whether Payload is loaded
         /// </summary>
         public bool IsLoaded => _parser?.IsInitialized ?? false;
         
         /// <summary>
-        /// 当前 Payload 路径
+        /// Current Payload path
         /// </summary>
         public string CurrentPayloadPath => _currentPayloadPath;
         
         /// <summary>
-        /// 分区列表
+        /// Partition list
         /// </summary>
         public IReadOnlyList<PayloadPartition> Partitions => _parser?.Partitions ?? new List<PayloadPartition>();
         
         /// <summary>
-        /// 文件格式版本
+        /// File format version
         /// </summary>
         public ulong FileFormatVersion => _parser?.FileFormatVersion ?? 0;
         
         /// <summary>
-        /// Block 大小
+        /// Block size
         /// </summary>
         public uint BlockSize => _parser?.BlockSize ?? 4096;
         
@@ -57,7 +62,7 @@ namespace LoveAlways.Fastboot.Payload
         #region Events
         
         /// <summary>
-        /// 提取进度事件
+        /// Extraction progress event
         /// </summary>
         public event EventHandler<PayloadExtractProgress> ExtractProgressChanged;
         
@@ -77,27 +82,27 @@ namespace LoveAlways.Fastboot.Payload
         #region Public Methods
         
         /// <summary>
-        /// 加载 Payload 文件
+        /// Load Payload file
         /// </summary>
         public async Task<bool> LoadPayloadAsync(string filePath, CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(filePath))
             {
-                _log("文件路径不能为空");
+                _log("File path cannot be empty");
                 return false;
             }
             
             if (!File.Exists(filePath))
             {
-                _log($"文件不存在: {filePath}");
+                _log($"File does not exist: {filePath}");
                 return false;
             }
             
-            // 清理之前的解析器
+            // Clean up previous parser
             _parser?.Dispose();
             _parser = new PayloadParser(_log, _logDetail);
             
-            _log($"正在加载 Payload: {Path.GetFileName(filePath)}...");
+            _log($"Loading Payload: {Path.GetFileName(filePath)}...");
             
             bool result = await _parser.LoadAsync(filePath, ct);
             
@@ -111,13 +116,13 @@ namespace LoveAlways.Fastboot.Payload
         }
         
         /// <summary>
-        /// 提取单个分区
+        /// Extract single partition
         /// </summary>
         public async Task<bool> ExtractPartitionAsync(string partitionName, string outputPath, CancellationToken ct = default)
         {
             if (!IsLoaded)
             {
-                _log("请先加载 Payload 文件");
+                _log("Please load Payload file first");
                 return false;
             }
             
@@ -131,13 +136,13 @@ namespace LoveAlways.Fastboot.Payload
         }
         
         /// <summary>
-        /// 提取所有分区
+        /// Extract all partitions
         /// </summary>
         public async Task<int> ExtractAllPartitionsAsync(string outputDir, CancellationToken ct = default)
         {
             if (!IsLoaded)
             {
-                _log("请先加载 Payload 文件");
+                _log("Please load Payload file first");
                 return 0;
             }
             
@@ -151,13 +156,13 @@ namespace LoveAlways.Fastboot.Payload
         }
         
         /// <summary>
-        /// 提取选定的分区
+        /// Extract selected partitions
         /// </summary>
         public async Task<int> ExtractSelectedPartitionsAsync(IEnumerable<string> partitionNames, string outputDir, CancellationToken ct = default)
         {
             if (!IsLoaded)
             {
-                _log("请先加载 Payload 文件");
+                _log("Please load Payload file first");
                 return 0;
             }
             
@@ -175,7 +180,7 @@ namespace LoveAlways.Fastboot.Payload
                 var name = names[i];
                 var outputPath = Path.Combine(outputDir, $"{name}.img");
                 
-                _log($"正在提取 {name} ({i + 1}/{total})...");
+                _log($"Extracting {name} ({i + 1}/{total})...");
                 
                 if (await _parser.ExtractPartitionAsync(name, outputPath, null, ct))
                 {
@@ -185,12 +190,12 @@ namespace LoveAlways.Fastboot.Payload
                 _progress?.Invoke(i + 1, total);
             }
             
-            _log($"提取完成: {successCount}/{total} 个分区");
+            _log($"Extraction complete: {successCount}/{total} partitions");
             return successCount;
         }
         
         /// <summary>
-        /// 获取分区信息
+        /// Get partition information
         /// </summary>
         public PayloadPartition GetPartitionInfo(string partitionName)
         {
@@ -199,7 +204,7 @@ namespace LoveAlways.Fastboot.Payload
         }
         
         /// <summary>
-        /// 检查分区是否存在
+        /// Check if partition exists
         /// </summary>
         public bool HasPartition(string partitionName)
         {
@@ -208,7 +213,7 @@ namespace LoveAlways.Fastboot.Payload
         }
         
         /// <summary>
-        /// 获取所有分区名称
+        /// Get all partition names
         /// </summary>
         public IEnumerable<string> GetPartitionNames()
         {
@@ -216,7 +221,7 @@ namespace LoveAlways.Fastboot.Payload
         }
         
         /// <summary>
-        /// 获取 Payload 摘要信息
+        /// Get Payload summary information
         /// </summary>
         public PayloadSummary GetSummary()
         {
@@ -237,7 +242,7 @@ namespace LoveAlways.Fastboot.Payload
         }
         
         /// <summary>
-        /// 关闭 Payload
+        /// Close Payload
         /// </summary>
         public void Close()
         {
@@ -252,15 +257,15 @@ namespace LoveAlways.Fastboot.Payload
         
         private void LogPayloadInfo()
         {
-            _log($"[Payload] 格式版本: {FileFormatVersion}");
-            _log($"[Payload] Block 大小: {BlockSize} bytes");
-            _log($"[Payload] 分区数量: {Partitions.Count}");
+            _log($"[Payload] Format version: {FileFormatVersion}");
+            _log($"[Payload] Block size: {BlockSize} bytes");
+            _log($"[Payload] Partition count: {Partitions.Count}");
             
-            // 输出分区列表
-            _logDetail("分区列表:");
+            // Output partition list
+            _logDetail("Partition list:");
             foreach (var partition in Partitions)
             {
-                _logDetail($"  - {partition.Name}: {partition.SizeFormatted} (压缩: {partition.CompressedSizeFormatted})");
+                _logDetail($"  - {partition.Name}: {partition.SizeFormatted} (Compressed: {partition.CompressedSizeFormatted})");
             }
         }
         
@@ -281,7 +286,7 @@ namespace LoveAlways.Fastboot.Payload
     }
     
     /// <summary>
-    /// Payload 摘要信息
+    /// Payload Summary
     /// </summary>
     public class PayloadSummary
     {

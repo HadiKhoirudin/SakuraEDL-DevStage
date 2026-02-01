@@ -1,9 +1,14 @@
 // ============================================================================
-// LoveAlways - MediaTek EMI (External Memory Interface) 配置
+// LoveAlways - MediaTek EMI (External Memory Interface) Configuration
 // MediaTek DRAM Initialization Configuration
 // ============================================================================
-// 参考: mtkclient 项目 emi_config.py
+// Reference: mtkclient project emi_config.py
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -14,7 +19,7 @@ using LoveAlways.MediaTek.Models;
 namespace LoveAlways.MediaTek.Common
 {
     /// <summary>
-    /// DRAM 类型
+    /// DRAM Type
     /// </summary>
     public enum DramType
     {
@@ -27,7 +32,7 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// EMI 设置结构 (基础版本)
+    /// EMI Settings Structure (Base Version)
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct EmiSettings
@@ -59,13 +64,13 @@ namespace LoveAlways.MediaTek.Common
         public uint DramcDrvctl1;      // DRAMC_DRVCTL1
         public uint DramcDdr2Ctl2;     // DRAMC_DDR2CTL2
         
-        public DramType DramType;      // DRAM 类型
+        public DramType DramType;      // DRAM Type
         public uint DramRank;          // DRAM Rank
-        public uint DramDensity;       // DRAM 密度
+        public uint DramDensity;       // DRAM Density
     }
 
     /// <summary>
-    /// EMI 设置 V2 (LPDDR4/4X 版本)
+    /// EMI Settings V2 (LPDDR4/4X Version)
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct EmiSettingsV2
@@ -109,49 +114,49 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// EMI 配置记录
+    /// EMI Configuration Record
     /// </summary>
     public class EmiConfigRecord
     {
-        /// <summary>芯片HW Code</summary>
+        /// <summary>Chip HW Code</summary>
         public ushort HwCode { get; set; }
         
-        /// <summary>芯片名称</summary>
+        /// <summary>Chip Name</summary>
         public string ChipName { get; set; }
         
-        /// <summary>EMI 配置数据</summary>
+        /// <summary>EMI configuration data</summary>
         public byte[] ConfigData { get; set; }
         
-        /// <summary>配置长度</summary>
+        /// <summary>Configuration length</summary>
         public int ConfigLength => ConfigData?.Length ?? 0;
         
-        /// <summary>是否需要EMI配置</summary>
+        /// <summary>Whether EMI configuration is required</summary>
         public bool Required { get; set; }
         
-        /// <summary>EMI 设置版本</summary>
+        /// <summary>EMI settings version</summary>
         public int Version { get; set; } = 1;
         
-        /// <summary>DRAM 类型</summary>
+        /// <summary>DRAM type</summary>
         public DramType DramType { get; set; } = DramType.LPDDR4;
         
-        /// <summary>DRAM 大小 (MB)</summary>
+        /// <summary>DRAM size (MB)</summary>
         public uint DramSizeMB { get; set; }
         
-        /// <summary>DRAM Rank 数量</summary>
+        /// <summary>DRAM rank count</summary>
         public int DramRanks { get; set; } = 2;
     }
 
     /// <summary>
-    /// MTK EMI 配置数据库
+    /// MTK EMI Configuration Database
     /// </summary>
     public static class MtkEmiConfig
     {
         private static readonly Dictionary<ushort, EmiConfigRecord> _configs = new Dictionary<ushort, EmiConfigRecord>();
         
-        // 芯片是否需要 EMI 配置的映射
+        // Mapping of whether a chip requires EMI configuration
         private static readonly Dictionary<ushort, bool> _requiresEmi = new Dictionary<ushort, bool>();
         
-        // DRAM 类型映射
+        // DRAM type mapping
         private static readonly Dictionary<ushort, DramType> _dramTypes = new Dictionary<ushort, DramType>();
 
         static MtkEmiConfig()
@@ -162,11 +167,11 @@ namespace LoveAlways.MediaTek.Common
         private static void InitializeConfigs()
         {
             // ═══════════════════════════════════════════════════════════════
-            // EMI 配置需求映射
-            // 参考: mtkclient emi_config.py
+            // EMI Configuration Requirements Mapping
+            // Reference: mtkclient emi_config.py
             // ═══════════════════════════════════════════════════════════════
             
-            // 旧芯片 - 需要 EMI 配置
+            // Legacy chips - Requires EMI configuration
             SetChipEmiRequirement(0x6572, true, DramType.LPDDR2);   // MT6572
             SetChipEmiRequirement(0x6582, true, DramType.LPDDR2);   // MT6582
             SetChipEmiRequirement(0x6580, true, DramType.LPDDR3);   // MT6580
@@ -178,19 +183,19 @@ namespace LoveAlways.MediaTek.Common
             SetChipEmiRequirement(0x0601, true, DramType.LPDDR3);   // MT6757
             SetChipEmiRequirement(0x0279, true, DramType.LPDDR3);   // MT6797
             
-            // 中端芯片 - 需要 EMI 配置
+            // Mid-range chips - Requires EMI configuration
             SetChipEmiRequirement(0x0562, true, DramType.LPDDR4);   // MT6761
             SetChipEmiRequirement(0x0707, true, DramType.LPDDR4);   // MT6762
             SetChipEmiRequirement(0x0690, true, DramType.LPDDR4);   // MT6763
             SetChipEmiRequirement(0x0717, true, DramType.LPDDR4);   // MT6765
-            SetChipEmiRequirement(0x0725, true, DramType.LPDDR4);   // MT6765 变体
+            SetChipEmiRequirement(0x0725, true, DramType.LPDDR4);   // MT6765 Variant
             SetChipEmiRequirement(0x0551, true, DramType.LPDDR4);   // MT6768
             SetChipEmiRequirement(0x0688, true, DramType.LPDDR4);   // MT6771
             SetChipEmiRequirement(0x0507, true, DramType.LPDDR4X);  // MT6779
             SetChipEmiRequirement(0x0588, true, DramType.LPDDR4X);  // MT6785
             SetChipEmiRequirement(0x0699, true, DramType.LPDDR4);   // MT6739
             
-            // 新芯片 - 需要 EMI 配置 (V2)
+            // Modern chips - Requires EMI configuration (V2)
             SetChipEmiRequirement(0x0813, true, DramType.LPDDR4X);  // MT6833
             SetChipEmiRequirement(0x0600, true, DramType.LPDDR4X);  // MT6853
             SetChipEmiRequirement(0x0788, true, DramType.LPDDR4X);  // MT6873
@@ -203,7 +208,7 @@ namespace LoveAlways.MediaTek.Common
             SetChipEmiRequirement(0x0930, true, DramType.LPDDR5);   // MT6985
             SetChipEmiRequirement(0x0950, true, DramType.LPDDR5);   // MT6989
             
-            // 平板芯片
+            // Tablet chips
             SetChipEmiRequirement(0x8127, true, DramType.LPDDR3);   // MT8127
             SetChipEmiRequirement(0x8163, true, DramType.LPDDR3);   // MT8163
             SetChipEmiRequirement(0x8167, true, DramType.LPDDR4);   // MT8167
@@ -220,14 +225,14 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 获取EMI配置
+        /// Get EMI configuration
         /// </summary>
         public static EmiConfigRecord GetConfig(ushort hwCode)
         {
             if (_configs.TryGetValue(hwCode, out var config))
                 return config;
             
-            // 生成默认配置
+            // Generate default configuration
             var dramType = GetDramType(hwCode);
             return new EmiConfigRecord
             {
@@ -241,7 +246,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 检查是否需要EMI配置
+        /// Check if EMI configuration is required
         /// </summary>
         public static bool IsRequired(ushort hwCode)
         {
@@ -251,17 +256,17 @@ namespace LoveAlways.MediaTek.Common
         }
         
         /// <summary>
-        /// 获取芯片的 DRAM 类型
+        /// Get chip DRAM type
         /// </summary>
         public static DramType GetDramType(ushort hwCode)
         {
             if (_dramTypes.TryGetValue(hwCode, out var dramType))
                 return dramType;
-            return DramType.LPDDR4;  // 默认 LPDDR4
+            return DramType.LPDDR4;  // LPDDR4 default
         }
         
         /// <summary>
-        /// 获取 EMI 设置版本
+        /// Get EMI settings version
         /// </summary>
         public static int GetEmiVersion(ushort hwCode)
         {
@@ -270,7 +275,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 从文件加载EMI配置
+        /// Load EMI configuration from file
         /// </summary>
         public static byte[] LoadFromFile(string filePath)
         {
@@ -288,14 +293,14 @@ namespace LoveAlways.MediaTek.Common
         }
         
         /// <summary>
-        /// 从 Preloader 提取 EMI 配置
+        /// Extract EMI configuration from Preloader
         /// </summary>
         public static byte[] ExtractFromPreloader(byte[] preloaderData)
         {
             if (preloaderData == null || preloaderData.Length < 0x1000)
                 return null;
             
-            // EMI 配置签名
+            // EMI configuration signature
             byte[] signature = new byte[] { 0x4D, 0x45, 0x4D, 0x49 };  // "MEMI"
             
             for (int i = 0; i < preloaderData.Length - 256; i += 4)
@@ -312,7 +317,7 @@ namespace LoveAlways.MediaTek.Common
                 
                 if (found)
                 {
-                    // 找到 EMI 配置头
+                    // Found EMI configuration header
                     int configSize = BitConverter.ToInt32(preloaderData, i + 4);
                     if (configSize > 0 && configSize < 0x1000)
                     {
@@ -327,7 +332,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 生成默认EMI配置 (通用LPDDR配置)
+        /// Generate default EMI configuration (Generic LPDDR config)
         /// </summary>
         public static byte[] GenerateDefaultConfig(ushort hwCode)
         {
@@ -336,7 +341,7 @@ namespace LoveAlways.MediaTek.Common
             
             if (version == 2)
             {
-                // LPDDR4/4X/5 配置
+                // LPDDR4/4X/5 Config
                 var settings = new EmiSettingsV2
                 {
                     EmiCona = 0x00000000,
@@ -345,21 +350,21 @@ namespace LoveAlways.MediaTek.Common
                     EmiConh = 0x00000000,
                     DramType = dramType,
                     DramRank = 2,
-                    DramDensity = 0x1000  // 4GB 默认
+                    DramDensity = 0x1000  // 4GB default
                 };
                 
                 return StructToBytes(settings);
             }
             else
             {
-                // LPDDR2/3 配置
+                // LPDDR2/3 Config
                 var settings = new EmiSettings
                 {
                     EmiCona = 0x00000000,
                     EmiConb = 0x00000000,
                     DramType = dramType,
                     DramRank = 2,
-                    DramDensity = 0x0400  // 1GB 默认
+                    DramDensity = 0x0400  // 1GB default
                 };
                 
                 return StructToBytes(settings);
@@ -367,18 +372,18 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 验证EMI配置有效性
+        /// Verify EMI configuration validity
         /// </summary>
         public static bool ValidateConfig(byte[] configData)
         {
             if (configData == null || configData.Length == 0)
                 return false;
             
-            // EMI配置通常是4字节对齐的
+            // EMI configuration is usually 4-byte aligned
             if (configData.Length % 4 != 0)
                 return false;
             
-            // 最小长度检查 (至少4个寄存器配置)
+            // Minimum length check (at least 4 register configurations)
             if (configData.Length < 16)
                 return false;
             
@@ -386,7 +391,7 @@ namespace LoveAlways.MediaTek.Common
         }
         
         /// <summary>
-        /// 结构体转字节数组
+        /// Convert structure to byte array
         /// </summary>
         private static byte[] StructToBytes<T>(T structure) where T : struct
         {
@@ -406,13 +411,13 @@ namespace LoveAlways.MediaTek.Common
         }
         
         /// <summary>
-        /// 字节数组转结构体
+        /// Convert byte array to structure
         /// </summary>
         public static T BytesToStruct<T>(byte[] arr) where T : struct
         {
             int size = Marshal.SizeOf(typeof(T));
             if (arr.Length < size)
-                throw new ArgumentException("数据长度不足");
+                throw new ArgumentException("Insufficient data length");
             
             IntPtr ptr = Marshal.AllocHGlobal(size);
             try
@@ -427,7 +432,7 @@ namespace LoveAlways.MediaTek.Common
         }
         
         /// <summary>
-        /// 获取支持 EMI 配置的芯片列表
+        /// Get list of chips supporting EMI configuration
         /// </summary>
         public static IReadOnlyList<ushort> GetSupportedChips()
         {
@@ -435,7 +440,7 @@ namespace LoveAlways.MediaTek.Common
         }
         
         /// <summary>
-        /// 获取统计信息
+        /// Get statistical information
         /// </summary>
         public static string GetStats()
         {
@@ -454,8 +459,8 @@ namespace LoveAlways.MediaTek.Common
                 }
             }
             
-            return $"EMI 配置统计:\n" +
-                   $"  总芯片数: {total}\n" +
+            return $"EMI Configuration Statistics:\n" +
+                   $"  Total chips: {total}\n" +
                    $"  LPDDR2: {lpddr2}\n" +
                    $"  LPDDR3: {lpddr3}\n" +
                    $"  LPDDR4: {lpddr4}\n" +

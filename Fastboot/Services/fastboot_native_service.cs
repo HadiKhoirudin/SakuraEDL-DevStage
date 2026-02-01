@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,14 +17,14 @@ using LoveAlways.Fastboot.Transport;
 namespace LoveAlways.Fastboot.Services
 {
     /// <summary>
-    /// Fastboot 原生服务
-    /// 使用纯 C# 实现的 Fastboot 协议，不依赖外部 fastboot.exe
+    /// Fastboot Native Service
+    /// Pure C# implementation of Fastboot protocol, no dependency on external fastboot.exe
     /// 
-    /// 优势：
-    /// - 实时进度百分比回调
-    /// - 完全控制传输过程
-    /// - 无需外部依赖
-    /// - 更好的错误处理
+    /// Advantages:
+    /// - Real-time progress percentage callback
+    /// - Complete control over the transfer process
+    /// - No external dependencies
+    /// - Better error handling
     /// </summary>
     public class FastbootNativeService : IDisposable
     {
@@ -30,22 +35,22 @@ namespace LoveAlways.Fastboot.Services
         private bool _disposed;
         
         /// <summary>
-        /// 是否已连接
+        /// Whether connected
         /// </summary>
         public bool IsConnected => _client?.IsConnected ?? false;
         
         /// <summary>
-        /// 当前设备序列号
+        /// Current device serial number
         /// </summary>
         public string CurrentSerial => _client?.Serial;
         
         /// <summary>
-        /// 设备信息
+        /// Device information
         /// </summary>
         public FastbootDeviceInfo DeviceInfo { get; private set; }
         
         /// <summary>
-        /// 进度更新事件
+        /// Progress update event
         /// </summary>
         public event EventHandler<FastbootNativeProgressEventArgs> ProgressChanged;
         
@@ -55,10 +60,10 @@ namespace LoveAlways.Fastboot.Services
             _logDetail = logDetail ?? (msg => { });
         }
         
-        #region 设备操作
+        #region Device Operations
         
         /// <summary>
-        /// 获取所有 Fastboot 设备
+        /// Get all Fastboot devices
         /// </summary>
         public List<FastbootDeviceListItem> GetDevices()
         {
@@ -72,7 +77,7 @@ namespace LoveAlways.Fastboot.Services
         }
         
         /// <summary>
-        /// 连接到设备
+        /// Connect to device
         /// </summary>
         public async Task<bool> ConnectAsync(string serial, CancellationToken ct = default)
         {
@@ -81,7 +86,7 @@ namespace LoveAlways.Fastboot.Services
             _client = new FastbootClient(_log, _logDetail);
             _client.ProgressChanged += OnClientProgressChanged;
             
-            // 查找设备
+            // Find device
             var devices = FastbootClient.GetDevices();
             var device = devices.FirstOrDefault(d => 
                 d.Serial == serial || 
@@ -89,7 +94,7 @@ namespace LoveAlways.Fastboot.Services
             
             if (device == null)
             {
-                _log($"未找到设备: {serial}");
+                _log($"Device not found: {serial}");
                 return false;
             }
             
@@ -97,7 +102,7 @@ namespace LoveAlways.Fastboot.Services
             
             if (success)
             {
-                // 构建设备信息
+                // Build device info
                 DeviceInfo = BuildDeviceInfo();
             }
             
@@ -105,7 +110,7 @@ namespace LoveAlways.Fastboot.Services
         }
         
         /// <summary>
-        /// 断开连接
+        /// Disconnect
         /// </summary>
         public void Disconnect()
         {
@@ -120,7 +125,7 @@ namespace LoveAlways.Fastboot.Services
         }
         
         /// <summary>
-        /// 刷新设备信息
+        /// Refresh device information
         /// </summary>
         public async Task<bool> RefreshDeviceInfoAsync(CancellationToken ct = default)
         {
@@ -138,7 +143,7 @@ namespace LoveAlways.Fastboot.Services
             
             var info = new FastbootDeviceInfo();
             
-            // 复制所有变量到 RawVariables，并解析分区信息
+            // Copy all variables to RawVariables and parse partition info
             foreach (var kv in _client.Variables)
             {
                 string key = kv.Key.ToLowerInvariant();
@@ -146,7 +151,7 @@ namespace LoveAlways.Fastboot.Services
                 
                 info.RawVariables[key] = value;
                 
-                // 解析分区大小: partition-size:boot_a: 0x4000000
+                // Parse partition size: partition-size:boot_a: 0x4000000
                 if (key.StartsWith("partition-size:"))
                 {
                     string partName = key.Substring("partition-size:".Length);
@@ -155,7 +160,7 @@ namespace LoveAlways.Fastboot.Services
                         info.PartitionSizes[partName] = size;
                     }
                 }
-                // 解析逻辑分区: is-logical:system_a: yes
+                // Parse logical partition: is-logical:system_a: yes
                 else if (key.StartsWith("is-logical:"))
                 {
                     string partName = key.Substring("is-logical:".Length);
@@ -181,7 +186,7 @@ namespace LoveAlways.Fastboot.Services
             if (_client.Variables.TryGetValue(FastbootProtocol.VAR_IS_USERSPACE, out string userspace))
                 info.IsFastbootd = userspace.ToLower() == "yes";
             
-            // 解析其他设备信息
+            // Parse other device info
             if (_client.Variables.TryGetValue(FastbootProtocol.VAR_VERSION_BOOTLOADER, out string blVersion))
                 info.BootloaderVersion = blVersion;
             
@@ -200,7 +205,7 @@ namespace LoveAlways.Fastboot.Services
         }
         
         /// <summary>
-        /// 尝试解析十六进制或十进制数字
+        /// Try to parse hex or decimal number
         /// </summary>
         private static bool TryParseHexOrDecimal(string value, out long result)
         {
@@ -229,23 +234,23 @@ namespace LoveAlways.Fastboot.Services
         
         #endregion
         
-        #region 刷写操作
+        #region Flashing Operations
         
         /// <summary>
-        /// 刷写分区
+        /// Flash partition
         /// </summary>
         public async Task<bool> FlashPartitionAsync(string partition, string imagePath, 
             bool disableVerity = false, CancellationToken ct = default)
         {
             if (!IsConnected)
             {
-                _log("未连接设备");
+                _log("Device not connected");
                 return false;
             }
             
             if (!File.Exists(imagePath))
             {
-                _log($"文件不存在: {imagePath}");
+                _log($"File does not exist: {imagePath}");
                 return false;
             }
             
@@ -270,10 +275,10 @@ namespace LoveAlways.Fastboot.Services
             }
             catch (OutOfMemoryException ex)
             {
-                _log($"内存不足，无法刷写 {partition}：文件太大，请尝试关闭其他程序后重试");
+                _log($"Insufficient memory, unable to flash {partition}: File is too large, please try closing other programs and try again");
                 _logDetail($"OutOfMemoryException: {ex.Message}");
                 
-                // 尝试释放内存
+                // Try to free memory
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
                 
@@ -282,13 +287,13 @@ namespace LoveAlways.Fastboot.Services
         }
         
         /// <summary>
-        /// 擦除分区
+        /// Erase partition
         /// </summary>
         public async Task<bool> ErasePartitionAsync(string partition, CancellationToken ct = default)
         {
             if (!IsConnected)
             {
-                _log("未连接设备");
+                _log("Device not connected");
                 return false;
             }
             
@@ -296,7 +301,7 @@ namespace LoveAlways.Fastboot.Services
         }
         
         /// <summary>
-        /// 批量刷写分区
+        /// Batch flash partitions
         /// </summary>
         public async Task<int> FlashPartitionsBatchAsync(
             List<Tuple<string, string>> partitions, 
@@ -311,7 +316,7 @@ namespace LoveAlways.Fastboot.Services
                 
                 var (partName, imagePath) = partitions[i];
                 
-                // 报告整体进度
+                // Report overall progress
                 ReportProgress(new FastbootNativeProgressEventArgs
                 {
                     Partition = partName,
@@ -332,7 +337,7 @@ namespace LoveAlways.Fastboot.Services
         
         #endregion
         
-        #region 重启操作
+        #region Reboot Operations
         
         public async Task<bool> RebootAsync(CancellationToken ct = default)
         {
@@ -360,7 +365,7 @@ namespace LoveAlways.Fastboot.Services
         
         #endregion
         
-        #region 解锁/锁定
+        #region Unlock/Lock
         
         public async Task<bool> UnlockBootloaderAsync(string method = null, CancellationToken ct = default)
         {
@@ -376,7 +381,7 @@ namespace LoveAlways.Fastboot.Services
         
         #endregion
         
-        #region A/B 槽位
+        #region A/B Slots
         
         public async Task<bool> SetActiveSlotAsync(string slot, CancellationToken ct = default)
         {
@@ -398,17 +403,17 @@ namespace LoveAlways.Fastboot.Services
         {
             if (!IsConnected) return null;
             
-            // 优先从已缓存的设备信息获取
+            // Prefer cached device info
             if (DeviceInfo != null && !string.IsNullOrEmpty(DeviceInfo.CurrentSlot))
                 return DeviceInfo.CurrentSlot;
             
-            // 否则直接查询
+            // Otherwise query directly
             return await _client.GetVariableAsync("current-slot", ct);
         }
         
         #endregion
         
-        #region 变量操作
+        #region Variable Operations
         
         public async Task<string> GetVariableAsync(string name, CancellationToken ct = default)
         {
@@ -418,7 +423,7 @@ namespace LoveAlways.Fastboot.Services
         
         #endregion
         
-        #region OEM 命令
+        #region OEM Commands
         
         public async Task<string> ExecuteOemCommandAsync(string command, CancellationToken ct = default)
         {
@@ -429,7 +434,7 @@ namespace LoveAlways.Fastboot.Services
         
         #endregion
         
-        #region 辅助方法
+        #region Helper Methods
         
         private void OnClientProgressChanged(object sender, FastbootProgressEventArgs e)
         {
@@ -464,7 +469,7 @@ namespace LoveAlways.Fastboot.Services
     }
     
     /// <summary>
-    /// 原生 Fastboot 进度事件参数
+    /// Native Fastboot Progress Event Arguments
     /// </summary>
     public class FastbootNativeProgressEventArgs : EventArgs
     {

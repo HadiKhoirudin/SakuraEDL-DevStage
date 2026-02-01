@@ -1,7 +1,11 @@
-// ============================================================================
-// LoveAlways - 展讯 PAC 固件包解析器
+// LoveAlways - Spreadtrum PAC Firmware Package Parser
 // Spreadtrum/Unisoc PAC Firmware Package Parser
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -12,15 +16,14 @@ using System.Text;
 
 namespace LoveAlways.Spreadtrum.Common
 {
-    /// <summary>
-    /// PAC 固件包解析器
-    /// 支持 BP_R1.0.0 和 BP_R2.0.1 格式
+    /// PAC Firmware Package Parser
+    /// Supports BP_R1.0.0 and BP_R2.0.1 formats
     /// </summary>
     public class PacParser
     {
         private readonly Action<string> _log;
 
-        // PAC 版本
+        // PAC version
         public const string VERSION_BP_R1 = "BP_R1.0.0";
         public const string VERSION_BP_R2 = "BP_R2.0.1";
 
@@ -29,29 +32,28 @@ namespace LoveAlways.Spreadtrum.Common
             _log = log;
         }
 
-        /// <summary>
-        /// 解析 PAC 文件
+        /// Parse PAC file
         /// </summary>
         public PacInfo Parse(string pacFilePath)
         {
             if (!File.Exists(pacFilePath))
-                throw new FileNotFoundException("PAC 文件不存在", pacFilePath);
+                throw new FileNotFoundException("PAC file does not exist", pacFilePath);
 
             using (var fs = new FileStream(pacFilePath, FileMode.Open, FileAccess.Read))
             using (var reader = new BinaryReader(fs))
             {
-                // 解析 PAC 头
+                // Parse PAC header
                 var header = ParseHeader(reader);
                 
-                // 验证文件大小
+                // Verify file size
                 var fileInfo = new FileInfo(pacFilePath);
                 ulong expectedSize = ((ulong)header.HiSize << 32) + header.LoSize;
                 if (expectedSize != (ulong)fileInfo.Length)
                 {
-                    Log("[PAC] 警告: 文件大小不匹配 (期望: {0}, 实际: {1})", expectedSize, fileInfo.Length);
+                    Log("[PAC] Warning: File size mismatch (Expected: {0}, Actual: {1})", expectedSize, fileInfo.Length);
                 }
 
-                // 解析文件条目
+                // Parse file entries
                 reader.BaseStream.Seek(header.PartitionsListStart, SeekOrigin.Begin);
                 var files = new List<PacFileEntry>();
 
@@ -61,7 +63,7 @@ namespace LoveAlways.Spreadtrum.Common
                     if (entry != null)
                     {
                         files.Add(entry);
-                        Log("[PAC] 文件: {0}, 大小: {1}, 偏移: 0x{2:X}",
+                        Log("[PAC] File: {0}, Size: {1}, Offset: 0x{2:X}",
                             entry.FileName, FormatSize(entry.Size), entry.DataOffset);
                     }
                 }
@@ -75,47 +77,43 @@ namespace LoveAlways.Spreadtrum.Common
             }
         }
 
-        /// <summary>
-        /// 解析 PAC 头
+        /// Parse PAC header
         /// </summary>
         private PacHeader ParseHeader(BinaryReader reader)
         {
             var header = new PacHeader();
 
-            // 版本 (44 bytes, Unicode)
+            // Version (44 bytes, Unicode)
             header.Version = ReadUnicodeString(reader, 44);
-            Log("[PAC] 版本: {0}", header.Version);
+            Log("[PAC] Version: {0}", header.Version);
 
             if (header.Version != VERSION_BP_R1 && header.Version != VERSION_BP_R2)
             {
-                throw new NotSupportedException("不支持的 PAC 版本: " + header.Version);
+                throw new NotSupportedException("Unsupported PAC version: " + header.Version);
             }
 
-            // 文件大小
+            // File size
             header.HiSize = reader.ReadUInt32();
             header.LoSize = reader.ReadUInt32();
 
-            // 产品名 (512 bytes, Unicode)
+            // Product name (512 bytes, Unicode)
             header.ProductName = ReadUnicodeString(reader, 512);
-            Log("[PAC] 产品名: {0}", header.ProductName);
+            Log("[PAC] Product Name: {0}", header.ProductName);
 
-            // 固件名 (512 bytes, Unicode)
+            // Firmware name (512 bytes, Unicode)
             header.FirmwareName = ReadUnicodeString(reader, 512);
-            Log("[PAC] 固件名: {0}", header.FirmwareName);
+            Log("[PAC] Firmware Name: {0}", header.FirmwareName);
 
-            // 分区数量和偏移
-            header.PartitionCount = reader.ReadUInt32();
-            header.PartitionsListStart = reader.ReadUInt32();
-            Log("[PAC] 分区数量: {0}, 列表偏移: 0x{1:X}", header.PartitionCount, header.PartitionsListStart);
+            Log("[PAC] Partition Count: {0}, List Offset: 0x{1:X}", header.PartitionCount, header.PartitionsListStart);
 
-            // 其他字段
+            // Other fields
             header.Mode = reader.ReadUInt32();
             header.FlashType = reader.ReadUInt32();
             header.NandStrategy = reader.ReadUInt32();
             header.IsNvBackup = reader.ReadUInt32();
             header.NandPageType = reader.ReadUInt32();
 
-            // 产品别名 (996 bytes, Unicode)
+            // Product alias (996 bytes, Unicode)
             header.ProductAlias = ReadUnicodeString(reader, 996);
 
             header.OmaDmProductFlag = reader.ReadUInt32();
@@ -129,28 +127,27 @@ namespace LoveAlways.Spreadtrum.Common
             return header;
         }
 
-        /// <summary>
-        /// 解析文件条目
+        /// Parse file entry
         /// </summary>
         private PacFileEntry ParseFileEntry(BinaryReader reader, string version)
         {
             var entry = new PacFileEntry();
 
-            // 条目长度
+            // Entry length
             entry.HeaderLength = reader.ReadUInt32();
 
-            // 分区名 (512 bytes, Unicode)
+            // Partition name (512 bytes, Unicode)
             entry.PartitionName = ReadUnicodeString(reader, 512);
 
-            // 文件名 (512 bytes, Unicode)
+            // File name (512 bytes, Unicode)
             entry.FileName = ReadUnicodeString(reader, 512);
 
-            // 原始文件名 (508 bytes, Unicode)
+            // Original file name (508 bytes, Unicode)
             entry.OriginalFileName = ReadUnicodeString(reader, 508);
 
             if (version == VERSION_BP_R1)
             {
-                // BP_R1 格式
+                // BP_R1 format
                 entry.HiDataOffset = reader.ReadUInt32();
                 entry.HiSize = reader.ReadUInt32();
                 reader.ReadUInt32(); // reserved1
@@ -168,13 +165,13 @@ namespace LoveAlways.Spreadtrum.Common
             }
             else if (version == VERSION_BP_R2)
             {
-                // BP_R2 格式 - 使用 szPartitionInfo
+                // BP_R2 format - using szPartitionInfo
                 byte[] partitionInfo = reader.ReadBytes(24);
                 
-                // 解析分区信息 (Little-endian reversed)
+                // Parse partition info (Little-endian reversed)
                 entry.HiSize = ParseReversedUInt32(partitionInfo, 0);
                 entry.LoSize = ParseReversedUInt32(partitionInfo, 4);
-                // bytes 8-15 包含额外信息
+                // bytes 8-15 contain extra info
                 entry.HiDataOffset = ParseReversedUInt32(partitionInfo, 16);
                 entry.LoDataOffset = ParseReversedUInt32(partitionInfo, 20);
 
@@ -188,18 +185,17 @@ namespace LoveAlways.Spreadtrum.Common
                 reader.ReadBytes(996); // reserved data
             }
 
-            // 计算实际偏移和大小
+            // Calculate actual offset and size
             entry.DataOffset = CombineHiLo(entry.HiDataOffset, entry.LoDataOffset);
             entry.Size = CombineHiLo(entry.HiSize, entry.LoSize);
 
-            // 判断类型
+            // Determine type
             entry.Type = DetermineFileType(entry);
 
             return entry;
         }
 
-        /// <summary>
-        /// 提取文件
+        /// Extract file
         /// </summary>
         public void ExtractFile(string pacFilePath, PacFileEntry entry, string outputPath, Action<long, long> progress = null)
         {
@@ -221,7 +217,7 @@ namespace LoveAlways.Spreadtrum.Common
                         if (read == 0)
                             break;
 
-                        // 检查是否为 Sparse Image
+                        // Check if it's a Sparse Image
                         if (written == 0 && IsSparseImage(buffer))
                         {
                             entry.IsSparse = true;
@@ -236,11 +232,10 @@ namespace LoveAlways.Spreadtrum.Common
                 }
             }
 
-            Log("[PAC] 提取完成: {0}", outputPath);
+            Log("[PAC] Extraction complete: {0}", outputPath);
         }
 
-        /// <summary>
-        /// 提取所有文件
+        /// Extract all files
         /// </summary>
         public void ExtractAll(PacInfo pac, string outputDir, Action<int, int, string> progress = null)
         {
@@ -261,8 +256,7 @@ namespace LoveAlways.Spreadtrum.Common
             }
         }
 
-        /// <summary>
-        /// 获取 FDL1 条目
+        /// Get FDL1 entry
         /// </summary>
         public PacFileEntry GetFdl1(PacInfo pac)
         {
@@ -271,8 +265,7 @@ namespace LoveAlways.Spreadtrum.Common
                 f.Type == PacFileType.FDL1);
         }
 
-        /// <summary>
-        /// 获取 FDL2 条目
+        /// Get FDL2 entry
         /// </summary>
         public PacFileEntry GetFdl2(PacInfo pac)
         {
@@ -281,8 +274,7 @@ namespace LoveAlways.Spreadtrum.Common
                 f.Type == PacFileType.FDL2);
         }
 
-        /// <summary>
-        /// 解析并集成 XML 配置
+        /// Parse and integrate XML configurations
         /// </summary>
         public void ParseXmlConfigs(PacInfo pac)
         {
@@ -291,7 +283,7 @@ namespace LoveAlways.Spreadtrum.Common
 
             var xmlParser = new XmlConfigParser(msg => _log?.Invoke(msg));
 
-            // 查找所有 XML 文件
+            // Find all XML files
             var xmlFiles = pac.Files.Where(f => 
                 f.Type == PacFileType.XML || 
                 f.FileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
@@ -301,7 +293,7 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 try
                 {
-                    // 读取 XML 数据
+                    // Read XML data
                     byte[] xmlData = ExtractFileData(pac.FilePath, xmlFile);
                     if (xmlData != null && xmlData.Length > 0)
                     {
@@ -312,9 +304,9 @@ namespace LoveAlways.Spreadtrum.Common
                             config.ProductionSettings["SourceFile"] = xmlFile.FileName;
                             
                             pac.AllXmlConfigs.Add(config);
-                            Log("[PAC] 解析 XML 配置: {0} ({1})", xmlFile.FileName, config.ConfigType);
+                            Log("[PAC] Parse XML config: {0} ({1})", xmlFile.FileName, config.ConfigType);
 
-                            // 设置主配置 (优先 BmaConfig)
+                            // Set main config (prioritize BmaConfig)
                             if (pac.XmlConfig == null || config.ConfigType == SprdXmlConfigType.BmaConfig)
                             {
                                 pac.XmlConfig = config;
@@ -324,11 +316,11 @@ namespace LoveAlways.Spreadtrum.Common
                 }
                 catch (Exception ex)
                 {
-                    Log("[PAC] XML 解析失败 ({0}): {1}", xmlFile.FileName, ex.Message);
+                    Log("[PAC] XML parsing failed ({0}): {1}", xmlFile.FileName, ex.Message);
                 }
             }
 
-            // 如果有 XML 配置，更新文件属性
+            // If there's XML configuration, update file attributes
             if (pac.XmlConfig != null)
             {
                 UpdateFilesFromXmlConfig(pac);
@@ -336,21 +328,21 @@ namespace LoveAlways.Spreadtrum.Common
         }
 
         /// <summary>
-        /// 从 XML 配置更新文件信息
+        /// Update file info from XML config
         /// </summary>
         private void UpdateFilesFromXmlConfig(PacInfo pac)
         {
             if (pac.XmlConfig == null)
                 return;
 
-            // 更新 FDL 配置
+            // Update FDL configuration
             if (pac.XmlConfig.Fdl1Config != null)
             {
                 var fdl1 = GetFdl1(pac);
                 if (fdl1 != null && pac.XmlConfig.Fdl1Config.Address > 0)
                 {
                     fdl1.Address = (uint)pac.XmlConfig.Fdl1Config.Address;
-                    Log("[PAC] 从 XML 更新 FDL1 地址: 0x{0:X}", fdl1.Address);
+                    Log("[PAC] Update FDL1 address from XML: 0x{0:X}", fdl1.Address);
                 }
             }
 
@@ -360,11 +352,11 @@ namespace LoveAlways.Spreadtrum.Common
                 if (fdl2 != null && pac.XmlConfig.Fdl2Config.Address > 0)
                 {
                     fdl2.Address = (uint)pac.XmlConfig.Fdl2Config.Address;
-                    Log("[PAC] 从 XML 更新 FDL2 地址: 0x{0:X}", fdl2.Address);
+                    Log("[PAC] Update FDL2 address from XML: 0x{0:X}", fdl2.Address);
                 }
             }
 
-            // 更新文件地址
+            // Update file address
             foreach (var xmlFile in pac.XmlConfig.Files)
             {
                 var pacFile = pac.Files.Find(f =>
@@ -378,8 +370,7 @@ namespace LoveAlways.Spreadtrum.Common
             }
         }
 
-        /// <summary>
-        /// 提取文件数据到内存
+        /// Extract file data to memory
         /// </summary>
         public byte[] ExtractFileData(string pacFilePath, PacFileEntry entry)
         {
@@ -405,13 +396,13 @@ namespace LoveAlways.Spreadtrum.Common
             }
             catch (Exception ex)
             {
-                Log("[PAC] 提取文件数据失败 ({0}): {1}", entry.FileName, ex.Message);
+                Log("[PAC] Failed to extract file data ({0}): {1}", entry.FileName, ex.Message);
                 return null;
             }
         }
 
         /// <summary>
-        /// 获取 XML 配置文件
+        /// Get XML configuration files
         /// </summary>
         public List<PacFileEntry> GetXmlFiles(PacInfo pac)
         {
@@ -421,7 +412,7 @@ namespace LoveAlways.Spreadtrum.Common
                 .ToList();
         }
 
-        #region 辅助方法
+        #region Helper Methods
 
         private string ReadUnicodeString(BinaryReader reader, int byteLength)
         {
@@ -505,10 +496,9 @@ namespace LoveAlways.Spreadtrum.Common
         #endregion
     }
 
-    #region 数据结构
+    #region Data Structures
 
-    /// <summary>
-    /// PAC 信息
+    /// PAC Information
     /// </summary>
     public class PacInfo
     {
@@ -517,22 +507,21 @@ namespace LoveAlways.Spreadtrum.Common
         public List<PacFileEntry> Files { get; set; }
 
         /// <summary>
-        /// XML 配置 (如果 PAC 包含)
+        /// XML configuration (if PAC contains it)
         /// </summary>
         public SprdXmlConfig XmlConfig { get; set; }
 
         /// <summary>
-        /// 所有 XML 配置 (可能有多个)
+        /// All XML configurations (may have multiple)
         /// </summary>
         public List<SprdXmlConfig> AllXmlConfigs { get; set; } = new List<SprdXmlConfig>();
 
         /// <summary>
-        /// 获取总大小
+        /// Get total size
         /// </summary>
         public ulong TotalSize => ((ulong)Header.HiSize << 32) + Header.LoSize;
 
-        /// <summary>
-        /// 获取按刷机顺序排列的文件列表
+        /// Get file list in flash order
         /// </summary>
         public List<PacFileEntry> GetFlashOrder()
         {
@@ -546,7 +535,7 @@ namespace LoveAlways.Spreadtrum.Common
             var fdl2 = Files.Find(f => f.Type == PacFileType.FDL2);
             if (fdl2 != null) order.Add(fdl2);
 
-            // 3. 如果有 XML 配置，按配置顺序
+            // 3. If there is an XML configuration, follow the configuration order
             if (XmlConfig != null && XmlConfig.Files.Count > 0)
             {
                 foreach (var xmlFile in XmlConfig.Files)
@@ -580,8 +569,7 @@ namespace LoveAlways.Spreadtrum.Common
         }
     }
 
-    /// <summary>
-    /// PAC 头
+    /// PAC Header
     /// </summary>
     public class PacHeader
     {
@@ -607,8 +595,7 @@ namespace LoveAlways.Spreadtrum.Common
         public uint Crc2 { get; set; }
     }
 
-    /// <summary>
-    /// PAC 文件条目
+    /// PAC File Entry
     /// </summary>
     public class PacFileEntry
     {
@@ -626,7 +613,7 @@ namespace LoveAlways.Spreadtrum.Common
         public uint AddrNum { get; set; }
         public uint Address { get; set; }
 
-        // 计算值
+        // Calculated values
         public ulong DataOffset { get; set; }
         public ulong Size { get; set; }
         public PacFileType Type { get; set; }
@@ -638,8 +625,7 @@ namespace LoveAlways.Spreadtrum.Common
         }
     }
 
-    /// <summary>
-    /// PAC 文件类型
+    /// PAC File Type
     /// </summary>
     public enum PacFileType
     {

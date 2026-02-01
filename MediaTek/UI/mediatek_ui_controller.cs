@@ -1,7 +1,12 @@
 // ============================================================================
-// LoveAlways - MediaTek UI 控制器
+// LoveAlways - MediaTek UI Controller
 // MediaTek UI Controller
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -20,7 +25,7 @@ using LoveAlways.MediaTek.Services;
 namespace LoveAlways.MediaTek.UI
 {
     /// <summary>
-    /// MediaTek UI 控制器
+    /// MediaTek UI Controller
     /// </summary>
     public class MediatekUIController : IDisposable
     {
@@ -30,24 +35,24 @@ namespace LoveAlways.MediaTek.UI
         private readonly Action<string> _detailLogCallback;
         private CancellationTokenSource _operationCts;
 
-        // 事件
+        // Events
         public event Action<int, int> OnProgress;
         public event Action<MtkDeviceState> OnStateChanged;
         public event Action<MtkDeviceInfo> OnDeviceConnected;
         public event Action<MtkDeviceInfo> OnDeviceDisconnected;
         public event Action<List<MtkPartitionInfo>> OnPartitionTableLoaded;
 
-        // 属性
+        // Properties
         public bool IsConnected => _service.IsConnected;
         public bool IsBromMode => _service.IsBromMode;
         public MtkDeviceState State => _service.State;
         public MtkChipInfo ChipInfo => _service.ChipInfo;
         public MtkDeviceInfo CurrentDevice => _service.CurrentDevice;
 
-        // 缓存的分区表
+        // Cached Partition Table
         public List<MtkPartitionInfo> CachedPartitions { get; private set; }
 
-        // 端口检测事件
+        // Port Detection Events
         public event Action<MtkPortInfo> OnPortDetected;
         public event Action<string> OnPortRemoved;
 
@@ -63,24 +68,24 @@ namespace LoveAlways.MediaTek.UI
             _service.OnDeviceConnected += dev => OnDeviceConnected?.Invoke(dev);
             _service.OnDeviceDisconnected += dev => OnDeviceDisconnected?.Invoke(dev);
 
-            // 初始化端口检测器
+            // Initialize Port Detector
             _portDetector = new MtkPortDetector(msg => Log(msg, Color.Gray));
             _portDetector.OnDeviceArrived += port =>
             {
-                Log($"[MTK] 检测到设备: {port.ComPort} ({port.Description})", Color.Cyan);
+                Log($"[MTK] Device Detected: {port.ComPort} ({port.Description})", Color.Cyan);
                 OnPortDetected?.Invoke(port);
             };
             _portDetector.OnDeviceRemoved += portName =>
             {
-                Log($"[MTK] 设备移除: {portName}", Color.Orange);
+                Log($"[MTK] Device Removed: {portName}", Color.Orange);
                 OnPortRemoved?.Invoke(portName);
             };
         }
 
-        #region 端口检测
+        #region Port Detection
 
         /// <summary>
-        /// 获取所有 MTK 设备端口
+        /// Get All MTK Device Ports
         /// </summary>
         public List<MtkPortInfo> GetMtkPorts()
         {
@@ -88,16 +93,16 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 启动设备监控
+        /// Start Device Monitoring
         /// </summary>
         public void StartPortMonitoring()
         {
             _portDetector.StartMonitoring();
-            Log("[MTK] 设备监控已启动", Color.Gray);
+            Log("[MTK] Device Monitoring Started", Color.Gray);
         }
 
         /// <summary>
-        /// 停止设备监控
+        /// Stop Device Monitoring
         /// </summary>
         public void StopPortMonitoring()
         {
@@ -105,7 +110,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 等待 MTK 设备连接
+        /// Wait for MTK Device Connection
         /// </summary>
         public async Task<MtkPortInfo> WaitForDeviceAsync(int timeoutMs = 60000)
         {
@@ -114,7 +119,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 等待 BROM 设备连接
+        /// Wait for BROM Device Connection
         /// </summary>
         public async Task<MtkPortInfo> WaitForBromDeviceAsync(int timeoutMs = 60000)
         {
@@ -123,16 +128,16 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 自动连接第一个检测到的设备
+        /// Auto Connect First Detected Device
         /// </summary>
         public async Task<bool> AutoConnectAsync(int waitTimeoutMs = 60000)
         {
-            Log("[MTK] 等待设备连接...", Color.Cyan);
+            Log("[MTK] Waiting for device connection...", Color.Cyan);
 
             var port = await WaitForDeviceAsync(waitTimeoutMs);
             if (port == null)
             {
-                Log("[MTK] 未检测到设备", Color.Red);
+                Log("[MTK] No device detected", Color.Red);
                 return false;
             }
 
@@ -141,10 +146,10 @@ namespace LoveAlways.MediaTek.UI
 
         #endregion
 
-        #region 设备连接
+        #region Device Connection
 
         /// <summary>
-        /// 连接设备
+        /// Connect Device
         /// </summary>
         public async Task<bool> ConnectDeviceAsync(string comPort, int baudRate = 115200)
         {
@@ -153,7 +158,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 断开连接
+        /// Disconnect
         /// </summary>
         public void Disconnect()
         {
@@ -164,10 +169,10 @@ namespace LoveAlways.MediaTek.UI
 
         #endregion
 
-        #region DA 加载
+        #region DA Loading
 
         /// <summary>
-        /// 设置 DA 文件路径
+        /// Set DA File Path
         /// </summary>
         public void SetDaFilePath(string filePath)
         {
@@ -175,7 +180,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 设置自定义 DA1
+        /// Set Custom DA1
         /// </summary>
         public void SetCustomDa1(string filePath)
         {
@@ -183,7 +188,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 设置自定义 DA2
+        /// Set Custom DA2
         /// </summary>
         public void SetCustomDa2(string filePath)
         {
@@ -191,7 +196,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 加载 DA
+        /// Load DA
         /// </summary>
         public async Task<bool> LoadDaAsync()
         {
@@ -200,13 +205,13 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 连接并加载 DA (一键操作)
+        /// Connect and Load DA (One-click)
         /// </summary>
         public async Task<bool> ConnectAndLoadDaAsync(string comPort)
         {
             ResetOperationCts();
 
-            Log("[MTK] 连接设备并加载 DA...", Color.Cyan);
+            Log("[MTK] Connecting device and loading DA...", Color.Cyan);
 
             if (!await _service.ConnectAsync(comPort, 115200, _operationCts.Token))
             {
@@ -218,10 +223,10 @@ namespace LoveAlways.MediaTek.UI
 
         #endregion
 
-        #region 分区操作
+        #region Partition Operations
 
         /// <summary>
-        /// 读取分区表
+        /// Read GPT
         /// </summary>
         public async Task ReadPartitionTableAsync()
         {
@@ -236,7 +241,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 读取分区到文件
+        /// Read Partition to File
         /// </summary>
         public async Task<bool> ReadPartitionAsync(string partitionName, string outputPath, ulong size)
         {
@@ -245,7 +250,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 写入分区
+        /// Write Partition
         /// </summary>
         public async Task<bool> WritePartitionAsync(string partitionName, string filePath)
         {
@@ -254,7 +259,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 擦除分区
+        /// Erase Partition
         /// </summary>
         public async Task<bool> ErasePartitionAsync(string partitionName)
         {
@@ -263,14 +268,14 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 批量刷写
+        /// Batch Flash
         /// </summary>
         public async Task<bool> FlashMultipleAsync(Dictionary<string, string> partitionFiles)
         {
             ResetOperationCts();
 
             Log("========================================", Color.White);
-            Log("[MTK] 开始刷机流程", Color.Cyan);
+            Log("[MTK] Starting Flash Process", Color.Cyan);
             Log("========================================", Color.White);
 
             bool result = await _service.FlashMultipleAsync(partitionFiles, _operationCts.Token);
@@ -278,13 +283,13 @@ namespace LoveAlways.MediaTek.UI
             if (result)
             {
                 Log("========================================", Color.Green);
-                Log("[MTK] 刷机完成！", Color.Green);
+                Log("[MTK] Flash Complete!", Color.Green);
                 Log("========================================", Color.Green);
             }
             else
             {
                 Log("========================================", Color.Red);
-                Log("[MTK] 刷机失败", Color.Red);
+                Log("[MTK] Flash Failed", Color.Red);
                 Log("========================================", Color.Red);
             }
 
@@ -292,7 +297,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 获取分区大小
+        /// Get Partition Size
         /// </summary>
         public ulong GetPartitionSize(string partitionName)
         {
@@ -307,10 +312,10 @@ namespace LoveAlways.MediaTek.UI
 
         #endregion
 
-        #region 设备控制
+        #region Device Control
 
         /// <summary>
-        /// 重启设备
+        /// Reboot Device
         /// </summary>
         public async Task RebootDeviceAsync()
         {
@@ -318,7 +323,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 关闭设备
+        /// Shutdown Device
         /// </summary>
         public async Task ShutdownDeviceAsync()
         {
@@ -326,7 +331,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 获取 Flash 信息
+        /// Get Flash Info
         /// </summary>
         public async Task<MtkFlashInfo> GetFlashInfoAsync()
         {
@@ -340,36 +345,36 @@ namespace LoveAlways.MediaTek.UI
 
         #endregion
 
-        #region 安全功能
+        #region Security Features
 
         /// <summary>
-        /// 检测漏洞
+        /// Check Vulnerability
         /// </summary>
         public bool CheckVulnerability()
         {
             bool isVulnerable = _service.CheckVulnerability();
             if (isVulnerable)
             {
-                Log("[MTK] ✓ 设备存在 Carbonara 漏洞，可以绕过签名验证", Color.Yellow);
+                Log("[MTK] ✓ Device vulnerability detected (Carbonara), signature bypass possible", Color.Yellow);
             }
             else
             {
-                Log("[MTK] 设备不存在已知漏洞", Color.Gray);
+                Log("[MTK] No known vulnerability detected", Color.Gray);
             }
             return isVulnerable;
         }
 
         /// <summary>
-        /// 获取安全信息
+        /// Get Security Info
         /// </summary>
         public MtkSecurityInfo GetSecurityInfo()
         {
             var info = _service.GetSecurityInfo();
             if (info != null)
             {
-                Log($"[MTK] Secure Boot: {(info.SecureBootEnabled ? "启用" : "禁用")}", Color.Cyan);
-                Log($"[MTK] SLA: {(info.SlaEnabled ? "启用" : "禁用")}", Color.Cyan);
-                Log($"[MTK] DAA: {(info.DaaEnabled ? "启用" : "禁用")}", Color.Cyan);
+                Log($"[MTK] Secure Boot: {(info.SecureBootEnabled ? "Enabled" : "Disabled")}", Color.Cyan);
+                Log($"[MTK] SLA: {(info.SlaEnabled ? "Enabled" : "Disabled")}", Color.Cyan);
+                Log($"[MTK] DAA: {(info.DaaEnabled ? "Enabled" : "Disabled")}", Color.Cyan);
                 if (!string.IsNullOrEmpty(info.MeId))
                     Log($"[MTK] ME ID: {info.MeId}", Color.Gray);
             }
@@ -378,10 +383,10 @@ namespace LoveAlways.MediaTek.UI
 
         #endregion
 
-        #region 芯片数据库
+        #region Chip Database
 
         /// <summary>
-        /// 获取所有支持的芯片
+        /// Get All Supported Chips
         /// </summary>
         public string[] GetSupportedChips()
         {
@@ -391,7 +396,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 获取支持漏洞利用的芯片
+        /// Get Exploitable Chips
         /// </summary>
         public string[] GetExploitableChips()
         {
@@ -401,7 +406,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 获取芯片信息
+        /// Get Chip Info
         /// </summary>
         public MtkChipRecord GetChipRecord(ushort hwCode)
         {
@@ -409,7 +414,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 获取数据库统计
+        /// Get Database Statistics
         /// </summary>
         public (int chipCount, int exploitCount) GetDatabaseStats()
         {
@@ -420,10 +425,10 @@ namespace LoveAlways.MediaTek.UI
 
         #endregion
 
-        #region ALLINONE-SIGNATURE 漏洞利用
+        #region ALLINONE-SIGNATURE Exploit
 
         /// <summary>
-        /// 获取支持 ALLINONE-SIGNATURE 漏洞的芯片列表
+        /// Get chips supporting ALLINONE-SIGNATURE exploit
         /// </summary>
         public string[] GetAllinoneSignatureChips()
         {
@@ -433,7 +438,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 检查当前连接的设备是否支持 ALLINONE-SIGNATURE 漏洞
+        /// Check if current device supports ALLINONE-SIGNATURE exploit
         /// </summary>
         public bool IsCurrentDeviceAllinoneSignatureSupported()
         {
@@ -444,7 +449,7 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 获取当前设备的漏洞类型
+        /// Get current device exploit type
         /// </summary>
         public string GetCurrentDeviceExploitType()
         {
@@ -455,23 +460,23 @@ namespace LoveAlways.MediaTek.UI
         }
 
         /// <summary>
-        /// 执行 ALLINONE-SIGNATURE 漏洞利用
-        /// 仅适用于 MT6989/MT6983/MT6985 等支持此漏洞的芯片
+        /// Execute ALLINONE-SIGNATURE Exploit
+        /// Only for chips supporting this exploit like MT6989/MT6983/MT6985
         /// </summary>
-        /// <param name="shellcodePath">Shellcode 文件路径 (可选, 默认使用内置)</param>
-        /// <param name="pointerTablePath">指针表文件路径 (可选, 默认自动生成)</param>
-        /// <returns>是否成功</returns>
+        /// <param name="shellcodePath">Shellcode path (Optional, default built-in)</param>
+        /// <param name="pointerTablePath">Pointer table path (Optional, auto generated)</param>
+        /// <returns>Success or not</returns>
         public async Task<bool> RunAllinoneSignatureExploitAsync(
             string shellcodePath = null,
             string pointerTablePath = null)
         {
-            // 检查设备是否支持此漏洞
+            // Check if device supports this exploit
             if (!IsCurrentDeviceAllinoneSignatureSupported())
             {
                 string chipName = ChipInfo?.ChipName ?? "Unknown";
                 ushort hwCode = ChipInfo?.HwCode ?? 0;
-                Log($"[MTK] 当前设备 {chipName} (0x{hwCode:X4}) 不支持 ALLINONE-SIGNATURE 漏洞", Color.Red);
-                Log("[MTK] 此漏洞仅适用于以下芯片:", Color.Yellow);
+                Log($"[MTK] Current device {chipName} (0x{hwCode:X4}) does not support ALLINONE-SIGNATURE exploit", Color.Red);
+                Log("[MTK] This exploit only supports following chips:", Color.Yellow);
                 foreach (var chip in GetAllinoneSignatureChips())
                 {
                     Log($"[MTK]   • {chip}", Color.Yellow);
@@ -482,8 +487,8 @@ namespace LoveAlways.MediaTek.UI
             ResetOperationCts();
 
             Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
-            Log($"[MTK] 开始执行 ALLINONE-SIGNATURE 漏洞利用", Color.Yellow);
-            Log($"[MTK] 目标芯片: {ChipInfo?.ChipName} (0x{ChipInfo?.HwCode:X4})", Color.Yellow);
+            Log($"[MTK] Starting ALLINONE-SIGNATURE Exploit", Color.Yellow);
+            Log($"[MTK] Target Chip: {ChipInfo?.ChipName} (0x{ChipInfo?.HwCode:X4})", Color.Yellow);
             Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
 
             try
@@ -495,30 +500,30 @@ namespace LoveAlways.MediaTek.UI
 
                 if (success)
                 {
-                    Log("[MTK] ✓ ALLINONE-SIGNATURE 漏洞利用成功!", Color.Green);
-                    Log("[MTK] 设备安全检查已禁用, 现在可以执行任意操作", Color.Green);
+                    Log("[MTK] ✓ ALLINONE-SIGNATURE Exploit Success!", Color.Green);
+                    Log("[MTK] Device security disabled, you can now perform any operation", Color.Green);
                 }
                 else
                 {
-                    Log("[MTK] ✗ ALLINONE-SIGNATURE 漏洞利用失败", Color.Red);
+                    Log("[MTK] ✗ ALLINONE-SIGNATURE Exploit Failed", Color.Red);
                 }
 
                 return success;
             }
             catch (OperationCanceledException)
             {
-                Log("[MTK] 漏洞利用操作已取消", Color.Orange);
+                Log("[MTK] Exploit operation cancelled", Color.Orange);
                 return false;
             }
             catch (Exception ex)
             {
-                Log($"[MTK] 漏洞利用异常: {ex.Message}", Color.Red);
+                Log($"[MTK] Exploit Exception: {ex.Message}", Color.Red);
                 return false;
             }
         }
 
         /// <summary>
-        /// 获取漏洞利用信息
+        /// Get Exploit Info
         /// </summary>
         public MtkExploitInfo GetExploitInfo()
         {
@@ -532,7 +537,7 @@ namespace LoveAlways.MediaTek.UI
                 IsCarbonaraSupported = _service.CheckVulnerability()
             };
 
-            // 获取支持的漏洞芯片列表
+            // Get supported exploit chip list
             info.AllinoneSignatureChips = MtkChipDatabase.GetAllinoneSignatureChips()
                 .Select(c => new MtkChipExploitInfo
                 {
@@ -546,15 +551,15 @@ namespace LoveAlways.MediaTek.UI
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         /// <summary>
-        /// 取消当前操作
+        /// Cancel Operation
         /// </summary>
         public void CancelOperation()
         {
             _operationCts?.Cancel();
-            Log("[MTK] 操作已取消", Color.Orange);
+            Log("[MTK] Operation Cancelled", Color.Orange);
         }
 
         private void Log(string message, Color color)
@@ -567,8 +572,8 @@ namespace LoveAlways.MediaTek.UI
         {
             if (_operationCts != null)
             {
-                try { _operationCts.Cancel(); } catch { /* 取消可能已完成，忽略 */ }
-                try { _operationCts.Dispose(); } catch { /* 释放失败可忽略 */ }
+                try { _operationCts.Cancel(); } catch { /* Cancel might be delayed, ignore */ }
+                try { _operationCts.Dispose(); } catch { /* Dispose failure can be ignored */ }
             }
             _operationCts = new CancellationTokenSource();
         }

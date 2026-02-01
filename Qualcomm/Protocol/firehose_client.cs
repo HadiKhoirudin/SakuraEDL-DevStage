@@ -1,11 +1,16 @@
 // ============================================================================
-// LoveAlways - Firehose 协议完整实现
-// Firehose Protocol - 高通 EDL 模式 XML 刷写协议
+// LoveAlways - Firehose Protocol Complete Implementation
+// Firehose Protocol - Qualcomm EDL Mode XML Flash Protocol
 // ============================================================================
-// 模块: Qualcomm.Protocol
-// 功能: 读写分区、VIP 认证、GPT 操作、设备控制
-// 支持: UFS/eMMC 存储、Sparse 格式、动态伪装
+// Module: Qualcomm.Protocol
+// Features: Read/Write Partitions, VIP Auth, GPT Operations, Device Control
+// Support: UFS/eMMC Storage, Sparse Format, Dynamic Masquerade
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Concurrent;
@@ -22,17 +27,17 @@ using LoveAlways.Qualcomm.Models;
 
 namespace LoveAlways.Qualcomm.Protocol
 {
-    #region 错误处理
+    #region Error Handling
 
     /// <summary>
-    /// Firehose 错误码助手
+    /// Firehose Error Code Helper
     /// </summary>
     public static class FirehoseErrorHelper
     {
         public static void ParseNakError(string errorText, out string message, out string suggestion, out bool isFatal, out bool canRetry)
         {
-            message = "未知错误";
-            suggestion = "请重试操作";
+            message = "Unknown error";
+            suggestion = "Please retry operation";
             isFatal = false;
             canRetry = true;
 
@@ -43,74 +48,74 @@ namespace LoveAlways.Qualcomm.Protocol
 
             if (lower.Contains("authentication") || lower.Contains("auth failed"))
             {
-                message = "认证失败";
-                suggestion = "设备需要特殊认证";
+                message = "Authentication failed";
+                suggestion = "Device requires special authentication";
                 isFatal = true;
                 canRetry = false;
             }
             else if (lower.Contains("signature") || lower.Contains("sign"))
             {
-                message = "签名验证失败";
-                suggestion = "镜像签名不正确";
+                message = "Signature verification failed";
+                suggestion = "Image signature incorrect";
                 isFatal = true;
                 canRetry = false;
             }
             else if (lower.Contains("hash") && (lower.Contains("mismatch") || lower.Contains("fail")))
             {
-                message = "Hash 校验失败";
-                suggestion = "数据完整性验证失败";
+                message = "Hash verification failed";
+                suggestion = "Data integrity check failed";
                 isFatal = true;
                 canRetry = false;
             }
             else if (lower.Contains("partition not found"))
             {
-                message = "分区未找到";
-                suggestion = "设备上不存在此分区";
+                message = "Partition not found";
+                suggestion = "This partition does not exist on device";
                 isFatal = true;
                 canRetry = false;
             }
             else if (lower.Contains("invalid lun"))
             {
-                message = "无效的 LUN";
-                suggestion = "指定的 LUN 不存在";
+                message = "Invalid LUN";
+                suggestion = "Specified LUN does not exist";
                 isFatal = true;
                 canRetry = false;
             }
             else if (lower.Contains("write protect"))
             {
-                message = "写保护";
-                suggestion = "存储设备处于写保护状态";
+                message = "Write protected";
+                suggestion = "Storage device is write protected";
                 isFatal = true;
                 canRetry = false;
             }
             else if (lower.Contains("timeout"))
             {
-                message = "超时";
-                suggestion = "操作超时，建议重试";
+                message = "Timeout";
+                suggestion = "Operation timeout, retry recommended";
                 isFatal = false;
                 canRetry = true;
             }
             else if (lower.Contains("busy"))
             {
-                message = "设备忙";
-                suggestion = "设备正在处理其他操作";
+                message = "Device busy";
+                suggestion = "Device processing other operations";
                 isFatal = false;
                 canRetry = true;
             }
             else
             {
-                message = "设备错误: " + errorText;
-                suggestion = "请查看完整错误信息";
+                message = "Device error: " + errorText;
+                suggestion = "Please check full error message";
             }
         }
     }
 
     #endregion
 
-    #region VIP 伪装策略
+    #region VIP Masquerade Strategy
 
     /// <summary>
-    /// VIP 伪装策略
+    /// VIP Masquerade Strategy
     /// </summary>
     public struct VipSpoofStrategy
     {
@@ -133,10 +138,10 @@ namespace LoveAlways.Qualcomm.Protocol
 
     #endregion
 
-    #region 简易缓冲池
+    #region Simple Buffer Pool
 
     /// <summary>
-    /// 简易字节数组缓冲池 (减少 GC 压力)
+    /// Simple Byte Array Buffer Pool (Reduce GC pressure)
     /// </summary>
     internal static class SimpleBufferPool
     {
@@ -159,54 +164,54 @@ namespace LoveAlways.Qualcomm.Protocol
                     return buf16;
                 return new byte[SIZE_16MB];
             }
-            // 超大缓冲区不池化
+            // Very large buffers not pooled
             return new byte[minSize];
         }
 
         public static void Return(byte[] buffer)
         {
             if (buffer == null) return;
-            // 只池化标准大小
+            // Only pool standard sizes
             if (buffer.Length == SIZE_4MB && _pool4MB.Count < 4)
                 _pool4MB.Add(buffer);
             else if (buffer.Length == SIZE_16MB && _pool16MB.Count < 2)
                 _pool16MB.Add(buffer);
-            // 其他大小让 GC 回收
+            // Other sizes let GC collect
         }
     }
 
     #endregion
 
     /// <summary>
-    /// Firehose 协议客户端 - 完整版
+    /// Firehose Protocol Client - Full Version
     /// </summary>
     public class FirehoseClient : IDisposable
     {
         private readonly SerialPortManager _port;
         private readonly Action<string> _log;
-        private readonly Action<string> _logDetail;  // 详细调试日志 (只写入文件)
+        private readonly Action<string> _logDetail;  // Detailed debug log (File only)
         private readonly Action<long, long> _progress;
         private bool _disposed;
         private readonly StringBuilder _rxBuffer = new StringBuilder();
 
-        // 配置 - 速度优化
+        // Configuration - Speed optimization
         private int _sectorSize = 4096;
-        private int _maxPayloadSize = 16777216; // 16MB 默认 payload
+        private int _maxPayloadSize = 16777216; // 16MB default payload
 
-        private const int ACK_TIMEOUT_MS = 15000;          // 大文件需要更长超时
-        private const int FILE_BUFFER_SIZE = 4 * 1024 * 1024;  // 4MB 文件缓冲 (提高读取速度)
-        private const int OPTIMAL_PAYLOAD_REQUEST = 16 * 1024 * 1024; // 请求 16MB payload (设备可能返回较小值)
+        private const int ACK_TIMEOUT_MS = 15000;          // Large files need longer timeout
+        private const int FILE_BUFFER_SIZE = 4 * 1024 * 1024;  // 4MB file buffer (Improve read speed)
+        private const int OPTIMAL_PAYLOAD_REQUEST = 16 * 1024 * 1024; // Request 16MB payload (Device may return smaller)
 
-        // 分段传输配置 (默认 0 = 不分段，使用设备支持的最大 payload)
+        // Chunk transfer config (Default 0 = No chunking, use max device payload)
         private int _customChunkSize = 0;
 
-        // 公开属性
+        // Public properties
         public string StorageType { get; private set; }
         public int SectorSize { get { return _sectorSize; } }
         public int MaxPayloadSize { get { return _maxPayloadSize; } }
         
         /// <summary>
-        /// 获取当前有效的分段大小
+        /// Get current effective chunk size
         /// </summary>
         public int EffectiveChunkSize 
         { 
@@ -219,34 +224,34 @@ namespace LoveAlways.Qualcomm.Protocol
         }
         
         /// <summary>
-        /// 设置自定义分段大小 (0 = 使用默认值)
+        /// Set custom chunk size (0 = Use default)
         /// </summary>
-        /// <param name="chunkSize">分段大小 (字节), 必须是扇区大小的倍数</param>
+        /// <param name="chunkSize">Chunk size (Bytes), must be multiple of sector size</param>
         public void SetChunkSize(int chunkSize)
         {
             if (chunkSize < 0)
-                throw new ArgumentException("分段大小不能为负数");
+                throw new ArgumentException("Chunk size cannot be negative");
                 
             if (chunkSize > 0)
             {
-                // 确保是扇区大小的倍数
+                // Ensure multiple of sector size
                 chunkSize = (chunkSize / _sectorSize) * _sectorSize;
                 if (chunkSize < _sectorSize)
                     chunkSize = _sectorSize;
                     
-                // 不能超过设备支持的最大 payload
+                // Cannot exceed device max payload
                 chunkSize = Math.Min(chunkSize, _maxPayloadSize);
             }
             
             _customChunkSize = chunkSize;
             if (chunkSize == 0)
-                _logDetail(string.Format("[Firehose] 分段模式: 关闭 (使用设备最大值 {0})", FormatSize(_maxPayloadSize)));
+                _logDetail(string.Format("[Firehose] Chunk mode: Off (Using device max {0})", FormatSize(_maxPayloadSize)));
             else
-                _logDetail(string.Format("[Firehose] 分段模式: 开启 ({0}/块)", FormatSize(chunkSize)));
+                _logDetail(string.Format("[Firehose] Chunk mode: On ({0}/chunk)", FormatSize(chunkSize)));
         }
         
         /// <summary>
-        /// 设置分段大小 (按 MB)
+        /// Set chunk size (In MB)
         /// </summary>
         public void SetChunkSizeMB(int megabytes)
         {
@@ -254,7 +259,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
         
         /// <summary>
-        /// 格式化大小显示
+        /// Format size display
         /// </summary>
         private static string FormatSize(long bytes)
         {
@@ -268,31 +273,31 @@ namespace LoveAlways.Qualcomm.Protocol
         }
         public List<string> SupportedFunctions { get; private set; }
 
-        // 芯片信息
+        // Chip info
         public string ChipSerial { get; set; }
         public string ChipHwId { get; set; }
         public string ChipPkHash { get; set; }
 
-        // 每个 LUN 的 GPT Header 信息 (用于负扇区转换)
+        // GPT Header info for each LUN (For negative sector conversion)
         private Dictionary<int, GptHeaderInfo> _lunHeaders = new Dictionary<int, GptHeaderInfo>();
 
         /// <summary>
-        /// 获取 LUN 的总扇区数 (用于负扇区转换)
+        /// Get LUN total sectors (For negative sector conversion)
         /// </summary>
         public long GetLunTotalSectors(int lun)
         {
             GptHeaderInfo header;
             if (_lunHeaders.TryGetValue(lun, out header))
             {
-                // AlternateLba 是备份 GPT Header 的位置 (通常是磁盘最后一个扇区)
-                // 总扇区数 = AlternateLba + 1
+                // AlternateLba is backup GPT Header position (Usually last sector of disk)
+                // Total sectors = AlternateLba + 1
                 return (long)(header.AlternateLba + 1);
             }
-            return -1; // 未知
+            return -1; // Unknown
         }
 
         /// <summary>
-        /// 将负扇区转换为绝对扇区 (负数表示从磁盘末尾倒数)
+        /// Convert negative sector to absolute sector (Negative means count from end)
         /// </summary>
         public long ResolveNegativeSector(int lun, long sector)
         {
@@ -301,28 +306,28 @@ namespace LoveAlways.Qualcomm.Protocol
             long totalSectors = GetLunTotalSectors(lun);
             if (totalSectors <= 0)
             {
-                _logDetail(string.Format("[GPT] 无法解析负扇区: LUN{0} 总扇区数未知", lun));
+                _logDetail(string.Format("[GPT] Cannot resolve negative sector: LUN{0} total sectors unknown", lun));
                 return -1;
             }
             
-            // 负数扇区表示从末尾倒数
-            // 例如: -5 表示 totalSectors - 5
+            // Negative sector means count from end
+            // Example: -5 means totalSectors - 5
             long absoluteSector = totalSectors + sector;
-            _logDetail(string.Format("[GPT] 负扇区转换: LUN{0} sector {1} -> {2} (总扇区: {3})", 
+            _logDetail(string.Format("[GPT] Negative sector conversion: LUN{0} sector {1} -> {2} (Total sectors: {3})", 
                 lun, sector, absoluteSector, totalSectors));
             return absoluteSector;
         }
 
-        // OnePlus 认证参数 (认证成功后保存，写入时附带)
+        // OnePlus auth parameters (Save after auth success, attach when writing)
         public string OnePlusProgramToken { get; set; }
         public string OnePlusProgramPk { get; set; }
         public string OnePlusProjId { get; set; }
         public bool IsOnePlusAuthenticated { get { return !string.IsNullOrEmpty(OnePlusProgramToken); } }
 
-        // 分区缓存
+        // Partition cache
         private List<PartitionInfo> _cachedPartitions = null;
 
-        // 速度统计
+        // Speed statistics
         private Stopwatch _transferStopwatch;
         private long _transferTotalBytes;
 
@@ -342,7 +347,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 报告字节级进度 (用于速度计算)
+        /// Report byte-level progress (For speed calculation)
         /// </summary>
         public void ReportProgress(long current, long total)
         {
@@ -350,26 +355,26 @@ namespace LoveAlways.Qualcomm.Protocol
                 _progress(current, total);
         }
 
-        #region 动态伪装策略
+        #region Dynamic Masquerade Strategy
 
         /// <summary>
-        /// 获取动态伪装策略列表
+        /// Get dynamic masquerade strategy list
         /// </summary>
         public static List<VipSpoofStrategy> GetDynamicSpoofStrategies(int lun, long startSector, string partitionName, bool isGptRead)
         {
             var strategies = new List<VipSpoofStrategy>();
 
-            // GPT 区域特殊处理
+            // GPT area special handling
             if (isGptRead || startSector <= 33)
             {
                 strategies.Add(new VipSpoofStrategy(string.Format("gpt_backup{0}.bin", lun), "BackupGPT", 0));
                 strategies.Add(new VipSpoofStrategy(string.Format("gpt_main{0}.bin", lun), "PrimaryGPT", 1));
             }
 
-            // 通用 backup 伪装
+            // Generic backup masquerade
             strategies.Add(new VipSpoofStrategy("gpt_backup0.bin", "BackupGPT", 2));
 
-            // 分区名称伪装
+            // Partition name masquerade
             if (!string.IsNullOrEmpty(partitionName))
             {
                 string safeName = SanitizePartitionName(partitionName);
@@ -377,12 +382,12 @@ namespace LoveAlways.Qualcomm.Protocol
                 strategies.Add(new VipSpoofStrategy(safeName + ".bin", safeName, 4));
             }
 
-            // 通用伪装
+            // Generic masquerade
             strategies.Add(new VipSpoofStrategy("ssd", "ssd", 5));
             strategies.Add(new VipSpoofStrategy("gpt_main0.bin", "gpt_main0.bin", 6));
             strategies.Add(new VipSpoofStrategy("buffer.bin", "buffer", 8));
 
-            // 无伪装
+            // No masquerade
             strategies.Add(new VipSpoofStrategy("", "", 99));
 
             return strategies;
@@ -411,10 +416,10 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 基础配置
+        #region Basic Configuration
 
         /// <summary>
-        /// 配置 Firehose
+        /// Configure Firehose
         /// </summary>
         public async Task<bool> ConfigureAsync(string storageType = "ufs", int preferredPayloadSize = 0, CancellationToken ct = default(CancellationToken))
         {
@@ -423,11 +428,11 @@ namespace LoveAlways.Qualcomm.Protocol
 
             int requestedPayload = preferredPayloadSize > 0 ? preferredPayloadSize : OPTIMAL_PAYLOAD_REQUEST;
 
-            // 优化：请求更大的双向传输缓冲区
-            // MaxPayloadSizeToTargetInBytes - 写入时每个块的最大大小
-            // MaxPayloadSizeFromTargetInBytes - 读取时每个块的最大大小 (关键优化点！)
-            // AckRawDataEveryNumPackets=0 - 不需要每个包确认，加速传输
-            // ZlpAwareHost=1 - 启用零长度包感知，提高 USB 效率
+            // Optimization: Request larger bidirectional transfer buffer
+            // MaxPayloadSizeToTargetInBytes - Max size per block when writing
+            // MaxPayloadSizeFromTargetInBytes - Max size per block when reading (Critical optimization!)
+            // AckRawDataEveryNumPackets=0 - No per-packet ack needed, speeds up transfer
+            // ZlpAwareHost=1 - Enable zero-length packet awareness, improves USB efficiency
             string xml = string.Format(
                 "<?xml version=\"1.0\" ?><data><configure MemoryName=\"{0}\" Verbose=\"0\" " +
                 "AlwaysValidate=\"0\" MaxPayloadSizeToTargetInBytes=\"{1}\" " +
@@ -436,7 +441,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 "SkipStorageInit=\"0\" /></data>",
                 storageType, requestedPayload);
 
-            _log("[Firehose] 配置设备...");
+            _log("[Firehose] Configuring device...");
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
 
@@ -467,7 +472,7 @@ namespace LoveAlways.Qualcomm.Protocol
                                 _maxPayloadSize = Math.Max(64 * 1024, Math.Min(maxPayload, 16 * 1024 * 1024));
                         }
 
-                        _logDetail(string.Format("[Firehose] 配置成功 - SectorSize:{0}, MaxPayload:{1}KB", _sectorSize, _maxPayloadSize / 1024));
+                        _logDetail(string.Format("[Firehose] Configure success - SectorSize:{0}, MaxPayload:{1}KB", _sectorSize, _maxPayloadSize / 1024));
                         return true;
                     }
                 }
@@ -477,7 +482,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 设置存储扇区大小
+        /// Set storage sector size
         /// </summary>
         public void SetSectorSize(int size)
         {
@@ -486,72 +491,72 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 读取分区表
+        #region Read GPT
 
         /// <summary>
-        /// 读取 GPT 分区表 (支持多 LUN)
+        /// Read GPT partition table (Support multiple LUN)
         /// </summary>
         public async Task<List<PartitionInfo>> ReadGptPartitionsAsync(bool useVipMode = false, CancellationToken ct = default(CancellationToken), IProgress<int> lunProgress = null)
         {
             var partitions = new List<PartitionInfo>();
             
-            // 重置槽位检测状态，准备合并所有 LUN 的结果
+            // Reset slot detection state, prepare to merge results from all LUNs
             ResetSlotDetection();
 
             for (int lun = 0; lun < 6; lun++)
             {
-                // 报告当前 LUN 进度
+                // Report current LUN progress
                 if (lunProgress != null) lunProgress.Report(lun);
                 byte[] gptData = null;
 
-                // GPT 头在 LBA 1，分区条目从 LBA 2 开始
-                // 小米/Redmi 设备可能有超过 128 个分区条目（最多 256 个）
-                // 256 个条目 * 128 字节 = 32KB
-                // 对于 512 字节扇区: 32KB / 512 = 64 个扇区 + 2 (MBR+Header) = 66 个
-                // 对于 4096 字节扇区: 32KB / 4096 = 8 个扇区 + 2 = 10 个
-                // 读取 256 个扇区确保覆盖所有可能的分区条目（包括小米设备）
-                // 对于 512B 扇区 = 128KB，对于 4KB 扇区 = 1MB
+                // GPT header at LBA 1, partition entries start from LBA 2
+                // Xiaomi/Redmi devices may have over 128 partition entries (up to 256)
+                // 256 entries * 128 bytes = 32KB
+                // For 512 byte sectors: 32KB / 512 = 64 sectors + 2 (MBR+Header) = 66
+                // For 4096 byte sectors: 32KB / 4096 = 8 sectors + 2 = 10
+                // Read 256 sectors to ensure covering all possible partition entries (including Xiaomi devices)
+                // For 512B sectors = 128KB, for 4KB sectors = 1MB
                 int gptSectors = 256;
 
                 if (useVipMode)
                 {
-                    // VIP 模式 GPT 读取 - 瀑布式策略 (参考 tools 项目)
-                    // ⚠️ OPPO/Realme 设备必须优先使用 BackupGPT 伪装，否则会卡死
-                    // UFS 设备只需读取 6 扇区 (24KB)，eMMC 读取 34 扇区
+                    // VIP mode GPT read - Waterfall strategy (Reference tools project)
+                    // ⚠️ OPPO/Realme devices MUST prioritize BackupGPT masquerade, otherwise will freeze
+                    // UFS devices only need to read 6 sectors (24KB), eMMC read 34 sectors
                     int vipGptSectors = (_sectorSize == 4096) ? 6 : 34;
                     
-                    _log(string.Format("[GPT] VIP 模式读取 LUN{0} ({1} 扇区, 扇区大小={2})...", lun, vipGptSectors, _sectorSize));
+                    _log(string.Format("[GPT] VIP mode reading LUN{0} ({1} sectors, sector size={2})...", lun, vipGptSectors, _sectorSize));
                     
                     var readStrategies = new string[,]
                     {
-                        { "BackupGPT", string.Format("gpt_backup{0}.bin", lun) },  // 优先级 1
-                        { "BackupGPT", "gpt_backup0.bin" },                         // 优先级 2
-                        { "PrimaryGPT", string.Format("gpt_main{0}.bin", lun) },   // 优先级 3
-                        { "ssd", "ssd" }                                            // 优先级 4
+                        { "BackupGPT", string.Format("gpt_backup{0}.bin", lun) },  // Priority 1
+                        { "BackupGPT", "gpt_backup0.bin" },                         // Priority 2
+                        { "PrimaryGPT", string.Format("gpt_main{0}.bin", lun) },   // Priority 3
+                        { "ssd", "ssd" }                                            // Priority 4
                     };
 
                     for (int i = 0; i < readStrategies.GetLength(0); i++)
                     {
                         try
                         {
-                            _logDetail(string.Format("[GPT] LUN{0} 尝试策略 {1}: {2}/{3}", lun, i + 1, readStrategies[i, 0], readStrategies[i, 1]));
+                            _logDetail(string.Format("[GPT] LUN{0} trying strategy {1}: {2}/{3}", lun, i + 1, readStrategies[i, 0], readStrategies[i, 1]));
                             gptData = await ReadGptPacketWithTimeoutAsync(lun, 0, vipGptSectors, readStrategies[i, 0], readStrategies[i, 1], ct, 15000);
                             if (gptData != null && gptData.Length >= 512)
                             {
-                                _log(string.Format("[GPT] LUN{0} 使用伪装 {1} 成功", lun, readStrategies[i, 0]));
+                                _log(string.Format("[GPT] LUN{0} masquerade {1} success", lun, readStrategies[i, 0]));
                                 break;
                             }
                         }
                         catch (TimeoutException)
                         {
-                            _log(string.Format("[GPT] LUN{0} 策略 {1} 超时，尝试下一个...", lun, readStrategies[i, 0]));
+                            _log(string.Format("[GPT] LUN{0} strategy {1} timeout, trying next...", lun, readStrategies[i, 0]));
                         }
                         catch (Exception ex)
                         {
-                            _logDetail(string.Format("[GPT] LUN{0} 策略 {1} 异常: {2}", lun, readStrategies[i, 0], ex.Message));
+                            _logDetail(string.Format("[GPT] LUN{0} strategy {1} exception: {2}", lun, readStrategies[i, 0], ex.Message));
                         }
                         
-                        await Task.Delay(200, ct); // 策略切换间隔增加到200ms
+                        await Task.Delay(200, ct); // Strategy switch interval increased to 200ms
                     }
                 }
                 else
@@ -561,16 +566,16 @@ namespace LoveAlways.Qualcomm.Protocol
                         PurgeBuffer();
                         if (lun > 0) await Task.Delay(50, ct);
 
-                        _logDetail(string.Format("[GPT] 读取 LUN{0}...", lun));
+                        _logDetail(string.Format("[GPT] Reading LUN{0}...", lun));
                         gptData = await ReadSectorsAsync(lun, 0, gptSectors, ct);
                         if (gptData != null && gptData.Length >= 512)
                         {
-                            _logDetail(string.Format("[GPT] LUN{0} 读取成功 ({1} 字节)", lun, gptData.Length));
+                            _logDetail(string.Format("[GPT] LUN{0} read success ({1} bytes)", lun, gptData.Length));
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logDetail(string.Format("[GPT] LUN{0} 读取异常: {1}", lun, ex.Message));
+                        _logDetail(string.Format("[GPT] LUN{0} read exception: {1}", lun, ex.Message));
                     }
                 }
 
@@ -581,19 +586,19 @@ namespace LoveAlways.Qualcomm.Protocol
                 if (lunPartitions.Count > 0)
                 {
                     partitions.AddRange(lunPartitions);
-                    _logDetail(string.Format("[Firehose] LUN {0}: {1} 个分区", lun, lunPartitions.Count));
+                    _logDetail(string.Format("[Firehose] LUN {0}: {1} partitions", lun, lunPartitions.Count));
                 }
             }
 
             if (partitions.Count > 0)
             {
                 _cachedPartitions = partitions;
-                _log(string.Format("[Firehose] 共读取 {0} 个分区", partitions.Count));
+                _log(string.Format("[Firehose] Total {0} partitions read", partitions.Count));
                 
-                // 输出合并后的槽位状态
+                // Output merged slot state
                 if (_mergedSlot != "nonexistent")
                 {
-                    _logDetail(string.Format("[Firehose] 设备槽位: {0} (A激活={1}, B激活={2})", 
+                    _logDetail(string.Format("[Firehose] Device slot: {0} (A active={1}, B active={2})", 
                         _mergedSlot, _slotACount, _slotBCount));
                 }
             }
@@ -602,7 +607,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 读取 GPT 数据包 (使用伪装)
+        /// Read GPT packet (using masquerade)
         /// </summary>
         public async Task<byte[]> ReadGptPacketAsync(int lun, long startSector, int numSectors, string label, string filename, CancellationToken ct)
         {
@@ -610,7 +615,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 读取 GPT 数据包 (带超时保护，防止卡死)
+        /// Read GPT packet (with timeout protection to prevent hang)
         /// </summary>
         public async Task<byte[]> ReadGptPacketWithTimeoutAsync(int lun, long startSector, int numSectors, string label, string filename, CancellationToken ct, int timeoutMs = 10000)
         {
@@ -625,19 +630,19 @@ namespace LoveAlways.Qualcomm.Protocol
                 "sparse=\"false\" start_byte_hex=\"0x{6:X}\" start_sector=\"{7}\" />\n</data>\n",
                 _sectorSize, filename, label, numSectors, lun, sizeKB, startByte, startSector);
 
-            _logDetail(string.Format("[GPT] 读取 LUN{0} (伪装: {1}/{2})...", lun, label, filename));
+            _logDetail(string.Format("[GPT] Reading LUN{0} (Masquerade: {1}/{2})...", lun, label, filename));
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
 
             var buffer = new byte[numSectors * _sectorSize];
             
-            // 使用超时保护，防止设备不响应导致卡死
+            // Use timeout protection to prevent hanging if device does not respond
             using (var timeoutCts = new CancellationTokenSource(timeoutMs))
             using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token))
             {
                 try
                 {
-                    // 使用带超时的接收方法
+                    // Use receiving method with timeout
                     var receiveTask = ReceiveDataAfterAckAsync(buffer, linkedCts.Token);
                     var delayTask = Task.Delay(timeoutMs, ct);
                     
@@ -645,21 +650,21 @@ namespace LoveAlways.Qualcomm.Protocol
                     
                     if (completedTask == delayTask)
                     {
-                        _logDetail(string.Format("[GPT] LUN{0} 读取超时 ({1}ms)", lun, timeoutMs));
-                        throw new TimeoutException(string.Format("GPT 读取超时: LUN{0}", lun));
+                        _logDetail(string.Format("[GPT] LUN{0} read timeout ({1}ms)", lun, timeoutMs));
+                        throw new TimeoutException(string.Format("GPT read timeout: LUN{0}", lun));
                     }
                     
                     if (await receiveTask)
                     {
                         await WaitForAckAsync(linkedCts.Token, 10);
-                        _logDetail(string.Format("[GPT] LUN{0} 读取成功 ({1} 字节)", lun, buffer.Length));
+                        _logDetail(string.Format("[GPT] LUN{0} read success ({1} bytes)", lun, buffer.Length));
                         return buffer;
                     }
                 }
                 catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
                 {
-                    _logDetail(string.Format("[GPT] LUN{0} 读取超时 ({1}ms)", lun, timeoutMs));
-                    throw new TimeoutException(string.Format("GPT 读取超时: LUN{0}", lun));
+                    _logDetail(string.Format("[GPT] LUN{0} read timeout ({1}ms)", lun, timeoutMs));
+                    throw new TimeoutException(string.Format("GPT read timeout: LUN{0}", lun));
                 }
                 catch (TimeoutException)
                 {
@@ -667,28 +672,28 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
                 catch (Exception ex)
                 {
-                    _logDetail(string.Format("[GPT] LUN{0} 读取异常: {1}", lun, ex.Message));
+                    _logDetail(string.Format("[GPT] LUN{0} read exception: {1}", lun, ex.Message));
                 }
             }
 
-            _logDetail(string.Format("[GPT] LUN{0} 读取失败", lun));
+            _logDetail(string.Format("[GPT] LUN{0} read failed", lun));
             return null;
         }
 
         /// <summary>
-        /// 最后一次解析的 GPT 结果 (包含槽位信息)
+        /// Last parsed GPT results (including slot info)
         /// </summary>
         public GptParseResult LastGptResult { get; private set; }
 
         /// <summary>
-        /// 合并后的槽位状态 (来自所有 LUN)
+        /// Merged slot state (from all LUNs)
         /// </summary>
         private string _mergedSlot = "nonexistent";
         private int _slotACount = 0;
         private int _slotBCount = 0;
 
         /// <summary>
-        /// 当前槽位 ("a", "b", "undefined", "nonexistent") - 合并所有 LUN 的结果
+        /// Current slot ("a", "b", "undefined", "nonexistent") - merged results from all LUNs
         /// </summary>
         public string CurrentSlot
         {
@@ -696,7 +701,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 重置槽位检测状态 (在开始新的 GPT 读取前调用)
+        /// Reset slot detection state (call before starting new GPT read)
         /// </summary>
         public void ResetSlotDetection()
         {
@@ -706,7 +711,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 合并 LUN 的槽位检测结果
+        /// Merge LUN slot detection results
         /// </summary>
         private void MergeSlotInfo(GptParseResult result)
         {
@@ -714,77 +719,77 @@ namespace LoveAlways.Qualcomm.Protocol
             
             var slotInfo = result.SlotInfo;
             
-            // 如果这个 LUN 有 A/B 分区
+            // If this LUN has A/B partitions
             if (slotInfo.HasAbPartitions)
             {
-                // 至少有 A/B 分区存在
+                // At least one A/B partition exists
                 if (_mergedSlot == "nonexistent")
                     _mergedSlot = "undefined";
                 
-                // 统计激活的槽位
+                // Count active slots
                 if (slotInfo.CurrentSlot == "a")
                     _slotACount++;
                 else if (slotInfo.CurrentSlot == "b")
                     _slotBCount++;
             }
             
-            // 根据统计结果确定最终槽位
+            // Determine final slot based on statistics
             if (_slotACount > _slotBCount && _slotACount > 0)
                 _mergedSlot = "a";
             else if (_slotBCount > _slotACount && _slotBCount > 0)
                 _mergedSlot = "b";
             else if (_slotACount > 0 && _slotBCount > 0)
-                _mergedSlot = "unknown";  // 冲突
-            // 否则保持 "undefined" 或 "nonexistent"
+                _mergedSlot = "unknown";  // Conflict
+            // Otherwise keep "undefined" or "nonexistent"
         }
 
         /// <summary>
-        /// 解析 GPT 分区 (使用增强版 GptParser)
+        /// Parse GPT partitions (using enhanced GptParser)
         /// </summary>
         public List<PartitionInfo> ParseGptPartitions(byte[] gptData, int lun)
         {
             var parser = new GptParser(_log, _logDetail);
             var result = parser.Parse(gptData, lun, _sectorSize);
             
-            // 保存解析结果
+            // Save parsing result
             LastGptResult = result;
             
-            // 合并槽位检测结果
+            // Merge slot detection results
             MergeSlotInfo(result);
 
             if (result.Success && result.Header != null)
             {
-                // 存储 LUN 的 Header 信息 (用于负扇区转换)
+                // Store LUN Header info (for negative sector conversion)
                 _lunHeaders[lun] = result.Header;
 
-                // 自动更新扇区大小
+                // Automatically update sector size
                 if (result.Header.SectorSize > 0 && result.Header.SectorSize != _sectorSize)
                 {
-                    _logDetail(string.Format("[GPT] 更新扇区大小: {0} -> {1}", _sectorSize, result.Header.SectorSize));
+                    _logDetail(string.Format("[GPT] Update sector size: {0} -> {1}", _sectorSize, result.Header.SectorSize));
                     _sectorSize = result.Header.SectorSize;
                 }
 
-                // 输出详细信息 (只写入日志文件)
-                _logDetail(string.Format("[GPT] 磁盘 GUID: {0}", result.Header.DiskGuid));
-                _logDetail(string.Format("[GPT] 分区数据区: LBA {0} - {1}", 
+                // Output detailed info (to log file only)
+                _logDetail(string.Format("[GPT] Disk GUID: {0}", result.Header.DiskGuid));
+                _logDetail(string.Format("[GPT] Partition Data Area: LBA {0} - {1}", 
                     result.Header.FirstUsableLba, result.Header.LastUsableLba));
-                _logDetail(string.Format("[GPT] CRC: {0}", result.Header.CrcValid ? "有效" : "无效"));
+                _logDetail(string.Format("[GPT] CRC: {0}", result.Header.CrcValid ? "Valid" : "Invalid"));
                 
                 if (result.SlotInfo.HasAbPartitions)
                 {
-                    _logDetail(string.Format("[GPT] 当前槽位: {0}", result.SlotInfo.CurrentSlot));
+                    _logDetail(string.Format("[GPT] Current Slot: {0}", result.SlotInfo.CurrentSlot));
                 }
             }
             else if (!string.IsNullOrEmpty(result.ErrorMessage))
             {
-                _logDetail(string.Format("[GPT] 解析失败: {0}", result.ErrorMessage));
+                _logDetail(string.Format("[GPT] Parse failed: {0}", result.ErrorMessage));
             }
 
             return result.Partitions;
         }
 
         /// <summary>
-        /// 生成 rawprogram.xml
+        /// Generate rawprogram.xml
         /// </summary>
         public string GenerateRawprogramXml()
         {
@@ -796,7 +801,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 生成 partition.xml
+        /// Generate partition.xml
         /// </summary>
         public string GeneratePartitionXml()
         {
@@ -809,15 +814,15 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 读取分区
+        #region Read Partition
 
         /// <summary>
-        /// 读取分区到文件 (支持自定义分段)
+        /// Read partition to file (Supports custom chunking)
         /// </summary>
-        /// <param name="partition">分区信息</param>
-        /// <param name="savePath">保存路径</param>
-        /// <param name="ct">取消令牌</param>
-        /// <param name="chunkProgress">分段进度回调 (当前块索引, 总块数, 块字节数)</param>
+        /// <param name="partition">Partition info</param>
+        /// <param name="savePath">Save path</param>
+        /// <param name="ct">Cancellation token</param>
+        /// <param name="chunkProgress">Chunk progress callback (current chunk index, total chunks, chunk bytes)</param>
         public async Task<bool> ReadPartitionAsync(PartitionInfo partition, string savePath, 
             CancellationToken ct = default(CancellationToken),
             Action<int, int, long> chunkProgress = null)
@@ -827,36 +832,36 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 分段读取分区到文件 (核心实现)
+        /// Read partition to file in chunks (Core implementation)
         /// </summary>
-        /// <param name="lun">LUN 编号</param>
-        /// <param name="startSector">起始扇区</param>
-        /// <param name="numSectors">扇区数量</param>
-        /// <param name="sectorSize">扇区大小</param>
-        /// <param name="savePath">保存路径</param>
-        /// <param name="label">分区名称 (日志用)</param>
-        /// <param name="ct">取消令牌</param>
-        /// <param name="chunkProgress">分段进度回调</param>
+        /// <param name="lun">LUN number</param>
+        /// <param name="startSector">Start sector</param>
+        /// <param name="numSectors">Number of sectors</param>
+        /// <param name="sectorSize">Sector size</param>
+        /// <param name="savePath">Save path</param>
+        /// <param name="label">Partition name (for logging)</param>
+        /// <param name="ct">Cancellation token</param>
+        /// <param name="chunkProgress">Chunk progress callback</param>
         public async Task<bool> ReadPartitionChunkedAsync(int lun, long startSector, long numSectors, 
             int sectorSize, string savePath, string label,
             CancellationToken ct = default(CancellationToken),
             Action<int, int, long> chunkProgress = null)
         {
-            _log(string.Format("[Firehose] 读取: {0} ({1})", label, FormatSize(numSectors * sectorSize)));
+            _log(string.Format("[Firehose] Reading: {0} ({1})", label, FormatSize(numSectors * sectorSize)));
 
-            // 使用有效分段大小 (默认使用设备最大值，不分段)
+            // Use effective chunk size (default use device max, no chunking)
             int chunkSize = EffectiveChunkSize;
             long sectorsPerChunk = chunkSize / sectorSize;
             
-            // 计算总块数
+            // Calculate total chunks
             int totalChunks = (int)Math.Ceiling((double)numSectors / sectorsPerChunk);
             long totalSize = numSectors * sectorSize;
             long totalRead = 0L;
             
-            // 只有启用自定义分段时才显示分段信息
+            // Only show chunk info when custom chunking is enabled
             if (_customChunkSize > 0)
             {
-                _logDetail(string.Format("[Firehose] 分段传输: {0}/块, 共 {1} 块", 
+                _logDetail(string.Format("[Firehose] Chunk transfer: {0}/chunk, total {1} chunks", 
                     FormatSize(chunkSize), totalChunks));
             }
 
@@ -868,7 +873,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     if (ct.IsCancellationRequested) 
                     {
-                        _log("[Firehose] 读取已取消");
+                        _log("[Firehose] Read cancelled");
                         return false;
                     }
 
@@ -876,13 +881,13 @@ namespace LoveAlways.Qualcomm.Protocol
                     long sectorsToRead = Math.Min(sectorsPerChunk, numSectors - sectorOffset);
                     long currentStartSector = startSector + sectorOffset;
 
-                    // 分段进度回调
+                    // Chunk progress callback
                     chunkProgress?.Invoke(chunkIndex + 1, totalChunks, sectorsToRead * sectorSize);
 
                     var data = await ReadSectorsAsync(lun, currentStartSector, (int)sectorsToRead, ct);
                     if (data == null)
                     {
-                        _log(string.Format("[Firehose] 读取失败 @ 块 {0}/{1}, sector {2}", 
+                        _log(string.Format("[Firehose] Read failed @ chunk {0}/{1}, sector {2}", 
                             chunkIndex + 1, totalChunks, currentStartSector));
                         return false;
                     }
@@ -890,18 +895,18 @@ namespace LoveAlways.Qualcomm.Protocol
                     await fs.WriteAsync(data, 0, data.Length, ct);
                     totalRead += data.Length;
 
-                    // 总进度回调
+                    // Total progress callback
                     _progress?.Invoke(totalRead, totalSize);
                 }
             }
 
-            StopTransferTimer("读取", totalRead);
-            _log(string.Format("[Firehose] {0} 读取完成: {1}", label, FormatSize(totalRead)));
+            StopTransferTimer("Read", totalRead);
+            _log(string.Format("[Firehose] {0} read complete: {1}", label, FormatSize(totalRead)));
             return true;
         }
 
         /// <summary>
-        /// 分段读取到内存 (适用于小分区)
+        /// Read to memory in chunks (Suitable for small partitions)
         /// </summary>
         public async Task<byte[]> ReadPartitionToMemoryAsync(PartitionInfo partition, 
             CancellationToken ct = default(CancellationToken),
@@ -912,7 +917,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 分段读取到内存 (核心实现)
+        /// Read to memory in chunks (Core implementation)
         /// </summary>
         public async Task<byte[]> ReadToMemoryChunkedAsync(int lun, long startSector, long numSectors,
             string label, CancellationToken ct = default(CancellationToken),
@@ -951,7 +956,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 读取扇区数据
+        /// Read sector data
         /// </summary>
         public async Task<byte[]> ReadSectorsAsync(int lun, long startSector, int numSectors, CancellationToken ct, bool useVipMode = false, string partitionName = null)
         {
@@ -1001,8 +1006,8 @@ namespace LoveAlways.Qualcomm.Protocol
                     }
                     catch (Exception ex)
                     {
-                        // VIP 策略尝试失败，继续下一个策略
-                        _logDetail(string.Format("[Firehose] VIP 策略 {0} 失败: {1}", strategy.Label ?? "直接读取", ex.Message));
+                        // VIP strategy attempt failed, continue to next strategy
+                        _logDetail(string.Format("[Firehose] VIP strategy {0} failed: {1}", strategy.Label ?? "Direct read", ex.Message));
                     }
                 }
 
@@ -1035,7 +1040,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
                 catch (Exception ex)
                 {
-                    _log(string.Format("[Read] 异常: {0}", ex.Message));
+                    _log(string.Format("[Read] Exception: {0}", ex.Message));
                 }
 
                 return null;
@@ -1044,16 +1049,16 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 写入分区
+        #region Write Partition
 
         /// <summary>
-        /// 写入分区数据 (支持自定义分段)
+        /// Write partition data (Supports custom chunking)
         /// </summary>
-        /// <param name="partition">分区信息</param>
-        /// <param name="imagePath">镜像文件路径</param>
-        /// <param name="useOppoMode">是否使用 OPPO 模式</param>
-        /// <param name="ct">取消令牌</param>
-        /// <param name="chunkProgress">分段进度回调 (当前块索引, 总块数, 块字节数)</param>
+        /// <param name="partition">Partition info</param>
+        /// <param name="imagePath">Image file path</param>
+        /// <param name="useOppoMode">Whether to use OPPO mode</param>
+        /// <param name="ct">Cancellation token</param>
+        /// <param name="chunkProgress">Chunk progress callback (current chunk index, total chunks, chunk bytes)</param>
         public async Task<bool> WritePartitionAsync(PartitionInfo partition, string imagePath, 
             bool useOppoMode = false, CancellationToken ct = default(CancellationToken),
             Action<int, int, long> chunkProgress = null)
@@ -1063,7 +1068,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 分段写入分区数据 (核心实现)
+        /// Write partition data in chunks (Core implementation)
         /// </summary>
         public async Task<bool> WritePartitionChunkedAsync(int lun, long startSector, int sectorSize, 
             string imagePath, string label = "Partition", bool useOppoMode = false, 
@@ -1071,32 +1076,32 @@ namespace LoveAlways.Qualcomm.Protocol
             Action<int, int, long> chunkProgress = null)
         {
             if (!File.Exists(imagePath))
-                throw new FileNotFoundException("镜像文件不存在", imagePath);
+                throw new FileNotFoundException("Image file does not exist", imagePath);
 
-            // 检查是否为 Sparse 镜像
+            // Check if it is a Sparse image
             bool isSparse = SparseStream.IsSparseFile(imagePath);
             
             if (isSparse)
             {
-                // 智能 Sparse 写入：只写入有数据的部分，跳过 DONT_CARE
+                // Smart Sparse write: only write parts with data, skip DONT_CARE
                 return await WriteSparsePartitionSmartAsync(lun, startSector, sectorSize, imagePath, label, useOppoMode, ct);
             }
             
             long fileSize = new FileInfo(imagePath).Length;
-            _log(string.Format("[Firehose] 写入: {0} ({1})", label, FormatSize(fileSize)));
+            _log(string.Format("[Firehose] Writing: {0} ({1})", label, FormatSize(fileSize)));
 
-            // 使用有效分段大小 (默认使用设备最大值，不分段)
+            // Use effective chunk size (default use device maximum, no chunking)
             int chunkSize = EffectiveChunkSize;
             long sectorsPerChunk = chunkSize / sectorSize;
             long bytesPerChunk = sectorsPerChunk * sectorSize;
             
-            // 计算总块数
+            // Calculate total chunks
             int totalChunks = (int)Math.Ceiling((double)fileSize / bytesPerChunk);
             
-            // 只有启用自定义分段时才显示分段信息
+            // Only show chunk info when custom chunking is enabled
             if (_customChunkSize > 0)
             {
-                _logDetail(string.Format("[Firehose] 分段传输: {0}/块, 共 {1} 块", 
+                _logDetail(string.Format("[Firehose] Chunk transfer: {0}/chunk, total {1} chunks", 
                     FormatSize(chunkSize), totalChunks));
             }
 
@@ -1108,7 +1113,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 StartTransferTimer(totalBytes);
 
-                // 使用 ArrayPool 减少 GC 压力
+                // Use SimpleBufferPool to reduce GC pressure
                 var buffer = SimpleBufferPool.Rent((int)bytesPerChunk);
                 try
                 {
@@ -1118,7 +1123,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     {
                         if (ct.IsCancellationRequested) 
                         {
-                            _log("[Firehose] 写入已取消");
+                            _log("[Firehose] Write cancelled");
                             return false;
                         }
 
@@ -1127,10 +1132,10 @@ namespace LoveAlways.Qualcomm.Protocol
                         var bytesRead = sourceStream.Read(buffer, 0, bytesToRead);
                         if (bytesRead == 0) break;
 
-                        // 分段进度回调
+                        // Chunk progress callback
                         chunkProgress?.Invoke(currentChunk, totalChunks, bytesRead);
 
-                        // 补齐到扇区边界
+                        // Pad to sector boundary
                         var paddedSize = ((bytesRead + sectorSize - 1) / sectorSize) * sectorSize;
                         if (paddedSize > bytesRead)
                             Array.Clear(buffer, bytesRead, paddedSize - bytesRead);
@@ -1139,7 +1144,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                         if (!await WriteSectorsAsync(lun, currentSector, buffer, paddedSize, label, useOppoMode, ct))
                         {
-                            _log(string.Format("[Firehose] 写入失败 @ 块 {0}/{1}, sector {2}", 
+                            _log(string.Format("[Firehose] Write failed @ chunk {0}/{1}, sector {2}", 
                                 currentChunk, totalChunks, currentSector));
                             return false;
                         }
@@ -1147,12 +1152,12 @@ namespace LoveAlways.Qualcomm.Protocol
                         totalWritten += bytesRead;
                         currentSector += sectorsToWrite;
 
-                        // 总进度回调
+                        // Total progress callback
                         _progress?.Invoke(totalWritten, totalBytes);
                     }
 
-                    StopTransferTimer("写入", totalWritten);
-                    _log(string.Format("[Firehose] {0} 写入完成: {1}", label, FormatSize(totalWritten)));
+                    StopTransferTimer("Write", totalWritten);
+                    _log(string.Format("[Firehose] {0} write complete: {1}", label, FormatSize(totalWritten)));
                     return true;
                 }
                 finally
@@ -1163,7 +1168,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 智能写入 Sparse 镜像（只写有数据的 chunks，跳过 DONT_CARE）
+        /// Smart write Sparse image (only write chunks with data, skip DONT_CARE)
         /// </summary>
         private async Task<bool> WriteSparsePartitionSmartAsync(int lun, long startSector, int sectorSize, string imagePath, string label, bool useOppoMode, CancellationToken ct)
         {
@@ -1173,23 +1178,23 @@ namespace LoveAlways.Qualcomm.Protocol
                 var realDataSize = sparse.GetRealDataSize();
                 var dataRanges = sparse.GetDataRanges();
                 
-                // 主日志显示写入信息
-                _log(string.Format("[Firehose] 写入: {0} ({1}) [Sparse]", label, FormatFileSize(realDataSize)));
-                _logDetail(string.Format("[Sparse] 展开大小: {0:N0} MB, 实际数据: {1:N0} MB, 节省: {2:P1}", 
+                // Main log shows write info
+                _log(string.Format("[Firehose] Writing: {0} ({1}) [Sparse]", label, FormatFileSize(realDataSize)));
+                _logDetail(string.Format("[Sparse] Expanded size: {0:N0} MB, Real data: {1:N0} MB, Saved: {2:P1}", 
                     totalExpandedSize / 1024.0 / 1024.0, 
                     realDataSize / 1024.0 / 1024.0,
                     1.0 - (double)realDataSize / totalExpandedSize));
                 
                 if (dataRanges.Count == 0)
                 {
-                    // 空 Sparse 镜像: 使用 erase 命令清空分区
-                    _logDetail(string.Format("[Sparse] 镜像无实际数据，擦除分区 {0}...", label));
+                    // Empty Sparse image: use erase command to clear partition
+                    _logDetail(string.Format("[Sparse] Image has no data, erasing partition {0}...", label));
                     long numSectors = totalExpandedSize / sectorSize;
                     bool eraseOk = await EraseSectorsAsync(lun, startSector, numSectors, ct);
                     if (eraseOk)
-                        _logDetail(string.Format("[Sparse] 分区 {0} 擦除完成 ({1:F2} MB)", label, totalExpandedSize / 1024.0 / 1024.0));
+                        _logDetail(string.Format("[Sparse] Partition {0} erase complete ({1:F2} MB)", label, totalExpandedSize / 1024.0 / 1024.0));
                     else
-                        _log(string.Format("[Sparse] 分区 {0} 擦除失败", label));
+                        _log(string.Format("[Sparse] Partition {0} erase failed", label));
                     return eraseOk;
                 }
                 
@@ -1199,11 +1204,11 @@ namespace LoveAlways.Qualcomm.Protocol
                 
                 StartTransferTimer(realDataSize);
                 
-                // 使用 ArrayPool 减少 GC 压力
+                // Use SimpleBufferPool to reduce GC pressure
                 var buffer = SimpleBufferPool.Rent(bytesPerChunk);
                 try
                 {
-                    // 逐个写入有数据的范围
+                    // Write data ranges one by one
                     foreach (var range in dataRanges)
                     {
                         if (ct.IsCancellationRequested) return false;
@@ -1212,7 +1217,7 @@ namespace LoveAlways.Qualcomm.Protocol
                         var rangeSize = range.Item2;
                         var rangeStartSector = startSector + (rangeOffset / sectorSize);
                         
-                        // 定位到该范围
+                        // Seek to the range
                         sparse.Seek(rangeOffset, SeekOrigin.Begin);
                         var rangeWritten = 0L;
                         
@@ -1224,7 +1229,7 @@ namespace LoveAlways.Qualcomm.Protocol
                             var bytesRead = sparse.Read(buffer, 0, bytesToRead);
                             if (bytesRead == 0) break;
                             
-                            // 补齐到扇区边界
+                            // Pad to sector boundary
                             var paddedSize = ((bytesRead + sectorSize - 1) / sectorSize) * sectorSize;
                             if (paddedSize > bytesRead)
                                 Array.Clear(buffer, bytesRead, paddedSize - bytesRead);
@@ -1234,7 +1239,7 @@ namespace LoveAlways.Qualcomm.Protocol
                             
                             if (!await WriteSectorsAsync(lun, currentSector, buffer, paddedSize, label, useOppoMode, ct))
                             {
-                                _log(string.Format("[Firehose] 写入失败 @ sector {0}", currentSector));
+                                _log(string.Format("[Firehose] Write failed @ sector {0}", currentSector));
                                 return false;
                             }
                             
@@ -1246,8 +1251,8 @@ namespace LoveAlways.Qualcomm.Protocol
                         }
                     }
                     
-                    StopTransferTimer("写入", totalWritten);
-                    _logDetail(string.Format("[Firehose] {0} 完成: {1:N0} 字节 (跳过 {2:N0} MB)", 
+                    StopTransferTimer("Write", totalWritten);
+                    _logDetail(string.Format("[Firehose] {0} complete: {1:N0} bytes (skipped {2:N0} MB blank)", 
                         label, totalWritten, (totalExpandedSize - realDataSize) / 1024.0 / 1024.0));
                     return true;
                 }
@@ -1259,13 +1264,13 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 写入扇区数据 (高速优化版)
+        /// Write sector data (High-speed optimized version)
         /// </summary>
         private async Task<bool> WriteSectorsAsync(int lun, long startSector, byte[] data, int length, string label, bool useOppoMode, CancellationToken ct)
         {
             int numSectors = length / _sectorSize;
             
-            // 使用实际的分区名称，而不是硬编码的 GPT 值
+            // Use the actual partition name instead of hardcoded GPT values
             string xml = string.Format(
                 "<?xml version=\"1.0\" ?><data>" +
                 "<program SECTOR_SIZE_IN_BYTES=\"{0}\" num_partition_sectors=\"{1}\" " +
@@ -1273,20 +1278,20 @@ namespace LoveAlways.Qualcomm.Protocol
                 "</data>",
                 _sectorSize, numSectors, lun, startSector, label);
 
-            // 发送命令 (使用异步写入)
-            _port.DiscardInBuffer(); // 只清空输入缓冲区，不清空输出
+            // Send command (using asynchronous write)
+            _port.DiscardInBuffer(); // Only clear the input buffer, not the output
             await _port.WriteAsync(Encoding.UTF8.GetBytes(xml), 0, xml.Length, ct);
 
             if (!await WaitForRawDataModeAsync(ct))
             {
-                _log("[Firehose] Program 命令未确认");
+                _log("[Firehose] Program command not acknowledged");
                 return false;
             }
 
-            // 使用异步写入数据
+            // Use async data write
             if (!await _port.WriteAsync(data, 0, length, ct))
             {
-                _log("[Firehose] 数据写入失败");
+                _log("[Firehose] Data write failed");
                 return false;
             }
 
@@ -1294,46 +1299,46 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 从文件刷写分区
+        /// Flash partition from file
         /// </summary>
         public async Task<bool> FlashPartitionFromFileAsync(string partitionName, string filePath, int lun, long startSector, IProgress<double> progress, CancellationToken ct, bool useVipMode = false)
         {
             if (!File.Exists(filePath))
             {
-                _log("Firehose: 文件不存在 - " + filePath);
+                _log("Firehose: File does not exist - " + filePath);
                 return false;
             }
 
-            // 检查是否为 Sparse 镜像
+            // Check if it's a Sparse image
             bool isSparse = SparseStream.IsSparseFile(filePath);
             
-            // Sparse 镜像使用智能写入，跳过 DONT_CARE
+            // Sparse image uses smart write, skipping DONT_CARE
             if (isSparse)
             {
                 return await FlashSparsePartitionSmartAsync(partitionName, filePath, lun, startSector, progress, ct, useVipMode);
             }
             
-            // Raw 镜像的常规写入
+            // Regular write for Raw image
             using (Stream sourceStream = File.OpenRead(filePath))
             {
                 long fileSize = sourceStream.Length;
                 int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
 
-                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2}){3}", 
+                _log(string.Format("Firehose: Flashing {0} -> {1} ({2}){3}", 
                     Path.GetFileName(filePath), partitionName, FormatFileSize(fileSize),
-                    useVipMode ? " [VIP模式]" : ""));
+                    useVipMode ? " [VIP Mode]" : ""));
 
-                // VIP 模式使用伪装策略
+                // VIP mode uses masquerade strategy
                 if (useVipMode)
                 {
                     return await FlashPartitionVipModeAsync(partitionName, sourceStream, lun, startSector, numSectors, fileSize, progress, ct);
                 }
 
-                // 标准模式 (支持 OnePlus Token 认证)
+                // Standard mode (supports OnePlus Token authentication)
                 string xml;
                 if (IsOnePlusAuthenticated)
                 {
-                    // OnePlus 设备需要附带认证 Token - 添加 label 和 read_back_verify 符合官方协议
+                    // OnePlus devices need an authentication token - adding label and read_back_verify to comply with official protocol
                     xml = string.Format(
                         "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
                         "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
@@ -1341,11 +1346,11 @@ namespace LoveAlways.Qualcomm.Protocol
                         "read_back_verify=\"true\" token=\"{5}\" pk=\"{6}\"/></data>",
                         _sectorSize, numSectors, lun, startSector, partitionName,
                         OnePlusProgramToken, OnePlusProgramPk);
-                    _log("[OnePlus] 使用认证令牌写入");
+                    _log("[OnePlus] Writing using authentication token");
                 }
                 else
                 {
-                    // 标准模式 - 添加 label 属性符合官方协议
+                    // Standard mode - adding label attribute to comply with official protocol
                     xml = string.Format(
                         "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
                         "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
@@ -1358,7 +1363,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 if (!await WaitForRawDataModeAsync(ct))
                 {
-                    _log("Firehose: Program 命令被拒绝");
+                    _log("Firehose: Program command rejected");
                     return false;
                 }
 
@@ -1367,21 +1372,21 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 使用官方 NUM_DISK_SECTORS-N 负扇区格式刷写分区
-        /// 用于 BackupGPT 等需要写入磁盘末尾的分区
+        /// Flash partition using official NUM_DISK_SECTORS-N negative sector format
+        /// Used for partitions like BackupGPT that need to be written at the end of the disk
         /// </summary>
         public async Task<bool> FlashPartitionWithNegativeSectorAsync(string partitionName, string filePath, int lun, long startSector, IProgress<double> progress, CancellationToken ct)
         {
             if (!File.Exists(filePath))
             {
-                _log("Firehose: 文件不存在 - " + filePath);
+                _log("Firehose: File does not exist - " + filePath);
                 return false;
             }
 
-            // 负扇区不支持 Sparse 镜像
+            // Negative sector does not support Sparse image
             if (SparseStream.IsSparseFile(filePath))
             {
-                _log("Firehose: 负扇区格式不支持 Sparse 镜像");
+                _log("Firehose: Negative sector format does not support Sparse image");
                 return false;
             }
             
@@ -1390,7 +1395,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 long fileSize = sourceStream.Length;
                 int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
 
-                // 格式化负扇区: NUM_DISK_SECTORS-N. (官方格式，注意尾部的点)
+                // Format negative sector: NUM_DISK_SECTORS-N. (Official format, note the trailing dot)
                 string startSectorStr;
                 if (startSector < 0)
                 {
@@ -1401,10 +1406,10 @@ namespace LoveAlways.Qualcomm.Protocol
                     startSectorStr = startSector.ToString();
                 }
 
-                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2}) @ {3}", 
+                _log(string.Format("Firehose: Flashing {0} -> {1} ({2}) @ {3}", 
                     Path.GetFileName(filePath), partitionName, FormatFileSize(fileSize), startSectorStr));
 
-                // 构造 program XML，使用官方负扇区格式
+                // Construct program XML using official negative sector format
                 string xml = string.Format(
                     "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
                     "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
@@ -1416,7 +1421,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 if (!await WaitForRawDataModeAsync(ct))
                 {
-                    _log("Firehose: Program 命令被拒绝 (负扇区格式)");
+                    _log("Firehose: Program command rejected (Negative sector format)");
                     return false;
                 }
 
@@ -1425,7 +1430,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 智能刷写 Sparse 镜像（只写有数据的 chunks）
+        /// Smart flash Sparse image (only write chunks with data)
         /// </summary>
         private async Task<bool> FlashSparsePartitionSmartAsync(string partitionName, string filePath, int lun, long startSector, IProgress<double> progress, CancellationToken ct, bool useVipMode)
         {
@@ -1435,32 +1440,32 @@ namespace LoveAlways.Qualcomm.Protocol
                 var realDataSize = sparse.GetRealDataSize();
                 var dataRanges = sparse.GetDataRanges();
                 
-                // 主日志显示刷写信息
-                _log(string.Format("Firehose: 刷写 {0} -> {1} ({2}) [Sparse]{3}", 
+                // Main log shows flashing info
+                _log(string.Format("Firehose: Flashing {0} -> {1} ({2}) [Sparse]{3}", 
                     Path.GetFileName(filePath), partitionName, FormatFileSize(realDataSize), useVipMode ? " [VIP]" : ""));
-                _logDetail(string.Format("[Sparse] 展开: {0:F2} MB, 实际数据: {1:F2} MB, 节省: {2:P1}", 
+                _logDetail(string.Format("[Sparse] Expanded: {0:F2} MB, Real data: {1:F2} MB, Saved: {2:P1}", 
                     totalExpandedSize / 1024.0 / 1024.0, 
                     realDataSize / 1024.0 / 1024.0,
                     realDataSize > 0 ? (1.0 - (double)realDataSize / totalExpandedSize) : 1.0));
                 
                 if (dataRanges.Count == 0)
                 {
-                    // 空 Sparse 镜像 (如 userdata): 使用 erase 命令清空分区
-                    _logDetail(string.Format("[Sparse] 镜像无实际数据，擦除分区 {0}...", partitionName));
+                    // Empty Sparse image (e.g., userdata): use erase command to clear partition
+                    _logDetail(string.Format("[Sparse] Image has no data, erasing partition {0}...", partitionName));
                     long numSectors = totalExpandedSize / _sectorSize;
                     bool eraseOk = await EraseSectorsAsync(lun, startSector, numSectors, ct);
                     if (progress != null) progress.Report(100.0);
                     if (eraseOk)
-                        _logDetail(string.Format("[Sparse] 分区 {0} 擦除完成 ({1:F2} MB)", partitionName, totalExpandedSize / 1024.0 / 1024.0));
+                        _logDetail(string.Format("[Sparse] Partition {0} erase complete ({1:F2} MB)", partitionName, totalExpandedSize / 1024.0 / 1024.0));
                     else
-                        _log(string.Format("[Sparse] 分区 {0} 擦除失败", partitionName));
+                        _log(string.Format("[Sparse] Partition {0} erase failed", partitionName));
                     return eraseOk;
                 }
                 
                 var totalWritten = 0L;
                 var rangeIndex = 0;
                 
-                // 逐个写入有数据的范围
+                // Write data ranges one by one
                 foreach (var range in dataRanges)
                 {
                     if (ct.IsCancellationRequested) return false;
@@ -1471,14 +1476,14 @@ namespace LoveAlways.Qualcomm.Protocol
                     var rangeStartSector = startSector + (rangeOffset / _sectorSize);
                     var numSectors = (int)Math.Ceiling((double)rangeSize / _sectorSize);
                     
-                    // 定位到该范围
+                    // Seek to the range
                     sparse.Seek(rangeOffset, SeekOrigin.Begin);
                     
-                    // 构建 program 命令
+                    // Construct program command
                     string xml;
                     if (useVipMode)
                     {
-                        // VIP 模式伪装
+                        // VIP mode masquerade
                         xml = string.Format(
                             "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
                             "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
@@ -1510,13 +1515,13 @@ namespace LoveAlways.Qualcomm.Protocol
                     
                     if (!await WaitForRawDataModeAsync(ct))
                     {
-                        _logDetail(string.Format("[Sparse] 第 {0}/{1} 段 Program 命令被拒绝", rangeIndex, dataRanges.Count));
+                        _logDetail(string.Format("[Sparse] Segment {0}/{1} Program command rejected", rangeIndex, dataRanges.Count));
                         return false;
                     }
                     
-                    // 发送该范围的数据 (使用优化的块大小以获得最佳性能)
+                    // Send data for this range (using optimized block size for maximum performance)
                     var sent = 0L;
-                    // 使用 4MB 块大小，提高 USB 3.0 传输效率
+                    // Use 4MB block size to improve USB 3.0 transmission efficiency
                     const int OPTIMAL_CHUNK = 4 * 1024 * 1024;
                     var chunkSize = Math.Min(OPTIMAL_CHUNK, _maxPayloadSize);
                     var buffer = new byte[chunkSize];
@@ -1530,18 +1535,18 @@ namespace LoveAlways.Qualcomm.Protocol
                         var read = sparse.Read(buffer, 0, toRead);
                         if (read == 0) break;
                         
-                        // 补齐到扇区边界
+                        // Pad to sector boundary
                         var paddedSize = ((read + _sectorSize - 1) / _sectorSize) * _sectorSize;
                         if (paddedSize > read)
                             Array.Clear(buffer, read, paddedSize - read);
                         
-                        // 使用同步写入提高效率
+                        // Use synchronous write to improve efficiency
                         _port.Write(buffer, 0, paddedSize);
                         
                         sent += read;
                         totalWritten += read;
                         
-                        // 节流进度报告
+                        // Throttle progress reports
                         var now = DateTime.Now;
                         if (progress != null && realDataSize > 0 && (now - lastProgressTime).TotalMilliseconds > 200)
                         {
@@ -1552,23 +1557,23 @@ namespace LoveAlways.Qualcomm.Protocol
                     
                     if (!await WaitForAckAsync(ct, 30))
                     {
-                        _logDetail(string.Format("[Sparse] 第 {0}/{1} 段写入未确认", rangeIndex, dataRanges.Count));
+                        _logDetail(string.Format("[Sparse] Segment {0}/{1} write unacknowledged", rangeIndex, dataRanges.Count));
                         return false;
                     }
                 }
                 
-                _logDetail(string.Format("[Sparse] {0} 写入完成: {1:N0} 字节 (跳过 {2:N0} MB 空白)", 
+                _logDetail(string.Format("[Sparse] {0} Write complete: {1:N0} bytes (skipped {2:N0} MB blank)", 
                     partitionName, totalWritten, (totalExpandedSize - realDataSize) / 1024.0 / 1024.0));
                 return true;
             }
         }
 
         /// <summary>
-        /// VIP 模式刷写分区 (使用伪装策略)
+        /// VIP mode flash partition (using masquerade strategy)
         /// </summary>
         private async Task<bool> FlashPartitionVipModeAsync(string partitionName, Stream sourceStream, int lun, long startSector, int numSectors, long fileSize, IProgress<double> progress, CancellationToken ct)
         {
-            // 获取伪装策略
+            // Get masquerade strategy
             var strategies = GetDynamicSpoofStrategies(lun, startSector, partitionName, false);
             
             foreach (var strategy in strategies)
@@ -1578,10 +1583,10 @@ namespace LoveAlways.Qualcomm.Protocol
                 string spoofLabel = string.IsNullOrEmpty(strategy.Label) ? partitionName : strategy.Label;
                 string spoofFilename = string.IsNullOrEmpty(strategy.Filename) ? partitionName : strategy.Filename;
 
-                _logDetail(string.Format("[VIP Write] 尝试伪装: {0}/{1}", spoofLabel, spoofFilename));
+                _logDetail(string.Format("[VIP Write] Attempting masquerade: {0}/{1}", spoofLabel, spoofFilename));
                 PurgeBuffer();
 
-                // VIP 模式 program 命令 - 添加 read_back_verify 符合官方协议
+                // VIP mode program command - adding read_back_verify to comply with official protocol
                 string xml = string.Format(
                     "<?xml version=\"1.0\"?><data><program SECTOR_SIZE_IN_BYTES=\"{0}\" " +
                     "num_partition_sectors=\"{1}\" physical_partition_number=\"{2}\" " +
@@ -1593,14 +1598,14 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 if (await WaitForRawDataModeAsync(ct))
                 {
-                    _logDetail(string.Format("[VIP Write] 伪装 {0} 成功，开始传输数据...", spoofLabel));
+                    _logDetail(string.Format("[VIP Write] Masquerade {0} success, starting data transfer...", spoofLabel));
                     
-                    // 每次尝试前重置流位置
+                    // Reset stream position before each attempt
                     sourceStream.Position = 0;
                     bool success = await SendStreamDataAsync(sourceStream, fileSize, progress, ct);
                     if (success)
                     {
-                        _logDetail(string.Format("[VIP Write] {0} 写入成功", partitionName));
+                        _logDetail(string.Format("[VIP Write] {0} Write success", partitionName));
                         return true;
                     }
                 }
@@ -1608,26 +1613,26 @@ namespace LoveAlways.Qualcomm.Protocol
                 await Task.Delay(100, ct);
             }
 
-            _log(string.Format("[VIP Write] {0} 所有伪装策略都失败", partitionName));
+            _log(string.Format("[VIP Write] {0} All masquerade strategies failed", partitionName));
             return false;
         }
 
         /// <summary>
-        /// 发送流数据 (极速优化版 - 使用双缓冲和更大的块大小)
-        /// 优化点：
-        /// 1. 增大块大小到 4MB (USB 3.0 最佳)
-        /// 2. 双缓冲并行读写
-        /// 3. 减少进度更新频率
-        /// 4. 使用 Buffer.BlockCopy 代替 Array.Clear
+        /// Send stream data (Extremely optimized version - uses double buffering and larger chunk size)
+        /// Optimization points:
+        /// 1. Increase chunk size to 4MB (Optimal for USB 3.0)
+        /// 2. Double buffering parallel read/write
+        /// 3. Reduce progress update frequency
+        /// 4. Use Buffer.BlockCopy instead of Array.Clear
         /// </summary>
         private async Task<bool> SendStreamDataAsync(Stream stream, long streamSize, IProgress<double> progress, CancellationToken ct)
         {
             long sent = 0;
             
-            // 使用双缓冲实现读写并行
-            // 块大小优化：USB 3.0 环境下 4MB 是最佳块大小
-            // USB 2.0 环境下 2MB 较优，但 4MB 也能正常工作
-            const int OPTIMAL_CHUNK_SIZE = 4 * 1024 * 1024; // 4MB 块 (从 2MB 增加)
+            // Use double buffering for read/write parallelism
+            // Chunk size optimization: 4MB is the optimal chunk size for USB 3.0 environments
+            // 2MB is better for USB 2.0 environments, but 4MB also works normally
+            const int OPTIMAL_CHUNK_SIZE = 4 * 1024 * 1024; // 4MB chunk (Increased from 2MB)
             int chunkSize = Math.Min(OPTIMAL_CHUNK_SIZE, _maxPayloadSize);
             
             byte[] buffer1 = new byte[chunkSize];
@@ -1637,9 +1642,9 @@ namespace LoveAlways.Qualcomm.Protocol
             
             double lastPercent = -1;
             DateTime lastProgressTime = DateTime.MinValue;
-            const int PROGRESS_INTERVAL_MS = 200; // 降低进度更新频率到 200ms
+            const int PROGRESS_INTERVAL_MS = 200; // Reduce progress update frequency to 200ms
             
-            // 预读第一块
+            // Pre-read the first chunk
             int currentRead = stream.Read(currentBuffer, 0, (int)Math.Min(chunkSize, streamSize));
             if (currentRead <= 0) return await WaitForAckAsync(ct, 60);
 
@@ -1647,10 +1652,10 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 if (ct.IsCancellationRequested) return false;
 
-                // 计算剩余数据
+                // Calculate remaining data
                 long remaining = streamSize - sent - currentRead;
                 
-                // 启动下一块的异步读取（如果还有数据）
+                // Start asynchronous read of the next chunk (if there is still data)
                 Task<int> readTask = null;
                 if (remaining > 0)
                 {
@@ -1658,7 +1663,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     readTask = stream.ReadAsync(nextBuffer, 0, nextToRead, ct);
                 }
 
-                // 补齐到扇区边界
+                // Pad to sector boundary
                 int toWrite = currentRead;
                 if (currentRead % _sectorSize != 0)
                 {
@@ -1666,20 +1671,20 @@ namespace LoveAlways.Qualcomm.Protocol
                     Array.Clear(currentBuffer, currentRead, toWrite - currentRead);
                 }
 
-                // 发送当前块 (使用同步写入提高效率)
+                // Send current chunk (use synchronous write for efficiency)
                 try
                 {
                     _port.Write(currentBuffer, 0, toWrite);
                 }
                 catch (Exception ex)
                 {
-                    _log(string.Format("Firehose: 数据写入失败 - {0}", ex.Message));
+                    _log(string.Format("Firehose: Data write failed - {0}", ex.Message));
                     return false;
                 }
 
                 sent += currentRead;
 
-                // 节流进度报告：每 200ms 或每 1% 更新一次
+                // Throttled progress reporting: update every 200ms or 1%
                 var now = DateTime.Now;
                 double currentPercent = (100.0 * sent / streamSize);
                 if (currentPercent > lastPercent + 1.0 || (now - lastProgressTime).TotalMilliseconds > PROGRESS_INTERVAL_MS)
@@ -1691,13 +1696,13 @@ namespace LoveAlways.Qualcomm.Protocol
                     lastProgressTime = now;
                 }
 
-                // 等待下一块读取完成并交换缓冲区
+                // Wait for next chunk read to complete and swap buffers
                 if (readTask != null)
                 {
                     currentRead = await readTask;
                     if (currentRead <= 0) break;
                     
-                    // 交换缓冲区
+                    // Swap buffers
                     var temp = currentBuffer;
                     currentBuffer = nextBuffer;
                     nextBuffer = temp;
@@ -1708,24 +1713,24 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
             }
 
-            // 确保最后一次进度报告
+            // Ensure the final progress report
             if (_progress != null) _progress(streamSize, streamSize);
             if (progress != null) progress.Report(100.0);
 
-            // 等待最终 ACK (减少重试次数，加快响应)
+            // Wait for final ACK (Reduce retries, speed up response)
             return await WaitForAckAsync(ct, 60);
         }
 
         #endregion
 
-        #region 擦除分区
+        #region Erase Partition
 
         /// <summary>
-        /// 擦除分区
+        /// Erase partition
         /// </summary>
         public async Task<bool> ErasePartitionAsync(PartitionInfo partition, CancellationToken ct = default(CancellationToken), bool useVipMode = false)
         {
-            _log(string.Format("[Firehose] 擦除分区: {0}{1}", partition.Name, useVipMode ? " [VIP模式]" : ""));
+            _log(string.Format("[Firehose] Erasing partition: {0}{1}", partition.Name, useVipMode ? " [VIP Mode]" : ""));
 
             if (useVipMode)
             {
@@ -1743,16 +1748,16 @@ namespace LoveAlways.Qualcomm.Protocol
 
             if (await WaitForAckAsync(ct))
             {
-                _log(string.Format("[Firehose] 分区 {0} 擦除完成", partition.Name));
+                _log(string.Format("[Firehose] Partition {0} erase complete", partition.Name));
                 return true;
             }
 
-            _log("[Firehose] 擦除失败");
+            _log("[Firehose] Erase failed");
             return false;
         }
 
         /// <summary>
-        /// VIP 模式擦除分区
+        /// VIP mode erase partition
         /// </summary>
         private async Task<bool> ErasePartitionVipModeAsync(PartitionInfo partition, CancellationToken ct)
         {
@@ -1765,7 +1770,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 string spoofLabel = string.IsNullOrEmpty(strategy.Label) ? partition.Name : strategy.Label;
                 string spoofFilename = string.IsNullOrEmpty(strategy.Filename) ? partition.Name : strategy.Filename;
 
-                _log(string.Format("[VIP Erase] 尝试伪装: {0}/{1}", spoofLabel, spoofFilename));
+                _log(string.Format("[VIP Erase] Attempting masquerade: {0}/{1}", spoofLabel, spoofFilename));
                 PurgeBuffer();
 
                 var xml = string.Format(
@@ -1778,23 +1783,23 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 if (await WaitForAckAsync(ct))
                 {
-                    _log(string.Format("[VIP Erase] {0} 擦除成功", partition.Name));
+                    _log(string.Format("[VIP Erase] {0} Erase success", partition.Name));
                     return true;
                 }
 
                 await Task.Delay(100, ct);
             }
 
-            _log(string.Format("[VIP Erase] {0} 所有伪装策略都失败", partition.Name));
+            _log(string.Format("[VIP Erase] {0} All masquerade strategies failed", partition.Name));
             return false;
         }
 
         /// <summary>
-        /// 擦除分区 (参数版本)
+        /// Erase partition (Parameter version)
         /// </summary>
         public async Task<bool> ErasePartitionAsync(string partitionName, int lun, long startSector, long numSectors, CancellationToken ct, bool useVipMode = false)
         {
-            _log(string.Format("Firehose: 擦除分区 {0}{1}", partitionName, useVipMode ? " [VIP模式]" : ""));
+            _log(string.Format("Firehose: Erasing partition {0}{1}", partitionName, useVipMode ? " [VIP Mode]" : ""));
 
             if (useVipMode)
             {
@@ -1817,13 +1822,13 @@ namespace LoveAlways.Qualcomm.Protocol
 
             _port.Write(Encoding.UTF8.GetBytes(xml));
             bool success = await WaitForAckAsync(ct, 100);
-            _log(success ? "Firehose: 擦除成功" : "Firehose: 擦除失败");
+            _log(success ? "Firehose: Erase success" : "Firehose: Erase failed");
 
             return success;
         }
 
         /// <summary>
-        /// 擦除指定扇区范围 (简化版)
+        /// Erase specified sector range (Simplified version)
         /// </summary>
         public async Task<bool> EraseSectorsAsync(int lun, long startSector, long numSectors, CancellationToken ct)
         {
@@ -1840,14 +1845,14 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 设备控制
+        #region Device Control
 
         /// <summary>
-        /// 重启设备
+        /// Reset device
         /// </summary>
         public async Task<bool> ResetAsync(string mode = "reset", CancellationToken ct = default(CancellationToken))
         {
-            _log(string.Format("[Firehose] 重启设备 (模式: {0})", mode));
+            _log(string.Format("[Firehose] Reset device (Mode: {0})", mode));
 
             var xml = string.Format("<?xml version=\"1.0\" ?><data><power value=\"{0}\" /></data>", mode);
             PurgeBuffer();
@@ -1857,11 +1862,11 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 关机
+        /// Power off
         /// </summary>
         public async Task<bool> PowerOffAsync(CancellationToken ct = default(CancellationToken))
         {
-            _log("[Firehose] 关机...");
+            _log("[Firehose] Powering off...");
 
             string xml = "<?xml version=\"1.0\"?><data><power value=\"off\"/></data>";
             _port.Write(Encoding.UTF8.GetBytes(xml));
@@ -1870,7 +1875,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 进入 EDL 模式
+        /// Enter EDL mode
         /// </summary>
         public async Task<bool> RebootToEdlAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -1881,53 +1886,53 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 设置活动槽位 (A/B) - 完整实现
-        /// 优先使用 setactiveslot 命令，失败则回退到 patch 方式
+        /// Set active slot (A/B) - Complete implementation
+        /// Prioritize setactiveslot command, fallback to patch method if it fails
         /// </summary>
         public async Task<bool> SetActiveSlotAsync(string slot, CancellationToken ct = default(CancellationToken))
         {
             slot = slot?.ToLower() ?? "a";
             if (slot != "a" && slot != "b")
             {
-                _log("[Firehose] 错误: 槽位必须是 'a' 或 'b'");
+                _log("[Firehose] Error: Slot must be 'a' or 'b'");
                 return false;
             }
 
-            _log(string.Format("[Firehose] 设置活动 Slot: {0}", slot));
+            _log(string.Format("[Firehose] Set active slot: {0}", slot));
 
-            // 方法 1: 尝试 setactiveslot 命令 (部分设备支持)
+            // Method 1: Try setactiveslot command (supported by some devices)
             var xml = string.Format("<?xml version=\"1.0\" ?><data><setactiveslot slot=\"{0}\" /></data>", slot);
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
 
             if (await WaitForAckAsync(ct, 3))
             {
-                _log("[Firehose] setactiveslot 命令成功");
+                _log("[Firehose] setactiveslot command success");
                 return true;
             }
 
-            // 方法 2: 回退到 patch 方式修改 GPT 属性
-            _log("[Firehose] setactiveslot 不支持，使用 patch 方式...");
+            // Method 2: Fallback to patch method to modify GPT attributes
+            _log("[Firehose] setactiveslot not supported, using patch method...");
             return await SetActiveSlotViaPatchAsync(slot, ct);
         }
 
         /// <summary>
-        /// 通过 patch 命令修改 GPT 分区属性来设置活动槽位
+        /// Set active slot by modifying GPT partition attributes via patch command
         /// </summary>
         private async Task<bool> SetActiveSlotViaPatchAsync(string targetSlot, CancellationToken ct)
         {
             if (_cachedPartitions == null || _cachedPartitions.Count == 0)
             {
-                _log("[Firehose] 错误: 没有缓存的分区信息，请先读取分区表");
+                _log("[Firehose] Error: No cached partition info, please read partition table first");
                 return false;
             }
 
-            // 需要修改的核心 A/B 分区 (按启动顺序)
+            // Core A/B partitions that need modification (per boot order)
             string[] coreAbPartitions = {
                 "boot", "dtbo", "vbmeta", "vendor_boot", "init_boot"
             };
 
-            // 可选的 A/B 分区
+            // Optional A/B partitions
             string[] optionalAbPartitions = {
                 "system", "vendor", "product", "odm", "system_ext",
                 "vendor_dlkm", "odm_dlkm", "system_dlkm"
@@ -1939,7 +1944,7 @@ namespace LoveAlways.Qualcomm.Protocol
             int patchCount = 0;
             int failCount = 0;
 
-            // 1. 处理核心分区 (必须成功)
+            // 1. Handle core partitions (must succeed)
             foreach (var baseName in coreAbPartitions)
             {
                 var result = await PatchSlotPairAsync(baseName, activeSuffix, inactiveSuffix, ct);
@@ -1947,7 +1952,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 else if (result < 0) failCount++;
             }
 
-            // 2. 处理可选分区 (失败不影响整体)
+            // 2. Handle optional partitions (fails do not affect overall outcome)
             foreach (var baseName in optionalAbPartitions)
             {
                 var result = await PatchSlotPairAsync(baseName, activeSuffix, inactiveSuffix, ct, true);
@@ -1956,34 +1961,34 @@ namespace LoveAlways.Qualcomm.Protocol
 
             if (patchCount == 0)
             {
-                _log("[Firehose] 未找到任何 A/B 分区");
+                _log("[Firehose] No A/B partitions found");
                 return false;
             }
 
-            _log(string.Format("[Firehose] 已修改 {0} 个分区属性", patchCount));
+            _log(string.Format("[Firehose] Modified {0} partition attributes", patchCount));
 
-            // 3. 修复 GPT 以保存更改
-            _log("[Firehose] 正在保存 GPT 更改...");
+            // 3. Fix GPT to save changes
+            _log("[Firehose] Saving GPT changes...");
             bool fixResult = await FixGptAsync(-1, false, ct);
             
             if (fixResult)
-                _log(string.Format("[Firehose] 活动槽位已切换到: {0}", targetSlot));
+                _log(string.Format("[Firehose] Active slot switched to: {0}", targetSlot));
             else
-                _log("[Firehose] 警告: GPT 修复失败，更改可能未保存");
+                _log("[Firehose] Warning: GPT fix failed, changes may not be saved");
 
             return fixResult && failCount == 0;
         }
 
         /// <summary>
-        /// 修改一对 A/B 分区的属性
+        /// Modify attributes for a pair of A/B partitions
         /// </summary>
-        /// <returns>修改的分区数量，-1 表示失败</returns>
+        /// <returns>Number of partitions modified, -1 for failure</returns>
         private async Task<int> PatchSlotPairAsync(string baseName, string activeSuffix, string inactiveSuffix, 
             CancellationToken ct, bool optional = false)
         {
             int count = 0;
 
-            // 激活目标槽位
+            // Activate target slot
             var activePart = _cachedPartitions.Find(p => 
                 p.Name.Equals(baseName + activeSuffix, StringComparison.OrdinalIgnoreCase));
             
@@ -1993,17 +1998,17 @@ namespace LoveAlways.Qualcomm.Protocol
                 
                 if (await PatchPartitionAttributesAsync(activePart, newAttr, ct))
                 {
-                    _logDetail(string.Format("[Firehose] {0}: 已激活 (attr=0x{1:X16})", activePart.Name, newAttr));
+                    _logDetail(string.Format("[Firehose] {0}: Activated (attr=0x{1:X16})", activePart.Name, newAttr));
                     count++;
                 }
                 else if (!optional)
                 {
-                    _log(string.Format("[Firehose] 错误: 无法修改 {0} 属性", activePart.Name));
+                    _log(string.Format("[Firehose] Error: Unable to modify {0} attributes", activePart.Name));
                     return -1;
                 }
             }
 
-            // 停用另一个槽位
+            // Deactivate the other slot
             var inactivePart = _cachedPartitions.Find(p => 
                 p.Name.Equals(baseName + inactiveSuffix, StringComparison.OrdinalIgnoreCase));
             
@@ -2013,7 +2018,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 
                 if (await PatchPartitionAttributesAsync(inactivePart, newAttr, ct))
                 {
-                    _logDetail(string.Format("[Firehose] {0}: 已停用 (attr=0x{1:X16})", inactivePart.Name, newAttr));
+                    _logDetail(string.Format("[Firehose] {0}: Deactivated (attr=0x{1:X16})", inactivePart.Name, newAttr));
                     count++;
                 }
             }
@@ -2022,26 +2027,26 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 使用 patch 命令修改分区属性
+        /// Use patch command to modify partition attributes
         /// </summary>
         private async Task<bool> PatchPartitionAttributesAsync(PartitionInfo partition, ulong newAttributes, CancellationToken ct)
         {
-            // GPT Entry 结构 (128 字节):
+            // GPT Entry structure (128 bytes):
             // Offset 0-15:  Type GUID (16 bytes)
             // Offset 16-31: Unique GUID (16 bytes)
             // Offset 32-39: Start LBA (8 bytes)
             // Offset 40-47: End LBA (8 bytes)
-            // Offset 48-55: Attributes (8 bytes) <-- 我们要修改这里
+            // Offset 48-55: Attributes (8 bytes) <-- We modify here
             // Offset 56-127: Name (72 bytes)
             
             const int GPT_ENTRY_SIZE = 128;
             const int ATTR_OFFSET_IN_ENTRY = 48;
             
-            // 将属性转换为小端字节序的十六进制字符串
+            // Convert attributes to little-endian hex string
             byte[] attrBytes = BitConverter.GetBytes(newAttributes);
             string attrHex = BitConverter.ToString(attrBytes).Replace("-", "");
 
-            // 方法 1: 使用分区名称的 patch (部分设备支持)
+            // Method 1: Patch using partition name (supported by some devices)
             string xml1 = string.Format(
                 "<?xml version=\"1.0\" ?><data>" +
                 "<patch SECTOR_SIZE_IN_BYTES=\"{0}\" byte_offset=\"{1}\" " +
@@ -2056,16 +2061,16 @@ namespace LoveAlways.Qualcomm.Protocol
             if (await WaitForAckAsync(ct, 3))
                 return true;
 
-            // 方法 2: 使用精确的 GPT 条目位置 (需要 EntryIndex)
+            // Method 2: Use precise GPT entry position (requires EntryIndex)
             if (partition.EntryIndex >= 0)
             {
-                // 计算 GPT 条目在磁盘上的精确位置
-                // GPT 条目起始于 LBA 2 (通常)，每个条目 128 字节
+                // Calculate precise position of GPT entry on disk
+                // GPT entries start at LBA 2 (usually), each entry 128 bytes
                 long gptEntriesStartByte = partition.GptEntriesStartSector * _sectorSize;
                 long entryByteOffset = gptEntriesStartByte + (partition.EntryIndex * GPT_ENTRY_SIZE);
                 long attrByteOffset = entryByteOffset + ATTR_OFFSET_IN_ENTRY;
                 
-                // 计算扇区和字节偏移
+                // Calculate sector and byte offset
                 long startSector = attrByteOffset / _sectorSize;
                 int byteOffset = (int)(attrByteOffset % _sectorSize);
 
@@ -2086,14 +2091,14 @@ namespace LoveAlways.Qualcomm.Protocol
                 if (await WaitForAckAsync(ct, 3))
                     return true;
 
-                _logDetail(string.Format("[Firehose] 方法 2 失败: {0}", partition.Name));
+                _logDetail(string.Format("[Firehose] Method 2 failed: {0}", partition.Name));
             }
             else
             {
-                _logDetail(string.Format("[Firehose] {0} 缺少 EntryIndex，跳过精确 patch", partition.Name));
+                _logDetail(string.Format("[Firehose] {0} missing EntryIndex, skipping precise patch", partition.Name));
             }
 
-            // 方法 3: 尝试使用 setactivepartition 命令 (某些设备支持)
+            // Method 3: Try setactivepartition command (supported by some devices)
             string xml3 = string.Format(
                 "<?xml version=\"1.0\" ?><data>" +
                 "<setactivepartition name=\"{0}\" slot=\"{1}\" /></data>",
@@ -2106,24 +2111,24 @@ namespace LoveAlways.Qualcomm.Protocol
             if (await WaitForAckAsync(ct, 2))
                 return true;
 
-            _logDetail(string.Format("[Firehose] 所有 patch 方法均失败: {0}", partition.Name));
+            _logDetail(string.Format("[Firehose] All patch methods failed: {0}", partition.Name));
             return false;
         }
 
-        #region A/B 槽位属性位操作
+        #region A/B Slot Attribute Bit Operations
 
         /// <summary>
-        /// 设置槽位标志
+        /// Set slot flags
         /// </summary>
-        /// <param name="attr">原始属性</param>
-        /// <param name="active">是否激活 (null = 不修改)</param>
-        /// <param name="priority">优先级 0-3 (null = 不修改)</param>
-        /// <param name="successful">启动成功标志 (null = 不修改)</param>
-        /// <param name="unbootable">不可启动标志 (null = 不修改)</param>
+        /// <param name="attr">Original attributes</param>
+        /// <param name="active">Whether to activate (null = no change)</param>
+        /// <param name="priority">Priority 0-3 (null = no change)</param>
+        /// <param name="successful">Successful boot flag (null = no change)</param>
+        /// <param name="unbootable">Unbootable flag (null = no change)</param>
         private ulong SetSlotFlags(ulong attr, bool? active = null, int? priority = null, 
             bool? successful = null, bool? unbootable = null)
         {
-            // A/B 属性位布局 (在 Attributes 字段的第 48-55 位):
+            // A/B attribute bit layout (in Attributes field bits 48-55):
             // Bit 48-49: Priority (0-3)
             // Bit 50: Active
             // Bit 51: Successful
@@ -2168,7 +2173,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 检查槽位是否激活
+        /// Check if slot is active
         /// </summary>
         public bool IsSlotActive(ulong attributes)
         {
@@ -2176,7 +2181,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 获取槽位优先级
+        /// Get slot priority
         /// </summary>
         public int GetSlotPriority(ulong attributes)
         {
@@ -2186,51 +2191,51 @@ namespace LoveAlways.Qualcomm.Protocol
         #endregion
 
         /// <summary>
-        /// 修复 GPT
+        /// Fix GPT
         /// </summary>
         public async Task<bool> FixGptAsync(int lun = -1, bool growLastPartition = true, CancellationToken ct = default(CancellationToken))
         {
             string lunValue = (lun == -1) ? "all" : lun.ToString();
             string growValue = growLastPartition ? "1" : "0";
 
-            _log(string.Format("[Firehose] 修复 GPT (LUN={0})...", lunValue));
+            _log(string.Format("[Firehose] Fix GPT (LUN={0})...", lunValue));
             var xml = string.Format("<?xml version=\"1.0\" ?><data><fixgpt lun=\"{0}\" grow_last_partition=\"{1}\" /></data>", lunValue, growValue);
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
 
             if (await WaitForAckAsync(ct, 10))
             {
-                _log("[Firehose] GPT 修复成功");
+                _log("[Firehose] GPT fix success");
                 return true;
             }
 
-            _log("[Firehose] GPT 修复失败");
+            _log("[Firehose] GPT fix failed");
             return false;
         }
 
         /// <summary>
-        /// 设置启动 LUN
+        /// Set boot LUN
         /// </summary>
         public async Task<bool> SetBootLunAsync(int lun, CancellationToken ct = default(CancellationToken))
         {
-            _log(string.Format("[Firehose] 设置启动 LUN: {0}", lun));
+            _log(string.Format("[Firehose] Set boot LUN: {0}", lun));
             var xml = string.Format("<?xml version=\"1.0\" ?><data><setbootablestoragedrive value=\"{0}\" /></data>", lun);
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
             return await WaitForAckAsync(ct);
         }
 
-        #region UFS Provision (存储配置)
+        #region UFS Provision (Storage Config)
 
         /// <summary>
-        /// Provision 功能开关 (默认禁用，因为这是危险操作)
-        /// 必须显式设置为 true 才能使用 Provision 功能
+        /// Provision feature toggle (Disabled by default, as this is a dangerous operation)
+        /// Must be explicitly set to true to use Provision functionality
         /// </summary>
         public bool EnableProvision { get; set; } = false;
 
         /// <summary>
-        /// 发送 UFS 全局配置 (Provision 第一步)
-        /// 警告: 这是危险操作，错误配置可能导致设备变砖!
+        /// Send UFS global configuration (Provision Step 1)
+        /// Warning: This is a dangerous operation, incorrect configuration may brick the device!
         /// </summary>
         public async Task<bool> SendUfsGlobalConfigAsync(
             byte bNumberLU, byte bBootEnable, byte bDescrAccessEn, byte bInitPowerMode,
@@ -2240,11 +2245,11 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             if (!EnableProvision)
             {
-                _log("[Provision] 功能已禁用，请先设置 EnableProvision = true");
+                _log("[Provision] Feature disabled, please set EnableProvision = true first");
                 return false;
             }
 
-            _log(string.Format("[Provision] 发送 UFS 全局配置 (LUN数={0}, Boot={1})...", bNumberLU, bBootEnable));
+            _log(string.Format("[Provision] Sending UFS global config (LUN count={0}, Boot={1})...", bNumberLU, bBootEnable));
             
             var xml = string.Format(
                 "<?xml version=\"1.0\" ?><data><ufs bNumberLU=\"{0}\" bBootEnable=\"{1}\" " +
@@ -2258,18 +2263,18 @@ namespace LoveAlways.Qualcomm.Protocol
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
             
-            bool ack = await WaitForAckAsync(ct, 30); // 30秒超时
+            bool ack = await WaitForAckAsync(ct, 30); // 30s timeout
             if (ack)
-                _logDetail("[Provision] 全局配置已发送");
+                _logDetail("[Provision] Global config sent");
             else
-                _log("[Provision] 全局配置发送失败");
+                _log("[Provision] Global config send failed");
             
             return ack;
         }
 
         /// <summary>
-        /// 发送 UFS LUN 配置 (Provision 第二步，每个 LUN 调用一次)
-        /// 警告: 这是危险操作，错误配置可能导致设备变砖!
+        /// Send UFS LUN configuration (Provision Step 2, call once for each LUN)
+        /// Warning: This is a dangerous operation, incorrect configuration may brick the device!
         /// </summary>
         public async Task<bool> SendUfsLunConfigAsync(
             byte luNum, byte bLUEnable, byte bBootLunID, long sizeInKB,
@@ -2279,7 +2284,7 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             if (!EnableProvision)
             {
-                _log("[Provision] 功能已禁用");
+                _log("[Provision] Feature disabled");
                 return false;
             }
 
@@ -2287,7 +2292,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 string.Format("{0:F1}GB", sizeInKB / (1024.0 * 1024)) : 
                 string.Format("{0}MB", sizeInKB / 1024);
             
-            _logDetail(string.Format("[Provision] 配置 LUN{0}: {1}, 启用={2}, Boot={3}",
+            _logDetail(string.Format("[Provision] Config LUN{0}: {1}, Enable={2}, Boot={3}",
                 luNum, sizeStr, bLUEnable, bBootLunID));
             
             var xml = string.Format(
@@ -2306,50 +2311,50 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 提交 UFS Provision 配置 (最终步骤)
-        /// 警告: 此操作可能是 OTP (一次性编程)，一旦执行无法撤销!
+        /// Commit UFS Provision configuration (Final step)
+        /// Warning: This operation may be OTP (One Time Programming), once executed it cannot be undone!
         /// </summary>
         public async Task<bool> CommitUfsProvisionAsync(CancellationToken ct = default(CancellationToken))
         {
             if (!EnableProvision)
             {
-                _log("[Provision] 功能已禁用，无法提交配置");
+                _log("[Provision] Feature disabled, unable to commit config");
                 return false;
             }
 
-            _log("[Provision] 提交 UFS 配置 (此操作可能不可逆!)...");
+            _log("[Provision] Committing UFS config (This operation may be irreversible!)...");
             
             var xml = "<?xml version=\"1.0\" ?><data><ufs commit=\"true\" /></data>";
             
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
             
-            bool ack = await WaitForAckAsync(ct, 60); // 60秒超时，Provision 可能较慢
+            bool ack = await WaitForAckAsync(ct, 60); // 60s timeout, Provision may be slow
             if (ack)
-                _log("[Provision] UFS 配置已提交成功");
+                _log("[Provision] UFS configuration committed successfully");
             else
-                _log("[Provision] UFS 配置提交失败");
+                _log("[Provision] UFS configuration commit failed");
             
             return ack;
         }
 
         /// <summary>
-        /// 读取当前 UFS 存储信息 (如果设备支持)
+        /// Read current UFS storage info (if supported by device)
         /// </summary>
         public async Task<bool> GetStorageInfoAsync(CancellationToken ct = default(CancellationToken))
         {
-            _log("[Provision] 读取存储信息...");
+            _log("[Provision] Reading storage info...");
             
-            // 尝试使用 getstorageinfo 命令 (不是所有设备都支持)
+            // Try getstorageinfo command (not all devices support it)
             var xml = "<?xml version=\"1.0\" ?><data><getstorageinfo /></data>";
             
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
             
-            // 等待响应
+            // Wait for response
             bool result = await WaitForAckAsync(ct, 10);
             if (!result)
-                _logDetail("[Provision] getstorageinfo 命令可能不被支持");
+                _logDetail("[Provision] getstorageinfo command may not be supported");
             
             return result;
         }
@@ -2357,15 +2362,15 @@ namespace LoveAlways.Qualcomm.Protocol
         #endregion
 
         /// <summary>
-        /// 应用单个补丁 (支持官方 NUM_DISK_SECTORS-N 负扇区格式)
+        /// Apply single patch (Supports official NUM_DISK_SECTORS-N negative sector format)
         /// </summary>
         public async Task<bool> ApplyPatchAsync(int lun, long startSector, int byteOffset, int sizeInBytes, string value, CancellationToken ct = default(CancellationToken))
         {
-            // 跳过空补丁
+            // Skip empty patch
             if (string.IsNullOrEmpty(value) || sizeInBytes == 0)
                 return true;
 
-            // 格式化 start_sector: 负数使用官方格式 NUM_DISK_SECTORS-N.
+            // Format start_sector: negative numbers use official format NUM_DISK_SECTORS-N.
             string startSectorStr;
             if (startSector < 0)
             {
@@ -2390,17 +2395,17 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 从 Patch XML 文件应用所有补丁
+        /// Apply all patches from Patch XML file
         /// </summary>
         public async Task<int> ApplyPatchXmlAsync(string patchXmlPath, CancellationToken ct = default(CancellationToken))
         {
             if (!System.IO.File.Exists(patchXmlPath))
             {
-                _log(string.Format("[Firehose] Patch 文件不存在: {0}", patchXmlPath));
+                _log(string.Format("[Firehose] Patch file does not exist: {0}", patchXmlPath));
                 return 0;
             }
 
-            _logDetail(string.Format("[Firehose] 应用 Patch: {0}", System.IO.Path.GetFileName(patchXmlPath)));
+            _logDetail(string.Format("[Firehose] Applying Patch: {0}", System.IO.Path.GetFileName(patchXmlPath)));
 
             int successCount = 0;
             try
@@ -2422,7 +2427,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     long startSector = 0;
                     var startSectorAttr = elem.Attribute("start_sector")?.Value ?? "0";
                     
-                    // 处理 NUM_DISK_SECTORS-N 形式的负扇区 (保持负数，让 ApplyPatchAsync 使用官方格式发送)
+                    // Handle negative sectors in NUM_DISK_SECTORS-N format (keep negative, let ApplyPatchAsync send using official format)
                     if (startSectorAttr.Contains("NUM_DISK_SECTORS"))
                     {
                         if (startSectorAttr.Contains("-"))
@@ -2430,13 +2435,13 @@ namespace LoveAlways.Qualcomm.Protocol
                             string offsetStr = startSectorAttr.Split('-')[1].TrimEnd('.');
                             long offset;
                             if (long.TryParse(offsetStr, out offset))
-                                startSector = -offset; // 负数，ApplyPatchAsync 会使用官方格式
+                                startSector = -offset; // Negative number, ApplyPatchAsync will use official format
                         }
                         else
                         {
                             startSector = -1;
                         }
-                        // 不再尝试客户端转换，直接使用负数让设备计算
+                        // No longer attempting client-side conversion, use negative number directly for device calculation
                     }
                     else if (startSectorAttr.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                     {
@@ -2444,7 +2449,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     }
                     else
                     {
-                        // 移除可能的尾随点号 (如 "5.")
+                        // Remove possible trailing dot (e.g., "5.")
                         if (startSectorAttr.EndsWith("."))
                             startSectorAttr = startSectorAttr.Substring(0, startSectorAttr.Length - 1);
                         long.TryParse(startSectorAttr, out startSector);
@@ -2461,20 +2466,20 @@ namespace LoveAlways.Qualcomm.Protocol
                     if (await ApplyPatchAsync(lun, startSector, byteOffset, sizeInBytes, value, ct))
                         successCount++;
                     else
-                        _logDetail(string.Format("[Patch] 失败: LUN{0} Sector{1}", lun, startSector));
+                        _logDetail(string.Format("[Patch] Failed: LUN{0} Sector{1}", lun, startSector));
                 }
             }
             catch (Exception ex)
             {
-                _log(string.Format("[Patch] 应用异常: {0}", ex.Message));
+                _log(string.Format("[Patch] Application exception: {0}", ex.Message));
             }
 
-            _logDetail(string.Format("[Patch] {0} 成功应用 {1} 个补丁", System.IO.Path.GetFileName(patchXmlPath), successCount));
+            _logDetail(string.Format("[Patch] {0} successfully applied {1} patches", System.IO.Path.GetFileName(patchXmlPath), successCount));
             return successCount;
         }
 
         /// <summary>
-        /// Ping/NOP 测试连接
+        /// Ping/NOP test connection
         /// </summary>
         public async Task<bool> PingAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -2485,7 +2490,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 分区缓存
+        #region Partition Cache
 
         public void SetPartitionCache(List<PartitionInfo> partitions)
         {
@@ -2505,7 +2510,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 通信方法
+        #region Communication Methods
 
         private async Task<XElement> ProcessXmlResponseAsync(CancellationToken ct, int timeoutMs = 5000)
         {
@@ -2531,7 +2536,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                             var content = sb.ToString();
 
-                            // 提取设备日志 (详细日志，不在主界面显示)
+                            // Extract device logs (detailed logs, not displayed on main interface)
                             if (content.Contains("<log "))
                             {
                                 var logMatches = Regex.Matches(content, @"<log value=""([^""]*)""\s*/>");
@@ -2560,26 +2565,26 @@ namespace LoveAlways.Qualcomm.Protocol
                     else
                     {
                         emptyReads++;
-                        // 使用自旋等待代替 Task.Delay，减少上下文切换
+                        // Use spin wait instead of Task.Delay to reduce context switching
                         if (emptyReads < 20)
-                            Thread.SpinWait(500);  // 快速自旋
+                            Thread.SpinWait(500);  // Quick spin
                         else if (emptyReads < 100)
-                            Thread.Yield();  // 让出时间片
+                            Thread.Yield();  // Yield time slice
                         else if (emptyReads < 500)
-                            await Task.Yield();  // 异步让出
+                            await Task.Yield();  // Async yield
                         else
-                            await Task.Delay(1, ct);  // 短暂等待
+                            await Task.Delay(1, ct);  // Short wait
                     }
                 }
             }
             catch (OperationCanceledException)
             {
-                // 取消操作是正常的（包括 TaskCanceledException），不记录日志
+                // Cancellation is normal (including TaskCanceledException), do not log
                 return null;
             }
             catch (Exception ex)
             {
-                _logDetail(string.Format("[Firehose] 响应解析异常: {0}", ex.Message));
+                _logDetail(string.Format("[Firehose] Response parsing exception: {0}", ex.Message));
             }
             return null;
         }
@@ -2588,7 +2593,7 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             int emptyCount = 0;
             int totalWaitMs = 0;
-            const int MAX_WAIT_MS = 30000; // 最大等待 30 秒
+            const int MAX_WAIT_MS = 30000; // Max wait 30 seconds
             
             for (int i = 0; i < maxRetries && totalWaitMs < MAX_WAIT_MS; i++)
             {
@@ -2597,7 +2602,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 var resp = await ProcessXmlResponseAsync(ct);
                 if (resp != null)
                 {
-                    emptyCount = 0; // 重置空响应计数
+                    emptyCount = 0; // Reset empty response count
                     var valAttr = resp.Attribute("value");
                     string val = valAttr != null ? valAttr.Value : "";
 
@@ -2620,24 +2625,24 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
                 else
                 {
-                    // 空响应时使用自旋等待 + 渐进式退避
+                    // Use spin wait + progressive backoff for empty response
                     emptyCount++;
                     int waitMs;
                     if (emptyCount < 50)
                     {
-                        // 前 50 次快速自旋 (约 0.5ms 每次)
+                        // Fast spin for first 50 times (approx 0.5ms each)
                         Thread.SpinWait(1000);
                         waitMs = 0;
                     }
                     else if (emptyCount < 200)
                     {
-                        // 中等等待 (1ms)
-                        await Task.Yield(); // 让出时间片但不真正等待
+                        // Medium wait (1ms)
+                        await Task.Yield(); // Yield time slice but don't actually wait
                         waitMs = 1;
                     }
                     else
                     {
-                        // 较长等待 (5ms)
+                        // Longer wait (5ms)
                         await Task.Delay(5, ct);
                         waitMs = 5;
                     }
@@ -2645,17 +2650,17 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
             }
 
-            _log("[Firehose] 等待 ACK 超时");
+            _log("[Firehose] Wait for ACK timeout");
             return false;
         }
 
         /// <summary>
-        /// 接收数据响应 (高速流水线版 - 极速优化)
-        /// 优化点：
-        /// 1. 使用更大的探测缓冲区 (256KB) 减少 I/O 次数
-        /// 2. 批量读取数据块 (最大 8MB) 提高吞吐量
-        /// 3. 减少字符串解析开销，使用字节级扫描
-        /// 4. 零拷贝设计，直接写入目标缓冲区
+        /// Receive data response (High-speed pipeline version - Extremely optimized)
+        /// Optimization points:
+        /// 1. Use larger probe buffer (256KB) to reduce I/O calls
+        /// 2. Batch read data chunks (max 8MB) to increase throughput
+        /// 3. Reduce string parsing overhead, use byte-level scanning
+        /// 4. Zero-copy design, write directly to target buffer
         /// </summary>
         private async Task<bool> ReceiveDataAfterAckAsync(byte[] buffer, CancellationToken ct)
         {
@@ -2665,17 +2670,17 @@ namespace LoveAlways.Qualcomm.Protocol
                 int received = 0;
                 bool headerFound = false;
 
-                // 加大探测缓冲区 (256KB) - 许多设备一次性发送响应头+数据
+                // Increase probe buffer (256KB) - Many devices send response header + data at once
                 byte[] probeBuf = new byte[256 * 1024];
                 int probeIdx = 0;
                 
-                // 用于快速字节匹配的模式
+                // Patterns for fast byte matching
                 byte[] rawmodePattern = Encoding.ASCII.GetBytes("rawmode=\"true\"");
                 byte[] dataEndPattern = Encoding.ASCII.GetBytes("</data>");
                 byte[] nakPattern = Encoding.ASCII.GetBytes("NAK");
 
                 var sw = Stopwatch.StartNew();
-                const int TIMEOUT_MS = 30000; // 30秒超时
+                const int TIMEOUT_MS = 30000; // 30s timeout
 
                 while (received < totalBytes && sw.ElapsedMilliseconds < TIMEOUT_MS)
                 {
@@ -2683,20 +2688,20 @@ namespace LoveAlways.Qualcomm.Protocol
 
                     if (!headerFound)
                     {
-                        // 1. 寻找 XML 头部 - 批量读取
+                        // 1. Find XML header - Batch read
                         int toRead = probeBuf.Length - probeIdx;
                         if (toRead <= 0) { probeIdx = 0; toRead = probeBuf.Length; }
                         
                         int read = await _port.ReadAsync(probeBuf, probeIdx, toRead, ct);
                         if (read <= 0)
                         {
-                            // 短暂等待后重试
+                            // Retry after short wait
                             await Task.Delay(1, ct);
                             continue;
                         }
                         probeIdx += read;
 
-                        // 快速字节级扫描 - 避免字符串转换开销
+                        // Fast byte-level scanning - avoid string conversion overhead
                         int ackIndex = IndexOfPattern(probeBuf, 0, probeIdx, rawmodePattern);
                         
                         if (ackIndex >= 0)
@@ -2707,11 +2712,11 @@ namespace LoveAlways.Qualcomm.Protocol
                                 headerFound = true;
                                 int dataStart = xmlEndIndex + dataEndPattern.Length;
                                 
-                                // 跳过空白符 (换行等)
+                                // Skip whitespace (newlines, etc.)
                                 while (dataStart < probeIdx && (probeBuf[dataStart] == '\n' || probeBuf[dataStart] == '\r' || probeBuf[dataStart] == ' '))
                                     dataStart++;
 
-                                // 零拷贝：将探测缓冲区中剩余的数据直接存入目标 buffer
+                                // Zero-copy: Store remaining data in probe buffer directly into target buffer
                                 int leftover = probeIdx - dataStart;
                                 if (leftover > 0)
                                 {
@@ -2723,21 +2728,21 @@ namespace LoveAlways.Qualcomm.Protocol
                         }
                         else if (IndexOfPattern(probeBuf, 0, probeIdx, nakPattern) >= 0)
                         {
-                            // 设备拒绝
+                            // Device rejected
                             return false;
                         }
                     }
                     else
                     {
-                        // 2. 高速读取原始数据块 - 使用更大的块 (8MB)
-                        // USB 3.0 理论带宽 5Gbps，实际吞吐约 400MB/s
-                        // 使用大块读取可以最大化 USB 带宽利用率
+                        // 2. High-speed reading of raw data blocks - use larger blocks (8MB)
+                        // USB 3.0 theoretical bandwidth is 5Gbps, actual throughput approx 400MB/s
+                        // Using large blocks maximizes USB bandwidth utilization
                         int toRead = Math.Min(totalBytes - received, 8 * 1024 * 1024);
                         
                         int read = await _port.ReadAsync(buffer, received, toRead, ct);
                         if (read <= 0)
                         {
-                            // 短暂等待后重试
+                            // Retry after short wait
                             await Task.Delay(1, ct);
                             continue;
                         }
@@ -2753,13 +2758,13 @@ namespace LoveAlways.Qualcomm.Protocol
             }
             catch (Exception ex)
             {
-                _logDetail("[Read] 高速读取异常: " + ex.Message);
+                _logDetail("[Read] High-speed read exception: " + ex.Message);
                 return false;
             }
         }
         
         /// <summary>
-        /// 高效字节模式匹配 (Boyer-Moore 简化版)
+        /// Efficient byte pattern matching (Boyer-Moore simplified version)
         /// </summary>
         private static int IndexOfPattern(byte[] data, int start, int length, byte[] pattern)
         {
@@ -2783,11 +2788,11 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 等待设备进入 Raw 数据模式 (极速优化版)
-        /// 优化点：
-        /// 1. 使用字节级扫描代替字符串操作
-        /// 2. 更大的缓冲区 (16KB) 减少 I/O 次数
-        /// 3. 更激进的自旋策略减少延迟
+        /// Wait for device to enter Raw data mode (Extremely optimized version)
+        /// Optimization points:
+        /// 1. Use byte-level scanning instead of string operations
+        /// 2. Larger buffer (16KB) to reduce I/O calls
+        /// 3. More aggressive spin strategy to reduce latency
         /// </summary>
         private async Task<bool> WaitForRawDataModeAsync(CancellationToken ct, int timeoutMs = 5000)
         {
@@ -2795,13 +2800,13 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 try
                 {
-                    // 使用更大的缓冲区
+                    // Use a larger buffer
                     var buffer = new byte[16384];
                     int bufferPos = 0;
                     var sw = Stopwatch.StartNew();
                     int spinCount = 0;
                     
-                    // 预定义字节模式 (避免运行时分配)
+                    // Predefine byte patterns (avoid runtime allocation)
                     byte[] rawmodePattern = { (byte)'r', (byte)'a', (byte)'w', (byte)'m', (byte)'o', (byte)'d', (byte)'e', (byte)'=', (byte)'"', (byte)'t', (byte)'r', (byte)'u', (byte)'e', (byte)'"' };
                     byte[] dataEndPattern = { (byte)'<', (byte)'/', (byte)'d', (byte)'a', (byte)'t', (byte)'a', (byte)'>' };
                     byte[] nakPattern = { (byte)'N', (byte)'A', (byte)'K' };
@@ -2814,11 +2819,11 @@ namespace LoveAlways.Qualcomm.Protocol
                         int bytesAvailable = _port.BytesToRead;
                         if (bytesAvailable > 0)
                         {
-                            // 读取尽可能多的数据
+                            // Read as much data as possible
                             int toRead = Math.Min(buffer.Length - bufferPos, bytesAvailable);
                             if (toRead <= 0)
                             {
-                                // 缓冲区满，重置
+                                // Buffer full, reset
                                 bufferPos = 0;
                                 toRead = Math.Min(buffer.Length, bytesAvailable);
                             }
@@ -2828,14 +2833,14 @@ namespace LoveAlways.Qualcomm.Protocol
                             {
                                 bufferPos += read;
                                 
-                                // 快速字节级检查
+                                // Fast byte-level check
                                 if (IndexOfPattern(buffer, 0, bufferPos, nakPattern) >= 0)
                                 {
-                                    _logDetail("[Write] 设备拒绝 (NAK)");
+                                    _logDetail("[Write] Device rejected (NAK)");
                                     return false;
                                 }
 
-                                // 检查 rawmode 或 ACK
+                                // Check for rawmode or ACK
                                 bool hasRawMode = IndexOfPattern(buffer, 0, bufferPos, rawmodePattern) >= 0;
                                 bool hasAck = IndexOfPattern(buffer, 0, bufferPos, ackPattern) >= 0;
                                 bool hasDataEnd = IndexOfPattern(buffer, 0, bufferPos, dataEndPattern) >= 0;
@@ -2848,11 +2853,11 @@ namespace LoveAlways.Qualcomm.Protocol
                         }
                         else
                         {
-                            // 极速自旋策略：减少上下文切换
+                            // Aggressive spin strategy: reduce context switching
                             spinCount++;
                             if (spinCount < 500)
                             {
-                                Thread.SpinWait(50); // CPU 自旋
+                                Thread.SpinWait(50); // CPU spin
                             }
                             else if (spinCount < 2000)
                             {
@@ -2869,7 +2874,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
                 catch (Exception ex)
                 {
-                    _logDetail(string.Format("[Write] 等待异常: {0}", ex.Message));
+                    _logDetail(string.Format("[Write] Wait exception: {0}", ex.Message));
                     return false;
                 }
             }, ct);
@@ -2884,7 +2889,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 速度统计
+        #region Speed Statistics
 
         private void StartTransferTimer(long totalBytes)
         {
@@ -2905,7 +2910,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 double mbTotal = bytesTransferred / 1024.0 / 1024.0;
 
                 if (mbTotal >= 1)
-                    _log(string.Format("[速度] {0}: {1:F1}MB 用时 {2:F1}s ({3:F2} MB/s)", operationName, mbTotal, seconds, mbps));
+                    _log(string.Format("[Speed] {0}: {1:F1}MB took {2:F1}s ({3:F2} MB/s)", operationName, mbTotal, seconds, mbps));
             }
 
             _transferStopwatch = null;
@@ -2913,7 +2918,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 认证支持方法
+        #region Authentication Support Methods
 
         public async Task<string> SendRawXmlAsync(string xmlOrCommand, CancellationToken ct = default(CancellationToken))
         {
@@ -2929,7 +2934,7 @@ namespace LoveAlways.Qualcomm.Protocol
             }
             catch (Exception ex)
             {
-                _logDetail(string.Format("[Firehose] 发送原始 XML 异常: {0}", ex.Message));
+                _logDetail(string.Format("[Firehose] Exception sending raw XML: {0}", ex.Message));
                 return null;
             }
         }
@@ -2945,7 +2950,7 @@ namespace LoveAlways.Qualcomm.Protocol
             }
             catch (Exception ex)
             {
-                _logDetail(string.Format("[Firehose] 发送原始字节异常: {0}", ex.Message));
+                _logDetail(string.Format("[Firehose] Exception sending raw bytes: {0}", ex.Message));
                 return null;
             }
         }
@@ -2969,8 +2974,8 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
                 catch (Exception ex)
                 {
-                    // 重试中，记录详细日志
-                    _logDetail(string.Format("[Firehose] 获取属性 {0} 重试 {1}/{2}: {3}", attrName, i + 1, maxRetries, ex.Message));
+                    // Retrying, log detailed message
+                    _logDetail(string.Format("[Firehose] Get attribute {0} retry {1}/{2}: {3}", attrName, i + 1, maxRetries, ex.Message));
                 }
                 await Task.Delay(100, ct);
             }
@@ -3004,22 +3009,22 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region OPLUS (OPPO/Realme/OnePlus) VIP 认证
+        #region OPLUS (OPPO/Realme/OnePlus) VIP Authentication
 
         /// <summary>
-        /// 执行 VIP 认证流程 (基于 Digest 和 Signature 文件)
-        /// 6 步流程: 1. Digest → 2. TransferCfg → 3. Verify(EnableVip=1) → 4. Signature → 5. SHA256Init → 6. Configure
-        /// 参考 edl_vip_auth.py 和 qdl-gpt 实现
+        /// Perform VIP authentication process (based on Digest and Signature files)
+        /// 6-step process: 1. Digest → 2. TransferCfg → 3. Verify(EnableVip=1) → 4. Signature → 5. SHA256Init → 6. Configure
+        /// Reference edl_vip_auth.py and qdl-gpt implementations
         /// </summary>
         public async Task<bool> PerformVipAuthAsync(string digestPath, string signaturePath, CancellationToken ct = default(CancellationToken))
         {
             if (!File.Exists(digestPath) || !File.Exists(signaturePath))
             {
-                _log("[VIP] 认证失败：缺少 Digest 或 Signature 文件");
+                _log("[VIP] Authentication failed: Missing Digest or Signature file");
                 return false;
             }
 
-            _log("[VIP] 正在执行安全验证...");
+            _log("[VIP] Performing security verification...");
             _logDetail(string.Format("[VIP] Digest: {0}", digestPath));
             _logDetail(string.Format("[VIP] Signature: {0}", signaturePath));
             
@@ -3028,53 +3033,53 @@ namespace LoveAlways.Qualcomm.Protocol
             
             try
             {
-                // 清空缓冲区
+                // Purge buffers
                 PurgeBuffer();
 
-                // ========== Step 1: 直接发送 Digest (二进制数据) ==========
+                // ========== Step 1: Send Digest directly (binary data) ==========
                 byte[] digestData = File.ReadAllBytes(digestPath);
-                _logDetail(string.Format("[VIP] Step 1/6: Digest ({0} 字节)", digestData.Length));
+                _logDetail(string.Format("[VIP] Step 1/6: Digest ({0} bytes)", digestData.Length));
                 if (digestData.Length >= 16)
                 {
-                    _logDetail(string.Format("[VIP] Digest 头部: {0}", BitConverter.ToString(digestData, 0, 16)));
+                    _logDetail(string.Format("[VIP] Digest header: {0}", BitConverter.ToString(digestData, 0, 16)));
                 }
                 await _port.WriteAsync(digestData, 0, digestData.Length, ct);
                 await Task.Delay(500, ct);
                 string resp1 = await ReadAndLogDeviceResponseAsync(ct, 3000);
-                _logDetail(string.Format("[VIP] Step 1 响应: {0}", TruncateResponse(resp1)));
+                _logDetail(string.Format("[VIP] Step 1 response: {0}", TruncateResponse(resp1)));
                 if (resp1.Contains("NAK"))
                 {
                     hasError = true;
-                    errorDetail = "Digest 被拒绝";
+                    errorDetail = "Digest rejected";
                 }
 
-                // ========== Step 2: 发送 TransferCfg (关键步骤！) ==========
+                // ========== Step 2: Send TransferCfg (Critical step!) ==========
                 _logDetail("[VIP] Step 2/6: TransferCfg");
                 string transferCfgXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
                     "<data><transfercfg reboot_type=\"off\" timeout_in_sec=\"90\" /></data>";
                 _port.Write(Encoding.UTF8.GetBytes(transferCfgXml));
                 await Task.Delay(300, ct);
                 string resp2 = await ReadAndLogDeviceResponseAsync(ct, 2000);
-                _logDetail(string.Format("[VIP] Step 2 响应: {0}", TruncateResponse(resp2)));
+                _logDetail(string.Format("[VIP] Step 2 response: {0}", TruncateResponse(resp2)));
 
-                // ========== Step 3: 发送 Verify (启用 VIP 模式) ==========
+                // ========== Step 3: Send Verify (Enable VIP mode) ==========
                 _logDetail("[VIP] Step 3/6: Verify (EnableVip=1)");
                 string verifyXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
                     "<data><verify value=\"ping\" EnableVip=\"1\"/></data>";
                 _port.Write(Encoding.UTF8.GetBytes(verifyXml));
                 await Task.Delay(300, ct);
                 string resp3 = await ReadAndLogDeviceResponseAsync(ct, 2000);
-                _logDetail(string.Format("[VIP] Step 3 响应: {0}", TruncateResponse(resp3)));
+                _logDetail(string.Format("[VIP] Step 3 response: {0}", TruncateResponse(resp3)));
 
-                // ========== Step 4: 直接发送 Signature (二进制数据) ==========
+                // ========== Step 4: Send Signature directly (binary data) ==========
                 byte[] sigData = File.ReadAllBytes(signaturePath);
-                _logDetail(string.Format("[VIP] Step 4/6: Signature ({0} 字节)", sigData.Length));
+                _logDetail(string.Format("[VIP] Step 4/6: Signature ({0} bytes)", sigData.Length));
                 if (sigData.Length >= 16)
                 {
-                    _logDetail(string.Format("[VIP] Signature 头部: {0}", BitConverter.ToString(sigData, 0, 16)));
+                    _logDetail(string.Format("[VIP] Signature header: {0}", BitConverter.ToString(sigData, 0, 16)));
                 }
                 
-                // rawmode="true" 时，设备期望按扇区大小 (4096 字节) 接收数据
+                // When rawmode="true", device expects data to be received at sector size (4096 bytes)
                 bool isRawMode = resp3.Contains("rawmode=\"true\"");
                 int targetSize = isRawMode ? 4096 : sigData.Length;
                 
@@ -3083,7 +3088,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     sigDataPadded = new byte[targetSize];
                     Array.Copy(sigData, 0, sigDataPadded, 0, sigData.Length);
-                    _logDetail(string.Format("[VIP] Signature 填充: {0} → {1} 字节", sigData.Length, targetSize));
+                    _logDetail(string.Format("[VIP] Signature padding: {0} → {1} bytes", sigData.Length, targetSize));
                 }
                 else
                 {
@@ -3093,108 +3098,108 @@ namespace LoveAlways.Qualcomm.Protocol
                 await _port.WriteAsync(sigDataPadded, 0, sigDataPadded.Length, ct);
                 await Task.Delay(500, ct);
                 string resp4 = await ReadAndLogDeviceResponseAsync(ct, 3000);
-                _logDetail(string.Format("[VIP] Step 4 响应: {0}", TruncateResponse(resp4)));
+                _logDetail(string.Format("[VIP] Step 4 response: {0}", TruncateResponse(resp4)));
                 
-                // 检查响应 - 区分真正的错误和警告
+                // Check response - distinguish real errors from warnings
                 if (resp4.Contains("NAK"))
                 {
                     hasError = true;
-                    errorDetail = "Signature 被设备拒绝 (NAK)";
+                    errorDetail = "Signature rejected by device (NAK)";
                     _log("[VIP] ⚠ " + errorDetail);
-                    _log(string.Format("[VIP] 详细响应: {0}", resp4));
+                    _log(string.Format("[VIP] Detailed response: {0}", resp4));
                 }
                 else if (resp4.Contains("ERROR") && !resp4.Contains("ACK"))
                 {
                     hasError = true;
-                    errorDetail = "Signature 传输错误";
+                    errorDetail = "Signature transfer error";
                     _log("[VIP] ⚠ " + errorDetail);
-                    _log(string.Format("[VIP] 详细响应: {0}", resp4));
+                    _log(string.Format("[VIP] Detailed response: {0}", resp4));
                 }
 
-                // ========== Step 5: 发送 SHA256Init ==========
+                // ========== Step 5: Send SHA256Init ==========
                 _logDetail("[VIP] Step 5/6: SHA256Init");
                 string sha256Xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
                     "<data><sha256init Verbose=\"1\"/></data>";
                 _port.Write(Encoding.UTF8.GetBytes(sha256Xml));
                 await Task.Delay(300, ct);
                 string respSha = await ReadAndLogDeviceResponseAsync(ct, 2000);
-                _logDetail(string.Format("[VIP] Step 5 响应: {0}", TruncateResponse(respSha)));
+                _logDetail(string.Format("[VIP] Step 5 response: {0}", TruncateResponse(respSha)));
 
-                // Step 6: Configure 将在外部调用
+                // Step 6: Configure will be called externally
                 if (!hasError)
                 {
-                    _log("[VIP] ✓ 安全验证完成");
+                    _log("[VIP] ✓ Security verification complete");
                 }
                 return true;
             }
             catch (OperationCanceledException)
             {
-                _log("[VIP] 验证被取消");
+                _log("[VIP] Verification cancelled");
                 throw;
             }
             catch (Exception ex)
             {
-                _log(string.Format("[VIP] 验证异常: {0}", ex.Message));
+                _log(string.Format("[VIP] Verification exception: {0}", ex.Message));
                 return false;
             }
         }
 
         /// <summary>
-        /// 执行 VIP 认证流程 (使用 byte[] 数据，无需文件)
+        /// Perform VIP authentication process (using byte[] data, no files required)
         /// </summary>
-        /// <param name="digestData">Digest 数据 (Hash Segment)</param>
-        /// <param name="signatureData">签名数据 (256 字节 RSA-2048)</param>
+        /// <param name="digestData">Digest data (Hash Segment)</param>
+        /// <param name="signatureData">Signature data (256-byte RSA-2048)</param>
         public async Task<bool> PerformVipAuthAsync(byte[] digestData, byte[] signatureData, CancellationToken ct = default(CancellationToken))
         {
             if (digestData == null || digestData.Length == 0)
             {
-                _log("[VIP] 认证失败：缺少 Digest 数据");
+                _log("[VIP] Authentication failed: Missing Digest data");
                 return false;
             }
             if (signatureData == null || signatureData.Length == 0)
             {
-                _log("[VIP] 认证失败：缺少 Signature 数据");
+                _log("[VIP] Authentication failed: Missing Signature data");
                 return false;
             }
 
-            _log("[VIP] 开始安全验证 (内存数据模式)...");
+            _log("[VIP] Starting security verification (memory data mode)...");
 
             try
             {
-                // Step 1: 发送 Digest
+                // Step 1: Send Digest
                 await SendVipDigestAsync(digestData, ct);
 
-                // Step 2-3: 准备 VIP 模式
+                // Step 2-3: Prepare VIP mode
                 await PrepareVipModeAsync(ct);
 
-                // Step 4: 发送签名 (256 字节)
+                // Step 4: Send signature (256 bytes)
                 await SendVipSignatureAsync(signatureData, ct);
 
-                // Step 5: 完成认证
+                // Step 5: Finalize authentication
                 await FinalizeVipAuthAsync(ct);
 
-                // 只要流程完成就认为成功（签名响应检测可能不准确）
-                _log("[VIP] VIP 认证流程完成");
+                // As long as the process completes, assume success (signature response detection may be inaccurate)
+                _log("[VIP] VIP authentication process complete");
                 return true;
             }
             catch (OperationCanceledException)
             {
-                _log("[VIP] 验证被取消");
+                _log("[VIP] Verification cancelled");
                 throw;
             }
             catch (Exception ex)
             {
-                _log(string.Format("[VIP] 验证异常: {0}", ex.Message));
+                _log(string.Format("[VIP] Verification exception: {0}", ex.Message));
                 return false;
             }
         }
 
         /// <summary>
-        /// Step 1: 发送 VIP Digest (Hash Segment)
+        /// Step 1: Send VIP Digest (Hash Segment)
         /// </summary>
         public async Task<bool> SendVipDigestAsync(byte[] digestData, CancellationToken ct = default(CancellationToken))
         {
-            _log(string.Format("[VIP] Step 1: 发送 Digest ({0} 字节)...", digestData.Length));
+            _log(string.Format("[VIP] Step 1: Sending Digest ({0} bytes)...", digestData.Length));
             PurgeBuffer();
 
             await _port.WriteAsync(digestData, 0, digestData.Length, ct);
@@ -3203,19 +3208,19 @@ namespace LoveAlways.Qualcomm.Protocol
             string resp = await ReadAndLogDeviceResponseAsync(ct, 3000);
             if (resp.Contains("NAK") || resp.Contains("ERROR"))
             {
-                _log("[VIP] Digest 响应异常，尝试继续...");
+                _log("[VIP] Digest response abnormal, attempting to continue...");
             }
             return true;
         }
 
         /// <summary>
-        /// Step 2-3: 准备 VIP 模式 (TransferCfg + Verify)
-        /// TransferCfg 是关键步骤，参考 edl_vip_auth.py
+        /// Step 2-3: Prepare VIP mode (TransferCfg + Verify)
+        /// TransferCfg is a critical step, refer to edl_vip_auth.py
         /// </summary>
         public async Task<bool> PrepareVipModeAsync(CancellationToken ct = default(CancellationToken))
         {
-            // Step 2: TransferCfg (关键步骤！)
-            _log("[VIP] Step 2: 发送 TransferCfg...");
+            // Step 2: TransferCfg (Critical step!)
+            _log("[VIP] Step 2: Sending TransferCfg...");
             string transferCfgXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
                 "<data><transfercfg reboot_type=\"off\" timeout_in_sec=\"90\" /></data>";
             _port.Write(Encoding.UTF8.GetBytes(transferCfgXml));
@@ -3223,11 +3228,11 @@ namespace LoveAlways.Qualcomm.Protocol
             string resp2 = await ReadAndLogDeviceResponseAsync(ct, 2000);
             if (resp2.Contains("NAK") || resp2.Contains("ERROR"))
             {
-                _log("[VIP] TransferCfg 失败，尝试继续...");
+                _log("[VIP] TransferCfg failed, attempting to continue...");
             }
 
-            // Step 3: Verify (启用 VIP 模式)
-            _log("[VIP] Step 3: 发送 Verify (EnableVip=1)...");
+            // Step 3: Verify (Enable VIP mode)
+            _log("[VIP] Step 3: Sending Verify (EnableVip=1)...");
             string verifyXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
                 "<data><verify value=\"ping\" EnableVip=\"1\"/></data>";
             _port.Write(Encoding.UTF8.GetBytes(verifyXml));
@@ -3235,54 +3240,54 @@ namespace LoveAlways.Qualcomm.Protocol
             string resp3 = await ReadAndLogDeviceResponseAsync(ct, 2000);
             if (resp3.Contains("NAK") || resp3.Contains("ERROR"))
             {
-                _log("[VIP] Verify 失败，尝试继续...");
+                _log("[VIP] Verify failed, attempting to continue...");
             }
 
             return true;
         }
 
         /// <summary>
-        /// Step 4: 发送 VIP 签名 (256 字节 RSA-2048，rawmode 下需填充到 4096 字节)
-        /// 这是核心方法：在发送 Digest 后写入签名
+        /// Step 4: Send VIP signature (256-byte RSA-2048, requires padding to 4096 bytes in rawmode)
+        /// This is the core method: write signature after sending Digest
         /// </summary>
-        /// <param name="signatureData">签名数据 (256 字节)</param>
-        /// <param name="padTo4096">是否填充到 4096 字节 (rawmode 下需要)</param>
+        /// <param name="signatureData">Signature data (256 bytes)</param>
+        /// <param name="padTo4096">Whether to pad to 4096 bytes (required in rawmode)</param>
         public async Task<bool> SendVipSignatureAsync(byte[] signatureData, CancellationToken ct = default(CancellationToken), bool padTo4096 = true)
         {
-            // 处理签名数据大小
+            // Handle signature data size
             byte[] sig;
             if (signatureData.Length == 256)
             {
-                // 已经是正确大小
+                // Already correct size
                 sig = signatureData;
             }
             else if (signatureData.Length > 256)
             {
-                // 提取前 256 字节 (处理带填充的 sign.bin)
+                // Extract first 256 bytes (handle sign.bin with padding)
                 sig = new byte[256];
                 Array.Copy(signatureData, 0, sig, 0, 256);
-                _log(string.Format("[VIP] 从 {0} 字节数据中提取 256 字节签名", signatureData.Length));
+                _log(string.Format("[VIP] Extracted 256-byte signature from {0} bytes of data", signatureData.Length));
             }
             else
             {
-                // 数据不足，填充零
+                // Insufficient data, pad with zeros
                 sig = new byte[256];
                 Array.Copy(signatureData, 0, sig, 0, signatureData.Length);
-                _log(string.Format("[VIP] 警告: 签名数据不足 256 字节 (实际 {0})", signatureData.Length));
+                _log(string.Format("[VIP] Warning: Signature data less than 256 bytes (actual {0})", signatureData.Length));
             }
             
-            // rawmode 下设备期望 4096 字节 (扇区大小)
+            // Device expects 4096 bytes (sector size) in rawmode
             byte[] sigPadded;
             if (padTo4096 && sig.Length < 4096)
             {
                 sigPadded = new byte[4096];
                 Array.Copy(sig, 0, sigPadded, 0, sig.Length);
-                _log(string.Format("[VIP] Step 4: 发送 Signature ({0} → {1} 字节, rawmode 填充)...", sig.Length, sigPadded.Length));
+                _log(string.Format("[VIP] Step 4: Sending Signature ({0} → {1} bytes, rawmode padding)...", sig.Length, sigPadded.Length));
             }
             else
             {
                 sigPadded = sig;
-                _log(string.Format("[VIP] Step 4: 发送 Signature ({0} 字节)...", sig.Length));
+                _log(string.Format("[VIP] Step 4: Sending Signature ({0} bytes)...", sig.Length));
             }
             
             await _port.WriteAsync(sigPadded, 0, sigPadded.Length, ct);
@@ -3290,30 +3295,30 @@ namespace LoveAlways.Qualcomm.Protocol
 
             string resp = await ReadAndLogDeviceResponseAsync(ct, 3000);
             
-            // 检查响应 - 区分真正的错误和警告
+            // Check response - distinguish real errors from warnings
             bool success = false;
             if (resp.Contains("NAK"))
             {
-                _log("[VIP] Signature 被设备拒绝 (NAK)");
+                _log("[VIP] Signature rejected by device (NAK)");
             }
             else if (resp.Contains("ACK"))
             {
-                // 有 ACK 表示成功，即使有 ERROR 日志也可能只是警告
-                _log("[VIP] ✓ Signature 已接受");
+                // ACK indicates success, even if there are ERROR logs they might just be warnings
+                _log("[VIP] ✓ Signature accepted");
                 success = true;
             }
             else if (resp.Contains("ERROR") && !resp.Contains("ACK"))
             {
-                _log("[VIP] Signature 传输错误");
+                _log("[VIP] Signature transfer error");
             }
             else if (string.IsNullOrEmpty(resp))
             {
-                _log("[VIP] Signature 发送完成 (无响应)");
-                success = true; // 无响应也可能是成功
+                _log("[VIP] Signature send complete (no response)");
+                success = true; // No response might also be success
             }
             else
             {
-                _log("[VIP] Signature 发送完成");
+                _log("[VIP] Signature send complete");
                 success = true;
             }
 
@@ -3321,11 +3326,11 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// Step 5: 完成 VIP 认证 (SHA256Init)
+        /// Step 5: Complete VIP authentication (SHA256Init)
         /// </summary>
         public async Task<bool> FinalizeVipAuthAsync(CancellationToken ct = default(CancellationToken))
         {
-            _log("[VIP] Step 5: 发送 SHA256Init...");
+            _log("[VIP] Step 5: Sending SHA256Init...");
             string sha256Xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" +
                 "<data><sha256init Verbose=\"1\"/></data>";
             _port.Write(Encoding.UTF8.GetBytes(sha256Xml));
@@ -3333,25 +3338,25 @@ namespace LoveAlways.Qualcomm.Protocol
             string resp = await ReadAndLogDeviceResponseAsync(ct, 2000);
             if (resp.Contains("NAK") || resp.Contains("ERROR"))
             {
-                _log("[VIP] SHA256Init 失败，尝试继续...");
+                _log("[VIP] SHA256Init failed, attempting to continue...");
             }
 
-            _log("[VIP] VIP 验证流程完成");
+            _log("[VIP] VIP verification process complete");
             return true;
         }
         
         /// <summary>
-        /// 截断响应字符串用于日志显示
+        /// Truncate response string for log display
         /// </summary>
         private string TruncateResponse(string response)
         {
             if (string.IsNullOrEmpty(response))
-                return "(空)";
+                return "(Empty)";
             
-            // 移除换行符，便于显示
+            // Remove newlines for easier display
             string clean = response.Replace("\r", "").Replace("\n", " ").Trim();
             
-            // 截断过长的响应
+            // Truncate overly long response
             if (clean.Length > 300)
                 return clean.Substring(0, 300) + "...";
             
@@ -3359,7 +3364,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 读取并记录设备响应 (异步非阻塞)
+        /// Read and log device response (Asynchronous non-blocking)
         /// </summary>
         private async Task<string> ReadAndLogDeviceResponseAsync(CancellationToken ct, int timeoutMs = 2000)
         {
@@ -3370,7 +3375,7 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 ct.ThrowIfCancellationRequested();
                 
-                // 检查可用数据
+                // Check for available data
                 int bytesToRead = _port.BytesToRead;
                 if (bytesToRead > 0)
                 {
@@ -3383,7 +3388,7 @@ namespace LoveAlways.Qualcomm.Protocol
                         
                         var content = sb.ToString();
                         
-                        // 提取设备日志 (详细日志，不在主界面显示)
+                        // Extract device logs (detailed logs, not displayed on main interface)
                         var logMatches = Regex.Matches(content, @"<log value=""([^""]*)""\s*/>");
                         foreach (Match m in logMatches)
                         {
@@ -3391,16 +3396,16 @@ namespace LoveAlways.Qualcomm.Protocol
                                 _logDetail(string.Format("[Device] {0}", m.Groups[1].Value));
                         }
                         
-                        // 检查响应
+                        // Check response
                         if (content.Contains("<response") || content.Contains("</data>"))
                         {
                             if (content.Contains("value=\"ACK\"") || content.Contains("verify passed"))
                             {
-                                return content; // 成功
+                                return content; // Success
                             }
                             if (content.Contains("NAK") || content.Contains("ERROR"))
                             {
-                                return content; // 失败但返回响应
+                                return content; // Failed but returned response
                             }
                         }
                     }
@@ -3413,15 +3418,15 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 获取设备当前的挑战码 (用于在线签名)
+        /// Get device's current challenge code (for online signing)
         /// </summary>
         public async Task<string> GetVipChallengeAsync(CancellationToken ct = default(CancellationToken))
         {
-            _log("[VIP] 正在获取设备挑战码 (getsigndata)...");
+            _log("[VIP] Getting device challenge code (getsigndata)...");
             string xml = "<?xml version=\"1.0\" ?><data>\n<getsigndata value=\"ping\" />\n</data>\n";
             _port.Write(Encoding.UTF8.GetBytes(xml));
 
-            // 尝试从返回的 INFO 日志中提取 NV 数据
+            // Try to extract NV data from returned INFO logs
             var response = await ReadRawResponseAsync(3000, ct);
             if (response != null && response.Contains("NV:"))
             {
@@ -3432,7 +3437,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 初始化 SHA256 (OPLUS 分区写入前需要)
+        /// Initialize SHA256 (required before OPLUS partition write)
         /// </summary>
         public async Task<bool> Sha256InitAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -3442,7 +3447,7 @@ namespace LoveAlways.Qualcomm.Protocol
         }
 
         /// <summary>
-        /// 完成 SHA256 (OPLUS 分区写入后需要)
+        /// Finalize SHA256 (required after OPLUS partition write)
         /// </summary>
         public async Task<bool> Sha256FinalAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -3453,10 +3458,10 @@ namespace LoveAlways.Qualcomm.Protocol
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         /// <summary>
-        /// 格式化文件大小 (不足1MB按KB，满1GB按GB)
+        /// Format file size (KB if less than 1MB, GB if more than 1GB)
         /// </summary>
         private string FormatFileSize(long bytes)
         {

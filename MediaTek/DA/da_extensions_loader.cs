@@ -1,10 +1,15 @@
 // ============================================================================
-// LoveAlways - MediaTek DA Extensions 加载器
+// LoveAlways - MediaTek Download Agent Extensions Loader
 // MediaTek Download Agent Extensions Loader
 // ============================================================================
-// 从mtk-payloads项目加载和上传DA Extensions到设备
-// 参考: https://github.com/shomykohai/mtk-payloads
+// Load and upload DA Extensions to device from mtk-payloads project
+// Reference: https://github.com/shomykohai/mtk-payloads
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.IO;
@@ -16,28 +21,28 @@ using LoveAlways.MediaTek.Protocol;
 namespace LoveAlways.MediaTek.DA
 {
     /// <summary>
-    /// DA Extensions 加载器
-    /// 从mtk-payloads项目加载编译好的Extensions二进制
+    /// DA Extensions Loader
+    /// Load compiled Extensions binaries from mtk-payloads project
     /// </summary>
     public class DaExtensionsLoader
     {
         private readonly string _payloadBasePath;
         private readonly MtkLogger _log;
 
-        #region 默认路径配置
+        #region Default Path Configuration
 
-        /// <summary>XFlash (V5) Extensions 文件名</summary>
+        /// <summary>XFlash (V5) Extensions filename</summary>
         public const string V5_EXTENSION_FILE = "da_x_ext.bin";
         
-        /// <summary>XML (V6) Extensions 文件名</summary>
+        /// <summary>XML (V6) Extensions filename</summary>
         public const string V6_EXTENSION_FILE = "da_xml_ext.bin";
         
-        /// <summary>默认Payload路径</summary>
+        /// <summary>Default Payload path</summary>
         public const string DEFAULT_PAYLOAD_PATH = "Payloads";
 
         #endregion
 
-        #region 构造函数
+        #region Constructor
 
         public DaExtensionsLoader(string payloadBasePath = null, MtkLogger logger = null)
         {
@@ -47,10 +52,10 @@ namespace LoveAlways.MediaTek.DA
 
         #endregion
 
-        #region 加载Extensions二进制
+        #region Load Extensions Binary
 
         /// <summary>
-        /// 根据设备信息加载对应的Extensions二进制
+        /// Load corresponding Extensions binary based on device info
         /// </summary>
         public byte[] LoadExtension(ushort hwCode, MtkDeviceInfo deviceInfo)
         {
@@ -62,17 +67,17 @@ namespace LoveAlways.MediaTek.DA
         }
 
         /// <summary>
-        /// 根据DA模式加载Extensions二进制
+        /// Load Extensions binary based on DA mode
         /// </summary>
         public byte[] LoadExtension(ushort hwCode, bool isV6)
         {
-            _log.Info($"加载DA Extensions (HW Code: 0x{hwCode:X4}, 模式: {(isV6 ? "V6/XML" : "V5/XFlash")})", LogCategory.Da);
+            _log.Info($"Loading DA Extensions (HW Code: 0x{hwCode:X4}, Mode: {(isV6 ? "V6/XML" : "V5/XFlash")})", LogCategory.Da);
 
-            // 确定文件名
+            // Determine filename
             var fileName = isV6 ? V6_EXTENSION_FILE : V5_EXTENSION_FILE;
             var folderName = isV6 ? "da_xml" : "da_x";
             
-            // 尝试多个可能的路径
+            // Try multiple possible paths
             var possiblePaths = new[]
             {
                 Path.Combine(_payloadBasePath, folderName, fileName),  // Payloads/da_x/da_x_ext.bin
@@ -90,51 +95,51 @@ namespace LoveAlways.MediaTek.DA
                         var data = File.ReadAllBytes(path);
                         if (ValidateExtensionBinary(data))
                         {
-                            _log.Success($"加载成功: {path} ({data.Length} 字节)", LogCategory.Da);
+                            _log.Success($"Loaded successfully: {path} ({data.Length} bytes)", LogCategory.Da);
                             return data;
                         }
                         else
                         {
-                            _log.Warning($"二进制验证失败: {path}", LogCategory.Da);
+                            _log.Warning($"Binary validation failed: {path}", LogCategory.Da);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _log.Error($"读取文件失败: {path}", LogCategory.Da, ex);
+                        _log.Error($"Failed to read file: {path}", LogCategory.Da, ex);
                     }
                 }
             }
 
-            // 未找到有效的Extensions文件
+            // No valid Extensions file found
             var searchedPaths = string.Join("\n  ", possiblePaths);
-            var errorMsg = $"未找到DA Extensions二进制文件\n搜索路径:\n  {searchedPaths}";
+            var errorMsg = $"DA Extensions binary file not found\nSearch paths:\n  {searchedPaths}";
             _log.Error(errorMsg, LogCategory.Da);
             
             throw new FileNotFoundException(errorMsg);
         }
 
         /// <summary>
-        /// 验证Extensions二进制是否有效
+        /// Verify if Extensions binary is valid
         /// </summary>
         private bool ValidateExtensionBinary(byte[] binary)
         {
             if (binary == null || binary.Length < 0x100)
                 return false;
 
-            // TODO: 添加更详细的验证
-            // - 检查ELF魔术值
-            // - 验证代码段
-            // - 检查入口点
+            // TODO: Add more detailed validation
+            // - Check ELF magic value
+            // - Verify code segment
+            // - Check entry point
             
             return true;
         }
 
         #endregion
 
-        #region 加载到设备
+        #region Load to Device
 
         /// <summary>
-        /// 加载Extensions到设备
+        /// Load Extensions to device
         /// </summary>
         public async Task<bool> LoadToDeviceAsync(
             IBromClient bromClient,
@@ -145,24 +150,24 @@ namespace LoveAlways.MediaTek.DA
             if (bromClient == null)
                 throw new ArgumentNullException(nameof(bromClient));
 
-            _log.LogHeader("DA Extensions 加载流程");
+            _log.LogHeader("DA Extensions Loading Process");
 
             try
             {
-                // 1. 检查兼容性
-                _log.Info("检查设备兼容性...", LogCategory.Da);
+                // 1. Check compatibility
+                _log.Info("Checking device compatibility...", LogCategory.Da);
                 if (!DaExtensionsCompatibility.SupportsExtensions(deviceInfo))
                 {
-                    _log.Error("设备不支持DA Extensions", LogCategory.Da);
+                    _log.Error("Device does not support DA Extensions", LogCategory.Da);
                     return false;
                 }
-                _log.Success("设备兼容性检查通过", LogCategory.Da);
+                _log.Success("Device compatibility check passed", LogCategory.Da);
 
-                // 2. 加载二进制
-                _log.Info("加载Extensions二进制...", LogCategory.Da);
+                // 2. Load binary
+                _log.Info("Loading Extensions binary...", LogCategory.Da);
                 var binary = LoadExtension(hwCode, deviceInfo);
 
-                // 3. 准备配置
+                // 3. Prepare config
                 if (config == null)
                 {
                     config = DaExtensionsHelper.GetRecommendedConfig(hwCode, deviceInfo);
@@ -170,39 +175,39 @@ namespace LoveAlways.MediaTek.DA
                 config.ExtensionsBinary = binary;
 
                 var loadAddr = config.GetLoadAddress();
-                _log.Info($"加载地址: 0x{loadAddr:X8} ({(config.UseLowMemoryAddress ? "低内存" : "标准")})", LogCategory.Da);
-                _log.Info($"二进制大小: {binary.Length} 字节 ({binary.Length / 1024.0:F2} KB)", LogCategory.Da);
+                _log.Info($"Load address: 0x{loadAddr:X8} ({(config.UseLowMemoryAddress ? "Low Memory" : "Standard")})", LogCategory.Da);
+                _log.Info($"Binary size: {binary.Length} bytes ({binary.Length / 1024.0:F2} KB)", LogCategory.Da);
 
-                // 4. 上传到设备
-                _log.Info("上传Extensions到设备...", LogCategory.Da);
+                // 4. Upload to device
+                _log.Info("Uploading Extensions to device...", LogCategory.Da);
                 
-                // TODO: 实际的上传逻辑需要根据BromClient的实现来完成
-                // 这里提供接口示例
+                // TODO: Actual upload logic needs to be completed according to BromClient implementation
+                // Example interface provided here
                 /*
                 await bromClient.SendBootTo(loadAddr, binary);
                 */
                 
-                _log.Warning("Extensions上传功能待实现 (需要boot_to命令支持)", LogCategory.Da);
-                _log.Info("提示: 需要先使用Carbonara漏洞修补DA1，然后通过boot_to加载Extensions", LogCategory.Exploit);
+                _log.Warning("Extensions upload function pending implementation (requires boot_to command support)", LogCategory.Da);
+                _log.Info("Tip: Need to patch DA1 using Carbonara exploit first, then load Extensions via boot_to", LogCategory.Exploit);
 
                 _log.LogSeparator();
-                _log.Success("Extensions配置准备完成", LogCategory.Da);
+                _log.Success("Extensions configuration preparation complete", LogCategory.Da);
                 
                 return true;
             }
             catch (Exception ex)
             {
-                _log.Critical("Extensions加载失败", LogCategory.Da, ex);
+                _log.Critical("Extensions loading failed", LogCategory.Da, ex);
                 return false;
             }
         }
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         /// <summary>
-        /// 检查Payload文件是否存在
+        /// Check if Payload file exists
         /// </summary>
         public bool CheckPayloadExists(bool isV6)
         {
@@ -216,53 +221,53 @@ namespace LoveAlways.MediaTek.DA
         }
 
         /// <summary>
-        /// 获取Payload信息
+        /// Get Payload information
         /// </summary>
         public void PrintPayloadInfo()
         {
-            _log.LogHeader("DA Extensions Payload 信息");
+            _log.LogHeader("DA Extensions Payload Info");
             
-            _log.Info($"Payload基础路径: {_payloadBasePath}", LogCategory.Da);
+            _log.Info($"Payload base path: {_payloadBasePath}", LogCategory.Da);
             
             // V5 Extensions
             var v5Exists = CheckPayloadExists(false);
-            _log.LogDeviceInfo("V5/XFlash Extensions", v5Exists ? "✓ 已安装" : "✗ 未找到", LogCategory.Da);
+            _log.LogDeviceInfo("V5/XFlash Extensions", v5Exists ? "✓ Installed" : "✗ Not Found", LogCategory.Da);
             
             // V6 Extensions
             var v6Exists = CheckPayloadExists(true);
-            _log.LogDeviceInfo("V6/XML Extensions", v6Exists ? "✓ 已安装" : "✗ 未找到", LogCategory.Da);
+            _log.LogDeviceInfo("V6/XML Extensions", v6Exists ? "✓ Installed" : "✗ Not Found", LogCategory.Da);
             
             if (!v5Exists && !v6Exists)
             {
                 _log.LogSeparator('-', 60);
-                _log.Warning("未找到任何Extensions Payload", LogCategory.Da);
-                _log.Info("请从以下位置获取:", LogCategory.Da);
+                _log.Warning("No Extensions Payloads found", LogCategory.Da);
+                _log.Info("Please obtain them from:", LogCategory.Da);
                 _log.Info("  https://github.com/shomykohai/mtk-payloads", LogCategory.Da);
                 _log.Info("", LogCategory.Da);
-                _log.Info("安装方法:", LogCategory.Da);
-                _log.Info($"  1. 克隆仓库: git clone https://github.com/shomykohai/mtk-payloads", LogCategory.Da);
-                _log.Info($"  2. 编译: cd mtk-payloads && ./build_all.sh", LogCategory.Da);
-                _log.Info($"  3. 复制到: {_payloadBasePath}", LogCategory.Da);
+                _log.Info("Installation method:", LogCategory.Da);
+                _log.Info($"  1. Clone repository: git clone https://github.com/shomykohai/mtk-payloads", LogCategory.Da);
+                _log.Info($"  2. Build: cd mtk-payloads && ./build_all.sh", LogCategory.Da);
+                _log.Info($"  3. Copy to: {_payloadBasePath}", LogCategory.Da);
             }
             
             _log.LogSeparator();
         }
 
         /// <summary>
-        /// 创建默认的Extensions配置
+        /// Create default Extensions configuration
         /// </summary>
         public DaExtensionsConfig CreateDefaultConfig(ushort hwCode, MtkDeviceInfo deviceInfo)
         {
             var config = DaExtensionsHelper.GetRecommendedConfig(hwCode, deviceInfo);
             
-            // 自动加载二进制
+            // Automatically load binary
             try
             {
                 config.ExtensionsBinary = LoadExtension(hwCode, deviceInfo);
             }
             catch (Exception ex)
             {
-                _log.Warning($"无法加载Extensions二进制: {ex.Message}", LogCategory.Da);
+                _log.Warning($"Unable to load Extensions binary: {ex.Message}", LogCategory.Da);
             }
             
             return config;
@@ -272,17 +277,17 @@ namespace LoveAlways.MediaTek.DA
     }
 
     /// <summary>
-    /// BROM客户端接口（用于Extensions加载）
+    /// BROM client interface (for Extensions loading)
     /// </summary>
     public interface IBromClient
     {
-        /// <summary>发送boot_to命令加载代码到指定地址</summary>
+        /// <summary>Send boot_to command to load code to specified address</summary>
         Task SendBootTo(uint address, byte[] data);
         
-        /// <summary>发送DA命令</summary>
+        /// <summary>Send DA command</summary>
         Task SendDaCommand(uint command, byte[] data = null);
         
-        /// <summary>接收DA响应</summary>
+        /// <summary>Receive DA response</summary>
         Task<byte[]> ReceiveDaResponse(int length);
     }
 }

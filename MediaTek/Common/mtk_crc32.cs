@@ -1,23 +1,28 @@
 // ============================================================================
-// LoveAlways - CRC32 计算工具
-// 参考: mtkclient 校验和实现
+// LoveAlways - CRC32 Calculation Utility
+// Reference: mtkclient checksum implementation
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 
 namespace LoveAlways.MediaTek.Common
 {
     /// <summary>
-    /// CRC32 计算工具 (与 MTK DA 兼容)
+    /// CRC32 Calculation Utility (Compatible with MTK DA)
     /// </summary>
     public static class MtkCrc32
     {
-        // CRC32 查找表 (标准多项式 0xEDB88320)
+        // CRC32 lookup table (Standard polynomial 0xEDB88320)
         private static readonly uint[] CrcTable = new uint[256];
         
         static MtkCrc32()
         {
-            // 初始化 CRC 表
+            // Initialize CRC table
             const uint polynomial = 0xEDB88320;
             for (uint i = 0; i < 256; i++)
             {
@@ -34,7 +39,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 计算数据的 CRC32 校验和
+        /// Calculate CRC32 checksum for data
         /// </summary>
         public static uint Compute(byte[] data)
         {
@@ -42,7 +47,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 计算数据的 CRC32 校验和 (指定范围)
+        /// Calculate CRC32 checksum for data (specified range)
         /// </summary>
         public static uint Compute(byte[] data, int offset, int length)
         {
@@ -58,7 +63,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 增量计算 CRC32 (初始化)
+        /// Incremental CRC32 calculation (initialization)
         /// </summary>
         public static uint Initialize()
         {
@@ -66,7 +71,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 增量计算 CRC32 (更新)
+        /// Incremental CRC32 calculation (update)
         /// </summary>
         public static uint Update(uint crc, byte[] data, int offset, int length)
         {
@@ -79,7 +84,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 增量计算 CRC32 (完成)
+        /// Incremental CRC32 calculation (finalization)
         /// </summary>
         public static uint Finalize(uint crc)
         {
@@ -87,7 +92,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 验证数据的 CRC32 校验和
+        /// Verify CRC32 checksum for data
         /// </summary>
         public static bool Verify(byte[] data, uint expectedCrc)
         {
@@ -95,7 +100,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 验证数据的 CRC32 校验和 (指定范围)
+        /// Verify CRC32 checksum for data (specified range)
         /// </summary>
         public static bool Verify(byte[] data, int offset, int length, uint expectedCrc)
         {

@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,8 +22,8 @@ using LoveAlways.Qualcomm.Common;
 namespace LoveAlways.Fastboot.UI
 {
     /// <summary>
-    /// Fastboot UI 控制器
-    /// 负责连接 UI 控件与 Fastboot 服务
+    /// Fastboot UI Controller
+    /// Responsible for connecting UI controls with Fastboot services
     /// </summary>
     public class FastbootUIController : IDisposable
     {
@@ -30,83 +35,83 @@ namespace LoveAlways.Fastboot.UI
         private System.Windows.Forms.Timer _deviceRefreshTimer;
         private bool _disposed;
 
-        // UI 控件绑定
-        private dynamic _deviceComboBox;      // 设备选择下拉框（独立）
-        private dynamic _partitionListView;   // 分区列表
-        private dynamic _progressBar;         // 总进度条
-        private dynamic _subProgressBar;      // 子进度条
-        private dynamic _commandComboBox;     // 快捷命令下拉框
-        private dynamic _payloadTextBox;      // Payload 路径
-        private dynamic _outputPathTextBox;   // 输出路径
+        // UI Control Binding
+        private dynamic _deviceComboBox;      // Device selection combo box (independent)
+        private dynamic _partitionListView;   // Partition list
+        private dynamic _progressBar;         // Main progress bar
+        private dynamic _subProgressBar;      // Sub progress bar
+        private dynamic _commandComboBox;     // Quick command combo box
+        private dynamic _payloadTextBox;      // Payload path
+        private dynamic _outputPathTextBox;   // Output path
 
-        // 设备信息标签 (右上角信息区域)
-        private dynamic _brandLabel;          // 品牌
-        private dynamic _chipLabel;           // 芯片/平台
-        private dynamic _modelLabel;          // 设备型号
-        private dynamic _serialLabel;         // 序列号
-        private dynamic _storageLabel;        // 存储类型
-        private dynamic _unlockLabel;         // 解锁状态
-        private dynamic _slotLabel;           // 当前槽位
+        // Device information labels (top right area)
+        private dynamic _brandLabel;          // Brand
+        private dynamic _chipLabel;           // Chip/Platform
+        private dynamic _modelLabel;          // Model
+        private dynamic _serialLabel;         // Serial number
+        private dynamic _storageLabel;        // Storage type
+        private dynamic _unlockLabel;         // Unlock status
+        private dynamic _slotLabel;           // Current slot
 
-        // 时间/速度/操作状态标签
-        private dynamic _timeLabel;           // 时间标签
-        private dynamic _speedLabel;          // 速度标签
-        private dynamic _operationLabel;      // 当前操作标签
-        private dynamic _deviceCountLabel;    // 设备数量标签
+        // Time/Speed/Operation status labels
+        private dynamic _timeLabel;           // Time label
+        private dynamic _speedLabel;          // Speed label
+        private dynamic _operationLabel;      // Current operation label
+        private dynamic _deviceCountLabel;    // Device count label
 
-        // Checkbox 控件
-        private dynamic _autoRebootCheckbox;      // 自动重启
-        private dynamic _switchSlotCheckbox;      // 切换A槽
-        private dynamic _eraseGoogleLockCheckbox; // 擦除谷歌锁
-        private dynamic _keepDataCheckbox;        // 保留数据
-        private dynamic _fbdFlashCheckbox;        // FBD刷写
-        private dynamic _unlockBlCheckbox;        // 解锁BL
-        private dynamic _lockBlCheckbox;          // 锁定BL
+        // Checkbox controls
+        private dynamic _autoRebootCheckbox;      // Auto reboot
+        private dynamic _switchSlotCheckbox;      // Switch slot A
+        private dynamic _eraseGoogleLockCheckbox; // Erase Google Lock
+        private dynamic _keepDataCheckbox;        // Keep data
+        private dynamic _fbdFlashCheckbox;        // FBD flash
+        private dynamic _unlockBlCheckbox;        // Unlock BL
+        private dynamic _lockBlCheckbox;          // Lock BL
 
-        // 计时器和速度计算
+        // Stopwatch and speed calculation
         private Stopwatch _operationStopwatch;
         private long _lastBytes;
         private DateTime _lastSpeedUpdate;
-        private double _currentSpeed; // 当前速度 (bytes/s)
+        private double _currentSpeed; // Current speed (bytes/s)
         private long _totalOperationBytes;
         private long _completedBytes;
         private string _currentOperationName;
         
-        // 多分区刷写进度跟踪
+        // Multi-partition flash progress tracking
         private int _flashTotalPartitions;
         private int _flashCurrentPartitionIndex;
         
-        // 进度更新节流
+        // Progress update throttling
         private DateTime _lastProgressUpdate = DateTime.MinValue;
         private double _lastSubProgressValue = -1;
         private double _lastMainProgressValue = -1;
-        private const int ProgressUpdateIntervalMs = 16; // 约60fps
+        private const int ProgressUpdateIntervalMs = 16; // Approx 60fps
 
-        // 设备列表缓存
+        // Device list cache
         private List<FastbootDeviceListItem> _cachedDevices = new List<FastbootDeviceListItem>();
 
-        // Payload 服务
+        // Payload service
         private PayloadService _payloadService;
         private RemotePayloadService _remotePayloadService;
 
-        // 状态
+        // State
         public bool IsBusy { get; private set; }
         public bool IsConnected => _service?.IsConnected ?? false;
         public FastbootDeviceInfo DeviceInfo => _service?.DeviceInfo;
         public List<FastbootPartitionInfo> Partitions => _service?.DeviceInfo?.GetPartitions();
         public int DeviceCount => _cachedDevices?.Count ?? 0;
         
-        // Payload 状态
+        // Payload state
         public bool IsPayloadLoaded => (_payloadService?.IsLoaded ?? false) || (_remotePayloadService?.IsLoaded ?? false);
         public IReadOnlyList<PayloadPartition> PayloadPartitions => _payloadService?.Partitions;
         public PayloadSummary PayloadSummary => _payloadService?.GetSummary();
         
-        // 远程 Payload 状态
+        // Remote Payload state
         public bool IsRemotePayloadLoaded => _remotePayloadService?.IsLoaded ?? false;
         public IReadOnlyList<RemotePayloadPartition> RemotePayloadPartitions => _remotePayloadService?.Partitions;
         public RemotePayloadSummary RemotePayloadSummary => _remotePayloadService?.GetSummary();
 
-        // 事件
+        // Events
         public event EventHandler<bool> ConnectionStateChanged;
         public event EventHandler<List<FastbootPartitionInfo>> PartitionsLoaded;
         public event EventHandler<List<FastbootDeviceListItem>> DevicesRefreshed;
@@ -118,17 +123,17 @@ namespace LoveAlways.Fastboot.UI
             _log = log ?? ((msg, color) => { });
             _logDetail = logDetail ?? (msg => { });
 
-            // 初始化计时器
+            // Initialize stopwatch
             _operationStopwatch = new Stopwatch();
             _lastSpeedUpdate = DateTime.Now;
 
-            // 初始化设备刷新定时器
+            // Initialize device refresh timer
             _deviceRefreshTimer = new System.Windows.Forms.Timer();
-            _deviceRefreshTimer.Interval = 2000; // 每 2 秒刷新一次
+            _deviceRefreshTimer.Interval = 2000; // Refresh every 2 seconds
             _deviceRefreshTimer.Tick += async (s, e) => await RefreshDeviceListAsync();
         }
 
-        #region 日志方法
+        #region Log Methods
 
         private void Log(string message, Color? color = null)
         {
@@ -137,10 +142,10 @@ namespace LoveAlways.Fastboot.UI
 
         #endregion
 
-        #region 控件绑定
+        #region Control Binding
 
         /// <summary>
-        /// 绑定 UI 控件
+        /// Bind UI controls
         /// </summary>
         public void BindControls(
             object deviceComboBox = null,
@@ -150,7 +155,7 @@ namespace LoveAlways.Fastboot.UI
             object commandComboBox = null,
             object payloadTextBox = null,
             object outputPathTextBox = null,
-            // 设备信息标签
+            // Device information labels
             object brandLabel = null,
             object chipLabel = null,
             object modelLabel = null,
@@ -158,12 +163,12 @@ namespace LoveAlways.Fastboot.UI
             object storageLabel = null,
             object unlockLabel = null,
             object slotLabel = null,
-            // 时间/速度/操作标签
+            // Time/Speed/Operation labels
             object timeLabel = null,
             object speedLabel = null,
             object operationLabel = null,
             object deviceCountLabel = null,
-            // Checkbox 控件
+            // Checkbox controls
             object autoRebootCheckbox = null,
             object switchSlotCheckbox = null,
             object eraseGoogleLockCheckbox = null,
@@ -180,7 +185,7 @@ namespace LoveAlways.Fastboot.UI
             _payloadTextBox = payloadTextBox;
             _outputPathTextBox = outputPathTextBox;
 
-            // 设备信息标签
+            // Device information labels
             _brandLabel = brandLabel;
             _chipLabel = chipLabel;
             _modelLabel = modelLabel;
@@ -189,7 +194,7 @@ namespace LoveAlways.Fastboot.UI
             _unlockLabel = unlockLabel;
             _slotLabel = slotLabel;
 
-            // 时间/速度/操作标签
+            // Time/Speed/Operation labels
             _timeLabel = timeLabel;
             _speedLabel = speedLabel;
             _operationLabel = operationLabel;
@@ -204,7 +209,7 @@ namespace LoveAlways.Fastboot.UI
             _unlockBlCheckbox = unlockBlCheckbox;
             _lockBlCheckbox = lockBlCheckbox;
 
-            // 初始化分区列表
+            // Initialize partition list
             if (_partitionListView != null)
             {
                 try
@@ -216,15 +221,15 @@ namespace LoveAlways.Fastboot.UI
                 catch { }
             }
 
-            // 初始化快捷命令下拉框
+            // Initialize quick command combo box
             InitializeCommandComboBox();
 
-            // 初始化设备信息显示
+            // Initialize device information display
             ResetDeviceInfoLabels();
         }
 
         /// <summary>
-        /// 初始化快捷命令下拉框（自动补齐）
+        /// Initialize quick command combo box (auto-complete)
         /// </summary>
         private void InitializeCommandComboBox()
         {
@@ -232,10 +237,10 @@ namespace LoveAlways.Fastboot.UI
 
             try
             {
-                // 标准 Fastboot 命令列表
+                // Standard Fastboot command list
                 var commands = new string[]
                 {
-                    // 设备信息
+                    // Device info
                     "devices",
                     "getvar all",
                     "getvar product",
@@ -250,43 +255,43 @@ namespace LoveAlways.Fastboot.UI
                     "getvar hw-revision",
                     "getvar variant",
                     
-                    // 重启命令
+                    // Reboot commands
                     "reboot",
                     "reboot-bootloader",
                     "reboot-recovery",
                     "reboot-fastboot",
                     
-                    // 解锁/锁定
+                    // Unlock/Lock
                     "flashing unlock",
                     "flashing lock",
                     "flashing unlock_critical",
                     "flashing get_unlock_ability",
                     
-                    // 槽位操作
+                    // Slot operations
                     "set_active a",
                     "set_active b",
                     
-                    // OEM 命令
+                    // OEM commands
                     "oem device-info",
                     "oem unlock",
                     "oem lock",
                     "oem get_unlock_ability",
                     
-                    // 擦除
+                    // Erase
                     "erase frp",
                     "erase userdata",
                     "erase cache",
                     "erase metadata",
                 };
 
-                // 设置下拉框数据源
+                // Set combo box data source
                 _commandComboBox.Items.Clear();
                 foreach (var cmd in commands)
                 {
                     _commandComboBox.Items.Add(cmd);
                 }
 
-                // 设置自动补齐
+                // Set auto-complete
                 _commandComboBox.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
                 _commandComboBox.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
             }
@@ -294,25 +299,25 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 重置设备信息标签为默认值
+        /// Reset device information labels to default values
         /// </summary>
         public void ResetDeviceInfoLabels()
         {
-            UpdateLabelSafe(_brandLabel, "品牌：等待连接");
-            UpdateLabelSafe(_chipLabel, "芯片：等待连接");
-            UpdateLabelSafe(_modelLabel, "型号：等待连接");
-            UpdateLabelSafe(_serialLabel, "序列号：等待连接");
-            UpdateLabelSafe(_storageLabel, "存储：等待连接");
-            UpdateLabelSafe(_unlockLabel, "解锁：等待连接");
-            UpdateLabelSafe(_slotLabel, "槽位：等待连接");
-            UpdateLabelSafe(_timeLabel, "时间：00:00");
-            UpdateLabelSafe(_speedLabel, "速度：0 KB/s");
-            UpdateLabelSafe(_operationLabel, "当前操作：空闲");
-            UpdateLabelSafe(_deviceCountLabel, "FB设备：0");
+            UpdateLabelSafe(_brandLabel, "Brand: Waiting");
+            UpdateLabelSafe(_chipLabel, "Chip: Waiting");
+            UpdateLabelSafe(_modelLabel, "Model: Waiting");
+            UpdateLabelSafe(_serialLabel, "Serial: Waiting");
+            UpdateLabelSafe(_storageLabel, "Storage: Waiting");
+            UpdateLabelSafe(_unlockLabel, "Unlock: Waiting");
+            UpdateLabelSafe(_slotLabel, "Slot: Waiting");
+            UpdateLabelSafe(_timeLabel, "Time: 00:00");
+            UpdateLabelSafe(_speedLabel, "Speed: 0 KB/s");
+            UpdateLabelSafe(_operationLabel, "Operation: Idle");
+            UpdateLabelSafe(_deviceCountLabel, "FB Devices: 0");
         }
 
         /// <summary>
-        /// 更新设备信息标签
+        /// Update device information labels
         /// </summary>
         public void UpdateDeviceInfoLabels()
         {
@@ -322,65 +327,65 @@ namespace LoveAlways.Fastboot.UI
                 return;
             }
 
-            // 品牌/厂商
+            // Brand/Manufacturer
             string brand = DeviceInfo.GetVariable("ro.product.brand") 
                 ?? DeviceInfo.GetVariable("manufacturer") 
-                ?? "未知";
-            UpdateLabelSafe(_brandLabel, $"品牌：{brand}");
+                ?? "Unknown";
+            UpdateLabelSafe(_brandLabel, $"Brand: {brand}");
 
-            // 芯片/平台 - 优先使用 variant，然后映射 hw-revision
+            // Chip/Platform - Prefer variant, then map hw-revision
             string chip = DeviceInfo.GetVariable("variant");
-            if (string.IsNullOrEmpty(chip) || chip == "未知")
+            if (string.IsNullOrEmpty(chip) || chip == "Unknown")
             {
                 string hwRev = DeviceInfo.GetVariable("hw-revision");
                 chip = MapChipId(hwRev);
             }
-            if (string.IsNullOrEmpty(chip) || chip == "未知")
+            if (string.IsNullOrEmpty(chip) || chip == "Unknown")
             {
-                chip = DeviceInfo.GetVariable("ro.boot.hardware") ?? "未知";
+                chip = DeviceInfo.GetVariable("ro.boot.hardware") ?? "Unknown";
             }
-            UpdateLabelSafe(_chipLabel, $"芯片：{chip}");
+            UpdateLabelSafe(_chipLabel, $"Chip: {chip}");
 
-            // 型号
+            // Model
             string model = DeviceInfo.GetVariable("product") 
                 ?? DeviceInfo.GetVariable("ro.product.model") 
-                ?? "未知";
-            UpdateLabelSafe(_modelLabel, $"型号：{model}");
+                ?? "Unknown";
+            UpdateLabelSafe(_modelLabel, $"Model: {model}");
 
-            // 序列号
-            string serial = DeviceInfo.Serial ?? "未知";
-            UpdateLabelSafe(_serialLabel, $"序列号：{serial}");
+            // Serial
+            string serial = DeviceInfo.Serial ?? "Unknown";
+            UpdateLabelSafe(_serialLabel, $"Serial: {serial}");
 
-            // 存储类型
-            string storage = DeviceInfo.GetVariable("partition-type:userdata") ?? "未知";
+            // Storage type
+            string storage = DeviceInfo.GetVariable("partition-type:userdata") ?? "Unknown";
             if (storage.Contains("ext4") || storage.Contains("f2fs"))
                 storage = "eMMC/UFS";
-            UpdateLabelSafe(_storageLabel, $"存储：{storage}");
+            UpdateLabelSafe(_storageLabel, $"Storage: {storage}");
 
-            // 解锁状态
+            // Unlock status
             string unlocked = DeviceInfo.GetVariable("unlocked");
             string secureState = DeviceInfo.GetVariable("secure");
-            string unlockStatus = "未知";
+            string unlockStatus = "Unknown";
             if (!string.IsNullOrEmpty(unlocked))
             {
-                unlockStatus = unlocked.ToLower() == "yes" || unlocked == "1" ? "已解锁" : "已锁定";
+                unlockStatus = unlocked.ToLower() == "yes" || unlocked == "1" ? "Unlocked" : "Locked";
             }
             else if (!string.IsNullOrEmpty(secureState))
             {
-                unlockStatus = secureState.ToLower() == "no" || secureState == "0" ? "已解锁" : "已锁定";
+                unlockStatus = secureState.ToLower() == "no" || secureState == "0" ? "Unlocked" : "Locked";
             }
-            UpdateLabelSafe(_unlockLabel, $"解锁：{unlockStatus}");
+            UpdateLabelSafe(_unlockLabel, $"Unlock: {unlockStatus}");
 
-            // 当前槽位 - 支持多种变量名
+            // Current slot - support multiple variable names
             string slot = DeviceInfo.GetVariable("current-slot") 
                 ?? DeviceInfo.CurrentSlot;
             string slotCount = DeviceInfo.GetVariable("slot-count");
             
             if (string.IsNullOrEmpty(slot))
             {
-                // 检查是否支持 A/B 分区
+                // Check if A/B partitions are supported
                 if (!string.IsNullOrEmpty(slotCount) && slotCount != "0")
-                    slot = "未知";
+                    slot = "Unknown";
                 else
                     slot = "N/A";
             }
@@ -388,20 +393,20 @@ namespace LoveAlways.Fastboot.UI
             {
                 slot = "_" + slot;
             }
-            UpdateLabelSafe(_slotLabel, $"槽位：{slot}");
+            UpdateLabelSafe(_slotLabel, $"Slot: {slot}");
         }
 
         /// <summary>
-        /// 映射高通芯片 ID 到名称
+        /// Map Qualcomm chip ID to name
         /// </summary>
         private string MapChipId(string hwRevision)
         {
-            if (string.IsNullOrEmpty(hwRevision)) return "未知";
+            if (string.IsNullOrEmpty(hwRevision)) return "Unknown";
             
-            // 高通芯片 ID 映射表
+            // Qualcomm Chip ID Map
             var chipMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                // Snapdragon 8xx 系列
+                // Snapdragon 8xx series
                 { "20001", "SDM845" },
                 { "20002", "SDM845" },
                 { "339", "SDM845" },
@@ -415,24 +420,24 @@ namespace LoveAlways.Fastboot.UI
                 { "536", "SM8550" },
                 { "591", "SM8650" },
                 
-                // Snapdragon 7xx 系列
+                // Snapdragon 7xx series
                 { "365", "SDM730" },
                 { "366", "SDM730G" },
                 { "400", "SDM765G" },
                 { "434", "SM7250" },
                 { "475", "SM7325" },
                 
-                // Snapdragon 6xx 系列
+                // Snapdragon 6xx series
                 { "317", "SDM660" },
                 { "324", "SDM670" },
                 { "345", "SDM675" },
                 { "355", "SDM690" },
                 
-                // Snapdragon 4xx 系列
+                // Snapdragon 4xx series
                 { "293", "SDM450" },
                 { "353", "SM4250" },
                 
-                // MTK 系列
+                // MTK series
                 { "mt6893", "Dimensity 1200" },
                 { "mt6885", "Dimensity 1000+" },
                 { "mt6853", "Dimensity 720" },
@@ -444,7 +449,7 @@ namespace LoveAlways.Fastboot.UI
             if (chipMap.TryGetValue(hwRevision, out string chipName))
                 return chipName;
             
-            // 如果映射表中没有，检查是否是纯数字（可能是未知的高通 ID）
+            // If not in map, check if it's pure number (possibly unknown Qualcomm ID)
             if (int.TryParse(hwRevision, out _))
                 return $"QC-{hwRevision}";
             
@@ -452,7 +457,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 安全更新 Label 文本
+        /// Safely update Label text
         /// </summary>
         private void UpdateLabelSafe(dynamic label, string text)
         {
@@ -476,7 +481,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 启动设备监控
+        /// Start device monitoring
         /// </summary>
         public void StartDeviceMonitoring()
         {
@@ -485,7 +490,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 停止设备监控
+        /// Stop device monitoring
         /// </summary>
         public void StopDeviceMonitoring()
         {
@@ -494,10 +499,10 @@ namespace LoveAlways.Fastboot.UI
 
         #endregion
 
-        #region 设备操作
+        #region Device Operations
 
         /// <summary>
-        /// 刷新设备列表
+        /// Refresh device list
         /// </summary>
         public async Task RefreshDeviceListAsync()
         {
@@ -508,7 +513,7 @@ namespace LoveAlways.Fastboot.UI
                     var devices = await tempService.GetDevicesAsync();
                     _cachedDevices = devices ?? new List<FastbootDeviceListItem>();
                     
-                    // 在 UI 线程更新
+                    // Update in UI thread
                     if (_deviceComboBox != null)
                     {
                         try
@@ -525,7 +530,7 @@ namespace LoveAlways.Fastboot.UI
                         catch { }
                     }
 
-                    // 更新设备数量显示
+                    // Update device count display
                     UpdateDeviceCountLabel();
 
                     DevicesRefreshed?.Invoke(this, devices);
@@ -533,7 +538,7 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                _logDetail($"[Fastboot] 刷新设备列表异常: {ex.Message}");
+                _logDetail($"[Fastboot] Exception refreshing device list: {ex.Message}");
             }
         }
 
@@ -552,7 +557,7 @@ namespace LoveAlways.Fastboot.UI
                     _deviceComboBox.Items.Add(device.ToString());
                 }
 
-                // 尝试恢复之前的选择
+                // Try to restore previous selection
                 if (!string.IsNullOrEmpty(currentSelection) && _deviceComboBox.Items.Contains(currentSelection))
                 {
                     _deviceComboBox.SelectedItem = currentSelection;
@@ -566,37 +571,37 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 更新设备数量显示标签
+        /// Update device count label
         /// </summary>
         private void UpdateDeviceCountLabel()
         {
             int count = _cachedDevices?.Count ?? 0;
-            string text = count == 0 ? "FB设备：0" 
-                : count == 1 ? $"FB设备：{_cachedDevices[0].Serial}" 
-                : $"FB设备：{count}个";
+            string text = count == 0 ? "FB Device: 0" 
+                : count == 1 ? $"FB Device: {_cachedDevices[0].Serial}" 
+                : $"FB Devices: {count}";
             
             UpdateLabelSafe(_deviceCountLabel, text);
         }
 
         /// <summary>
-        /// 连接选中的设备
+        /// Connect to selected device
         /// </summary>
         public async Task<bool> ConnectAsync()
         {
             if (IsBusy)
             {
-                Log("操作进行中", Color.Orange);
+                Log("Operation in progress", Color.Orange);
                 return false;
             }
 
             string selectedDevice = GetSelectedDevice();
             if (string.IsNullOrEmpty(selectedDevice))
             {
-                Log("请选择 Fastboot 设备", Color.Red);
+                Log("Please select a Fastboot device", Color.Red);
                 return false;
             }
 
-            // 从 "serial (status)" 格式提取序列号
+            // Extract serial number from "serial (status)" format
             string serial = selectedDevice.Split(' ')[0];
 
             try
@@ -604,9 +609,9 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("连接设备");
+                StartOperationTimer("Connect Device");
                 UpdateProgressBar(0);
-                UpdateLabelSafe(_operationLabel, "当前操作：连接设备");
+                UpdateLabelSafe(_operationLabel, "Operation: Connecting Device");
 
                 _service = new FastbootService(
                     msg => Log(msg, null),
@@ -614,7 +619,7 @@ namespace LoveAlways.Fastboot.UI
                     _logDetail
                 );
                 
-                // 订阅刷写进度事件
+                // Subscribe to flash progress events
                 _service.FlashProgressChanged += OnFlashProgressChanged;
 
                 UpdateProgressBar(30);
@@ -623,12 +628,12 @@ namespace LoveAlways.Fastboot.UI
                 if (success)
                 {
                     UpdateProgressBar(70);
-                    Log("Fastboot 设备连接成功", Color.Green);
+                    Log("Fastboot device connected successfully", Color.Green);
                     
-                    // 更新设备信息标签
+                    // Update device information labels
                     UpdateDeviceInfoLabels();
                     
-                    // 更新分区列表
+                    // Update partition list
                     UpdatePartitionListView();
                     
                     UpdateProgressBar(100);
@@ -637,7 +642,7 @@ namespace LoveAlways.Fastboot.UI
                 }
                 else
                 {
-                    Log("Fastboot 设备连接失败", Color.Red);
+                    Log("Fastboot device connection failed", Color.Red);
                     ResetDeviceInfoLabels();
                     UpdateProgressBar(0);
                 }
@@ -647,7 +652,7 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                Log($"连接异常: {ex.Message}", Color.Red);
+                Log($"Connection exception: {ex.Message}", Color.Red);
                 ResetDeviceInfoLabels();
                 UpdateProgressBar(0);
                 StopOperationTimer();
@@ -656,12 +661,12 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
         /// <summary>
-        /// 断开连接
+        /// Disconnect
         /// </summary>
         public void Disconnect()
         {
@@ -685,14 +690,14 @@ namespace LoveAlways.Fastboot.UI
 
         #endregion
 
-        #region 分区操作
+        #region Partition Operations
 
         /// <summary>
-        /// 读取分区表（刷新设备信息）
+        /// Read partition table (refresh device info)
         /// </summary>
         public async Task<bool> ReadPartitionTableAsync()
         {
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
             if (!await EnsureConnectedAsync()) return false;
 
             try
@@ -700,12 +705,12 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("读取分区表");
+                StartOperationTimer("Read GPT");
                 UpdateProgressBar(0);
-                UpdateLabelSafe(_operationLabel, "当前操作：读取分区表");
-                UpdateLabelSafe(_speedLabel, "速度：读取中...");
+                UpdateLabelSafe(_operationLabel, "Operation: Reading Partition Table");
+                UpdateLabelSafe(_speedLabel, "Speed: Reading...");
 
-                Log("正在读取 Fastboot 分区表...", Color.Blue);
+                Log("Reading Fastboot partition table...", Color.Blue);
 
                 UpdateProgressBar(30);
                 bool success = await _service.RefreshDeviceInfoAsync(_cts.Token);
@@ -714,13 +719,13 @@ namespace LoveAlways.Fastboot.UI
                 {
                     UpdateProgressBar(70);
                     
-                    // 更新设备信息标签
+                    // Update device information labels
                     UpdateDeviceInfoLabels();
                     
                     UpdatePartitionListView();
                     UpdateProgressBar(100);
                     
-                    Log($"成功读取 {Partitions?.Count ?? 0} 个分区", Color.Green);
+                    Log($"Successfully read {Partitions?.Count ?? 0} partitions", Color.Green);
                     PartitionsLoaded?.Invoke(this, Partitions);
                 }
                 else
@@ -733,7 +738,7 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                Log($"读取分区表失败: {ex.Message}", Color.Red);
+                Log($"Failed to read partition table: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
                 StopOperationTimer();
                 return false;
@@ -741,12 +746,12 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
         /// <summary>
-        /// 更新分区列表视图
+        /// Update partition list view
         /// </summary>
         private void UpdatePartitionListView()
         {
@@ -777,7 +782,7 @@ namespace LoveAlways.Fastboot.UI
                     var item = new ListViewItem(new string[]
                     {
                         part.Name,
-                        "-",  // 操作列
+                        "-",  // Operation column
                         part.SizeFormatted,
                         part.IsLogicalText
                     });
@@ -789,21 +794,21 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 刷写选中的分区
+        /// Flash selected partitions
         /// </summary>
         public async Task<bool> FlashSelectedPartitionsAsync()
         {
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
             if (!await EnsureConnectedAsync()) return false;
 
             var selectedItems = GetSelectedPartitionItems();
             if (selectedItems.Count == 0)
             {
-                Log("请选择要刷写的分区", Color.Orange);
+                Log("Please select partitions to flash", Color.Orange);
                 return false;
             }
 
-            // 检查是否有镜像文件
+            // Check for image files
             var partitionsWithFiles = new List<Tuple<string, string>>();
             foreach (ListViewItem item in selectedItems)
             {
@@ -812,7 +817,7 @@ namespace LoveAlways.Fastboot.UI
                 
                 if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
                 {
-                    Log($"分区 {partName} 没有选择镜像文件", Color.Orange);
+                    Log($"Partition {partName} has no image file selected", Color.Orange);
                     continue;
                 }
 
@@ -821,7 +826,7 @@ namespace LoveAlways.Fastboot.UI
 
             if (partitionsWithFiles.Count == 0)
             {
-                Log("没有可刷写的分区（请双击分区选择镜像文件）", Color.Orange);
+                Log("No partitions to flash (please double-click to select image file)", Color.Orange);
                 return false;
             }
 
@@ -830,18 +835,18 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("刷写分区");
+                StartOperationTimer("Flash Partition");
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
-                UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {partitionsWithFiles.Count} 个分区");
-                UpdateLabelSafe(_speedLabel, "速度：计算中...");
+                UpdateLabelSafe(_operationLabel, $"Operation: Flashing {partitionsWithFiles.Count} partitions");
+                UpdateLabelSafe(_speedLabel, "Speed: Calculating...");
 
-                Log($"开始刷写 {partitionsWithFiles.Count} 个分区...", Color.Blue);
+                Log($"Starting to flash {partitionsWithFiles.Count} partitions...", Color.Blue);
 
                 int successCount = 0;
                 int total = partitionsWithFiles.Count;
                 
-                // 设置进度跟踪字段
+                // Set progress tracking fields
                 _flashTotalPartitions = total;
 
                 for (int i = 0; i < total; i++)
@@ -849,8 +854,8 @@ namespace LoveAlways.Fastboot.UI
                     _flashCurrentPartitionIndex = i;
                     
                     var part = partitionsWithFiles[i];
-                    UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {part.Item1} ({i + 1}/{total})");
-                    // 子进度：当前分区刷写开始
+                    UpdateLabelSafe(_operationLabel, $"Operation: Flashing {part.Item1} ({i + 1}/{total})");
+                    // Sub-progress: current partition flash started
                     UpdateSubProgressBar(0);
 
                     var flashStart = DateTime.Now;
@@ -858,12 +863,12 @@ namespace LoveAlways.Fastboot.UI
                     
                     bool result = await _service.FlashPartitionAsync(part.Item1, part.Item2, false, _cts.Token);
                     
-                    // 子进度：当前分区刷写完成
+                    // Sub-progress: current partition flash completed
                     UpdateSubProgressBar(100);
-                    // 更新总进度
+                    // Update total progress
                     UpdateProgressBar(((i + 1) * 100.0) / total);
                     
-                    // 计算并显示速度
+                    // Calculate and display speed
                     var elapsed = (DateTime.Now - flashStart).TotalSeconds;
                     if (elapsed > 0)
                     {
@@ -875,7 +880,7 @@ namespace LoveAlways.Fastboot.UI
                         successCount++;
                 }
                 
-                // 重置进度跟踪
+                // Reset progress tracking
                 _flashTotalPartitions = 0;
                 _flashCurrentPartitionIndex = 0;
 
@@ -883,16 +888,16 @@ namespace LoveAlways.Fastboot.UI
                 UpdateSubProgressBar(100);
                 StopOperationTimer();
 
-                Log($"刷写完成: {successCount}/{total} 成功", 
+                Log($"Flash complete: {successCount}/{total} successful", 
                     successCount == total ? Color.Green : Color.Orange);
 
-                // 执行刷写后附加操作（切换槽位、擦除谷歌锁等）
+                // Execute post-flash additional operations (switch slot, erase Google Lock, etc.)
                 if (successCount > 0)
                 {
                     await ExecutePostFlashOperationsAsync();
                 }
 
-                // 自动重启
+                // Auto reboot
                 if (IsAutoRebootEnabled() && successCount > 0)
                 {
                     await _service.RebootAsync(_cts.Token);
@@ -902,7 +907,7 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                Log($"刷写失败: {ex.Message}", Color.Red);
+                Log($"Flash failed: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -911,22 +916,22 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
         /// <summary>
-        /// 擦除选中的分区
+        /// Erase selected partitions
         /// </summary>
         public async Task<bool> EraseSelectedPartitionsAsync()
         {
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
             if (!await EnsureConnectedAsync()) return false;
 
             var selectedItems = GetSelectedPartitionItems();
             if (selectedItems.Count == 0)
             {
-                Log("请选择要擦除的分区", Color.Orange);
+                Log("Please select partitions to erase", Color.Orange);
                 return false;
             }
 
@@ -935,24 +940,24 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("擦除分区");
+                StartOperationTimer("Erase Partition");
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
-                UpdateLabelSafe(_speedLabel, "速度：擦除中...");
+                UpdateLabelSafe(_speedLabel, "Speed: Erasing...");
 
                 int success = 0;
                 int total = selectedItems.Count;
                 int current = 0;
 
-                Log($"开始擦除 {total} 个分区...", Color.Blue);
+                Log($"Starting to erase {total} partitions...", Color.Blue);
 
                 foreach (ListViewItem item in selectedItems)
                 {
                     string partName = item.SubItems[0].Text;
-                    UpdateLabelSafe(_operationLabel, $"当前操作：擦除 {partName} ({current + 1}/{total})");
-                    // 总进度：基于已完成的分区数
+                    UpdateLabelSafe(_operationLabel, $"Operation: Erasing {partName} ({current + 1}/{total})");
+                    // Total progress: based on completed partitions
                     UpdateProgressBar((current * 100.0) / total);
-                    // 子进度：开始擦除
+                    // Sub-progress: start erase
                     UpdateSubProgressBar(0);
                     
                     if (await _service.ErasePartitionAsync(partName, _cts.Token))
@@ -960,7 +965,7 @@ namespace LoveAlways.Fastboot.UI
                         success++;
                     }
                     
-                    // 子进度：当前分区擦除完成
+                    // Sub-progress: current partition erase complete
                     UpdateSubProgressBar(100);
                     current++;
                 }
@@ -969,14 +974,14 @@ namespace LoveAlways.Fastboot.UI
                 UpdateSubProgressBar(100);
                 StopOperationTimer();
 
-                Log($"擦除完成: {success}/{total} 成功", 
+                Log($"Erase complete: {success}/{total} successful", 
                     success == total ? Color.Green : Color.Orange);
 
                 return success == total;
             }
             catch (Exception ex)
             {
-                Log($"擦除失败: {ex.Message}", Color.Red);
+                Log($"Erase failed: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
                 StopOperationTimer();
                 return false;
@@ -984,7 +989,7 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
@@ -1006,7 +1011,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 检查是否有勾选的普通分区（非脚本任务，带镜像文件）
+        /// Check for checked normal partitions (non-script, with image file)
         /// </summary>
         public bool HasSelectedPartitionsWithFiles()
         {
@@ -1016,12 +1021,12 @@ namespace LoveAlways.Fastboot.UI
             {
                 foreach (ListViewItem item in _partitionListView.CheckedItems)
                 {
-                    // 跳过脚本任务和 Payload 分区
+                    // Skip script tasks and Payload partitions
                     if (item.Tag is BatScriptParser.FlashTask) continue;
                     if (item.Tag is PayloadPartition) continue;
                     if (item.Tag is RemotePayloadPartition) continue;
 
-                    // 检查是否有镜像文件路径
+                    // Check for image file path
                     string filePath = item.SubItems.Count > 3 ? item.SubItems[3].Text : "";
                     if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
                     {
@@ -1035,7 +1040,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 为分区选择镜像文件
+        /// Select image file for partition
         /// </summary>
         public void SelectImageForPartition(ListViewItem item)
         {
@@ -1043,14 +1048,14 @@ namespace LoveAlways.Fastboot.UI
 
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = $"选择 {item.SubItems[0].Text} 分区镜像";
-                ofd.Filter = "镜像文件|*.img;*.bin;*.mbn|所有文件|*.*";
+                ofd.Title = $"Select {item.SubItems[0].Text} partition image";
+                ofd.Filter = "Image Files|*.img;*.bin;*.mbn|All Files|*.*";
 
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
-                    // 更新操作列和文件路径列
+                    // Update operation and file path columns
                     if (item.SubItems.Count > 1)
-                        item.SubItems[1].Text = "写入";
+                        item.SubItems[1].Text = "Write";
                     if (item.SubItems.Count > 3)
                         item.SubItems[3].Text = ofd.FileName;
                     else
@@ -1061,43 +1066,43 @@ namespace LoveAlways.Fastboot.UI
                     }
 
                     item.Checked = true;
-                    Log($"已选择镜像: {Path.GetFileName(ofd.FileName)} -> {item.SubItems[0].Text}", Color.Blue);
+                    Log($"Image selected: {Path.GetFileName(ofd.FileName)} -> {item.SubItems[0].Text}", Color.Blue);
                 }
             }
         }
 
         /// <summary>
-        /// 加载已提取的文件夹 (包含 .img 文件)
-        /// 自动识别分区名并添加到列表，解析设备信息
+        /// Load extracted folder (contains .img files)
+        /// Auto-identify partition names and add to list, parse device info
         /// </summary>
         public void LoadExtractedFolder(string folderPath)
         {
             if (string.IsNullOrEmpty(folderPath) || !Directory.Exists(folderPath))
             {
-                Log("文件夹不存在", Color.Red);
+                Log("Folder does not exist", Color.Red);
                 return;
             }
 
             if (_partitionListView == null)
             {
-                Log("分区列表未初始化", Color.Red);
+                Log("Partition list not initialized", Color.Red);
                 return;
             }
 
-            // 扫描文件夹中的所有 .img 文件
+            // Scan all .img files in folder
             var imgFiles = Directory.GetFiles(folderPath, "*.img", SearchOption.TopDirectoryOnly)
                 .OrderBy(f => Path.GetFileNameWithoutExtension(f))
                 .ToList();
 
             if (imgFiles.Count == 0)
             {
-                Log($"文件夹中没有找到 .img 文件: {folderPath}", Color.Orange);
+                Log($"No .img files found in folder: {folderPath}", Color.Orange);
                 return;
             }
 
-            Log($"扫描到 {imgFiles.Count} 个镜像文件", Color.Blue);
+            Log($"Scanned {imgFiles.Count} image files", Color.Blue);
 
-            // 清空现有列表
+            // Clear existing list
             _partitionListView.Items.Clear();
 
             int addedCount = 0;
@@ -1108,22 +1113,22 @@ namespace LoveAlways.Fastboot.UI
                 string fileName = Path.GetFileNameWithoutExtension(imgPath);
                 var fileInfo = new FileInfo(imgPath);
                 
-                // 判断分区类型
+                // Determine partition type
                 bool isLogical = FastbootService.IsLogicalPartition(fileName);
                 bool isModem = FastbootService.IsModemPartition(fileName);
-                string partType = isLogical ? "逻辑" : (isModem ? "Modem" : "物理");
+                string partType = isLogical ? "Logical" : (isModem ? "Modem" : "Physical");
 
-                // 创建列表项 (列顺序: 分区名、操作、大小、类型、文件路径)
+                // Create list item (Order: Name, Operation, Size, Type, Path)
                 var item = new ListViewItem(new[]
                 {
-                    fileName,                           // 分区名
-                    "flash",                            // 操作
-                    FormatSize(fileInfo.Length),       // 大小
-                    partType,                           // 类型
-                    imgPath                             // 文件路径
+                    fileName,                           // Name
+                    "flash",                            // Operation
+                    FormatSize(fileInfo.Length),       // Size
+                    partType,                           // Type
+                    imgPath                             // Path
                 });
 
-                // 存储文件信息到 Tag
+                // Store file information in Tag
                 item.Tag = new ExtractedImageInfo
                 {
                     PartitionName = fileName,
@@ -1133,28 +1138,28 @@ namespace LoveAlways.Fastboot.UI
                     IsModem = isModem
                 };
 
-                item.Checked = true;  // 默认全选
+                item.Checked = true;  // Check all by default
                 _partitionListView.Items.Add(item);
                 addedCount++;
                 totalSize += fileInfo.Length;
             }
 
-            Log($"已加载 {addedCount} 个分区，总大小: {FormatSize(totalSize)}", Color.Green);
-            Log($"来源文件夹: {folderPath}", Color.Blue);
+            Log($"Loaded {addedCount} partitions, total size: {FormatSize(totalSize)}", Color.Green);
+            Log($"Source folder: {folderPath}", Color.Blue);
 
-            // 异步解析固件信息
+            // Asynchronously parse firmware info
             int partitionCount = addedCount;
             long size = totalSize;
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    Log("正在解析固件信息...", Color.Blue);
+                    Log("Parsing firmware information...", Color.Blue);
                     CurrentFirmwareInfo = await ParseFirmwareInfoAsync(folderPath);
                     CurrentFirmwareInfo.TotalPartitions = partitionCount;
                     CurrentFirmwareInfo.TotalSize = size;
 
-                    // 在 UI 线程显示解析结果
+                    // Display parsing results on UI thread
                     if (_partitionListView?.InvokeRequired == true)
                     {
                         _partitionListView.Invoke(new Action(() => DisplayFirmwareInfo()));
@@ -1166,67 +1171,67 @@ namespace LoveAlways.Fastboot.UI
                 }
                 catch (Exception ex)
                 {
-                    Log($"固件信息解析失败: {ex.Message}", Color.Red);
-                    _logDetail($"固件信息解析异常: {ex}");
+                    Log($"Firmware info parsing failed: {ex.Message}", Color.Red);
+                    _logDetail($"Firmware info parsing exception: {ex}");
                 }
             });
         }
 
         /// <summary>
-        /// 显示固件信息
+        /// Display firmware info
         /// </summary>
         private void DisplayFirmwareInfo()
         {
             if (CurrentFirmwareInfo == null)
             {
-                Log("固件信息: 未找到 metadata 文件，无法识别设备信息", Color.Orange);
+                Log("Firmware Info: Metadata file not found, unable to identify device info", Color.Orange);
                 return;
             }
 
             var info = CurrentFirmwareInfo;
             var sb = new System.Text.StringBuilder();
-            sb.Append("固件信息: ");
+            sb.Append("Firmware Info: ");
             bool hasInfo = false;
 
-            // 显示型号
+            // Display model
             if (!string.IsNullOrEmpty(info.DeviceModel))
             {
-                sb.Append($"型号={info.DeviceModel} ");
+                sb.Append($"Model={info.DeviceModel} ");
                 hasInfo = true;
             }
 
-            // 显示设备代号
+            // Display device name (codename)
             if (!string.IsNullOrEmpty(info.DeviceName))
             {
-                sb.Append($"代号={info.DeviceName} ");
+                sb.Append($"Name={info.DeviceName} ");
                 hasInfo = true;
             }
 
-            // Android 版本
+            // Android version
             if (!string.IsNullOrEmpty(info.AndroidVersion))
             {
                 sb.Append($"Android={info.AndroidVersion} ");
                 hasInfo = true;
             }
 
-            // OS 版本
+            // OS version
             if (!string.IsNullOrEmpty(info.OsVersion))
             {
                 sb.Append($"OS={info.OsVersion} ");
                 hasInfo = true;
             }
 
-            // 安全补丁
+            // Security patch
             if (!string.IsNullOrEmpty(info.SecurityPatch))
             {
-                sb.Append($"安全补丁={info.SecurityPatch} ");
+                sb.Append($"Security Patch={info.SecurityPatch} ");
                 hasInfo = true;
             }
 
-            // OTA 类型
+            // OTA type
             if (!string.IsNullOrEmpty(info.OtaType))
             {
-                sb.Append($"类型={info.OtaType} ");
+                sb.Append($"Type={info.OtaType} ");
                 hasInfo = true;
             }
 
@@ -1234,31 +1239,31 @@ namespace LoveAlways.Fastboot.UI
             {
                 Log(sb.ToString().Trim(), Color.Cyan);
                 
-                // 如果有版本名，单独显示一行
+                // If version name exists, display separately
                 if (!string.IsNullOrEmpty(info.BuildNumber))
                 {
-                    Log($"版本: {info.BuildNumber}", Color.Gray);
+                    Log($"Version: {info.BuildNumber}", Color.Gray);
                 }
             }
             else
             {
-                Log("固件信息: 未找到 metadata 文件", Color.Orange);
+                Log("Firmware info: Metadata file not found", Color.Orange);
             }
         }
 
         /// <summary>
-        /// 验证所有分区文件的哈希值
+        /// Verify hash values for all partition files
         /// </summary>
         public async Task<bool> VerifyPartitionHashesAsync(CancellationToken ct = default)
         {
             if (_partitionListView == null || _partitionListView.Items.Count == 0)
             {
-                Log("没有分区可验证", Color.Orange);
+                Log("No partitions to verify", Color.Orange);
                 return false;
             }
 
-            Log("开始验证分区完整性...", Color.Blue);
-            UpdateLabelSafe(_operationLabel, "当前操作：验证文件");
+            Log("Starting to verify partition integrity...", Color.Blue);
+            UpdateLabelSafe(_operationLabel, "Operation: Verifying Files");
 
             int total = _partitionListView.CheckedItems.Count;
             int current = 0;
@@ -1273,26 +1278,26 @@ namespace LoveAlways.Fastboot.UI
                 {
                     current++;
                     UpdateProgressBar(current * 100.0 / total);
-                    UpdateLabelSafe(_operationLabel, $"验证: {info.PartitionName} ({current}/{total})");
+                    UpdateLabelSafe(_operationLabel, $"Verify: {info.PartitionName} ({current}/{total})");
 
-                    // 检查文件是否存在
+                    // Check if file exists
                     if (!File.Exists(info.FilePath))
                     {
-                        Log($"  ✗ {info.PartitionName}: 文件不存在", Color.Red);
+                        Log($"  ✗ {info.PartitionName}: File does not exist", Color.Red);
                         failed++;
                         continue;
                     }
 
-                    // 检查文件大小
+                    // Check file size
                     var fileInfo = new FileInfo(info.FilePath);
                     if (fileInfo.Length != info.FileSize)
                     {
-                        Log($"  ✗ {info.PartitionName}: 大小不匹配 (期望={FormatSize(info.FileSize)}, 实际={FormatSize(fileInfo.Length)})", Color.Red);
+                        Log($"  ✗ {info.PartitionName}: Size mismatch (Expected={FormatSize(info.FileSize)}, Actual={FormatSize(fileInfo.Length)})", Color.Red);
                         failed++;
                         continue;
                     }
 
-                    // 计算 MD5 哈希
+                    // Calculate MD5 hash
                     string hash = await Task.Run(() => CalculateMd5(info.FilePath), ct);
                     if (!string.IsNullOrEmpty(hash))
                     {
@@ -1304,28 +1309,28 @@ namespace LoveAlways.Fastboot.UI
                     else
                     {
                         failed++;
-                        Log($"  ✗ {info.PartitionName}: 哈希计算失败", Color.Red);
+                        Log($"  ✗ {info.PartitionName}: Hash calculation failed", Color.Red);
                     }
                 }
             }
 
             UpdateProgressBar(100);
-            UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+            UpdateLabelSafe(_operationLabel, "Operation: Idle");
 
             if (failed == 0)
             {
-                Log($"✓ 验证完成: {verified} 个分区全部通过", Color.Green);
+                Log($"✓ Verification complete: All {verified} partitions passed", Color.Green);
                 return true;
             }
             else
             {
-                Log($"⚠ 验证完成: {verified} 通过, {failed} 失败", Color.Orange);
+                Log($"⚠ Verification complete: {verified} passed, {failed} failed", Color.Orange);
                 return false;
             }
         }
 
         /// <summary>
-        /// 已提取镜像文件信息
+        /// Extracted image file info
         /// </summary>
         public class ExtractedImageInfo
         {
@@ -1340,31 +1345,31 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 固件包信息 (从 metadata 解析)
+        /// Firmware package info (parsed from metadata)
         /// </summary>
         public class FirmwareInfo
         {
-            public string DeviceModel { get; set; }       // 设备型号 (如 PJD110)
-            public string DeviceName { get; set; }        // 设备代号 (如 OP5929L1)
-            public string AndroidVersion { get; set; }    // Android 版本
-            public string OsVersion { get; set; }         // OS 版本 (ColorOS/OxygenOS)
-            public string BuildNumber { get; set; }       // 构建号/版本名
-            public string SecurityPatch { get; set; }     // 安全补丁日期
-            public string Fingerprint { get; set; }       // 完整指纹
-            public string BasebandVersion { get; set; }   // 基带版本
-            public string OtaType { get; set; }           // OTA 类型 (AB/非AB)
-            public string FolderPath { get; set; }        // 来源文件夹
-            public int TotalPartitions { get; set; }      // 分区总数
-            public long TotalSize { get; set; }           // 总大小
+            public string DeviceModel { get; set; }       // Device model (e.g. PJD110)
+            public string DeviceName { get; set; }        // Device codename (e.g. OP5929L1)
+            public string AndroidVersion { get; set; }    // Android version
+            public string OsVersion { get; set; }         // OS version (ColorOS/OxygenOS)
+            public string BuildNumber { get; set; }       // Build number/Version name
+            public string SecurityPatch { get; set; }     // Security patch date
+            public string Fingerprint { get; set; }       // Full fingerprint
+            public string BasebandVersion { get; set; }   // Baseband version
+            public string OtaType { get; set; }           // OTA type (AB/Non-AB)
+            public string FolderPath { get; set; }        // Source folder
+            public int TotalPartitions { get; set; }      // Total partitions
+            public long TotalSize { get; set; }           // Total size
         }
 
         /// <summary>
-        /// 当前加载的固件信息
+        /// Currently loaded firmware info
         /// </summary>
         public FirmwareInfo CurrentFirmwareInfo { get; private set; }
 
         /// <summary>
-        /// 计算文件的 MD5 哈希值
+        /// Calculate file MD5 hash
         /// </summary>
         private string CalculateMd5(string filePath)
         {
@@ -1384,7 +1389,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 计算文件的 SHA256 哈希值
+        /// Calculate file SHA256 hash
         /// </summary>
         private string CalculateSha256(string filePath)
         {
@@ -1404,14 +1409,14 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 异步计算所有分区的哈希值
+        /// Asynchronously calculate hashes for all partitions
         /// </summary>
         public async Task CalculatePartitionHashesAsync(CancellationToken ct = default)
         {
             if (_partitionListView == null) return;
 
-            Log("开始计算分区哈希值...", Color.Blue);
-            UpdateLabelSafe(_operationLabel, "当前操作：计算哈希");
+            Log("Starting to calculate partition hashes...", Color.Blue);
+            UpdateLabelSafe(_operationLabel, "Operation: Calculating Hashes");
             int total = _partitionListView.Items.Count;
             int current = 0;
 
@@ -1423,22 +1428,22 @@ namespace LoveAlways.Fastboot.UI
                 {
                     current++;
                     UpdateProgressBar(current * 100.0 / total);
-                    UpdateLabelSafe(_operationLabel, $"计算哈希: {info.PartitionName} ({current}/{total})");
+                    UpdateLabelSafe(_operationLabel, $"Calculate Hash: {info.PartitionName} ({current}/{total})");
 
-                    // 在后台线程计算哈希
+                    // Calculate hash in background thread
                     info.Md5Hash = await Task.Run(() => CalculateMd5(info.FilePath), ct);
                     info.HashVerified = !string.IsNullOrEmpty(info.Md5Hash);
                 }
             }
 
             UpdateProgressBar(100);
-            UpdateLabelSafe(_operationLabel, "当前操作：空闲");
-            Log($"哈希计算完成，共 {total} 个分区", Color.Green);
+            UpdateLabelSafe(_operationLabel, "Operation: Idle");
+            Log($"Hash calculation complete, total {total} partitions", Color.Green);
         }
 
         /// <summary>
-        /// 从固件文件夹解析设备信息
-        /// 优先从 META-INF/com/android/metadata 读取
+        /// Parse device info from firmware folder
+        /// Prioritize reading from META-INF/com/android/metadata
         /// </summary>
         private async Task<FirmwareInfo> ParseFirmwareInfoAsync(string folderPath)
         {
@@ -1446,10 +1451,10 @@ namespace LoveAlways.Fastboot.UI
 
             try
             {
-                // 获取父目录（固件包根目录）
+                // Get parent directory (firmware package root)
                 string parentDir = Directory.GetParent(folderPath)?.FullName ?? folderPath;
 
-                // 1. 优先从 META-INF/com/android/metadata 读取 (标准 OTA 包格式)
+                // 1. Prioritize reading from META-INF/com/android/metadata (standard OTA package format)
                 string[] metadataPaths = {
                     Path.Combine(parentDir, "META-INF", "com", "android", "metadata"),
                     Path.Combine(folderPath, "META-INF", "com", "android", "metadata"),
@@ -1461,14 +1466,14 @@ namespace LoveAlways.Fastboot.UI
                 {
                     if (File.Exists(metaPath))
                     {
-                        _logDetail($"从 metadata 文件解析: {metaPath}");
+                        _logDetail($"Parsing from metadata file: {metaPath}");
                         await ParseMetadataFileAsync(metaPath, info);
                         if (!string.IsNullOrEmpty(info.DeviceName) || !string.IsNullOrEmpty(info.OsVersion))
                             break;
                     }
                 }
 
-                // 2. 从 payload_properties.txt 读取补充信息
+                // 2. Read supplementary info from payload_properties.txt
                 string[] propPaths = {
                     Path.Combine(parentDir, "payload_properties.txt"),
                     Path.Combine(folderPath, "payload_properties.txt")
@@ -1478,13 +1483,13 @@ namespace LoveAlways.Fastboot.UI
                 {
                     if (File.Exists(propPath))
                     {
-                        _logDetail($"从 payload_properties.txt 解析: {propPath}");
+                        _logDetail($"Parsing from payload_properties.txt: {propPath}");
                         await ParsePayloadPropertiesAsync(propPath, info);
                         break;
                     }
                 }
 
-                // 3. 尝试从 META 文件夹读取信息 (OPLUS 固件)
+                // 3. Attempt to read info from META folder (OPLUS firmware)
                 string metaDir = Path.Combine(folderPath, "META");
                 if (!Directory.Exists(metaDir))
                     metaDir = Path.Combine(parentDir, "META");
@@ -1503,7 +1508,7 @@ namespace LoveAlways.Fastboot.UI
                     }
                 }
 
-                // 4. 尝试读取 build.prop (如果存在解压后的文件)
+                // 4. Attempt to read build.prop (if extracted files exist)
                 string[] buildPropPaths = {
                     Path.Combine(folderPath, "build.prop"),
                     Path.Combine(folderPath, "system_build.prop"),
@@ -1519,7 +1524,7 @@ namespace LoveAlways.Fastboot.UI
                     }
                 }
 
-                // 5. 从 modem.img 推断基带信息
+                // 5. Infer baseband info from modem.img
                 string modemPath = Path.Combine(folderPath, "modem.img");
                 if (File.Exists(modemPath))
                 {
@@ -1529,14 +1534,14 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                _logDetail($"解析固件信息失败: {ex.Message}");
+                _logDetail($"Failed to parse firmware info: {ex.Message}");
             }
 
             return info;
         }
 
         /// <summary>
-        /// 解析 META-INF/com/android/metadata 文件
+        /// Parse META-INF/com/android/metadata file
         /// </summary>
         private async Task ParseMetadataFileAsync(string metadataPath, FirmwareInfo info)
         {
@@ -1559,7 +1564,7 @@ namespace LoveAlways.Fastboot.UI
                     }
                 }
 
-                // 解析关键属性
+                // Parse key attributes
                 if (props.TryGetValue("product_name", out string product))
                     info.DeviceModel = product;
 
@@ -1590,16 +1595,16 @@ namespace LoveAlways.Fastboot.UI
                 if (props.TryGetValue("ota-type", out string otaType))
                     info.OtaType = otaType;
 
-                _logDetail($"从 metadata 解析到 {props.Count} 个属性");
+                _logDetail($"Parsed {props.Count} properties from metadata");
             }
             catch (Exception ex)
             {
-                _logDetail($"解析 metadata 失败: {ex.Message}");
+                _logDetail($"Failed to parse metadata: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 解析 payload_properties.txt 文件
+        /// Parse payload_properties.txt file
         /// </summary>
         private async Task ParsePayloadPropertiesAsync(string propsPath, FirmwareInfo info)
         {
@@ -1638,12 +1643,12 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                _logDetail($"解析 payload_properties.txt 失败: {ex.Message}");
+                _logDetail($"Failed to parse payload_properties.txt: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 从 Payload 文件 (ZIP 或同目录) 解析固件信息
+        /// Parse firmware info from Payload file (ZIP or same directory)
         /// </summary>
         private async Task ParseFirmwareInfoFromPayloadAsync(string payloadPath)
         {
@@ -1653,16 +1658,16 @@ namespace LoveAlways.Fastboot.UI
                 string ext = Path.GetExtension(payloadPath).ToLowerInvariant();
                 string parentDir = Path.GetDirectoryName(payloadPath);
 
-                // 如果是 ZIP 文件，尝试从内部读取 metadata
+                // If ZIP file, try to read metadata from inside
                 if (ext == ".zip")
                 {
                     await Task.Run(() => ParseFirmwareInfoFromZip(payloadPath, info));
                 }
 
-                // 如果 ZIP 内没找到，尝试从同目录下的文件读取
+                // If not found in ZIP, try to read from files in the same directory
                 if (string.IsNullOrEmpty(info.DeviceModel) && string.IsNullOrEmpty(info.DeviceName))
                 {
-                    // 查找同目录下的 metadata 文件
+                    // Find metadata file in the same directory
                     string[] metadataPaths = {
                         Path.Combine(parentDir, "META-INF", "com", "android", "metadata"),
                         Path.Combine(parentDir, "metadata")
@@ -1677,7 +1682,7 @@ namespace LoveAlways.Fastboot.UI
                         }
                     }
 
-                    // 查找 payload_properties.txt
+                    // Find payload_properties.txt
                     string propsPath = Path.Combine(parentDir, "payload_properties.txt");
                     if (File.Exists(propsPath))
                     {
@@ -1685,7 +1690,7 @@ namespace LoveAlways.Fastboot.UI
                     }
                 }
 
-                // 如果解析到了信息，显示
+                // If info parsed, display it
                 if (!string.IsNullOrEmpty(info.DeviceModel) || !string.IsNullOrEmpty(info.DeviceName) ||
                     !string.IsNullOrEmpty(info.AndroidVersion) || !string.IsNullOrEmpty(info.OsVersion))
                 {
@@ -1695,12 +1700,12 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                _logDetail($"从 Payload 解析固件信息失败: {ex.Message}");
+                _logDetail($"Failed to parse firmware info from Payload: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 从 ZIP 文件内部读取固件信息
+        /// Read firmware info from inside ZIP file
         /// </summary>
         private void ParseFirmwareInfoFromZip(string zipPath, FirmwareInfo info)
         {
@@ -1708,7 +1713,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 using (var archive = System.IO.Compression.ZipFile.OpenRead(zipPath))
                 {
-                    // 查找 META-INF/com/android/metadata
+                    // Find META-INF/com/android/metadata
                     var metadataEntry = archive.GetEntry("META-INF/com/android/metadata");
                     if (metadataEntry != null)
                     {
@@ -1717,10 +1722,10 @@ namespace LoveAlways.Fastboot.UI
                         {
                             ParseMetadataContent(reader.ReadToEnd(), info);
                         }
-                        _logDetail($"从 ZIP 内 metadata 解析成功");
+                        _logDetail($"Parsed from metadata inside ZIP successfully");
                     }
 
-                    // 查找 payload_properties.txt
+                    // Find payload_properties.txt
                     var propsEntry = archive.GetEntry("payload_properties.txt");
                     if (propsEntry != null)
                     {
@@ -1729,18 +1734,18 @@ namespace LoveAlways.Fastboot.UI
                         {
                             ParsePayloadPropertiesContent(reader.ReadToEnd(), info);
                         }
-                        _logDetail($"从 ZIP 内 payload_properties.txt 解析成功");
+                        _logDetail($"Parsed from payload_properties.txt inside ZIP successfully");
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logDetail($"读取 ZIP 内固件信息失败: {ex.Message}");
+                _logDetail($"Failed to read firmware info from ZIP: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 解析 metadata 内容字符串
+        /// Parse metadata content string
         /// </summary>
         private void ParseMetadataContent(string content, FirmwareInfo info)
         {
@@ -1784,7 +1789,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 解析 payload_properties.txt 内容字符串
+        /// Parse payload_properties.txt content string
         /// </summary>
         private void ParsePayloadPropertiesContent(string content, FirmwareInfo info)
         {
@@ -1818,7 +1823,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 解析 build.prop 文件
+        /// Parse build.prop file
         /// </summary>
         private async Task ParseBuildPropAsync(string propPath, FirmwareInfo info)
         {
@@ -1871,16 +1876,16 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                _logDetail($"解析 build.prop 失败: {ex.Message}");
+                _logDetail($"Failed to parse build.prop: {ex.Message}");
             }
         }
 
         #endregion
 
-        #region 重启操作
+        #region Reboot Operations
 
         /// <summary>
-        /// 重启到系统
+        /// Reboot to system
         /// </summary>
         public async Task<bool> RebootToSystemAsync()
         {
@@ -1889,7 +1894,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 重启到 Bootloader
+        /// Reboot to Bootloader
         /// </summary>
         public async Task<bool> RebootToBootloaderAsync()
         {
@@ -1898,7 +1903,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 重启到 Fastbootd
+        /// Reboot to Fastbootd
         /// </summary>
         public async Task<bool> RebootToFastbootdAsync()
         {
@@ -1907,7 +1912,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 重启到 Recovery
+        /// Reboot to Recovery
         /// </summary>
         public async Task<bool> RebootToRecoveryAsync()
         {
@@ -1915,14 +1920,14 @@ namespace LoveAlways.Fastboot.UI
             return await _service.RebootRecoveryAsync();
         }
         
-        // 别名方法 (供快捷操作使用)
+        // Alias methods (for quick use)
         public Task<bool> RebootAsync() => RebootToSystemAsync();
         public Task<bool> RebootBootloaderAsync() => RebootToBootloaderAsync();
         public Task<bool> RebootFastbootdAsync() => RebootToFastbootdAsync();
         public Task<bool> RebootRecoveryAsync() => RebootToRecoveryAsync();
         
         /// <summary>
-        /// OEM EDL - 小米踢EDL (fastboot oem edl)
+        /// OEM EDL - Xiaomi kick to EDL (fastboot oem edl)
         /// </summary>
         public async Task<bool> OemEdlAsync()
         {
@@ -1931,7 +1936,7 @@ namespace LoveAlways.Fastboot.UI
         }
         
         /// <summary>
-        /// 擦除 FRP (谷歌锁)
+        /// Erase FRP (Google Lock)
         /// </summary>
         public async Task<bool> EraseFrpAsync()
         {
@@ -1940,7 +1945,7 @@ namespace LoveAlways.Fastboot.UI
         }
         
         /// <summary>
-        /// 获取当前槽位
+        /// Get current slot
         /// </summary>
         public async Task<string> GetCurrentSlotAsync()
         {
@@ -1949,7 +1954,7 @@ namespace LoveAlways.Fastboot.UI
         }
         
         /// <summary>
-        /// 设置活动槽位
+        /// Set active slot
         /// </summary>
         public async Task<bool> SetActiveSlotAsync(string slot)
         {
@@ -1959,10 +1964,10 @@ namespace LoveAlways.Fastboot.UI
 
         #endregion
 
-        #region 解锁/锁定
+        #region Unlock/Lock
 
         /// <summary>
-        /// 执行解锁操作
+        /// Execute unlock operation
         /// </summary>
         public async Task<bool> UnlockBootloaderAsync()
         {
@@ -1970,8 +1975,8 @@ namespace LoveAlways.Fastboot.UI
 
             string method = "flashing unlock";
             
-            // 根据 checkbox 状态选择解锁方法
-            // 可以从 _commandComboBox 获取选择的命令
+            // Choose unlock method based on checkbox state
+            // Command can be retrieved from _commandComboBox
             string selectedCmd = GetSelectedCommand();
             if (!string.IsNullOrEmpty(selectedCmd) && selectedCmd.Contains("unlock"))
             {
@@ -1982,7 +1987,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 执行锁定操作
+        /// Execute lock operation
         /// </summary>
         public async Task<bool> LockBootloaderAsync()
         {
@@ -2001,10 +2006,10 @@ namespace LoveAlways.Fastboot.UI
 
         #endregion
 
-        #region A/B 槽位
+        #region A/B Slots
 
         /// <summary>
-        /// 切换 A/B 槽位
+        /// Switch A/B slot
         /// </summary>
         public async Task<bool> SwitchSlotAsync()
         {
@@ -2022,10 +2027,10 @@ namespace LoveAlways.Fastboot.UI
 
         #endregion
 
-        #region 快捷命令
+        #region Quick Commands
 
         /// <summary>
-        /// 执行选中的快捷命令
+        /// Execute selected quick command
         /// </summary>
         public async Task<bool> ExecuteSelectedCommandAsync()
         {
@@ -2034,7 +2039,7 @@ namespace LoveAlways.Fastboot.UI
             string command = GetSelectedCommand();
             if (string.IsNullOrEmpty(command))
             {
-                Log("请选择要执行的命令", Color.Orange);
+                Log("Please select a command to execute", Color.Orange);
                 return false;
             }
 
@@ -2043,24 +2048,24 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                Log($"执行命令: {command}", Color.Blue);
+                Log($"Executing command: {command}", Color.Blue);
                 var result = await _service.ExecuteCommandAsync(command, _cts.Token);
                 
                 if (!string.IsNullOrEmpty(result))
                 {
-                    // 显示命令执行结果
-                    Log($"结果: {result}", Color.Green);
+                    // Display command execution result
+                    Log($"Result: {result}", Color.Green);
                     return true;
                 }
                 else
                 {
-                    Log("命令执行完成（无返回值）", Color.Gray);
+                    Log("Command executed successfully (no return value)", Color.Gray);
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                Log($"命令执行失败: {ex.Message}", Color.Red);
+                Log($"Command execution failed: {ex.Message}", Color.Red);
                 return false;
             }
             finally
@@ -2078,7 +2083,7 @@ namespace LoveAlways.Fastboot.UI
                 
                 if (string.IsNullOrEmpty(cmd)) return null;
                 
-                // 自动去掉 "fastboot " 前缀
+                // Automatically remove "fastboot " prefix
                 if (cmd.StartsWith("fastboot ", StringComparison.OrdinalIgnoreCase))
                 {
                     cmd = cmd.Substring(9).Trim();
@@ -2093,7 +2098,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 检查是否有选中的快捷命令
+        /// Check if a quick command is selected
         /// </summary>
         public bool HasSelectedCommand()
         {
@@ -2103,20 +2108,20 @@ namespace LoveAlways.Fastboot.UI
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         private bool EnsureConnected()
         {
             if (_service == null || !_service.IsConnected)
             {
-                // 检查是否有可用设备，提示用户连接
+                // Check for available devices, prompt user to connect
                 if (_cachedDevices != null && _cachedDevices.Count > 0)
                 {
-                    Log("请先点击「连接」按钮连接 Fastboot 设备", Color.Red);
+                    Log("Please click the \"Connect\" button to connect to the Fastboot device first", Color.Red);
                 }
                 else
                 {
-                    Log("未检测到 Fastboot 设备，请确保设备已进入 Fastboot 模式", Color.Red);
+                    Log("No Fastboot device detected, please ensure the device is in Fastboot mode", Color.Red);
                 }
                 return false;
             }
@@ -2124,35 +2129,35 @@ namespace LoveAlways.Fastboot.UI
         }
         
         /// <summary>
-        /// 确保设备已连接（异步版本，支持自动连接）
+        /// Ensure device is connected (async version, supports auto-connect)
         /// </summary>
         private async Task<bool> EnsureConnectedAsync()
         {
             if (_service != null && _service.IsConnected)
                 return true;
             
-            // 自动尝试连接
+            // Auto-connect attempt
             string selectedDevice = GetSelectedDevice();
             if (!string.IsNullOrEmpty(selectedDevice))
             {
-                Log("自动连接 Fastboot 设备...", Color.Blue);
+                Log("Auto-connecting to Fastboot device...", Color.Blue);
                 return await ConnectAsync();
             }
             
-            // 检查是否有可用设备
+            // Check for available devices
             if (_cachedDevices != null && _cachedDevices.Count > 0)
             {
-                Log("请先选择并连接 Fastboot 设备", Color.Red);
+                Log("Please select and connect to a Fastboot device first", Color.Red);
             }
             else
             {
-                Log("未检测到 Fastboot 设备，请确保设备已进入 Fastboot 模式", Color.Red);
+                Log("No Fastboot device detected, please ensure the device is in Fastboot mode", Color.Red);
             }
             return false;
         }
 
         /// <summary>
-        /// 启动操作计时器
+        /// Start operation timer
         /// </summary>
         private void StartOperationTimer(string operationName)
         {
@@ -2166,7 +2171,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 停止操作计时器
+        /// Stop operation timer
         /// </summary>
         private void StopOperationTimer()
         {
@@ -2175,7 +2180,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 更新时间标签
+        /// Update time label
         /// </summary>
         private void UpdateTimeLabel()
         {
@@ -2183,14 +2188,14 @@ namespace LoveAlways.Fastboot.UI
 
             var elapsed = _operationStopwatch.Elapsed;
             string timeText = elapsed.Hours > 0
-                ? $"时间：{elapsed:hh\\:mm\\:ss}"
-                : $"时间：{elapsed:mm\\:ss}";
+                ? $"Time: {elapsed:hh\\:mm\\:ss}"
+                : $"Time: {elapsed:mm\\:ss}";
             
             UpdateLabelSafe(_timeLabel, timeText);
         }
 
         /// <summary>
-        /// 更新速度标签
+        /// Update speed label
         /// </summary>
         private void UpdateSpeedLabel()
         {
@@ -2198,75 +2203,75 @@ namespace LoveAlways.Fastboot.UI
 
             string speedText;
             if (_currentSpeed >= 1024 * 1024)
-                speedText = $"速度：{_currentSpeed / (1024 * 1024):F1} MB/s";
+                speedText = $"Speed: {_currentSpeed / (1024 * 1024):F1} MB/s";
             else if (_currentSpeed >= 1024)
-                speedText = $"速度：{_currentSpeed / 1024:F1} KB/s";
+                speedText = $"Speed: {_currentSpeed / 1024:F1} KB/s";
             else
-                speedText = $"速度：{_currentSpeed:F0} B/s";
+                speedText = $"Speed: {_currentSpeed:F0} B/s";
             
             UpdateLabelSafe(_speedLabel, speedText);
         }
         
         /// <summary>
-        /// 更新速度标签 (使用格式化的速度字符串)
+        /// Update speed label (using formatted speed string)
         /// </summary>
         private void UpdateSpeedLabel(string formattedSpeed)
         {
             if (_speedLabel == null) return;
-            UpdateLabelSafe(_speedLabel, $"速度：{formattedSpeed}");
+            UpdateLabelSafe(_speedLabel, $"Speed: {formattedSpeed}");
         }
         
         /// <summary>
-        /// 刷写进度回调
+        /// Flash progress callback
         /// </summary>
         private void OnFlashProgressChanged(FlashProgress progress)
         {
             if (progress == null) return;
             
-            // 计算进度值
+            // Calculate progress value
             double subProgress = progress.Percent;
             double mainProgress = _flashTotalPartitions > 0 
                 ? (_flashCurrentPartitionIndex * 100.0 + progress.Percent) / _flashTotalPartitions 
                 : 0;
             
-            // 时间间隔检查
+            // Time interval check
             var now = DateTime.Now;
             bool timeElapsed = (now - _lastProgressUpdate).TotalMilliseconds >= ProgressUpdateIntervalMs;
             bool forceUpdate = progress.Percent >= 95;
             
-            // 无论如何都更新（保证流畅性）
+            // Update anyway (to ensure smoothness)
             if (!forceUpdate && !timeElapsed)
                 return;
             
             _lastProgressUpdate = now;
             
-            // 更新子进度条（当前分区进度）
+            // Update sub progress bar (current partition progress)
             _lastSubProgressValue = subProgress;
             UpdateSubProgressBar(subProgress);
             
-            // 更新总进度条（多分区刷写时）
+            // Update total progress bar (for multi-partition flashing)
             if (_flashTotalPartitions > 0)
             {
                 _lastMainProgressValue = mainProgress;
                 UpdateProgressBar(mainProgress);
             }
             
-            // 更新速度显示
+            // Update speed display
             if (progress.SpeedKBps > 0)
             {
                 UpdateSpeedLabel(progress.SpeedFormatted);
             }
             
-            // 实时更新时间
+            // Update time in real-time
             UpdateTimeLabel();
         }
         
         /// <summary>
-        /// 格式化速度显示
+        /// Format speed display
         /// </summary>
         private string FormatSpeed(double bytesPerSecond)
         {
-            if (bytesPerSecond <= 0) return "计算中...";
+            if (bytesPerSecond <= 0) return "Calculating...";
             
             string[] units = { "B/s", "KB/s", "MB/s", "GB/s" };
             double speed = bytesPerSecond;
@@ -2280,7 +2285,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 更新进度条 (百分比)
+        /// Update progress bar (percentage)
         /// </summary>
         private void UpdateProgressBar(double percent)
         {
@@ -2306,7 +2311,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 更新子进度条
+        /// Update sub progress bar
         /// </summary>
         private void UpdateSubProgressBar(double percent)
         {
@@ -2332,30 +2337,29 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 带速度计算的进度更新 (用于文件传输)
+        /// Progress update with speed calculation (for file transfer)
         /// </summary>
         private void UpdateProgressWithSpeed(long current, long total)
         {
-            // 计算进度
-            if (total > 0)
+            // Calculate progress            if (total > 0)
             {
                 double percent = 100.0 * current / total;
                 UpdateSubProgressBar(percent);
             }
 
-            // 计算速度
+            // Calculate speed
             long bytesDelta = current - _lastBytes;
             double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
             
-            if (timeDelta >= 0.2 && bytesDelta > 0) // 每200ms更新一次
+            if (timeDelta >= 0.2 && bytesDelta > 0) // Update every 200ms
             {
                 double instantSpeed = bytesDelta / timeDelta;
-                // 指数移动平均平滑速度
+                // Exponential moving average for smooth speed
                 _currentSpeed = (_currentSpeed > 0) ? (_currentSpeed * 0.6 + instantSpeed * 0.4) : instantSpeed;
                 _lastBytes = current;
                 _lastSpeedUpdate = DateTime.Now;
                 
-                // 更新速度和时间显示
+                // Update speed and time display
                 UpdateSpeedLabel();
                 UpdateTimeLabel();
             }
@@ -2410,35 +2414,35 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 刷写完成后执行附加操作（切换槽位、擦除谷歌锁等）
+        /// Execute additional operations after flashing (switch slot, erase Google Lock, etc.)
         /// </summary>
         private async Task ExecutePostFlashOperationsAsync()
         {
-            // 切换 A 槽位
+            // Switch to Slot A
             if (IsSwitchSlotEnabled())
             {
-                Log("正在切换到 A 槽位...", Color.Blue);
+                Log("Switching to Slot A...", Color.Blue);
                 bool success = await _service.SetActiveSlotAsync("a", _cts?.Token ?? CancellationToken.None);
-                Log(success ? "已切换到 A 槽位" : "切换槽位失败", success ? Color.Green : Color.Red);
+                Log(success ? "Successfully switched to Slot A" : "Failed to switch slot", success ? Color.Green : Color.Red);
             }
 
-            // 擦除谷歌锁 (FRP)
+            // Erase Google Lock (FRP)
             if (IsEraseGoogleLockEnabled())
             {
-                Log("正在擦除谷歌锁 (FRP)...", Color.Blue);
-                // 尝试擦除 frp 分区
+                Log("Erasing Google Lock (FRP)...", Color.Blue);
+                // Try to erase frp partition
                 bool success = await _service.ErasePartitionAsync("frp", _cts?.Token ?? CancellationToken.None);
                 if (!success)
                 {
-                    // 部分设备使用 config 或 persistent 分区
+                    // Some devices use config or persistent partitions
                     success = await _service.ErasePartitionAsync("config", _cts?.Token ?? CancellationToken.None);
                 }
-                Log(success ? "谷歌锁已擦除" : "擦除谷歌锁失败（分区可能不存在）", success ? Color.Green : Color.Orange);
+                Log(success ? "Google Lock erased" : "Failed to erase Google Lock (partitions might not exist)", success ? Color.Green : Color.Orange);
             }
         }
 
         /// <summary>
-        /// 取消当前操作
+        /// Cancel current operation
         /// </summary>
         public void CancelOperation()
         {
@@ -2449,50 +2453,50 @@ namespace LoveAlways.Fastboot.UI
                 _cts = null;
             }
             StopOperationTimer();
-            UpdateLabelSafe(_operationLabel, "当前操作：已取消");
+            UpdateLabelSafe(_operationLabel, "Operation: Cancelled");
         }
 
         /// <summary>
-        /// 安全重置 CancellationTokenSource（释放旧实例后创建新实例）
+        /// Safely reset CancellationTokenSource (release old instance and create new one)
         /// </summary>
         private void ResetCancellationToken()
         {
             if (_cts != null)
             {
                 try { _cts.Cancel(); } 
-                catch (Exception ex) { Debug.WriteLine($"[Fastboot] 取消令牌异常: {ex.Message}"); }
+                catch (Exception ex) { Debug.WriteLine($"[Fastboot] Cancel token exception: {ex.Message}"); }
                 try { _cts.Dispose(); } 
-                catch (Exception ex) { Debug.WriteLine($"[Fastboot] 释放令牌异常: {ex.Message}"); }
+                catch (Exception ex) { Debug.WriteLine($"[Fastboot] Dispose token exception: {ex.Message}"); }
             }
             _cts = new CancellationTokenSource();
         }
 
         #endregion
 
-        #region Bat 脚本解析
+        #region Bat Script Parsing
 
-        // 存储解析的刷机任务
+        // Store parsed flash tasks
         private List<BatScriptParser.FlashTask> _flashTasks;
         
         /// <summary>
-        /// 获取当前加载的刷机任务
+        /// Get currently loaded flash tasks
         /// </summary>
         public List<BatScriptParser.FlashTask> FlashTasks => _flashTasks;
 
         /// <summary>
-        /// 加载 bat/sh 刷机脚本
+        /// Load bat/sh flash script
         /// </summary>
         public bool LoadFlashScript(string scriptPath)
         {
             if (!File.Exists(scriptPath))
             {
-                Log($"脚本文件不存在: {scriptPath}", Color.Red);
+                Log($"Script file does not exist: {scriptPath}", Color.Red);
                 return false;
             }
 
             try
             {
-                Log($"正在解析脚本: {Path.GetFileName(scriptPath)}...", Color.Blue);
+                Log($"Parsing script: {Path.GetFileName(scriptPath)}...", Color.Blue);
 
                 string baseDir = Path.GetDirectoryName(scriptPath);
                 var parser = new BatScriptParser(baseDir, msg => _logDetail(msg));
@@ -2501,33 +2505,33 @@ namespace LoveAlways.Fastboot.UI
 
                 if (_flashTasks.Count == 0)
                 {
-                    Log("脚本中未找到有效的刷机命令", Color.Orange);
+                    Log("No valid flash commands found in script", Color.Orange);
                     return false;
                 }
 
-                // 统计信息
+                // Statistics
                 int flashCount = _flashTasks.Count(t => t.Operation == "flash");
                 int eraseCount = _flashTasks.Count(t => t.Operation == "erase");
                 int existCount = _flashTasks.Count(t => t.ImageExists);
                 long totalSize = _flashTasks.Where(t => t.ImageExists).Sum(t => t.FileSize);
 
-                Log($"解析完成: {flashCount} 个刷写, {eraseCount} 个擦除", Color.Green);
-                Log($"镜像文件: {existCount} 个存在, 总大小 {FormatSize(totalSize)}", Color.Blue);
+                Log($"Parsing complete: {flashCount} flashes, {eraseCount} erases", Color.Green);
+                Log($"Image files: {existCount} exist, total size {FormatSize(totalSize)}", Color.Blue);
 
-                // 更新分区列表显示
+                // Update partition list display
                 UpdatePartitionListFromScript();
 
                 return true;
             }
             catch (Exception ex)
             {
-                Log($"解析脚本失败: {ex.Message}", Color.Red);
+                Log($"Failed to parse script: {ex.Message}", Color.Red);
                 return false;
             }
         }
 
         /// <summary>
-        /// 从脚本任务更新分区列表
+        /// Update partition list from script tasks
         /// </summary>
         private void UpdatePartitionListFromScript()
         {
@@ -2555,28 +2559,28 @@ namespace LoveAlways.Fastboot.UI
 
                 foreach (var task in _flashTasks)
                 {
-                    // 根据操作类型设置不同显示
+                    // Set different display according to operation type
                     string operationText = task.Operation;
                     string sizeText = "-";
                     string filePathText = "";
 
                     if (task.Operation == "flash")
                     {
-                        operationText = task.ImageExists ? "写入" : "写入 (缺失)";
+                        operationText = task.ImageExists ? "Write" : "Write (Missing)";
                         sizeText = task.FileSizeFormatted;
                         filePathText = task.ImagePath;
                     }
                     else if (task.Operation == "erase")
                     {
-                        operationText = "擦除";
+                        operationText = "Erase";
                     }
                     else if (task.Operation == "set_active")
                     {
-                        operationText = "激活槽位";
+                        operationText = "Activate Slot";
                     }
                     else if (task.Operation == "reboot")
                     {
-                        operationText = "重启";
+                        operationText = "Reboot";
                     }
 
                     var item = new ListViewItem(new string[]
@@ -2589,7 +2593,7 @@ namespace LoveAlways.Fastboot.UI
 
                     item.Tag = task;
 
-                    // 根据状态设置颜色
+                    // Set color according to status
                     if (task.Operation == "flash" && !task.ImageExists)
                     {
                         item.ForeColor = Color.Red;
@@ -2603,7 +2607,7 @@ namespace LoveAlways.Fastboot.UI
                         item.ForeColor = Color.Gray;
                     }
 
-                    // 默认勾选所有 flash 和 erase 操作
+                    // Check all flash and erase operations by default
                     if ((task.Operation == "flash" && task.ImageExists) || task.Operation == "erase")
                     {
                         item.Checked = true;
@@ -2616,22 +2620,22 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 执行加载的刷机脚本
+        /// Execute loaded flash script
         /// </summary>
-        /// <param name="keepData">是否保留数据（跳过 userdata 刷写）</param>
-        /// <param name="lockBl">是否在刷机后锁定BL</param>
+        /// <param name="keepData">Whether to keep data (skip userdata flash)</param>
+        /// <param name="lockBl">Whether to lock BL after flashing</param>
         public async Task<bool> ExecuteFlashScriptAsync(bool keepData = false, bool lockBl = false)
         {
             if (_flashTasks == null || _flashTasks.Count == 0)
             {
-                Log("请先加载刷机脚本", Color.Orange);
+                Log("Please load a flash script first", Color.Orange);
                 return false;
             }
 
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
             if (!await EnsureConnectedAsync()) return false;
 
-            // 获取选中的任务
+            // Get selected tasks
             var selectedTasks = new List<BatScriptParser.FlashTask>();
             
             try
@@ -2648,14 +2652,14 @@ namespace LoveAlways.Fastboot.UI
 
             if (selectedTasks.Count == 0)
             {
-                Log("请选择要执行的刷机任务", Color.Orange);
+                Log("Please select flash tasks to execute", Color.Orange);
                 return false;
             }
 
-            // 根据选项过滤任务
+            // Filter tasks based on options
             if (keepData)
             {
-                // 保留数据：跳过 userdata 相关分区
+                // Keep data: skip userdata related partitions
                 int beforeCount = selectedTasks.Count;
                 selectedTasks = selectedTasks.Where(t => 
                     !t.PartitionName.Equals("userdata", StringComparison.OrdinalIgnoreCase) &&
@@ -2665,7 +2669,7 @@ namespace LoveAlways.Fastboot.UI
                 
                 if (selectedTasks.Count < beforeCount)
                 {
-                    Log("保留数据模式：跳过 userdata/metadata 分区", Color.Blue);
+                    Log("Keep Data mode: skipping userdata/metadata partitions", Color.Blue);
                 }
             }
 
@@ -2674,29 +2678,29 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("执行刷机脚本");
+                StartOperationTimer("Execute Flash Script");
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
-                UpdateLabelSafe(_speedLabel, "速度：准备中...");
+                UpdateLabelSafe(_speedLabel, "Speed: Preparing...");
 
                 int total = selectedTasks.Count;
                 int success = 0;
                 int failed = 0;
 
-                Log($"开始执行 {total} 个刷机任务...", Color.Blue);
-                if (keepData) Log("模式: 保留数据", Color.Blue);
-                if (lockBl) Log("模式: 刷机后锁定BL", Color.Blue);
+                Log($"Starting to execute {total} flash tasks...", Color.Blue);
+                if (keepData) Log("Mode: Keep Data", Color.Blue);
+                if (lockBl) Log("Mode: Lock BL after flashing", Color.Blue);
 
                 for (int i = 0; i < total; i++)
                 {
                     _cts.Token.ThrowIfCancellationRequested();
 
                     var task = selectedTasks[i];
-                    // 总进度：基于任务数
+                    // Total progress: based on task count
                     UpdateProgressBar((i * 100.0) / total);
-                    // 子进度：当前任务开始
+                    // Sub-progress: current task started
                     UpdateSubProgressBar(0);
-                    UpdateLabelSafe(_operationLabel, $"当前操作：{task.Operation} {task.PartitionName} ({i + 1}/{total})");
+                    UpdateLabelSafe(_operationLabel, $"Operation: {task.Operation} {task.PartitionName} ({i + 1}/{total})");
 
                     bool taskSuccess = false;
 
@@ -2710,16 +2714,16 @@ namespace LoveAlways.Fastboot.UI
                             }
                             else
                             {
-                                Log($"跳过 {task.PartitionName}: 镜像文件不存在", Color.Orange);
+                                Log($"Skipping {task.PartitionName}: image file does not exist", Color.Orange);
                             }
                             break;
 
                         case "erase":
-                            // 保留数据模式下跳过 userdata 擦除
+                            // Skip userdata erase in Keep Data mode
                             if (keepData && (task.PartitionName.Equals("userdata", StringComparison.OrdinalIgnoreCase) ||
                                              task.PartitionName.Equals("metadata", StringComparison.OrdinalIgnoreCase)))
                             {
-                                Log($"跳过擦除 {task.PartitionName} (保留数据)", Color.Gray);
+                                Log($"Skipping erase of {task.PartitionName} (Keep Data)", Color.Gray);
                                 taskSuccess = true;
                             }
                             else
@@ -2734,13 +2738,13 @@ namespace LoveAlways.Fastboot.UI
                             break;
 
                         case "reboot":
-                            // 重启操作放在最后执行
+                            // Reboot operation executed last
                             if (i == total - 1)
                             {
-                                // 如果需要锁定BL，在重启前执行
+                                // If need to lock BL, execute before reboot
                                 if (lockBl)
                                 {
-                                    Log("正在锁定 Bootloader...", Color.Blue);
+                                    Log("Locking Bootloader...", Color.Blue);
                                     await _service.LockBootloaderAsync("flashing lock", _cts.Token);
                                 }
 
@@ -2760,13 +2764,13 @@ namespace LoveAlways.Fastboot.UI
                             }
                             else
                             {
-                                Log("跳过中间的重启命令", Color.Gray);
+                                Log("Skipping intermediate reboot command", Color.Gray);
                                 taskSuccess = true;
                             }
                             break;
                     }
 
-                    // 子进度：当前任务完成
+                    // Sub-progress: current task complete
                     UpdateSubProgressBar(100);
                     
                     if (taskSuccess)
@@ -2779,28 +2783,28 @@ namespace LoveAlways.Fastboot.UI
                 UpdateSubProgressBar(100);
                 StopOperationTimer();
 
-                // 执行刷写后附加操作（切换槽位、擦除谷歌锁等）
+                // Execute post-flash additional operations (switch slot, erase Google lock, etc.)
                 if (success > 0)
                 {
                     await ExecutePostFlashOperationsAsync();
                 }
 
-                // 如果没有重启命令但需要锁定BL，在这里执行
+                // If no reboot command but BL locking is needed, execute here
                 bool hasReboot = selectedTasks.Any(t => t.Operation == "reboot");
                 if (lockBl && !hasReboot)
                 {
-                    Log("正在锁定 Bootloader...", Color.Blue);
+                    Log("Locking Bootloader...", Color.Blue);
                     await _service.LockBootloaderAsync("flashing lock", _cts.Token);
                 }
 
-                Log($"刷机完成: {success} 成功, {failed} 失败", 
+                Log($"Flashing complete: {success} successful, {failed} failed", 
                     failed == 0 ? Color.Green : Color.Orange);
 
                 return failed == 0;
             }
             catch (OperationCanceledException)
             {
-                Log("刷机操作已取消", Color.Orange);
+                Log("Flashing operation cancelled", Color.Orange);
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -2808,7 +2812,7 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                Log($"刷机失败: {ex.Message}", Color.Red);
+                Log($"Flashing failed: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -2817,12 +2821,12 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
         /// <summary>
-        /// 扫描目录中的刷机脚本
+        /// Scan flash scripts in directory
         /// </summary>
         public List<string> ScanFlashScripts(string directory)
         {
@@ -2830,7 +2834,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 格式化文件大小
+        /// Format file size
         /// </summary>
         private string FormatSize(long size)
         {
@@ -2845,22 +2849,21 @@ namespace LoveAlways.Fastboot.UI
 
         #endregion
 
-        #region Payload 解析
-
+        #region Payload Parsing
         /// <summary>
-        /// 从 URL 加载远程 Payload (云端解析)
+        /// Load remote Payload from URL (cloud parsing)
         /// </summary>
         public async Task<bool> LoadPayloadFromUrlAsync(string url)
         {
             if (string.IsNullOrEmpty(url))
             {
-                Log("请输入 URL", Color.Orange);
+                Log("Please enter a URL", Color.Orange);
                 return false;
             }
 
             if (IsBusy)
             {
-                Log("操作进行中", Color.Orange);
+                Log("Operation in progress", Color.Orange);
                 return false;
             }
 
@@ -2869,14 +2872,14 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("解析云端 Payload");
+                StartOperationTimer("Parse Cloud Payload");
                 UpdateProgressBar(0);
-                UpdateLabelSafe(_operationLabel, "当前操作：解析云端 Payload");
-                UpdateLabelSafe(_speedLabel, "速度：连接中...");
+                UpdateLabelSafe(_operationLabel, "Operation: Parsing Cloud Payload");
+                UpdateLabelSafe(_speedLabel, "Speed: Connecting...");
 
-                Log($"正在解析云端 Payload...", Color.Blue);
+                Log($"Parsing cloud Payload...", Color.Blue);
 
-                // 创建或重用 RemotePayloadService
+                // Create or reuse RemotePayloadService
                 if (_remotePayloadService == null)
                 {
                     _remotePayloadService = new RemotePayloadService(
@@ -2888,7 +2891,7 @@ namespace LoveAlways.Fastboot.UI
                     _remotePayloadService.ExtractProgressChanged += (s, e) =>
                     {
                         UpdateSubProgressBar(e.Percent);
-                        // 更新速度显示
+                        // Update speed display
                         if (e.SpeedBytesPerSecond > 0)
                         {
                             UpdateSpeedLabel(e.SpeedFormatted);
@@ -2896,23 +2899,23 @@ namespace LoveAlways.Fastboot.UI
                     };
                 }
 
-                // 先获取真实 URL (处理重定向)
+                // Get real URL first (handle redirects)
                 UpdateProgressBar(10);
                 var (realUrl, expiresTime) = await _remotePayloadService.GetRedirectUrlAsync(url, _cts.Token);
                 
                 if (string.IsNullOrEmpty(realUrl))
                 {
-                    Log("无法获取下载链接", Color.Red);
+                    Log("Unable to get download link", Color.Red);
                     UpdateProgressBar(0);
                     return false;
                 }
 
                 if (realUrl != url)
                 {
-                    Log("已获取真实下载链接", Color.Green);
+                    Log("Real download link retrieved", Color.Green);
                     if (expiresTime.HasValue)
                     {
-                        Log($"链接过期时间: {expiresTime.Value:yyyy-MM-dd HH:mm:ss}", Color.Blue);
+                        Log($"Link expiration time: {expiresTime.Value:yyyy-MM-dd HH:mm:ss}", Color.Blue);
                     }
                 }
 
@@ -2924,17 +2927,17 @@ namespace LoveAlways.Fastboot.UI
                     UpdateProgressBar(70);
 
                     var summary = _remotePayloadService.GetSummary();
-                    Log($"云端 Payload 解析成功: {summary.PartitionCount} 个分区", Color.Green);
-                    Log($"文件大小: {summary.TotalSizeFormatted}", Color.Blue);
+                    Log($"Cloud Payload parsed successfully: {summary.PartitionCount} partitions", Color.Green);
+                    Log($"File size: {summary.TotalSizeFormatted}", Color.Blue);
 
-                    // 更新分区列表显示
+                    // Update partition list display
                     UpdatePartitionListFromRemotePayload();
 
                     UpdateProgressBar(100);
                 }
                 else
                 {
-                    Log("云端 Payload 解析失败", Color.Red);
+                    Log("Cloud Payload parsing failed", Color.Red);
                     UpdateProgressBar(0);
                 }
 
@@ -2943,8 +2946,8 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                Log($"云端 Payload 加载失败: {ex.Message}", Color.Red);
-                _logDetail($"云端 Payload 加载错误: {ex}");
+                Log($"Cloud Payload load failed: {ex.Message}", Color.Red);
+                _logDetail($"Cloud Payload load error: {ex}");
                 UpdateProgressBar(0);
                 StopOperationTimer();
                 return false;
@@ -2952,12 +2955,12 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
         /// <summary>
-        /// 从远程 Payload 更新分区列表
+        /// Update partition list from remote Payload
         /// </summary>
         private void UpdatePartitionListFromRemotePayload()
         {
@@ -2988,15 +2991,15 @@ namespace LoveAlways.Fastboot.UI
                     var item = new ListViewItem(new string[]
                     {
                         partition.Name,
-                        "云端提取",  // 操作列
+                        "Cloud Extraction",  // Operation column
                         partition.SizeFormatted,
-                        $"{partition.Operations.Count} ops"  // 操作数
+                        $"{partition.Operations.Count} ops"  // Op count
                     });
 
                     item.Tag = partition;
-                    item.Checked = true;  // 默认勾选
+                    item.Checked = true;  // Check by default
 
-                    // 标记常用分区
+                    // Mark common partitions
                     string name = partition.Name.ToLowerInvariant();
                     if (name.Contains("system") || name.Contains("vendor") || name.Contains("product"))
                     {
@@ -3014,29 +3017,29 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 从云端提取选中的分区
+        /// Extract selected partitions from cloud
         /// </summary>
         public async Task<bool> ExtractSelectedRemotePartitionsAsync(string outputDir)
         {
             if (_remotePayloadService == null || !_remotePayloadService.IsLoaded)
             {
-                Log("请先加载云端 Payload", Color.Orange);
+                Log("Please load cloud Payload first", Color.Orange);
                 return false;
             }
 
             if (string.IsNullOrEmpty(outputDir))
             {
-                Log("请指定输出目录", Color.Orange);
+                Log("Please specify an output directory", Color.Orange);
                 return false;
             }
 
             if (IsBusy)
             {
-                Log("操作进行中", Color.Orange);
+                Log("Operation in progress", Color.Orange);
                 return false;
             }
 
-            // 获取选中的分区名称
+            // Get selected partition names
             var selectedNames = new List<string>();
             try
             {
@@ -3052,7 +3055,7 @@ namespace LoveAlways.Fastboot.UI
 
             if (selectedNames.Count == 0)
             {
-                Log("请选择要提取的分区", Color.Orange);
+                Log("Please select partitions to extract", Color.Orange);
                 return false;
             }
 
@@ -3061,26 +3064,26 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("云端提取分区");
+                StartOperationTimer("Cloud Extract Partition");
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
-                UpdateLabelSafe(_speedLabel, "速度：准备中...");
+                UpdateLabelSafe(_speedLabel, "Speed: Preparing...");
 
                 if (!Directory.Exists(outputDir))
                     Directory.CreateDirectory(outputDir);
 
-                Log($"开始从云端提取 {selectedNames.Count} 个分区到: {outputDir}", Color.Blue);
+                Log($"Starting to extract {selectedNames.Count} partitions from cloud to: {outputDir}", Color.Blue);
 
                 int success = 0;
                 int total = selectedNames.Count;
                 int currentIndex = 0;
 
-                // 注册进度事件处理器
+                // Register progress event handler
                 EventHandler<RemoteExtractProgress> progressHandler = (s, e) =>
                 {
-                    // 子进度条：当前分区的提取进度
+                    // Sub-progress bar: current partition extraction progress
                     UpdateSubProgressBar(e.Percent);
-                    // 更新速度显示
+                    // Update speed display
                     if (e.SpeedBytesPerSecond > 0)
                     {
                         UpdateSpeedLabel(e.SpeedFormatted);
@@ -3099,23 +3102,23 @@ namespace LoveAlways.Fastboot.UI
                         string name = selectedNames[i];
                         string outputPath = Path.Combine(outputDir, $"{name}.img");
 
-                        UpdateLabelSafe(_operationLabel, $"当前操作：云端提取 {name} ({i + 1}/{total})");
-                        // 总进度：基于已完成的分区数
+                        UpdateLabelSafe(_operationLabel, $"Operation: Cloud Extracting {name} ({i + 1}/{total})");
+                        // Total progress: based on completed partitions
                         UpdateProgressBar((i * 100.0) / total);
-                        // 子进度：开始提取
+                        // Sub-progress: start extraction
                         UpdateSubProgressBar(0);
 
                         if (await _remotePayloadService.ExtractPartitionAsync(name, outputPath, _cts.Token))
                         {
                             success++;
-                            Log($"提取成功: {name}.img", Color.Green);
+                            Log($"Extraction successful: {name}.img", Color.Green);
                         }
                         else
                         {
-                            Log($"提取失败: {name}", Color.Red);
+                            Log($"Extraction failed: {name}", Color.Red);
                         }
                         
-                        // 子进度：当前分区提取完成
+                        // Sub-progress: current partition extraction complete
                         UpdateSubProgressBar(100);
                     }
                 }
@@ -3128,13 +3131,13 @@ namespace LoveAlways.Fastboot.UI
                 UpdateSubProgressBar(100);
                 StopOperationTimer();
 
-                Log($"云端提取完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
+                Log($"Cloud extraction complete: {success}/{total} successful", success == total ? Color.Green : Color.Orange);
 
                 return success == total;
             }
             catch (OperationCanceledException)
             {
-                Log("提取操作已取消", Color.Orange);
+                Log("Extraction operation cancelled", Color.Orange);
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -3142,7 +3145,7 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                Log($"提取失败: {ex.Message}", Color.Red);
+                Log($"Extraction failed: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -3151,30 +3154,30 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
         /// <summary>
-        /// 加载 Payload 文件 (支持 .bin 和 .zip)
+        /// Load Payload file (supports .bin and .zip)
         /// </summary>
         public async Task<bool> LoadPayloadAsync(string filePath)
         {
             if (string.IsNullOrEmpty(filePath))
             {
-                Log("请选择 Payload 文件", Color.Orange);
+                Log("Please select a Payload file", Color.Orange);
                 return false;
             }
 
             if (!File.Exists(filePath))
             {
-                Log($"文件不存在: {filePath}", Color.Red);
+                Log($"File does not exist: {filePath}", Color.Red);
                 return false;
             }
 
             if (IsBusy)
             {
-                Log("操作进行中", Color.Orange);
+                Log("Operation in progress", Color.Orange);
                 return false;
             }
 
@@ -3183,14 +3186,14 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("解析 Payload");
+                StartOperationTimer("Parse Payload");
                 UpdateProgressBar(0);
-                UpdateLabelSafe(_operationLabel, "当前操作：解析 Payload");
-                UpdateLabelSafe(_speedLabel, "速度：解析中...");
+                UpdateLabelSafe(_operationLabel, "Operation: Parsing Payload");
+                UpdateLabelSafe(_speedLabel, "Speed: Parsing...");
 
-                Log($"正在加载 Payload: {Path.GetFileName(filePath)}...", Color.Blue);
+                Log($"Loading Payload: {Path.GetFileName(filePath)}...", Color.Blue);
 
-                // 创建或重用 PayloadService
+                // Create or reuse PayloadService
                 if (_payloadService == null)
                 {
                     _payloadService = new PayloadService(
@@ -3214,13 +3217,13 @@ namespace LoveAlways.Fastboot.UI
                     UpdateProgressBar(70);
 
                     var summary = _payloadService.GetSummary();
-                    Log($"Payload 解析成功: {summary.PartitionCount} 个分区", Color.Green);
-                    Log($"总大小: {summary.TotalSizeFormatted}, 压缩后: {summary.TotalCompressedSizeFormatted}", Color.Blue);
+                    Log($"Payload parsed successfully: {summary.PartitionCount} partitions", Color.Green);
+                    Log($"Total size: {summary.TotalSizeFormatted}, Compressed: {summary.TotalCompressedSizeFormatted}", Color.Blue);
 
-                    // 更新分区列表显示
+                    // Update partition list display
                     UpdatePartitionListFromPayload();
 
-                    // 尝试从 ZIP 或同目录下解析固件信息
+                    // Try to parse firmware info from ZIP or same directory
                     await ParseFirmwareInfoFromPayloadAsync(filePath);
 
                     UpdateProgressBar(100);
@@ -3228,7 +3231,7 @@ namespace LoveAlways.Fastboot.UI
                 }
                 else
                 {
-                    Log("Payload 解析失败", Color.Red);
+                    Log("Payload parsing failed", Color.Red);
                     UpdateProgressBar(0);
                 }
 
@@ -3237,8 +3240,8 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                Log($"Payload 加载失败: {ex.Message}", Color.Red);
-                _logDetail($"Payload 加载错误: {ex}");
+                Log($"Payload load failed: {ex.Message}", Color.Red);
+                _logDetail($"Payload load error: {ex}");
                 UpdateProgressBar(0);
                 StopOperationTimer();
                 return false;
@@ -3246,12 +3249,12 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
         /// <summary>
-        /// 从 Payload 更新分区列表
+        /// Update partition list from Payload
         /// </summary>
         private void UpdatePartitionListFromPayload()
         {
@@ -3282,15 +3285,15 @@ namespace LoveAlways.Fastboot.UI
                     var item = new ListViewItem(new string[]
                     {
                         partition.Name,
-                        "提取",  // 操作列
+                        "Extract",  // Operation column
                         partition.SizeFormatted,
-                        partition.CompressedSizeFormatted  // 压缩大小
+                        partition.CompressedSizeFormatted  // Compressed size
                     });
 
                     item.Tag = partition;
-                    item.Checked = true;  // 默认勾选
+                    item.Checked = true;  // Check by default
 
-                    // 标记常用分区
+                    // Mark common partitions
                     string name = partition.Name.ToLowerInvariant();
                     if (name.Contains("system") || name.Contains("vendor") || name.Contains("product"))
                     {
@@ -3308,29 +3311,29 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 提取选中的 Payload 分区
+        /// Extract selected Payload partitions
         /// </summary>
         public async Task<bool> ExtractSelectedPayloadPartitionsAsync(string outputDir)
         {
             if (_payloadService == null || !_payloadService.IsLoaded)
             {
-                Log("请先加载 Payload 文件", Color.Orange);
+                Log("Please load Payload file first", Color.Orange);
                 return false;
             }
 
             if (string.IsNullOrEmpty(outputDir))
             {
-                Log("请指定输出目录", Color.Orange);
+                Log("Please specify an output directory", Color.Orange);
                 return false;
             }
 
             if (IsBusy)
             {
-                Log("操作进行中", Color.Orange);
+                Log("Operation in progress", Color.Orange);
                 return false;
             }
 
-            // 获取选中的分区名称
+            // Get selected partition names
             var selectedNames = new List<string>();
             try
             {
@@ -3346,7 +3349,7 @@ namespace LoveAlways.Fastboot.UI
 
             if (selectedNames.Count == 0)
             {
-                Log("请选择要提取的分区", Color.Orange);
+                Log("Please select partitions to extract", Color.Orange);
                 return false;
             }
 
@@ -3355,12 +3358,12 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("提取 Payload 分区");
+                StartOperationTimer("Extract Payload Partitions");
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
-                UpdateLabelSafe(_speedLabel, "速度：准备中...");
+                UpdateLabelSafe(_speedLabel, "Speed: Preparing...");
 
-                Log($"开始提取 {selectedNames.Count} 个分区到: {outputDir}", Color.Blue);
+                Log($"Starting to extract {selectedNames.Count} partitions to: {outputDir}", Color.Blue);
 
                 int success = 0;
                 int total = selectedNames.Count;
@@ -3372,23 +3375,23 @@ namespace LoveAlways.Fastboot.UI
                     string name = selectedNames[i];
                     string outputPath = Path.Combine(outputDir, $"{name}.img");
 
-                    UpdateLabelSafe(_operationLabel, $"当前操作：提取 {name} ({i + 1}/{total})");
-                    // 总进度：基于已完成的分区数
+                    UpdateLabelSafe(_operationLabel, $"Operation: Extracting {name} ({i + 1}/{total})");
+                    // Total progress: based on completed partitions
                     UpdateProgressBar((i * 100.0) / total);
-                    // 子进度：开始提取
+                    // Sub-progress: start extraction
                     UpdateSubProgressBar(0);
 
                     if (await _payloadService.ExtractPartitionAsync(name, outputPath, _cts.Token))
                     {
                         success++;
-                        Log($"提取成功: {name}.img", Color.Green);
+                        Log($"Extraction successful: {name}.img", Color.Green);
                     }
                     else
                     {
-                        Log($"提取失败: {name}", Color.Red);
+                        Log($"Extraction failed: {name}", Color.Red);
                     }
                     
-                    // 子进度：当前分区提取完成
+                    // Sub-progress: current partition extraction complete
                     UpdateSubProgressBar(100);
                 }
 
@@ -3396,20 +3399,20 @@ namespace LoveAlways.Fastboot.UI
                 UpdateSubProgressBar(100);
                 StopOperationTimer();
 
-                Log($"提取完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
+                Log($"Extraction complete: {success}/{total} successful", success == total ? Color.Green : Color.Orange);
 
                 return success == total;
             }
             catch (OperationCanceledException)
             {
-                Log("提取操作已取消", Color.Orange);
+                Log("Extraction operation cancelled", Color.Orange);
                 UpdateProgressBar(0);
                 StopOperationTimer();
                 return false;
             }
             catch (Exception ex)
             {
-                Log($"提取失败: {ex.Message}", Color.Red);
+                Log($"Extraction failed: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
                 StopOperationTimer();
                 return false;
@@ -3417,25 +3420,25 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
         /// <summary>
-        /// 提取 Payload 分区并直接刷写到设备
+        /// Extract Payload partition and flash directly to device
         /// </summary>
         public async Task<bool> FlashFromPayloadAsync()
         {
             if (_payloadService == null || !_payloadService.IsLoaded)
             {
-                Log("请先加载 Payload 文件", Color.Orange);
+                Log("Please load Payload file first", Color.Orange);
                 return false;
             }
 
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
             if (!await EnsureConnectedAsync()) return false;
 
-            // 获取选中的分区
+            // Get selected partitions
             var selectedPartitions = new List<PayloadPartition>();
             try
             {
@@ -3451,7 +3454,7 @@ namespace LoveAlways.Fastboot.UI
 
             if (selectedPartitions.Count == 0)
             {
-                Log("请选择要刷写的分区", Color.Orange);
+                Log("Please select partitions to flash", Color.Orange);
                 return false;
             }
 
@@ -3460,12 +3463,12 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("Payload 刷写");
+                StartOperationTimer("Payload Flash");
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
-                UpdateLabelSafe(_speedLabel, "速度：准备中...");
+                UpdateLabelSafe(_speedLabel, "Speed: Preparing...");
 
-                Log($"开始从 Payload 刷写 {selectedPartitions.Count} 个分区...", Color.Blue);
+                Log($"Starting to flash {selectedPartitions.Count} partitions from Payload...", Color.Blue);
 
                 int success = 0;
                 int total = selectedPartitions.Count;
@@ -3481,36 +3484,36 @@ namespace LoveAlways.Fastboot.UI
                         var partition = selectedPartitions[i];
                         string tempPath = Path.Combine(tempDir, $"{partition.Name}.img");
 
-                        UpdateLabelSafe(_operationLabel, $"当前操作：提取+刷写 {partition.Name} ({i + 1}/{total})");
-                        // 总进度：基于已完成的分区数
+                        UpdateLabelSafe(_operationLabel, $"Operation: Extracting+Flashing {partition.Name} ({i + 1}/{total})");
+                        // Total progress: based on completed partitions
                         UpdateProgressBar((i * 100.0) / total);
-                        // 子进度：开始提取
+                        // Sub-progress: start extraction
                         UpdateSubProgressBar(0);
 
-                        // 1. 提取分区
-                        Log($"提取 {partition.Name}...", Color.Blue);
-                        // 子进度：提取阶段 (0-50%)
+                        // 1. Extract partition
+                        Log($"Extracting {partition.Name}...", Color.Blue);
+                        // Sub-progress: extraction phase (0-50%)
                         UpdateSubProgressBar(10);
                         if (!await _payloadService.ExtractPartitionAsync(partition.Name, tempPath, _cts.Token))
                         {
-                            Log($"提取 {partition.Name} 失败，跳过刷写", Color.Red);
+                            Log($"Failed to extract {partition.Name}, skipping flash", Color.Red);
                             continue;
                         }
                         
-                        // 子进度：提取完成 (50%)
+                        // Sub-progress: extraction complete (50%)
                         UpdateSubProgressBar(50);
 
-                        // 2. 刷写分区
-                        Log($"刷写 {partition.Name}...", Color.Blue);
+                        // 2. Flash partition
+                        Log($"Flashing {partition.Name}...", Color.Blue);
                         var flashStart = DateTime.Now;
                         var fileSize = new FileInfo(tempPath).Length;
                         
                         if (await _service.FlashPartitionAsync(partition.Name, tempPath, false, _cts.Token))
                         {
                             success++;
-                            Log($"刷写成功: {partition.Name}", Color.Green);
+                            Log($"Flash successful: {partition.Name}", Color.Green);
                             
-                            // 计算并显示刷写速度
+                            // Calculate and display speed
                             var elapsed = (DateTime.Now - flashStart).TotalSeconds;
                             if (elapsed > 0)
                             {
@@ -3520,19 +3523,19 @@ namespace LoveAlways.Fastboot.UI
                         }
                         else
                         {
-                            Log($"刷写失败: {partition.Name}", Color.Red);
+                            Log($"Flash failed: {partition.Name}", Color.Red);
                         }
                         
-                        // 子进度：刷写完成 (100%)
+                        // Sub-progress: flash complete (100%)
                         UpdateSubProgressBar(100);
 
-                        // 3. 删除临时文件
+                        // 3. Delete temporary file
                         try { File.Delete(tempPath); } catch { }
                     }
                 }
                 finally
                 {
-                    // 清理临时目录
+                    // Clean up temporary directory
                     try { Directory.Delete(tempDir, true); } catch { }
                 }
 
@@ -3540,15 +3543,15 @@ namespace LoveAlways.Fastboot.UI
                 UpdateSubProgressBar(100);
                 StopOperationTimer();
 
-                Log($"Payload 刷写完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
+                Log($"Payload flash complete: {success}/{total} successful", success == total ? Color.Green : Color.Orange);
 
-                // 执行刷写后附加操作（切换槽位、擦除谷歌锁等）
+                // Execute post-flash operations (switch slots, erase Google lock, etc.)
                 if (success > 0)
                 {
                     await ExecutePostFlashOperationsAsync();
                 }
 
-                // 自动重启
+                // Auto reboot
                 if (IsAutoRebootEnabled() && success > 0)
                 {
                     await _service.RebootAsync(_cts.Token);
@@ -3558,7 +3561,7 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (OperationCanceledException)
             {
-                Log("刷写操作已取消", Color.Orange);
+                Log("Flash operation cancelled", Color.Orange);
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -3566,7 +3569,7 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                Log($"刷写失败: {ex.Message}", Color.Red);
+                Log($"Flash failed: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -3575,25 +3578,25 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
         /// <summary>
-        /// 从云端 Payload 直接刷写分区到设备
+        /// Extract and flash partitions directly from cloud Payload to device
         /// </summary>
         public async Task<bool> FlashFromRemotePayloadAsync()
         {
             if (_remotePayloadService == null || !_remotePayloadService.IsLoaded)
             {
-                Log("请先解析云端 Payload", Color.Orange);
+                Log("Please parse cloud Payload first", Color.Orange);
                 return false;
             }
 
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
             if (!await EnsureConnectedAsync()) return false;
 
-            // 获取选中的分区
+            // Get selected partitions
             var selectedPartitions = new List<RemotePayloadPartition>();
             try
             {
@@ -3609,7 +3612,7 @@ namespace LoveAlways.Fastboot.UI
 
             if (selectedPartitions.Count == 0)
             {
-                Log("请选择要刷写的分区", Color.Orange);
+                Log("Please select partitions to flash", Color.Orange);
                 return false;
             }
 
@@ -3618,33 +3621,33 @@ namespace LoveAlways.Fastboot.UI
                 IsBusy = true;
                 ResetCancellationToken();
 
-                StartOperationTimer("云端 Payload 刷写");
+                StartOperationTimer("Cloud Payload Flash");
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
-                UpdateLabelSafe(_speedLabel, "速度：准备中...");
+                UpdateLabelSafe(_speedLabel, "Speed: Preparing...");
 
-                Log($"开始从云端刷写 {selectedPartitions.Count} 个分区...", Color.Blue);
+                Log($"Starting to flash {selectedPartitions.Count} partitions from cloud...", Color.Blue);
 
                 int success = 0;
                 int total = selectedPartitions.Count;
 
-                // 注册流式刷写进度事件
+                // Register stream flash progress event
                 EventHandler<RemotePayloadService.StreamFlashProgressEventArgs> progressHandler = (s, e) =>
                 {
-                    // 总进度：基于已完成的分区数 + 当前分区的进度
+                    // Total progress: based on completed partitions + current partition progress
                     double overallPercent = ((success * 100.0) + e.Percent) / total;
                     UpdateProgressBar(overallPercent);
-                    // 子进度：当前分区的操作进度
+                    // Sub-progress: current partition operation progress
                     UpdateSubProgressBar(e.Percent);
                     
-                    // 根据阶段显示不同的速度
+                    // Display different speed according to phase
                     if (e.Phase == RemotePayloadService.StreamFlashPhase.Downloading)
                     {
-                        UpdateSpeedLabel($"{e.DownloadSpeedFormatted} (下载)");
+                        UpdateSpeedLabel($"{e.DownloadSpeedFormatted} (Download)");
                     }
                     else if (e.Phase == RemotePayloadService.StreamFlashPhase.Flashing)
                     {
-                        UpdateSpeedLabel($"{e.FlashSpeedFormatted} (刷写)");
+                        UpdateSpeedLabel($"{e.FlashSpeedFormatted} (Flash)");
                     }
                     else if (e.Phase == RemotePayloadService.StreamFlashPhase.Completed && e.FlashSpeedBytesPerSecond > 0)
                     {
@@ -3662,14 +3665,14 @@ namespace LoveAlways.Fastboot.UI
 
                         var partition = selectedPartitions[i];
                         
-                        UpdateLabelSafe(_operationLabel, $"当前操作：下载+刷写 {partition.Name} ({i + 1}/{total})");
+                        UpdateLabelSafe(_operationLabel, $"Operation: Downloading+Flashing {partition.Name} ({i + 1}/{total})");
 
-                        // 使用流式刷写
+                        // Use stream flash
                         bool flashResult = await _remotePayloadService.ExtractAndFlashPartitionAsync(
                             partition.Name,
                             async (tempPath) =>
                             {
-                                // 刷写回调 - 测量 Fastboot 通讯速度
+                                // Flash callback - measurement of Fastboot communication speed
                                 var flashStartTime = DateTime.Now;
                                 var fileInfo = new FileInfo(tempPath);
                                 long fileSize = fileInfo.Length;
@@ -3687,11 +3690,11 @@ namespace LoveAlways.Fastboot.UI
                         if (flashResult)
                         {
                             success++;
-                            Log($"刷写成功: {partition.Name}", Color.Green);
+                            Log($"Flash successful: {partition.Name}", Color.Green);
                         }
                         else
                         {
-                            Log($"刷写失败: {partition.Name}", Color.Red);
+                            Log($"Flash failed: {partition.Name}", Color.Red);
                         }
                     }
                 }
@@ -3705,18 +3708,18 @@ namespace LoveAlways.Fastboot.UI
 
                 if (success == total)
                 {
-                    Log($"✓ 全部 {total} 个分区刷写成功", Color.Green);
+                    Log($"✓ All {total} partitions flashed successfully", Color.Green);
                 }
                 else
                 {
-                    Log($"刷写完成: {success}/{total} 成功", success > 0 ? Color.Orange : Color.Red);
+                    Log($"Flash complete: {success}/{total} successful", success > 0 ? Color.Orange : Color.Red);
                 }
 
                 return success == total;
             }
             catch (OperationCanceledException)
             {
-                Log("刷写操作已取消", Color.Orange);
+                Log("Flash operation cancelled", Color.Orange);
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -3724,7 +3727,7 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                Log($"刷写失败: {ex.Message}", Color.Red);
+                Log($"Flash failed: {ex.Message}", Color.Red);
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -3733,52 +3736,52 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
             }
         }
 
         /// <summary>
-        /// 关闭 Payload
+        /// Close Payload
         /// </summary>
         public void ClosePayload()
         {
             _payloadService?.Close();
-            Log("Payload 已关闭", Color.Gray);
+            Log("Payload closed", Color.Gray);
         }
 
         #endregion
 
-        #region OnePlus/OPPO 刷写流程
+        #region OnePlus/OPPO Flash Process
 
         /// <summary>
-        /// 刷写配置选项
+        /// Flash configuration options
         /// </summary>
         public class OnePlusFlashOptions
         {
-            /// <summary>是否启用 AB 通刷模式 (同时刷写 A/B 两个槽位)</summary>
+            /// <summary>Whether to enable AB dual-slot flash mode (flash both A/B slots simultaneously)</summary>
             public bool ABFlashMode { get; set; } = false;
             
-            /// <summary>是否启用强力线刷模式 (额外处理 Super 分区)</summary>
+            /// <summary>Whether to enable Power Flash mode (extra processing for Super partition)</summary>
             public bool PowerFlashMode { get; set; } = false;
             
-            /// <summary>是否启用纯 FBD 模式 (全部在 FastbootD 下刷写)</summary>
+            /// <summary>Whether to enable Pure FBD mode (flash everything under FastbootD)</summary>
             public bool PureFBDMode { get; set; } = false;
             
-            /// <summary>是否清除数据</summary>
+            /// <summary>Whether to clear user data</summary>
             public bool ClearData { get; set; } = false;
             
-            /// <summary>是否擦除 FRP (谷歌锁)</summary>
+            /// <summary>Whether to erase FRP (Google Lock)</summary>
             public bool EraseFrp { get; set; } = true;
             
-            /// <summary>是否自动重启</summary>
+            /// <summary>Whether to auto reboot</summary>
             public bool AutoReboot { get; set; } = false;
             
-            /// <summary>目标槽位 (AB 通刷时使用，a 或 b)</summary>
+            /// <summary>Target slot (used in AB mode, 'a' or 'b')</summary>
             public string TargetSlot { get; set; } = "a";
         }
 
         /// <summary>
-        /// 刷写分区信息
+        /// Flash partition info
         /// </summary>
         public class OnePlusFlashPartition
         {
@@ -3788,11 +3791,11 @@ namespace LoveAlways.Fastboot.UI
             public bool IsLogical { get; set; }
             public bool IsModem { get; set; }
             
-            /// <summary>是否来自 Payload.bin (需要先提取)</summary>
+            /// <summary>Whether it comes from Payload.bin (extract needed first)</summary>
             public bool IsPayloadPartition { get; set; }
-            /// <summary>Payload 分区信息 (用于提取)</summary>
+            /// <summary>Payload partition info (for extraction)</summary>
             public PayloadPartition PayloadInfo { get; set; }
-            /// <summary>远程 Payload 分区信息</summary>
+            /// <summary>Remote Payload partition info</summary>
             public RemotePayloadPartition RemotePayloadInfo { get; set; }
             
             public string FileSizeFormatted
@@ -3811,7 +3814,7 @@ namespace LoveAlways.Fastboot.UI
         }
 
         /// <summary>
-        /// 执行 OnePlus/OPPO 刷写流程
+        /// Execute OnePlus/OPPO flash process
         /// </summary>
         public async Task<bool> ExecuteOnePlusFlashAsync(
             List<OnePlusFlashPartition> partitions,
@@ -3820,20 +3823,20 @@ namespace LoveAlways.Fastboot.UI
         {
             if (partitions == null || partitions.Count == 0)
             {
-                Log("错误：未选择任何分区进行刷写", Color.Red);
+                Log("Error: No partitions selected for flashing", Color.Red);
                 return false;
             }
 
             if (IsBusy)
             {
-                Log("操作进行中", Color.Orange);
+                Log("Operation in progress", Color.Orange);
                 return false;
             }
 
             if (!await EnsureConnectedAsync())
                 return false;
 
-            // 临时提取目录 (用于 Payload 分区提取)
+            // Temporary extraction directory (for Payload partition extraction)
             string extractDir = null;
 
             try
@@ -3843,103 +3846,102 @@ namespace LoveAlways.Fastboot.UI
                 var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, ct);
                 ct = linkedCts.Token;
 
-                StartOperationTimer("OnePlus 刷写");
+                StartOperationTimer("OnePlus Flash");
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
 
-                // 计算总刷写字节数
+                // Calculate total flash bytes
                 long totalFlashBytes = partitions.Sum(p => p.FileSize);
                 long currentFlashedBytes = 0;
                 string totalSizeStr = FormatSize(totalFlashBytes);
 
-                Log($"开始 OnePlus 刷写流程，共 {partitions.Count} 个分区...", Color.Blue);
+                Log($"Starting OnePlus flash process, total {partitions.Count} partitions...", Color.Blue);
 
-                // 步骤 1: 检测设备状态
-                Log("正在检测设备连接状态...", Color.Blue);
-                UpdateLabelSafe(_operationLabel, "当前操作：检测设备");
+                // Step 1: Detect device status
+                Log("Detecting device connection status...", Color.Blue);
+                UpdateLabelSafe(_operationLabel, "Operation: Detecting Device");
 
                 bool isFastbootd = await _service.IsFastbootdModeAsync(ct);
-                Log($"设备模式: {(isFastbootd ? "FastbootD" : "Fastboot")}", Color.Green);
+                Log($"Device mode: {(isFastbootd ? "FastbootD" : "Fastboot")}", Color.Green);
 
-                // 步骤 2: 如果不在 FastbootD 模式，需要切换
+                // Step 2: If not in FastbootD mode, need to switch
                 if (!isFastbootd)
                 {
-                    Log("正在重启到 FastbootD 模式...", Color.Blue);
-                    UpdateLabelSafe(_operationLabel, "当前操作：重启到 FastbootD");
+                    Log("Rebooting to FastbootD mode...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "Operation: Rebooting to FastbootD");
 
                     if (!await _service.RebootFastbootdAsync(ct))
                     {
-                        Log("无法重启到 FastbootD 模式", Color.Red);
+                        Log("Unable to reboot to FastbootD mode", Color.Red);
                         return false;
                     }
 
-                    // 等待设备重新连接
-                    Log("等待设备重新连接...", Color.Blue);
+                    // Wait for device to reconnect
+                    Log("Waiting for device to reconnect...", Color.Blue);
                     bool reconnected = await WaitForDeviceReconnectAsync(60, ct);
                     if (!reconnected)
                     {
-                        Log("设备在 60 秒内未能重新连接", Color.Red);
+                        Log("Device failed to reconnect within 60 seconds", Color.Red);
                         return false;
                     }
-
-                    Log("FastbootD 设备已连接", Color.Green);
+                                        Log("FastbootD device connected", Color.Green);
                 }
 
-                // 步骤 3: 删除 COW 快照分区
-                Log("正在解析 COW 快照分区...", Color.Blue);
-                UpdateLabelSafe(_operationLabel, "当前操作：清理 COW 分区");
+                // Step 3: Delete COW snapshot partitions
+                Log("Parsing COW snapshot partitions...", Color.Blue);
+                UpdateLabelSafe(_operationLabel, "Operation: Cleaning COW Partitions");
                 await _service.DeleteCowPartitionsAsync(ct);
-                Log("COW 分区清理完成", Color.Green);
+                Log("COW partition cleaning complete", Color.Green);
 
-                // 步骤 4: 获取当前槽位
+                // Step 4: Get current slot
                 string currentSlot = await _service.GetCurrentSlotAsync(ct);
                 if (string.IsNullOrEmpty(currentSlot)) currentSlot = "a";
-                Log($"当前槽位: {currentSlot.ToUpper()}", Color.Blue);
+                Log($"Current slot: {currentSlot.ToUpper()}", Color.Blue);
 
-                // 步骤 5: AB 通刷模式预处理
+                // Step 5: AB flash mode preprocessing
                 if (options.ABFlashMode)
                 {
-                    Log($"AB 通刷模式：目标槽位 {options.TargetSlot.ToUpper()}", Color.Blue);
+                    Log($"AB Dual-Slot Mode: Target slot {options.TargetSlot.ToUpper()}", Color.Blue);
 
-                    // 如果当前槽位与目标不同，需要切换并重建分区
+                    // If current slot differs from target, need to switch and rebuild partitions
                     if (!string.Equals(currentSlot, options.TargetSlot, StringComparison.OrdinalIgnoreCase))
                     {
-                        Log($"切换槽位到 {options.TargetSlot.ToUpper()}...", Color.Blue);
+                        Log($"Switching slot to {options.TargetSlot.ToUpper()}...", Color.Blue);
                         await _service.SetActiveSlotAsync(options.TargetSlot, ct);
 
-                        Log("重建逻辑分区结构...", Color.Blue);
+                        Log("Rebuilding logical partition structure...", Color.Blue);
                         await _service.RebuildLogicalPartitionsAsync(options.TargetSlot, ct);
                     }
                 }
 
-                await Task.Delay(2000, ct);  // 等待设备状态稳定
+                await Task.Delay(2000, ct);  // Wait for device status to stabilize
 
-                // 步骤 6: 对分区排序 (按大小从小到大)
+                // Step 6: Sort partitions (by size ascending)
                 var sortedPartitions = partitions
                     .Where(p => !string.IsNullOrEmpty(p.FilePath) && File.Exists(p.FilePath))
                     .OrderBy(p => p.FileSize)
                     .ToList();
 
-                // 纯 FBD 模式：所有分区在 FastbootD 下刷写
-                // 普通欧加模式：Modem 分区在 Fastboot 下刷写，其他在 FastbootD 下刷写
+                // Pure FBD mode: all partitions flashed under FastbootD
+                // Standard Oplus mode: Modem partitions flashed under Fastboot, others under FastbootD
                 List<OnePlusFlashPartition> fbdPartitions;
                 List<OnePlusFlashPartition> modemPartitions;
 
                 if (options.PureFBDMode)
                 {
-                    // 纯 FBD 模式：所有分区都在 FastbootD 下刷写
+                    // Pure FBD mode: all partitions flashed under FastbootD
                     fbdPartitions = sortedPartitions;
                     modemPartitions = new List<OnePlusFlashPartition>();
-                    Log("纯 FBD 模式：所有分区在 FastbootD 下刷写", Color.Blue);
+                    Log("Pure FBD mode: all partitions flashed under FastbootD", Color.Blue);
                 }
                 else
                 {
-                    // 普通欧加模式：分离 Modem 分区
+                    // Standard Oplus mode: isolate Modem partitions
                     fbdPartitions = sortedPartitions.Where(p => !p.IsModem).ToList();
                     modemPartitions = sortedPartitions.Where(p => p.IsModem).ToList();
                     if (modemPartitions.Count > 0)
                     {
-                        Log($"欧加模式：{fbdPartitions.Count} 个分区在 FastbootD，{modemPartitions.Count} 个 Modem 分区在 Fastboot", Color.Blue);
+                        Log($"Oplus mode: {fbdPartitions.Count} partitions in FastbootD, {modemPartitions.Count} Modem partitions in Fastboot", Color.Blue);
                     }
                 }
 
@@ -3948,14 +3950,14 @@ namespace LoveAlways.Fastboot.UI
                     : sortedPartitions.Count;
                 int currentPartitionIndex = 0;
 
-                // 步骤 6.5: 检查并提取 Payload 分区
+                // Step 6.5: Check and extract Payload partitions
                 var payloadPartitions = sortedPartitions.Where(p => p.IsPayloadPartition).ToList();
                 if (payloadPartitions.Count > 0)
                 {
-                    Log($"检测到 {payloadPartitions.Count} 个 Payload 分区，正在提取...", Color.Blue);
-                    UpdateLabelSafe(_operationLabel, "当前操作：提取 Payload 分区");
+                    Log($"Detected {payloadPartitions.Count} Payload partitions, extracting...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "Operation: Extracting Payload Partitions");
 
-                    // 创建临时提取目录
+                    // Create temporary extraction directory
                     extractDir = Path.Combine(Path.GetTempPath(), $"payload_extract_{DateTime.Now:yyyyMMdd_HHmmss}");
                     Directory.CreateDirectory(extractDir);
 
@@ -3967,41 +3969,41 @@ namespace LoveAlways.Fastboot.UI
 
                         if (pp.PayloadInfo != null && _payloadService != null)
                         {
-                            // 本地 Payload 提取 (通过分区名)
-                            Log($"  提取 {pp.PartitionName}...", null);
+                            // Local Payload extraction (by partition name)
+                            Log($"  Extracting {pp.PartitionName}...", null);
                             bool extracted = await _payloadService.ExtractPartitionAsync(
                                 pp.PartitionName, extractedPath, ct);
 
                             if (extracted && File.Exists(extractedPath))
                             {
                                 pp.FilePath = extractedPath;
-                                Log($"  ✓ {pp.PartitionName} 提取完成", Color.Green);
+                                Log($"  ✓ {pp.PartitionName} extraction complete", Color.Green);
                             }
                             else
                             {
-                                Log($"  ✗ {pp.PartitionName} 提取失败", Color.Red);
+                                Log($"  ✗ {pp.PartitionName} extraction failed", Color.Red);
                             }
                         }
                         else if (pp.RemotePayloadInfo != null && _remotePayloadService != null)
                         {
-                            // 远程 Payload 提取 (通过分区名)
-                            Log($"  下载并提取 {pp.PartitionName}...", null);
+                            // Remote Payload extraction (by partition name)
+                            Log($"  Downloading and extracting {pp.PartitionName}...", null);
                             bool extracted = await _remotePayloadService.ExtractPartitionAsync(
                                 pp.PartitionName, extractedPath, ct);
 
                             if (extracted && File.Exists(extractedPath))
                             {
                                 pp.FilePath = extractedPath;
-                                Log($"  ✓ {pp.PartitionName} 下载并提取完成", Color.Green);
+                                Log($"  ✓ {pp.PartitionName} download and extraction complete", Color.Green);
                             }
                             else
                             {
-                                Log($"  ✗ {pp.PartitionName} 下载或提取失败", Color.Red);
+                                Log($"  ✗ {pp.PartitionName} download or extraction failed", Color.Red);
                             }
                         }
                     }
 
-                    // 更新文件大小 (提取后的实际大小)
+                    // Update file size (actual size after extraction)
                     foreach (var pp in payloadPartitions)
                     {
                         if (!string.IsNullOrEmpty(pp.FilePath) && File.Exists(pp.FilePath))
@@ -4010,24 +4012,24 @@ namespace LoveAlways.Fastboot.UI
                         }
                     }
 
-                    // 重新计算总字节数
+                    // Recalculate total bytes
                     totalFlashBytes = sortedPartitions
                         .Where(p => !string.IsNullOrEmpty(p.FilePath) && File.Exists(p.FilePath))
                         .Sum(p => p.FileSize);
                     totalSizeStr = FormatSize(totalFlashBytes);
                 }
 
-                Log($"开始刷写 {sortedPartitions.Count} 个分区 (总大小: {totalSizeStr})...", Color.Blue);
+                Log($"Starting to flash {sortedPartitions.Count} partitions (Total size: {totalSizeStr})...", Color.Blue);
 
-                // 步骤 7: 在 FastbootD 模式下刷写分区
+                // Step 7: Flash partitions in FastbootD mode
                 foreach (var partition in fbdPartitions)
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    // 跳过没有文件的分区
+                    // Skip partitions without files
                     if (string.IsNullOrEmpty(partition.FilePath) || !File.Exists(partition.FilePath))
                     {
-                        Log($"  ⚠ {partition.PartitionName} 无有效文件，跳过", Color.Orange);
+                        Log($"  ⚠ {partition.PartitionName} No valid file, skipping", Color.Orange);
                         continue;
                     }
 
@@ -4036,12 +4038,12 @@ namespace LoveAlways.Fastboot.UI
 
                     if (options.ABFlashMode && !partition.IsLogical)
                     {
-                        // 非逻辑分区在 AB 通刷模式下需要刷写两个槽位
+                        // Non-logical partitions need to be flashed to both slots in AB mode
                         foreach (var slot in new[] { "a", "b" })
                         {
                             string targetName = $"{partition.PartitionName}_{slot}";
-                            UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {targetName}");
-                            Log($"[写入镜像] {fileName} -> {targetName}", null);
+                            UpdateLabelSafe(_operationLabel, $"Operation: Flashing {targetName}");
+                            Log($"[Writing Image] {fileName} -> {targetName}", null);
 
                             long bytesBeforeThis = currentFlashedBytes;
                             Action<long, long> progressCallback = (sent, total) =>
@@ -4058,23 +4060,23 @@ namespace LoveAlways.Fastboot.UI
 
                             if (ok)
                             {
-                                Log($"  ✓ {targetName} 成功", Color.Green);
+                                Log($"  ✓ {targetName} successful", Color.Green);
                             }
                             else
                             {
-                                Log($"  ✗ {targetName} 失败", Color.Red);
+                                Log($"  ✗ {targetName} failed", Color.Red);
                             }
 
-                            currentFlashedBytes += partition.FileSize / 2;  // AB 模式下每个槽位算一半
+                            currentFlashedBytes += partition.FileSize / 2;  // Each slot counts as half in AB mode
                             currentPartitionIndex++;
                         }
                     }
                     else
                     {
-                        // 逻辑分区或普通模式只刷一个槽位
+                        // Logical partitions or normal mode flash only one slot
                         string targetName = $"{partition.PartitionName}_{targetSlot}";
-                        UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {targetName}");
-                        Log($"[写入镜像] {fileName} -> {targetName}", null);
+                        UpdateLabelSafe(_operationLabel, $"Operation: Flashing {targetName}");
+                        Log($"[Writing Image] {fileName} -> {targetName}", null);
 
                         long bytesBeforeThis = currentFlashedBytes;
                         Action<long, long> progressCallback = (sent, total) =>
@@ -4090,11 +4092,11 @@ namespace LoveAlways.Fastboot.UI
 
                         if (ok)
                         {
-                            Log($"  ✓ {targetName} 成功", Color.Green);
+                            Log($"  ✓ {targetName} successful", Color.Green);
                         }
                         else
                         {
-                            Log($"  ✗ {targetName} 失败", Color.Red);
+                            Log($"  ✗ {targetName} failed", Color.Red);
                         }
 
                         currentFlashedBytes += partition.FileSize;
@@ -4102,19 +4104,19 @@ namespace LoveAlways.Fastboot.UI
                     }
                 }
 
-                // 步骤 8: 如果有 Modem 分区（普通欧加模式），重启到 Bootloader 刷写
+                // Step 8: If there are Modem partitions (Oplus mode), reboot to Bootloader to flash
                 if (modemPartitions.Count > 0 && !options.PureFBDMode)
                 {
-                    Log("Modem 分区需要在 Fastboot 模式下刷写...", Color.Blue);
-                    UpdateLabelSafe(_operationLabel, "当前操作：重启到 Fastboot");
+                    Log("Modem partitions need to be flashed in Fastboot mode...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "Operation: Rebooting to Fastboot");
 
                     if (!await _service.RebootBootloaderAsync(ct))
                     {
-                        Log("无法重启到 Fastboot 模式", Color.Red);
+                        Log("Unable to reboot to Fastboot mode", Color.Red);
                     }
                     else
                     {
-                        // 等待设备重新连接
+                        // Wait for device to reconnect
                         bool reconnected = await WaitForDeviceReconnectAsync(60, ct);
                         if (reconnected)
                         {
@@ -4122,34 +4124,34 @@ namespace LoveAlways.Fastboot.UI
                             {
                                 ct.ThrowIfCancellationRequested();
 
-                                // 跳过没有文件的分区
+                                // Skip partitions without files
                                 if (string.IsNullOrEmpty(modem.FilePath) || !File.Exists(modem.FilePath))
                                 {
-                                    Log($"  ⚠ {modem.PartitionName} 无有效文件，跳过", Color.Orange);
+                                    Log($"  ⚠ {modem.PartitionName} No valid file, skipping", Color.Orange);
                                     continue;
                                 }
 
                                 string fileName = Path.GetFileName(modem.FilePath);
 
-                                // Modem 分区在 AB 通刷模式下也刷两个槽位
+                                // Modem partitions also get flashed to both slots in AB mode
                                 foreach (var slot in options.ABFlashMode ? new[] { "a", "b" } : new[] { currentSlot })
                                 {
                                     string targetName = $"{modem.PartitionName}_{slot}";
-                                    UpdateLabelSafe(_operationLabel, $"当前操作：刷写 {targetName}");
-                                    Log($"[写入镜像] {fileName} -> {targetName}", null);
+                                    UpdateLabelSafe(_operationLabel, $"Operation: Flashing {targetName}");
+                                    Log($"[Writing Image] {fileName} -> {targetName}", null);
 
                                     bool ok = await _service.FlashPartitionToSlotAsync(
                                         modem.PartitionName, modem.FilePath, slot, null, ct);
 
-                                    Log(ok ? $"  ✓ {targetName} 成功" : $"  ✗ {targetName} 失败",
+                                    Log(ok ? $"  ✓ {targetName} successful" : $"  ✗ {targetName} failed",
                                         ok ? Color.Green : Color.Red);
                                 }
                             }
 
-                            // 刷完 Modem 后如果需要清数据，需要回到 FastbootD
+                            // If wiping data or erasing FRP is needed after flashing Modem, must return to FastbootD
                             if (options.ClearData || options.EraseFrp)
                             {
-                                Log("重启到 FastbootD 继续后续操作...", Color.Blue);
+                                Log("Rebooting to FastbootD to continue subsequent operations...", Color.Blue);
                                 await _service.RebootFastbootdAsync(ct);
                                 await WaitForDeviceReconnectAsync(60, ct);
                             }
@@ -4157,41 +4159,41 @@ namespace LoveAlways.Fastboot.UI
                     }
                 }
 
-                // 步骤 9: 擦除 FRP (谷歌锁) - 所有设备都可自动执行
+                // Step 9: Erase FRP (Google Lock) - can be automatically executed for all devices
                 if (options.EraseFrp)
                 {
-                    Log("正在擦除 FRP...", Color.Blue);
-                    UpdateLabelSafe(_operationLabel, "当前操作：擦除 FRP");
+                    Log("Erasing FRP...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "Operation: Erasing FRP");
                     bool frpOk = await _service.EraseFrpAsync(ct);
-                    Log(frpOk ? "FRP 擦除成功" : "FRP 擦除失败", frpOk ? Color.Green : Color.Orange);
+                    Log(frpOk ? "FRP erase successful" : "FRP erase failed", frpOk ? Color.Green : Color.Orange);
                 }
 
-                // 步骤 10: 清除数据 - 仅高通设备自动执行，联发科需手动
+                // Step 10: Wipe Data - automatically executed for Qualcomm devices only, MediaTek requires manual action
                 if (options.ClearData)
                 {
-                    // 检测设备平台：高通 (abl) vs 联发科 (lk)
+                    // Detect device platform: Qualcomm (abl) vs MediaTek (lk)
                     var devicePlatform = await _service.GetDevicePlatformAsync(ct);
                     bool isQualcommDevice = devicePlatform == FastbootService.DevicePlatform.Qualcomm;
                     
                     if (isQualcommDevice)
                     {
-                        Log("正在清除用户数据...", Color.Blue);
-                        UpdateLabelSafe(_operationLabel, "当前操作：清除数据");
+                        Log("Wiping user data...", Color.Blue);
+                        UpdateLabelSafe(_operationLabel, "Operation: Wiping Data");
                         bool wipeOk = await _service.WipeDataAsync(ct);
-                        Log(wipeOk ? "数据清除成功" : "数据清除失败", wipeOk ? Color.Green : Color.Orange);
+                        Log(wipeOk ? "Data wipe successful" : "Data wipe failed", wipeOk ? Color.Green : Color.Orange);
                     }
                     else
                     {
-                        // 联发科设备 (lk) 需要用户手动在 Recovery 清除数据
-                        Log("⚠ 联发科设备请手动清除数据 (进入 Recovery -> Wipe data/factory reset)", Color.Orange);
+                        // MediaTek devices (lk) require manual data wipe in Recovery
+                        Log("⚠ MediaTek devices, please wipe data manually (Enter Recovery -> Wipe data/factory reset)", Color.Orange);
                     }
                 }
 
-                // 步骤 11: 自动重启
+                // Step 11: Auto Reboot
                 if (options.AutoReboot)
                 {
-                    Log("正在重启设备...", Color.Blue);
-                    UpdateLabelSafe(_operationLabel, "当前操作：重启");
+                    Log("Rebooting device...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "Operation: Rebooting");
                     await _service.RebootAsync(ct);
                 }
 
@@ -4199,12 +4201,12 @@ namespace LoveAlways.Fastboot.UI
                 UpdateSubProgressBar(100);
                 StopOperationTimer();
 
-                Log("✓ OnePlus 刷写流程完成", Color.Green);
+                Log("✓ OnePlus flash process complete", Color.Green);
                 return true;
             }
             catch (OperationCanceledException)
             {
-                Log("刷写操作已取消", Color.Orange);
+                Log("Flash operation cancelled", Color.Orange);
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -4212,8 +4214,8 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                Log($"刷写过程中发生错误: {ex.Message}", Color.Red);
-                _logDetail($"OnePlus 刷写异常: {ex}");
+                Log($"Error occurred during flash: {ex.Message}", Color.Red);
+                _logDetail($"OnePlus flash exception: {ex}");
                 UpdateProgressBar(0);
                 UpdateSubProgressBar(0);
                 StopOperationTimer();
@@ -4222,26 +4224,26 @@ namespace LoveAlways.Fastboot.UI
             finally
             {
                 IsBusy = false;
-                UpdateLabelSafe(_operationLabel, "当前操作：空闲");
+                UpdateLabelSafe(_operationLabel, "Operation: Idle");
 
-                // 清理临时提取目录
+                // Clean up temporary extraction directory
                 if (!string.IsNullOrEmpty(extractDir) && Directory.Exists(extractDir))
                 {
                     try
                     {
                         Directory.Delete(extractDir, true);
-                        _logDetail($"已清理临时目录: {extractDir}");
+                        _logDetail($"Cleaned up temporary directory: {extractDir}");
                     }
                     catch (Exception ex)
                     {
-                        _logDetail($"清理临时目录失败: {ex.Message}");
+                        _logDetail($"Failed to clean up temporary directory: {ex.Message}");
                     }
                 }
             }
         }
 
         /// <summary>
-        /// 等待设备重新连接
+        /// Wait for device to reconnect
         /// </summary>
         private async Task<bool> WaitForDeviceReconnectAsync(int timeoutSeconds, CancellationToken ct)
         {
@@ -4250,12 +4252,12 @@ namespace LoveAlways.Fastboot.UI
             {
                 await Task.Delay(5000, ct);
                 
-                // 刷新设备列表
+                // Refresh device list
                 await RefreshDeviceListAsync();
                 
                 if (_cachedDevices != null && _cachedDevices.Count > 0)
                 {
-                    // 尝试自动连接第一个设备
+                    // Attempt to automatically connect to the first device
                     var device = _cachedDevices[0];
                     _service = new FastbootService(
                         msg => Log(msg, null),
@@ -4270,14 +4272,14 @@ namespace LoveAlways.Fastboot.UI
                     }
                 }
                 
-                Log($"等待设备... ({(i + 1) * 5}/{timeoutSeconds}s)", null);
+                Log($"Waiting for device... ({(i + 1) * 5}/{timeoutSeconds}s)", null);
             }
             return false;
         }
 
         /// <summary>
-        /// 从当前选中的分区构建 OnePlus 刷写分区列表
-        /// 支持: Payload 分区、解包文件夹、脚本任务、普通镜像
+        /// Build OnePlus flash partition list from currently selected partitions
+        /// Supports: Payload partitions, unpacked folders, script tasks, normal images
         /// </summary>
         public List<OnePlusFlashPartition> BuildOnePlusFlashPartitions()
         {
@@ -4292,14 +4294,14 @@ namespace LoveAlways.Fastboot.UI
                     string partName = item.SubItems[0].Text;
                     string filePath = item.SubItems.Count > 3 ? item.SubItems[3].Text : "";
 
-                    // 本地 Payload 分区 (需要先提取)
+                    // Local Payload partition (requires extraction first)
                     if (item.Tag is PayloadPartition payloadPart)
                     {
                         result.Add(new OnePlusFlashPartition
                         {
                             PartitionName = payloadPart.Name,
-                            FilePath = null,  // 稍后提取时设置
-                            FileSize = (long)payloadPart.Size,  // 解压后大小
+                            FilePath = null,  // Set later during extraction
+                            FileSize = (long)payloadPart.Size,  // Size after decompression
                             IsLogical = FastbootService.IsLogicalPartition(payloadPart.Name),
                             IsModem = FastbootService.IsModemPartition(payloadPart.Name),
                             IsPayloadPartition = true,
@@ -4308,14 +4310,14 @@ namespace LoveAlways.Fastboot.UI
                         continue;
                     }
 
-                    // 远程 Payload 分区 (云端边下边刷)
+                    // Remote Payload partition (cloud stream flash)
                     if (item.Tag is RemotePayloadPartition remotePart)
                     {
                         result.Add(new OnePlusFlashPartition
                         {
                             PartitionName = remotePart.Name,
                             FilePath = null,
-                            FileSize = (long)remotePart.Size,  // 解压后大小
+                            FileSize = (long)remotePart.Size,  // Size after decompression
                             IsLogical = FastbootService.IsLogicalPartition(remotePart.Name),
                             IsModem = FastbootService.IsModemPartition(remotePart.Name),
                             IsPayloadPartition = true,
@@ -4324,7 +4326,7 @@ namespace LoveAlways.Fastboot.UI
                         continue;
                     }
 
-                    // 已提取文件夹中的镜像
+                    // Images in extracted folders
                     if (item.Tag is ExtractedImageInfo extractedInfo)
                     {
                         result.Add(new OnePlusFlashPartition
@@ -4339,7 +4341,7 @@ namespace LoveAlways.Fastboot.UI
                         continue;
                     }
 
-                    // 脚本任务 (flash_all.bat 解析)
+                    // Script tasks (flash_all.bat parsing)
                     if (item.Tag is BatScriptParser.FlashTask task)
                     {
                         if (task.Operation == "flash" && task.ImageExists)
@@ -4357,7 +4359,7 @@ namespace LoveAlways.Fastboot.UI
                         continue;
                     }
 
-                    // 普通分区 (已有镜像文件)
+                    // Normal partitions (existing image files)
                     if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
                     {
                         var fileInfo = new FileInfo(filePath);
@@ -4375,7 +4377,7 @@ namespace LoveAlways.Fastboot.UI
             }
             catch (Exception ex)
             {
-                _logDetail($"构建刷写分区列表失败: {ex.Message}");
+                _logDetail($"Failed to build flash partition list: {ex.Message}");
             }
 
             return result;

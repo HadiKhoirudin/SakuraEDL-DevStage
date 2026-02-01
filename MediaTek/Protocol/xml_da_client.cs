@@ -1,9 +1,14 @@
 // ============================================================================
-// LoveAlways - MediaTek XML DA 协议客户端
+// LoveAlways - MediaTek XML DA Protocol Client
 // MediaTek XML Download Agent Protocol Client (V6)
 // ============================================================================
-// 参考: mtkclient 项目 xml_cmd.py, xml_lib.py
+// Reference: mtkclient project xml_cmd.py, xml_lib.py
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.IO;
@@ -19,7 +24,7 @@ using DaEntry = LoveAlways.MediaTek.Models.DaEntry;
 namespace LoveAlways.MediaTek.Protocol
 {
     /// <summary>
-    /// XML DA 协议客户端 (V6)
+    /// XML DA Protocol Client (V6)
     /// </summary>
     public class XmlDaClient : IDisposable
     {
@@ -29,19 +34,19 @@ namespace LoveAlways.MediaTek.Protocol
         private readonly Action<double> _progressCallback;
         private bool _disposed;
         
-        // 线程安全: 端口锁 (可从 BromClient 共享)
+        // Thread safety: Port lock (can be shared from BromClient)
         private readonly SemaphoreSlim _portLock;
         private readonly bool _ownsPortLock;
 
-        // XML 协议常量
+        // XML Protocol Constants
         private const uint XML_MAGIC = 0xFEEEEEEF;
         private const int DEFAULT_TIMEOUT_MS = 30000;
         private const int MAX_BUFFER_SIZE = 65536;
 
-        // XFlash 命令常量
+        // XFlash Command Constants
         private const uint CMD_BOOT_TO = 0x72;
 
-        // 数据类型
+        // Data types
         private enum DataType : uint
         {
             ProtocolFlow = 0,
@@ -49,7 +54,7 @@ namespace LoveAlways.MediaTek.Protocol
             ProtocolRaw = 2
         }
 
-        // 连接状态
+        // Connection status
         public bool IsConnected { get; private set; }
         public MtkDeviceState State { get; private set; }
 
@@ -61,7 +66,7 @@ namespace LoveAlways.MediaTek.Protocol
             _progressCallback = progressCallback;
             State = MtkDeviceState.Da1Loaded;
             
-            // 如果提供了外部锁则使用，否则创建自己的
+            // Use external lock if provided, otherwise create own
             if (portLock != null)
             {
                 _portLock = portLock;
@@ -75,7 +80,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 设置串口
+        /// Set serial port
         /// </summary>
         public void SetPort(SerialPort port)
         {
@@ -83,23 +88,23 @@ namespace LoveAlways.MediaTek.Protocol
         }
         
         /// <summary>
-        /// 获取端口锁
+        /// Get port lock
         /// </summary>
         public SemaphoreSlim GetPortLock() => _portLock;
 
-        #region XML 协议核心
+        #region XML Protocol Core
 
         /// <summary>
-        /// 发送 XML 命令 (内部方法，不加锁)
+        /// Send XML command (Internal method, no lock)
         /// </summary>
         private async Task XSendInternalAsync(string xmlCmd, CancellationToken ct = default)
         {
-            // 注意：不再清空缓冲区，因为设备可能发送主动消息（如 CMD:DOWNLOAD-FILE）
-            // 清空会导致丢失重要请求
+            // Note: No longer clearing the buffer, as the device might send unsolicited messages (e.g., CMD:DOWNLOAD-FILE)
+            // Clearing will cause important requests to be lost
             
             byte[] data = Encoding.UTF8.GetBytes(xmlCmd);
             
-            // 构建头部: Magic (4) + DataType (4) + Length (4)
+            // Build header: Magic (4) + DataType (4) + Length (4)
             byte[] header = new byte[12];
             MtkDataPacker.WriteUInt32LE(header, 0, XML_MAGIC);
             MtkDataPacker.WriteUInt32LE(header, 4, (uint)DataType.ProtocolFlow);
@@ -108,11 +113,11 @@ namespace LoveAlways.MediaTek.Protocol
             _port.Write(header, 0, 12);
             _port.Write(data, 0, data.Length);
 
-            _logDetail($"[XML] 发送: {xmlCmd.Substring(0, Math.Min(100, xmlCmd.Length))}...");
+            _logDetail($"[XML] Sending: {xmlCmd.Substring(0, Math.Min(100, xmlCmd.Length))}...");
         }
 
         /// <summary>
-        /// 发送 XML 命令 (带线程安全)
+        /// Send XML command (Thread safe)
         /// </summary>
         private async Task XSendAsync(string xmlCmd, CancellationToken ct = default)
         {
@@ -128,35 +133,35 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 接收 XML 响应 (内部方法，不加锁)
+        /// Receive XML response (Internal method, no lock)
         /// </summary>
         private async Task<string> XRecvInternalAsync(int timeoutMs = DEFAULT_TIMEOUT_MS, CancellationToken ct = default)
         {
-            // 读取头部
+            // Read header
             byte[] header = await ReadBytesInternalAsync(12, timeoutMs, ct);
             if (header == null)
             {
-                _log("[XML] 读取头部超时");
+                _log("[XML] Read header timeout");
                 return null;
             }
 
-            // 验证魔数
+            // Verify Magic
             uint magic = MtkDataPacker.UnpackUInt32LE(header, 0);
             if (magic != XML_MAGIC)
             {
-                _log($"[XML] 魔数不匹配: 0x{magic:X8}, 期望: 0x{XML_MAGIC:X8}");
-                _logDetail($"[XML] 头部数据: {BitConverter.ToString(header).Replace("-", " ")}");
+                _log($"[XML] Magic mismatch: 0x{magic:X8}, expected: 0x{XML_MAGIC:X8}");
+                _logDetail($"[XML] Header data: {BitConverter.ToString(header).Replace("-", " ")}");
                 
-                // 尝试同步: 在接下来的数据中查找魔数
-                _log("[XML] 尝试重新同步协议流...");
+                // Try to resync: Find Magic in subsequent data
+                _log("[XML] Attempting to resync protocol stream...");
                 bool synced = await TryResyncAsync(timeoutMs, ct);
                 if (!synced)
                 {
-                    _log("[XML] 协议同步失败");
+                    _log("[XML] Protocol synchronization failed");
                     return null;
                 }
                 
-                // 重新读取头部
+                // Read header again
                 header = await ReadBytesInternalAsync(12, timeoutMs, ct);
                 if (header == null)
                     return null;
@@ -164,11 +169,11 @@ namespace LoveAlways.MediaTek.Protocol
                 magic = MtkDataPacker.UnpackUInt32LE(header, 0);
                 if (magic != XML_MAGIC)
                 {
-                    _log("[XML] 同步后仍然无法找到有效魔数");
+                    _log("[XML] Still unable to find valid Magic after resync");
                     return null;
                 }
                 
-                _log("[XML] ✓ 协议重新同步成功");
+                _log("[XML] ✓ Protocol resynchronized successfully");
             }
 
             uint dataType = MtkDataPacker.UnpackUInt32LE(header, 4);
@@ -179,30 +184,30 @@ namespace LoveAlways.MediaTek.Protocol
 
             if (length > MAX_BUFFER_SIZE)
             {
-                _log($"[XML] 数据过大: {length} (最大: {MAX_BUFFER_SIZE})");
+                _log($"[XML] Data too large: {length} (max: {MAX_BUFFER_SIZE})");
                 return null;
             }
 
-            // 读取数据
+            // Read data
             byte[] data = await ReadBytesInternalAsync((int)length, timeoutMs, ct);
             if (data == null)
             {
-                _log("[XML] 读取数据超时");
+                _log("[XML] Read data timeout");
                 return null;
             }
 
             string response = Encoding.UTF8.GetString(data);
-            _logDetail($"[XML] 收到: {response.Substring(0, Math.Min(100, response.Length))}...");
+            _logDetail($"[XML] Received: {response.Substring(0, Math.Min(100, response.Length))}...");
 
             return response;
         }
 
         /// <summary>
-        /// 尝试重新同步 XML 协议流
+        /// Attempt to resynchronize XML protocol stream
         /// </summary>
         private async Task<bool> TryResyncAsync(int timeoutMs, CancellationToken ct)
         {
-            // 读取最多 1KB 数据尝试找到魔数
+            // Read up to 1KB data to find Magic
             const int maxSearchBytes = 1024;
             byte[] searchBuffer = new byte[maxSearchBytes];
             int totalRead = 0;
@@ -217,15 +222,15 @@ namespace LoveAlways.MediaTek.Protocol
                     int actualRead = _port.Read(searchBuffer, totalRead, toRead);
                     totalRead += actualRead;
                     
-                    // 在已读取的数据中查找魔数
+                    // Search for Magic in read data
                     for (int i = 0; i <= totalRead - 4; i++)
                     {
                         uint candidate = MtkDataPacker.UnpackUInt32LE(searchBuffer, i);
                         if (candidate == XML_MAGIC)
                         {
-                            _logDetail($"[XML] 在偏移 {i} 找到魔数");
-                            // 丢弃魔数之前的数据
-                            // 将魔数之后的数据放回缓冲区(如果可能)
+                            _logDetail($"[XML] Found Magic at offset {i}");
+                            // Discard data before Magic
+                            // Put data after Magic back into buffer (if possible)
                             return true;
                         }
                     }
@@ -240,7 +245,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 接收 XML 响应 (带线程安全)
+        /// Receive XML response (Thread safe)
         /// </summary>
         private async Task<string> XRecvAsync(int timeoutMs = DEFAULT_TIMEOUT_MS, CancellationToken ct = default)
         {
@@ -256,7 +261,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 发送命令并等待响应 (带线程安全)
+        /// Send command and wait for response (Thread safe)
         /// </summary>
         private async Task<XmlDocument> SendCommandAsync(string xmlCmd, CancellationToken ct = default)
         {
@@ -277,7 +282,7 @@ namespace LoveAlways.MediaTek.Protocol
                 }
                 catch (Exception ex)
                 {
-                    _log($"[XML] 解析响应失败: {ex.Message}");
+                    _log($"[XML] Failed to parse response: {ex.Message}");
                     return null;
                 }
             }
@@ -288,7 +293,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 发送原始数据 (内部方法，不加锁)
+        /// Send raw data (Internal method, no lock)
         /// </summary>
         private async Task XSendRawInternalAsync(byte[] data, CancellationToken ct = default)
         {
@@ -302,7 +307,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 发送原始数据 (带线程安全)
+        /// Send raw data (Thread safe)
         /// </summary>
         private async Task XSendRawAsync(byte[] data, CancellationToken ct = default)
         {
@@ -319,14 +324,14 @@ namespace LoveAlways.MediaTek.Protocol
 
         #endregion
 
-        #region DA 连接
+        #region DA Connection
 
         /// <summary>
-        /// 等待 DA 启动就绪
+        /// Wait for DA to be ready
         /// </summary>
         public async Task<bool> WaitForDaReadyAsync(int timeoutMs = 30000, CancellationToken ct = default)
         {
-            _log("[XML] 等待 DA 就绪...");
+            _log("[XML] Waiting for DA to be ready...");
 
             DateTime start = DateTime.Now;
             while ((DateTime.Now - start).TotalMilliseconds < timeoutMs)
@@ -336,17 +341,17 @@ namespace LoveAlways.MediaTek.Protocol
 
                 try
                 {
-                    // 检查是否收到 DA 的初始消息
+                    // Check if DA initial message is received
                     string response = await XRecvAsync(2000, ct);
                     if (!string.IsNullOrEmpty(response))
                     {
-                        _logDetail($"[XML] 收到: {response.Substring(0, Math.Min(100, response.Length))}...");
+                        _logDetail($"[XML] Received: {response.Substring(0, Math.Min(100, response.Length))}...");
                         
                         if (response.Contains("CMD:START") || response.Contains("ready"))
                         {
-                            // 发送 "OK" 确认 (ChimeraTool 协议要求)
+                            // Send "OK" confirmation (ChimeraTool protocol requirement)
                             await SendOkAsync(ct);
-                            _log("[XML] ✓ DA 已就绪");
+                            _log("[XML] ✓ DA is ready");
                             IsConnected = true;
                             return true;
                         }
@@ -354,25 +359,25 @@ namespace LoveAlways.MediaTek.Protocol
                 }
                 catch
                 {
-                    // 继续等待
+                    // Continue waiting
                 }
 
                 await Task.Delay(100, ct);
             }
 
-            _log("[XML] DA 就绪超时");
+            _log("[XML] DA ready timeout");
             return false;
         }
         
         /// <summary>
-        /// 发送 OK 确认消息
+        /// Send OK confirmation message
         /// </summary>
         private async Task SendOkAsync(CancellationToken ct = default)
         {
             await _portLock.WaitAsync(ct);
             try
             {
-                // 构建 OK 响应: Magic + DataType(1) + Length(2) + "OK"
+                // Build OK response: Magic + DataType(1) + Length(2) + "OK"
                 byte[] header = new byte[12];
                 MtkDataPacker.WriteUInt32LE(header, 0, XML_MAGIC);
                 MtkDataPacker.WriteUInt32LE(header, 4, 1);  // DataType = 1
@@ -381,7 +386,7 @@ namespace LoveAlways.MediaTek.Protocol
                 _port.Write(header, 0, 12);
                 _port.Write(Encoding.ASCII.GetBytes("OK"), 0, 2);
                 
-                _logDetail("[XML] 发送 OK 确认");
+                _logDetail("[XML] Sending OK confirmation");
             }
             finally
             {
@@ -390,17 +395,17 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 获取 Connection Agent (检测设备启动来源)
-        /// 返回: "brom" 或 "preloader"
+        /// Get Connection Agent (detect device boot source)
+        /// Returns: "brom" or "preloader"
         /// </summary>
         public async Task<string> GetConnectionAgentAsync(CancellationToken ct = default)
         {
-            _log("[XML] 获取 Connection Agent...");
+            _log("[XML] Getting Connection Agent...");
 
             await _portLock.WaitAsync(ct);
             try
             {
-                // 发送 GET_CONNECTION_AGENT 命令 (0x01)
+                // Send GET_CONNECTION_AGENT command (0x01)
                 byte[] cmdHeader = new byte[12];
                 MtkDataPacker.WriteUInt32LE(cmdHeader, 0, XML_MAGIC);
                 MtkDataPacker.WriteUInt32LE(cmdHeader, 4, (uint)DataType.ProtocolFlow);
@@ -411,12 +416,12 @@ namespace LoveAlways.MediaTek.Protocol
                 MtkDataPacker.WriteUInt32LE(cmdData, 0, 0x01);  // GET_CONNECTION_AGENT
                 _port.Write(cmdData, 0, 4);
 
-                // 使用正确的 XML 协议格式读取响应
-                // 先读取 12 字节头部
+                // Use correct XML protocol format to read response
+                // Read 12-byte header first
                 var header = await ReadBytesInternalAsync(12, 3000, ct);
                 if (header == null || header.Length < 12)
                 {
-                    _log("[XML] 警告: Connection Agent 头部读取失败");
+                    _log("[XML] Warning: Failed to read Connection Agent header");
                     return "preloader";
                 }
                 
@@ -426,15 +431,15 @@ namespace LoveAlways.MediaTek.Protocol
                 
                 if (magic != XML_MAGIC)
                 {
-                    // 不是 XML 格式，尝试直接解析
+                    // Not XML format, try to parse directly
                     string rawStr = System.Text.Encoding.ASCII.GetString(header).ToLower();
-                    _logDetail($"[XML] 非标准响应: {rawStr}");
+                    _logDetail($"[XML] Non-standard response: {rawStr}");
                     if (rawStr.Contains("brom")) return "brom";
                     if (rawStr.Contains("preloader") || rawStr.Contains("pl")) return "preloader";
                     return "preloader";
                 }
                 
-                // 读取数据部分
+                // Read data part
                 if (length > 0 && length < 1024)
                 {
                     var data = await ReadBytesInternalAsync((int)length, 2000, ct);
@@ -444,29 +449,29 @@ namespace LoveAlways.MediaTek.Protocol
                             .TrimEnd('\0', ' ', '\r', '\n')
                             .ToLower();
                         
-                        _logDetail($"[XML] Connection Agent 数据: \"{agent}\"");
+                        _logDetail($"[XML] Connection Agent data: \"{agent}\"");
                         
                         if (agent.Contains("brom") && !agent.Contains("preloader"))
                         {
-                            _log("[XML] ✓ Connection Agent: brom (从Boot ROM启动)");
+                            _log("[XML] ✓ Connection Agent: brom (Booted from Boot ROM)");
                             return "brom";
                         }
                         else if (agent.Contains("preloader") || agent.Contains("pl"))
                         {
-                            _log("[XML] ✓ Connection Agent: preloader (从Preloader启动)");
+                            _log("[XML] ✓ Connection Agent: preloader (Booted from Preloader)");
                             return "preloader";
                         }
                     }
                 }
 
-                // 默认返回 preloader (大多数设备从preloader启动)
-                _log("[XML] 无法明确判断，默认假设: preloader");
+                // Default to preloader (most devices boot from preloader)
+                _log("[XML] Could not definitively determine, assuming by default: preloader");
                 return "preloader";
             }
             catch (Exception ex)
             {
-                _log($"[XML] 获取 Connection Agent 异常: {ex.Message}");
-                _logDetail($"[XML] 堆栈: {ex.StackTrace}");
+                _log($"[XML] Connection Agent exception: {ex.Message}");
+                _logDetail($"[XML] Stack: {ex.StackTrace}");
                 return "preloader";
             }
             finally
@@ -476,15 +481,15 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 设置运行时参数 (ChimeraTool 在 CMD:START 后发送)
+        /// Set runtime parameters (Sent by ChimeraTool after CMD:START)
         /// </summary>
         public async Task<bool> SetRuntimeParametersAsync(CancellationToken ct = default)
         {
-            _logDetail("[XML] 设置运行时参数...");
+            _logDetail("[XML] Setting runtime parameters...");
             
             try
             {
-                // ChimeraTool 发送的命令
+                // Command sent by ChimeraTool
                 string cmd = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
                             "<da>" +
                             "<version>1.0</version>" +
@@ -510,78 +515,78 @@ namespace LoveAlways.MediaTek.Protocol
                         string status = statusNode.InnerText.ToUpper();
                         if (status == "OK" || status == "SUCCESS")
                         {
-                            _logDetail("[XML] ✓ 运行时参数设置成功");
+                            _logDetail("[XML] ✓ Runtime parameters set successfully");
                             return true;
                         }
                     }
                     
-                    // 检查是否有消息节点
+                    // Check for message node
                     var msgNode = response.SelectSingleNode("//message");
                     if (msgNode != null)
                     {
-                        _logDetail($"[XML] 运行时参数响应: {msgNode.InnerText}");
+                        _logDetail($"[XML] Runtime parameter response: {msgNode.InnerText}");
                     }
                     
-                    return true; // 即使没有明确的OK，也认为成功
+                    return true; // Assume success even without explicit OK
                 }
                 
                 return false;
             }
             catch (Exception ex)
             {
-                _logDetail($"[XML] 设置运行时参数异常: {ex.Message}");
+                _logDetail($"[XML] Runtime parameter exception: {ex.Message}");
                 return false;
             }
         }
 
         /// <summary>
-        /// DA 握手
+        /// DA Handshake
         /// </summary>
         public async Task<bool> DaHandshakeAsync(CancellationToken ct = default)
         {
-            _log("[XML] DA 握手...");
+            _log("[XML] DA Handshake...");
 
-            // 发送握手命令
+            // Send handshake command
             string handshakeCmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                                   "<da><version>1.0</version><command>CMD:CONNECT</command></da>";
             
             var response = await SendCommandAsync(handshakeCmd, ct);
             if (response == null)
             {
-                _log("[XML] 握手无响应");
+                _log("[XML] Handshake no response");
                 return false;
             }
 
-            // 检查响应
+            // Check response
             var statusNode = response.SelectSingleNode("//status");
             if (statusNode != null && statusNode.InnerText == "OK")
             {
-                _log("[XML] ✓ DA 握手成功");
+                _log("[XML] ✓ DA Handshake successful");
                 IsConnected = true;
                 return true;
             }
 
-            _log("[XML] DA 握手失败");
+            _log("[XML] DA Handshake failed");
             return false;
         }
 
         #endregion
 
-        #region XFlash 命令 (Carbonara 漏洞利用)
+        #region XFlash Commands (Carbonara Exploit)
 
         /// <summary>
-        /// boot_to 命令 - 向指定地址写入数据
-        /// 这是 Carbonara 漏洞的核心: 可以向 DA1 内存中的任意地址写入数据
+        /// boot_to command - Write data to specified address
+        /// This is the core of Carbonara exploit: ability to write data to any address in DA1 memory
         /// </summary>
         public async Task<bool> BootToAsync(uint address, byte[] data, bool display = true, int timeoutMs = 500, CancellationToken ct = default)
         {
             if (display)
-                _log($"[XFlash] boot_to: 地址=0x{address:X8}, 大小={data.Length}");
+                _log($"[XFlash] boot_to: Address=0x{address:X8}, size={data.Length}");
 
             await _portLock.WaitAsync(ct);
             try
             {
-                // 1. 发送 BOOT_TO 命令
+                // 1. Send BOOT_TO command
                 byte[] cmdHeader = new byte[12];
                 MtkDataPacker.WriteUInt32LE(cmdHeader, 0, XML_MAGIC);
                 MtkDataPacker.WriteUInt32LE(cmdHeader, 4, (uint)DataType.ProtocolFlow);
@@ -592,24 +597,24 @@ namespace LoveAlways.MediaTek.Protocol
                 MtkDataPacker.WriteUInt32LE(cmdData, 0, CMD_BOOT_TO);
                 _port.Write(cmdData, 0, 4);
 
-                // 读取状态
+                // Read status
                 var statusResp = await ReadBytesInternalAsync(4, 5000, ct);
                 if (statusResp == null)
                 {
-                    _log("[XFlash] boot_to 命令无响应");
+                    _log("[XFlash] boot_to command no response");
                     return false;
                 }
 
                 uint status = MtkDataPacker.UnpackUInt32LE(statusResp, 0);
                 if (status != 0)
                 {
-                    _log($"[XFlash] boot_to 命令错误: 0x{status:X}");
+                    _log($"[XFlash] boot_to command error: 0x{status:X}");
                     return false;
                 }
 
-                // 2. 发送参数 (地址 + 长度, 各 8 字节 for 64-bit)
+                // 2. Send parameters (Address + Length, 8 bytes each for 64-bit)
                 byte[] param = new byte[16];
-                // 显式使用 Little-Endian 64-bit (避免平台相关性)
+                // Explicitly use Little-Endian 64-bit
                 WriteUInt64LE(param, 0, address);
                 WriteUInt64LE(param, 8, (ulong)data.Length);
 
@@ -620,39 +625,39 @@ namespace LoveAlways.MediaTek.Protocol
                 _port.Write(paramHeader, 0, 12);
                 _port.Write(param, 0, param.Length);
 
-                // 3. 发送数据
+                // 3. Send data
                 if (!await SendDataInternalAsync(data, ct))
                 {
-                    _log("[XFlash] boot_to 数据发送失败");
+                    _log("[XFlash] boot_to data send failed");
                     return false;
                 }
 
-                // 4. 等待并读取状态
+                // 4. Wait and read status
                 if (timeoutMs > 0)
                     await Task.Delay(timeoutMs, ct);
 
                 var finalStatus = await ReadBytesInternalAsync(4, 5000, ct);
                 if (finalStatus == null)
                 {
-                    _log("[XFlash] boot_to 最终状态读取失败");
+                    _log("[XFlash] boot_to final status read failed");
                     return false;
                 }
 
                 uint result = MtkDataPacker.UnpackUInt32LE(finalStatus, 0);
-                // 0x434E5953 = "SYNC" 或 0x0 = 成功
+                // 0x434E5953 = "SYNC" or 0x0 = success
                 if (result == 0x434E5953 || result == 0)
                 {
                     if (display)
-                        _log("[XFlash] ✓ boot_to 成功");
+                        _log("[XFlash] ✓ boot_to success");
                     return true;
                 }
 
-                _log($"[XFlash] boot_to 失败: 0x{result:X}");
+                _log($"[XFlash] boot_to failed: 0x{result:X}");
                 return false;
             }
             catch (Exception ex)
             {
-                _log($"[XFlash] boot_to 异常: {ex.Message}");
+                _log($"[XFlash] boot_to exception: {ex.Message}");
                 return false;
             }
             finally
@@ -662,7 +667,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 执行 Carbonara 漏洞利用
+        /// Execute Carbonara exploit
         /// </summary>
         public async Task<bool> ExecuteCarbonaraAsync(
             uint da1Address, 
@@ -672,58 +677,58 @@ namespace LoveAlways.MediaTek.Protocol
             byte[] patchedDa2, 
             CancellationToken ct = default)
         {
-            _log("[Carbonara] 开始运行时漏洞利用...");
+            _log("[Carbonara] Starting runtime exploit...");
 
-            // 1. 第一次 boot_to: 将新哈希写入 DA1 内存中的哈希位置
+            // 1. First boot_to: Write new hash to hash location in DA1 memory
             uint hashWriteAddress = da1Address + (uint)hashOffset;
-            _log($"[Carbonara] 写入新哈希到 0x{hashWriteAddress:X8}");
+            _log($"[Carbonara] Writing new hash to 0x{hashWriteAddress:X8}");
 
             if (!await BootToAsync(hashWriteAddress, newHash, display: true, timeoutMs: 100, ct: ct))
             {
-                _log("[Carbonara] 哈希写入失败");
+                _log("[Carbonara] Hash write failed");
                 return false;
             }
 
-            _log("[Carbonara] ✓ 哈希写入成功");
+            _log("[Carbonara] ✓ Hash write successful");
 
-            // 2. 第二次 boot_to: 上传修补后的 DA2
-            _log($"[Carbonara] 上传修补后的 DA2 到 0x{da2Address:X8}");
+            // 2. Second boot_to: Upload patched DA2
+            _log($"[Carbonara] Uploading patched DA2 to 0x{da2Address:X8}");
 
             if (!await BootToAsync(da2Address, patchedDa2, display: true, timeoutMs: 500, ct: ct))
             {
-                _log("[Carbonara] DA2 上传失败");
+                _log("[Carbonara] DA2 upload failed");
                 return false;
             }
 
-            _log("[Carbonara] ✓ Stage2 上传成功");
+            _log("[Carbonara] ✓ Stage2 upload successful");
             
-            // 3. 执行 SLA 授权 (如果需要)
-            await Task.Delay(100, ct);  // 等待 DA2 初始化
+            // 3. Execute SLA authentication (if needed)
+            await Task.Delay(100, ct);  // Wait for DA2 initialization
             
-            _log("[Carbonara] 检查 SLA 状态...");
+            _log("[Carbonara] Checking SLA status...");
             bool slaRequired = await CheckSlaStatusAsync(ct);
             
             if (slaRequired)
             {
-                _log("[Carbonara] SLA 状态: 启用");
-                _log("[Carbonara] 执行 SLA 授权...");
+                _log("[Carbonara] SLA Status: Enabled");
+                _log("[Carbonara] Executing SLA authentication...");
                 
                 if (!await ExecuteSlaAuthAsync(ct))
                 {
-                    _log("[Carbonara] ⚠ SLA 授权失败，但继续尝试");
-                    // 不返回失败，继续尝试
+                    _log("[Carbonara] ⚠ SLA authentication failed, but continuing anyway");
+                    // Don't return failure, continue trying
                 }
                 else
                 {
-                    _log("[Carbonara] ✓ SLA 授权成功");
+                    _log("[Carbonara] ✓ SLA authentication successful");
                 }
             }
             else
             {
-                _log("[Carbonara] SLA 状态: 禁用 (无需授权)");
+                _log("[Carbonara] SLA Status: Disabled (No authentication needed)");
             }
             
-            _log("[Carbonara] ✓ 运行时漏洞利用成功！");
+            _log("[Carbonara] ✓ Runtime exploit successful!");
             State = MtkDeviceState.Da2Loaded;
             IsConnected = true;
 
@@ -731,13 +736,13 @@ namespace LoveAlways.MediaTek.Protocol
         }
         
         /// <summary>
-        /// 检查 SLA 状态
+        /// Check SLA status
         /// </summary>
         private async Task<bool> CheckSlaStatusAsync(CancellationToken ct = default)
         {
             try
             {
-                // 发送 SLA 状态检查命令
+                // Send SLA status check command
                 string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                             "<da><version>1.0</version>" +
                             "<command>CMD:GET-SLA</command>" +
@@ -763,17 +768,17 @@ namespace LoveAlways.MediaTek.Protocol
         }
         
         /// <summary>
-        /// 执行 SLA 授权
+        /// Execute SLA authentication
         /// </summary>
         private async Task<bool> ExecuteSlaAuthAsync(CancellationToken ct = default)
         {
             try
             {
-                // SLA 授权流程:
-                // 1. 发送 SLA-CHALLENGE 请求
-                // 2. 收到 challenge 数据
-                // 3. 使用 SLA 证书签名
-                // 4. 发送签名响应
+                // SLA Auth Flow:
+                // 1. Send SLA-CHALLENGE request
+                // 2. Receive challenge data
+                // 3. Sign using SLA certificate
+                // 4. Send signature response
                 
                 string challengeCmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                                      "<da><version>1.0</version>" +
@@ -783,44 +788,44 @@ namespace LoveAlways.MediaTek.Protocol
                 var challengeResponse = await SendCommandAsync(challengeCmd, ct);
                 if (challengeResponse == null)
                 {
-                    _logDetail("[SLA] 无法获取 challenge");
+                    _logDetail("[SLA] Could not get challenge");
                     return false;
                 }
                 
-                // 解析 challenge
+                // Parse challenge
                 var challengeNode = challengeResponse.SelectSingleNode("//challenge");
                 if (challengeNode == null)
                 {
-                    // 可能设备不需要 SLA 或已授权
+                    // Maybe device doesn't need SLA or is already authorized
                     var statusNode = challengeResponse.SelectSingleNode("//status");
                     if (statusNode != null && statusNode.InnerText.Contains("OK"))
                     {
                         return true;
                     }
-                    _logDetail("[SLA] 无 challenge 数据");
+                    _logDetail("[SLA] No challenge data");
                     return false;
                 }
                 
-                // 获取 challenge 数据
+                // Get challenge data
                 string challengeHex = challengeNode.InnerText;
                 byte[] challenge = HexToBytes(challengeHex);
                 
-                _logDetail($"[SLA] 收到 challenge: {challenge.Length} 字节");
+                _logDetail($"[SLA] Received challenge: {challenge.Length} bytes");
                 
-                // 使用内置 SLA 证书签名 (占位实现)
-                // 实际需要根据设备类型加载正确的 SLA 证书
+                // Sign challenge using built-in SLA certificate (placeholder implementation)
+                // Real implementation needs to load the correct SLA certificate based on device type
                 byte[] signature = await MtkSlaAuth.SignChallengeAsync(challenge, ct);
                 
                 if (signature == null || signature.Length == 0)
                 {
-                    _logDetail("[SLA] 签名生成失败");
+                    _logDetail("[SLA] Signature generation failed");
                     return false;
                 }
                 
-                _logDetail($"[SLA] 生成签名: {signature.Length} 字节");
+                _logDetail($"[SLA] Generated signature: {signature.Length} bytes");
                 _progressCallback?.Invoke(50);
                 
-                // 发送签名响应
+                // Send signature response
                 string signatureHex = BytesToHex(signature);
                 string authCmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                                 "<da><version>1.0</version>" +
@@ -848,13 +853,13 @@ namespace LoveAlways.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _logDetail($"[SLA] 授权异常: {ex.Message}");
+                _logDetail($"[SLA] Authorization exception: {ex.Message}");
                 return false;
             }
         }
         
         /// <summary>
-        /// Hex 字符串转字节数组
+        /// Convert Hex string to byte array
         /// </summary>
         private static byte[] HexToBytes(string hex)
         {
@@ -869,7 +874,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
         
         /// <summary>
-        /// 字节数组转 Hex 字符串
+        /// Convert byte array to Hex string
         /// </summary>
         private static string BytesToHex(byte[] bytes)
         {
@@ -878,20 +883,20 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 发送数据 (内部方法)
+        /// Send data (Internal method)
         /// </summary>
         private async Task<bool> SendDataInternalAsync(byte[] data, CancellationToken ct = default)
         {
             try
             {
-                // 发送数据头
+                // Send data header
                 byte[] header = new byte[12];
                 MtkDataPacker.WriteUInt32LE(header, 0, XML_MAGIC);
                 MtkDataPacker.WriteUInt32LE(header, 4, (uint)DataType.ProtocolRaw);
                 MtkDataPacker.WriteUInt32LE(header, 8, (uint)data.Length);
                 _port.Write(header, 0, 12);
 
-                // 分块发送数据
+                // Send data in chunks
                 int chunkSize = 4096;
                 int offset = 0;
                 while (offset < data.Length)
@@ -916,23 +921,23 @@ namespace LoveAlways.MediaTek.Protocol
 
         #endregion
 
-        #region DA2 上传
+        #region DA2 Upload
 
         /// <summary>
-        /// 上传 DA2 - ChimeraTool 协议
-        /// 设备主动发送 CMD:DOWNLOAD-FILE 请求，主机响应 OK@size 然后发送数据
+        /// Upload DA2 - ChimeraTool Protocol
+        /// Device actively sends CMD:DOWNLOAD-FILE request, host responds OK@size then sends data
         /// </summary>
         public async Task<bool> UploadDa2Async(DaEntry da2, CancellationToken ct = default)
         {
             if (da2 == null || da2.Data == null)
             {
-                _log("[XML] DA2 数据为空");
+                _log("[XML] DA2 data is empty");
                 return false;
             }
 
-            _log($"[XML] 上传 DA2: {da2.Data.Length} 字节");
+            _log($"[XML] Uploading DA2: {da2.Data.Length} bytes");
             
-            // 0. 处理之前的消息 (CMD:END, CMD:START 等)
+            // 0. Handle prior messages (CMD:END, CMD:START, etc.)
             for (int i = 0; i < 5; i++)
             {
                 try
@@ -940,7 +945,7 @@ namespace LoveAlways.MediaTek.Protocol
                     string msg = await XRecvAsync(500, ct);
                     if (!string.IsNullOrEmpty(msg))
                     {
-                        _logDetail($"[XML] 处理消息: {msg.Substring(0, Math.Min(80, msg.Length))}...");
+                        _logDetail($"[XML] Handling message: {msg.Substring(0, Math.Min(80, msg.Length))}...");
                         if (msg.Contains("CMD:END") || msg.Contains("CMD:START") || msg.Contains("CMD:PROGRESS"))
                         {
                             await SendOkAsync(ct);
@@ -950,8 +955,8 @@ namespace LoveAlways.MediaTek.Protocol
                 catch { }
             }
             
-            // 1. 发送 BOOT-TO 命令触发 DA2 下载
-            _log("[XML] 发送 BOOT-TO 命令...");
+            // 1. Send BOOT-TO command to trigger DA2 download
+            _log("[XML] Sending BOOT-TO command...");
             string bootToCmd = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
                               "<da>" +
                               "<version>1.0</version>" +
@@ -965,73 +970,73 @@ namespace LoveAlways.MediaTek.Protocol
             
             await XSendAsync(bootToCmd, ct);
             
-            _log("[XML] 等待设备请求 DA2...");
+            _log("[XML] Waiting for device to request DA2...");
             
-            // 2. 等待设备发送 CMD:DOWNLOAD-FILE 请求
+            // 2. Wait for device to send CMD:DOWNLOAD-FILE request
             bool receivedRequest = false;
-            int packetLength = 0x1000; // 默认 4KB
+            int packetLength = 0x1000; // Default 4KB
             
             for (int retry = 0; retry < 30 && !receivedRequest; retry++)
             {
                 try
                 {
-                    // 读取设备消息
+                    // Read device message
                     string msg = await XRecvAsync(1000, ct);
                     if (string.IsNullOrEmpty(msg))
                     {
                         continue;
                     }
                     
-                    _logDetail($"[XML] 收到消息: {msg.Substring(0, Math.Min(100, msg.Length))}...");
+                    _logDetail($"[XML] Received message: {msg.Substring(0, Math.Min(100, msg.Length))}...");
                     
-                    // 检查是否是 DOWNLOAD-FILE 请求
+                    // Check if it's a DOWNLOAD-FILE request
                     if (msg.Contains("CMD:DOWNLOAD-FILE") && msg.Contains("2nd-DA"))
                     {
-                        _log("[XML] ✓ 收到 DA2 下载请求");
+                        _log("[XML] ✓ Received DA2 download request");
                         
-                        // 解析 packet_length
+                        // Parse packet_length
                         var match = System.Text.RegularExpressions.Regex.Match(
                             msg, @"<packet_length>0x([0-9A-Fa-f]+)</packet_length>");
                         if (match.Success)
                         {
                             packetLength = Convert.ToInt32(match.Groups[1].Value, 16);
-                            _logDetail($"[XML] 数据块大小: 0x{packetLength:X}");
+                            _logDetail($"[XML] Chunk size: 0x{packetLength:X}");
                         }
                         
-                        // 重要：先发送 OK 确认 DOWNLOAD-FILE 请求
-                        _log("[XML] 发送 OK 确认 DOWNLOAD-FILE...");
+                        // Important: Send OK to confirm DOWNLOAD-FILE request
+                        _log("[XML] Sending OK to confirm DOWNLOAD-FILE...");
                         await SendOkAsync(ct);
                         
                         receivedRequest = true;
                     }
                     else if (msg.Contains("CMD:START") || msg.Contains("CMD:PROGRESS-REPORT"))
                     {
-                        // 设备发送其他消息，响应 OK
+                        // Device sent other messages, respond with OK
                         await SendOkAsync(ct);
                     }
                     else if (msg.Contains("CMD:END"))
                     {
-                        // 命令完成，响应 OK
+                        // Command completed, respond with OK
                         await SendOkAsync(ct);
                     }
                 }
                 catch (TimeoutException)
                 {
-                    // 继续等待
+                    // Continue waiting
                 }
             }
             
             if (!receivedRequest)
             {
-                _log("[XML] 超时：未收到 DA2 下载请求");
+                _log("[XML] Timeout: Did not receive DA2 download request");
                 return false;
             }
             
-            // 2. 响应 OK@<size> (告诉设备文件大小)
+            // 2. Respond with OK@<size> (inform device regarding file size)
             string sizeResponse = $"OK@{da2.Data.Length} ";
-            _log($"[XML] 发送大小响应: {sizeResponse}");
+            _log($"[XML] Sending size response: {sizeResponse}");
             
-            // 手动构建并发送（更精确控制）
+            // Construct and send manually (more precise control)
             byte[] sizePayload = Encoding.ASCII.GetBytes(sizeResponse);
             byte[] sizeHeader = new byte[12];
             sizeHeader[0] = 0xEF; sizeHeader[1] = 0xEE; sizeHeader[2] = 0xEE; sizeHeader[3] = 0xFE;
@@ -1040,8 +1045,8 @@ namespace LoveAlways.MediaTek.Protocol
             sizeHeader[9] = (byte)((sizePayload.Length >> 8) & 0xFF);
             sizeHeader[10] = 0; sizeHeader[11] = 0;
             
-            _logDetail($"[XML] 发送头部: {BitConverter.ToString(sizeHeader).Replace("-", " ")}");
-            _logDetail($"[XML] 发送数据: {BitConverter.ToString(sizePayload).Replace("-", " ")}");
+            _logDetail($"[XML] Sending header: {BitConverter.ToString(sizeHeader).Replace("-", " ")}");
+            _logDetail($"[XML] Sending data: {BitConverter.ToString(sizePayload).Replace("-", " ")}");
             
             await _portLock.WaitAsync(ct);
             try
@@ -1056,11 +1061,11 @@ namespace LoveAlways.MediaTek.Protocol
                 _portLock.Release();
             }
             
-            // 等待一下让设备处理
+            // Wait for device to process
             await Task.Delay(100, ct);
             
-            // 检查串口是否有数据
-            _log($"[XML] 串口缓冲区: {_port.BytesToRead} 字节");
+            // Check if serial port has data
+            _log($"[XML] Serial port buffer: {_port.BytesToRead} bytes");
             
             bool deviceReady = false;
             
@@ -1068,22 +1073,22 @@ namespace LoveAlways.MediaTek.Protocol
             {
                 byte[] rawResp = new byte[Math.Min(_port.BytesToRead, 256)];
                 int rawRead = _port.Read(rawResp, 0, rawResp.Length);
-                _log($"[XML] 原始响应 ({rawRead} 字节): {BitConverter.ToString(rawResp, 0, rawRead).Replace("-", " ")}");
+                _log($"[XML] Raw response ({rawRead} bytes): {BitConverter.ToString(rawResp, 0, rawRead).Replace("-", " ")}");
                 
-                // 检查是否是 "OK" 响应
+                // Check for "OK" response
                 if (rawRead >= 3 && rawResp[0] == 0xEF && rawResp[1] == 0xEE)
                 {
-                    _log("[XML] ✓ 收到设备确认");
-                    // 发送 OK 回复
+                    _log("[XML] ✓ Received device confirmation");
+                    // Send OK reply
                     await SendOkAsync(ct);
                     
-                    // 再等待第二个确认
+                    // Wait for second confirmation
                     await Task.Delay(50, ct);
                     if (_port.BytesToRead > 0)
                     {
                         byte[] ack2 = new byte[_port.BytesToRead];
                         _port.Read(ack2, 0, ack2.Length);
-                        _logDetail($"[XML] 第二次响应: {BitConverter.ToString(ack2).Replace("-", " ")}");
+                        _logDetail($"[XML] Second response: {BitConverter.ToString(ack2).Replace("-", " ")}");
                     }
                     
                     deviceReady = true;
@@ -1092,13 +1097,13 @@ namespace LoveAlways.MediaTek.Protocol
             
             if (!deviceReady)
             {
-                _log("[XML] ⚠ 设备无响应，尝试继续发送数据...");
+                _log("[XML] ⚠ Device not responding, attempting to continue sending data anyway...");
             }
             
-            // 不再额外等待，直接开始发送数据
+            // Start sending data immediately
             
-            // 4. 分块发送 DA2 数据
-            _log($"[XML] 开始发送 DA2 数据: {da2.Data.Length} 字节, 块大小: {packetLength}");
+            // 4. Send DA2 data in chunks
+            _log($"[XML] Starting DA2 data transmission: {da2.Data.Length} bytes, chunk size: {packetLength}");
             
             int offset = 0;
             int totalChunks = (da2.Data.Length + packetLength - 1) / packetLength;
@@ -1112,14 +1117,14 @@ namespace LoveAlways.MediaTek.Protocol
                 byte[] chunk = new byte[chunkSize];
                 Array.Copy(da2.Data, offset, chunk, 0, chunkSize);
                 
-                // 第一块显示更多信息
+                // First block: show more info
                 if (chunkIndex == 0)
                 {
-                    _log($"[XML] 发送第一块: {chunkSize} 字节");
-                    _logDetail($"[XML] 前16字节: {BitConverter.ToString(chunk, 0, Math.Min(16, chunk.Length)).Replace("-", " ")}");
+                    _log($"[XML] Sending first chunk: {chunkSize} bytes");
+                    _logDetail($"[XML] First 16 bytes: {BitConverter.ToString(chunk, 0, Math.Min(16, chunk.Length)).Replace("-", " ")}");
                 }
                 
-                // 使用 XML 头部格式发送数据块
+                // Send data block using XML header format
                 await XSendBinaryAsync(chunk, ct);
                 
                 offset += chunkSize;
@@ -1127,11 +1132,11 @@ namespace LoveAlways.MediaTek.Protocol
                 
                 if (chunkIndex % 20 == 0 || offset >= da2.Data.Length)
                 {
-                    _log($"[XML] 已发送: {offset}/{da2.Data.Length} ({100 * offset / da2.Data.Length}%)");
+                    _log($"[XML] Sent: {offset}/{da2.Data.Length} ({100 * offset / da2.Data.Length}%)");
                 }
                 
-                // 等待设备 ACK
-                await Task.Delay(10, ct); // 短暂等待
+                // Wait for device ACK
+                await Task.Delay(10, ct); // Brief wait
                 
                 if (_port.BytesToRead > 0)
                 {
@@ -1141,29 +1146,29 @@ namespace LoveAlways.MediaTek.Protocol
                     
                     if (chunkIndex <= 3)
                     {
-                        _log($"[XML] 块{chunkIndex} ACK ({ackRead}字节): {BitConverter.ToString(rawAck, 0, ackRead).Replace("-", " ")}");
+                        _log($"[XML] Chunk {chunkIndex} ACK ({ackRead} bytes): {BitConverter.ToString(rawAck, 0, ackRead).Replace("-", " ")}");
                     }
                     
-                    // 检查是否包含 ERR
+                    // Check for ERR
                     if (ackStr.Contains("ERR"))
                     {
-                        _log($"[XML] ✗ 设备返回错误");
+                        _log($"[XML] ✗ Device returned error");
                         
-                        // 尝试读取完整的错误消息 (可能是 XML)
+                        // Attempt to read complete error message (may be XML)
                         await Task.Delay(100, ct);
                         if (_port.BytesToRead > 0)
                         {
                             byte[] errMsg = new byte[Math.Min(_port.BytesToRead, 1024)];
                             int errRead = _port.Read(errMsg, 0, errMsg.Length);
                             string errStr = Encoding.UTF8.GetString(errMsg, 0, errRead);
-                            _log($"[XML] 错误详情: {errStr}");
+                            _log($"[XML] Error details: {errStr}");
                         }
                         
-                        // 检查 rawAck 中是否已经包含 XML 错误消息
-                        // 格式: OK(15) + ERR(16) + XML(头部12 + 数据)
+                        // Check if rawAck already contains XML error message
+                        // Format: OK(15) + ERR(16) + XML(header 12 + data)
                         if (ackRead > 31)
                         {
-                            // 解析 XML 部分 - 找到 XML 头部 (跳过 OK + ERR 包)
+                            // Parse XML part - find XML header (skip OK + ERR packets)
                             for (int i = 0; i < ackRead - 12; i++)
                             {
                                 if (rawAck[i] == 0xEF && rawAck[i+1] == 0xEE && rawAck[i+2] == 0xEE && rawAck[i+3] == 0xFE)
@@ -1176,7 +1181,7 @@ namespace LoveAlways.MediaTek.Protocol
                                         if (payloadLen > 0)
                                         {
                                             string xmlPart = Encoding.UTF8.GetString(rawAck, payloadStart, payloadLen);
-                                            _log($"[XML] 错误消息: {xmlPart}");
+                                            _log($"[XML] Error message: {xmlPart}");
                                         }
                                     }
                                     break;
@@ -1187,41 +1192,41 @@ namespace LoveAlways.MediaTek.Protocol
                         return false;
                     }
                     
-                    // 检查是否是 OK ACK (EF EE EE FE ... 4F 4B 00)
+                    // Check if OK ACK (EF EE EE FE ... 4F 4B 00)
                     if (ackRead >= 12 && rawAck[0] == 0xEF && rawAck[1] == 0xEE)
                     {
-                        // 发送 OK 确认
+                        // Send OK confirmation
                         await SendOkAsync(ct);
                         
-                        // 等待第二个 ACK
+                        // Wait for second ACK
                         await Task.Delay(10, ct);
                         if (_port.BytesToRead > 0)
                         {
                             byte[] ack2 = new byte[_port.BytesToRead];
                             _port.Read(ack2, 0, ack2.Length);
-                            // 继续下一块
+                            // Continue to next chunk
                         }
                     }
                     
-                    // 检查是否是 CMD:END
+                    // Check if CMD:END
                     if (ackStr.Contains("CMD:END"))
                     {
-                        _log("[XML] 收到 CMD:END");
+                        _log("[XML] Received CMD:END");
                         await SendOkAsync(ct);
                         break;
                     }
                 }
             }
             
-            _log($"[XML] DA2 数据发送完成: {offset} 字节");
+            _log($"[XML] DA2 data transmission complete: {offset} bytes");
             
-            // 4. 等待最终确认
+            // 4. Wait for final confirmation
             for (int i = 0; i < 10; i++)
             {
                 string finalMsg = await XRecvAsync(1000, ct);
                 if (!string.IsNullOrEmpty(finalMsg))
                 {
-                    _logDetail($"[XML] 最终响应: {finalMsg.Substring(0, Math.Min(100, finalMsg.Length))}...");
+                    _logDetail($"[XML] Final response: {finalMsg.Substring(0, Math.Min(100, finalMsg.Length))}...");
                     
                     if (finalMsg.Contains("CMD:END"))
                     {
@@ -1229,7 +1234,7 @@ namespace LoveAlways.MediaTek.Protocol
                         
                         if (finalMsg.Contains("OK") || finalMsg.Contains("result>OK"))
                         {
-                            _log("[XML] ✓ DA2 上传成功");
+                            _log("[XML] ✓ DA2 upload successful");
                             State = MtkDeviceState.Da2Loaded;
                             return true;
                         }
@@ -1241,19 +1246,19 @@ namespace LoveAlways.MediaTek.Protocol
                 }
             }
             
-            _log("[XML] ✓ DA2 上传完成 (假设成功)");
+            _log("[XML] ✓ DA2 upload complete (assuming success)");
             State = MtkDeviceState.Da2Loaded;
             return true;
         }
         
         /// <summary>
-        /// 发送原始字符串 (带 XML 头部)
+        /// Send raw string (with XML header)
         /// </summary>
         private async Task XSendRawAsync(string data, CancellationToken ct = default)
         {
             byte[] payload = Encoding.ASCII.GetBytes(data);
             
-            // 构建头部: magic(4) + dataType(4) + length(4)
+            // Build header: magic(4) + dataType(4) + length(4)
             byte[] header = new byte[12];
             header[0] = 0xEF; header[1] = 0xEE; header[2] = 0xEE; header[3] = 0xFE; // Magic
             header[4] = 0x01; header[5] = 0x00; header[6] = 0x00; header[7] = 0x00; // DataType = 1
@@ -1280,12 +1285,12 @@ namespace LoveAlways.MediaTek.Protocol
         }
         
         /// <summary>
-        /// 发送二进制数据 (带 XML 头部)
-        /// ChimeraTool 将 header 和 data 作为两个独立的 USB 事务发送
+        /// Send binary data (with XML header)
+        /// ChimeraTool sends header and data as two separate USB transactions
         /// </summary>
         private async Task XSendBinaryAsync(byte[] data, CancellationToken ct = default)
         {
-            // 构建头部: magic(4) + dataType(4) + length(4)
+            // Build header: magic(4) + dataType(4) + length(4)
             byte[] header = new byte[12];
             header[0] = 0xEF; header[1] = 0xEE; header[2] = 0xEE; header[3] = 0xFE; // Magic
             header[4] = 0x01; header[5] = 0x00; header[6] = 0x00; header[7] = 0x00; // DataType = 1
@@ -1300,11 +1305,11 @@ namespace LoveAlways.MediaTek.Protocol
             await _portLock.WaitAsync(ct);
             try
             {
-                // 分开发送 header 和 data (模拟两个 USB 事务)
+                // Send header and data separately (simulating two USB transactions)
                 _port.Write(header, 0, 12);
                 _port.BaseStream.Flush();
                 
-                // 短暂延迟确保分开传输
+                // Short delay to ensure separate transfer
                 await Task.Delay(1, ct);
                 
                 _port.Write(data, 0, data.Length);
@@ -1317,7 +1322,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 上传数据块
+        /// Upload data block
         /// </summary>
         private async Task UploadDataAsync(byte[] data, CancellationToken ct = default)
         {
@@ -1338,7 +1343,7 @@ namespace LoveAlways.MediaTek.Protocol
                 await XSendRawAsync(chunk, ct);
                 totalSent += sendSize;
 
-                // 更新进度
+                // Update progress
                 double progress = (double)totalSent * 100 / data.Length;
                 _progressCallback?.Invoke(progress);
             }
@@ -1346,14 +1351,14 @@ namespace LoveAlways.MediaTek.Protocol
 
         #endregion
 
-        #region Flash 操作
+        #region Flash Operations
 
         /// <summary>
-        /// 读取分区表
+        /// Read partition table
         /// </summary>
         public async Task<MtkPartitionInfo[]> ReadPartitionTableAsync(CancellationToken ct = default)
         {
-            _log("[XML] 读取分区表...");
+            _log("[XML] Reading partition table...");
 
             string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                          "<da><version>1.0</version><command>CMD:READ_PARTITION_TABLE</command></da>";
@@ -1381,16 +1386,16 @@ namespace LoveAlways.MediaTek.Protocol
                 }
             }
 
-            _log($"[XML] 读取到 {partitions.Count} 个分区");
+            _log($"[XML] Read {partitions.Count} partitions");
             return partitions.ToArray();
         }
 
         /// <summary>
-        /// 读取分区
+        /// Read partition
         /// </summary>
         public async Task<byte[]> ReadPartitionAsync(string partitionName, ulong size, CancellationToken ct = default)
         {
-            _log($"[XML] 读取分区: {partitionName}");
+            _log($"[XML] Reading partition: {partitionName}");
 
             string cmd = $"<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                          $"<da><version>1.0</version><command>CMD:READ_PARTITION</command>" +
@@ -1405,7 +1410,7 @@ namespace LoveAlways.MediaTek.Protocol
             if (statusNode == null || statusNode.InnerText != "READY")
                 return null;
 
-            // 接收数据
+            // Receive data
             using (var ms = new MemoryStream())
             {
                 ulong received = 0;
@@ -1430,11 +1435,11 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 写入分区
+        /// Write partition
         /// </summary>
         public async Task<bool> WritePartitionAsync(string partitionName, byte[] data, CancellationToken ct = default)
         {
-            _log($"[XML] 写入分区: {partitionName} ({data.Length} 字节)");
+            _log($"[XML] Writing partition: {partitionName} ({data.Length} bytes)");
 
             string cmd = $"<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                          $"<da><version>1.0</version><command>CMD:WRITE_PARTITION</command>" +
@@ -1449,27 +1454,27 @@ namespace LoveAlways.MediaTek.Protocol
             if (statusNode == null || statusNode.InnerText != "READY")
                 return false;
 
-            // 发送数据
+            // Send data
             await UploadDataAsync(data, ct);
 
-            // 等待完成
+            // Wait for completion
             string completeResponse = await XRecvAsync(DEFAULT_TIMEOUT_MS * 2, ct);
             if (completeResponse != null && completeResponse.Contains("OK"))
             {
-                _log($"[XML] ✓ 分区 {partitionName} 写入成功");
+                _log($"[XML] ✓ Partition {partitionName} written successfully");
                 return true;
             }
 
-            _log($"[XML] 分区 {partitionName} 写入失败");
+            _log($"[XML] Partition {partitionName} writing failed");
             return false;
         }
 
         /// <summary>
-        /// 擦除分区
+        /// Erase partition
         /// </summary>
         public async Task<bool> ErasePartitionAsync(string partitionName, CancellationToken ct = default)
         {
-            _log($"[XML] 擦除分区: {partitionName}");
+            _log($"[XML] Erasing partition: {partitionName}");
 
             string cmd = $"<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                          $"<da><version>1.0</version><command>CMD:ERASE_PARTITION</command>" +
@@ -1484,11 +1489,11 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 格式化所有分区
+        /// Format all partitions
         /// </summary>
         public async Task<bool> FormatAllAsync(CancellationToken ct = default)
         {
-            _log("[XML] 格式化所有分区...");
+            _log("[XML] Formatting all partitions...");
 
             string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                          "<da><version>1.0</version><command>CMD:FORMAT_ALL</command></da>";
@@ -1503,14 +1508,14 @@ namespace LoveAlways.MediaTek.Protocol
 
         #endregion
 
-        #region 设备控制
+        #region Device Control
 
         /// <summary>
-        /// 重启设备
+        /// Reboot device
         /// </summary>
         public async Task<bool> RebootAsync(CancellationToken ct = default)
         {
-            _log("[XML] 重启设备...");
+            _log("[XML] Rebooting device...");
 
             string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                          "<da><version>1.0</version><command>CMD:REBOOT</command></da>";
@@ -1520,11 +1525,11 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 关机
+        /// Shutdown
         /// </summary>
         public async Task<bool> ShutdownAsync(CancellationToken ct = default)
         {
-            _log("[XML] 关闭设备...");
+            _log("[XML] Shutting down device...");
 
             string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                          "<da><version>1.0</version><command>CMD:SHUTDOWN</command></da>";
@@ -1534,11 +1539,11 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 获取 Flash 信息
+        /// Get Flash info
         /// </summary>
         public async Task<MtkFlashInfo> GetFlashInfoAsync(CancellationToken ct = default)
         {
-            _log("[XML] 获取 Flash 信息...");
+            _log("[XML] Getting Flash info...");
 
             string cmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                          "<da><version>1.0</version><command>CMD:GET_FLASH_INFO</command></da>";
@@ -1561,10 +1566,10 @@ namespace LoveAlways.MediaTek.Protocol
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         /// <summary>
-        /// 读取数据块 (带线程安全)
+        /// Read data chunk (Thread safe)
         /// </summary>
         private async Task<byte[]> ReadDataChunkAsync(CancellationToken ct = default)
         {
@@ -1592,7 +1597,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 读取指定字节数 (内部方法，不加锁)
+        /// Read specified number of bytes (Internal method, no lock)
         /// </summary>
         private async Task<byte[]> ReadBytesInternalAsync(int count, int timeoutMs, CancellationToken ct = default)
         {
@@ -1624,7 +1629,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 读取指定字节数 (带线程安全)
+        /// Read specified number of bytes (Thread safe)
         /// </summary>
         private async Task<byte[]> ReadBytesAsync(int count, int timeoutMs, CancellationToken ct = default)
         {
@@ -1640,7 +1645,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 解析 ulong 字符串
+        /// Parse ulong string
         /// </summary>
         private ulong ParseULong(string value)
         {
@@ -1654,7 +1659,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 写入 64 位无符号整数 (Little-Endian) - 避免平台相关性
+        /// Write 64-bit unsigned integer (Little-Endian) - Platform independent
         /// </summary>
         private static void WriteUInt64LE(byte[] buffer, int offset, ulong value)
         {
@@ -1678,7 +1683,7 @@ namespace LoveAlways.MediaTek.Protocol
             {
                 IsConnected = false;
                 
-                // 只有当我们拥有锁时才释放它
+                // Only dispose if we own the lock
                 if (_ownsPortLock)
                 {
                     _portLock?.Dispose();

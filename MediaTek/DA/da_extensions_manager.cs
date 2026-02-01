@@ -1,9 +1,14 @@
 // ============================================================================
-// LoveAlways - MediaTek DA Extensions 管理器实现
+// LoveAlways - MediaTek DA Extensions Manager Implementation
 // MediaTek Download Agent Extensions Manager Implementation
 // ============================================================================
-// 实现IDaExtensionsManager接口，提供完整的Extensions功能
+// Implementation of IDaExtensionsManager interface, provides full Extensions functionality
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Threading.Tasks;
@@ -14,7 +19,7 @@ using LoveAlways.MediaTek.Models;
 namespace LoveAlways.MediaTek.DA
 {
     /// <summary>
-    /// V5 (XFlash) DA Extensions 管理器
+    /// V5 (XFlash) DA Extensions Manager
     /// </summary>
     public class XFlashExtensionsManager : IDaExtensionsManager
     {
@@ -32,12 +37,12 @@ namespace LoveAlways.MediaTek.DA
             _status = ExtensionsStatus.NotLoaded;
         }
 
-        #region 加载/卸载
+        #region Load/Unload
 
         public bool IsSupported()
         {
-            // TODO: 实际检测逻辑
-            _log.Verbose("检查V5 Extensions支持", LogCategory.Da);
+            // TODO: Actual detection logic
+            _log.Verbose("Checking V5 Extensions support", LogCategory.Da);
             return true;
         }
 
@@ -45,29 +50,29 @@ namespace LoveAlways.MediaTek.DA
         {
             try
             {
-                _log.Info("加载V5 (XFlash) Extensions...", LogCategory.Da);
+                _log.Info("Loading V5 (XFlash) Extensions...", LogCategory.Da);
                 _status = ExtensionsStatus.Loading;
 
                 if (config?.ExtensionsBinary == null)
                 {
-                    _log.Error("Extensions二进制数据为空", LogCategory.Da);
+                    _log.Error("Extensions binary data is null", LogCategory.Da);
                     _status = ExtensionsStatus.LoadFailed;
                     return false;
                 }
 
                 _config = config;
 
-                // TODO: 实际上传到设备
-                _log.Warning("Extensions上传待实现 (需要boot_to命令)", LogCategory.Da);
-                _log.Info($"配置: 地址=0x{config.GetLoadAddress():X8}, 大小={config.ExtensionsBinary.Length}", LogCategory.Da);
+                // TODO: Actual upload to device
+                _log.Warning("Extensions upload pending implementation (requires boot_to command)", LogCategory.Da);
+                _log.Info($"Config: Address=0x{config.GetLoadAddress():X8}, Size={config.ExtensionsBinary.Length}", LogCategory.Da);
 
                 _status = ExtensionsStatus.Loaded;
-                _log.Success("V5 Extensions配置完成", LogCategory.Da);
+                _log.Success("V5 Extensions configuration complete", LogCategory.Da);
                 return true;
             }
             catch (Exception ex)
             {
-                _log.Error("V5 Extensions加载失败", LogCategory.Da, ex);
+                _log.Error("V5 Extensions load failed", LogCategory.Da, ex);
                 _status = ExtensionsStatus.LoadFailed;
                 return false;
             }
@@ -75,35 +80,35 @@ namespace LoveAlways.MediaTek.DA
 
         public void UnloadExtensions()
         {
-            _log.Info("卸载V5 Extensions", LogCategory.Da);
+            _log.Info("Unloading V5 Extensions", LogCategory.Da);
             _status = ExtensionsStatus.NotLoaded;
             _config = null;
         }
 
         #endregion
 
-        #region RPMB操作
+        #region RPMB Operations
 
         public byte[] ReadRpmb(uint address, uint length)
         {
             CheckLoaded();
             
-            _log.Info($"RPMB读取: 地址=0x{address:X}, 长度={length}", LogCategory.Da);
+            _log.Info($"RPMB Read: Address=0x{address:X}, Length={length}", LogCategory.Da);
             
             try
             {
-                // TODO: 发送CMD_READ_RPMB命令
+                // TODO: Send CMD_READ_RPMB command
                 var cmd = XFlashExtensionCommands.CMD_READ_RPMB;
                 _log.LogCommand("READ_RPMB", cmd, LogCategory.Da);
                 
-                // 这里需要实际的协议实现
-                _log.Warning("RPMB读取待实现", LogCategory.Da);
+                // Real protocol implementation needed here
+                _log.Warning("RPMB read pending implementation", LogCategory.Da);
                 
                 return new byte[length];
             }
             catch (Exception ex)
             {
-                _log.Error("RPMB读取失败", LogCategory.Da, ex);
+                _log.Error("RPMB read failed", LogCategory.Da, ex);
                 throw;
             }
         }
@@ -112,48 +117,48 @@ namespace LoveAlways.MediaTek.DA
         {
             CheckLoaded();
             
-            _log.Info($"RPMB写入: 地址=0x{address:X}, 长度={data?.Length ?? 0}", LogCategory.Da);
+            _log.Info($"RPMB Write: Address=0x{address:X}, Length={data?.Length ?? 0}", LogCategory.Da);
             
             try
             {
-                // TODO: 发送CMD_WRITE_RPMB命令
+                // TODO: Send CMD_WRITE_RPMB command
                 var cmd = XFlashExtensionCommands.CMD_WRITE_RPMB;
                 _log.LogCommand("WRITE_RPMB", cmd, LogCategory.Da);
                 
-                _log.Warning("RPMB写入待实现", LogCategory.Da);
+                _log.Warning("RPMB write pending implementation", LogCategory.Da);
                 
                 return true;
             }
             catch (Exception ex)
             {
-                _log.Error("RPMB写入失败", LogCategory.Da, ex);
+                _log.Error("RPMB write failed", LogCategory.Da, ex);
                 return false;
             }
         }
 
         #endregion
 
-        #region 寄存器访问
+        #region Register Access
 
         public uint ReadRegister(uint address)
         {
             CheckLoaded();
             
-            _log.Verbose($"读取寄存器: 0x{address:X8}", LogCategory.Da);
+            _log.Verbose($"Reading register: 0x{address:X8}", LogCategory.Da);
             
             try
             {
-                // TODO: 发送CMD_READ_REG命令
+                // TODO: Send CMD_READ_REG command
                 var cmd = XFlashExtensionCommands.CMD_READ_REG;
                 _log.LogCommand("READ_REG", cmd, LogCategory.Protocol);
                 
-                _log.Warning("寄存器读取待实现", LogCategory.Da);
+                _log.Warning("Register read pending implementation", LogCategory.Da);
                 
                 return 0;
             }
             catch (Exception ex)
             {
-                _log.Error($"寄存器读取失败: 0x{address:X8}", LogCategory.Da, ex);
+                _log.Error($"Register read failed: 0x{address:X8}", LogCategory.Da, ex);
                 throw;
             }
         }
@@ -162,53 +167,53 @@ namespace LoveAlways.MediaTek.DA
         {
             CheckLoaded();
             
-            _log.Verbose($"写入寄存器: 0x{address:X8} = 0x{value:X8}", LogCategory.Da);
+            _log.Verbose($"Writing register: 0x{address:X8} = 0x{value:X8}", LogCategory.Da);
             
             try
             {
-                // TODO: 发送CMD_WRITE_REG命令
+                // TODO: Send CMD_WRITE_REG command
                 var cmd = XFlashExtensionCommands.CMD_WRITE_REG;
                 _log.LogCommand("WRITE_REG", cmd, LogCategory.Protocol);
                 
-                _log.Warning("寄存器写入待实现", LogCategory.Da);
+                _log.Warning("Register write pending implementation", LogCategory.Da);
                 
                 return true;
             }
             catch (Exception ex)
             {
-                _log.Error($"寄存器写入失败: 0x{address:X8}", LogCategory.Da, ex);
+                _log.Error($"Register write failed: 0x{address:X8}", LogCategory.Da, ex);
                 return false;
             }
         }
 
         #endregion
 
-        #region SEJ操作
+        #region SEJ Operations
 
         public byte[] SejDecrypt(byte[] data)
         {
             CheckLoaded();
             
-            _log.Info($"SEJ解密: {data?.Length ?? 0} 字节", LogCategory.Security);
+            _log.Info($"SEJ Decrypt: {data?.Length ?? 0} bytes", LogCategory.Security);
             
             try
             {
-                // TODO: 发送CMD_SEJ_DECRYPT命令
+                // TODO: Send CMD_SEJ_DECRYPT command
                 var cmd = XFlashExtensionCommands.CMD_SEJ_DECRYPT;
                 _log.LogCommand("SEJ_DECRYPT", cmd, LogCategory.Security);
                 
                 if (data != null)
                 {
-                    _log.LogHex("加密数据", data, 32, LogLevel.Verbose);
+                    _log.LogHex("Encrypted data", data, 32, LogLevel.Verbose);
                 }
                 
-                _log.Warning("SEJ解密待实现", LogCategory.Security);
+                _log.Warning("SEJ decrypt pending implementation", LogCategory.Security);
                 
                 return data;
             }
             catch (Exception ex)
             {
-                _log.Error("SEJ解密失败", LogCategory.Security, ex);
+                _log.Error("SEJ decrypt failed", LogCategory.Security, ex);
                 throw;
             }
         }
@@ -217,39 +222,39 @@ namespace LoveAlways.MediaTek.DA
         {
             CheckLoaded();
             
-            _log.Info($"SEJ加密: {data?.Length ?? 0} 字节", LogCategory.Security);
+            _log.Info($"SEJ Encrypt: {data?.Length ?? 0} bytes", LogCategory.Security);
             
             try
             {
-                // TODO: 发送CMD_SEJ_ENCRYPT命令
+                // TODO: Send CMD_SEJ_ENCRYPT command
                 var cmd = XFlashExtensionCommands.CMD_SEJ_ENCRYPT;
                 _log.LogCommand("SEJ_ENCRYPT", cmd, LogCategory.Security);
                 
                 if (data != null)
                 {
-                    _log.LogHex("明文数据", data, 32, LogLevel.Verbose);
+                    _log.LogHex("Plaintext data", data, 32, LogLevel.Verbose);
                 }
                 
-                _log.Warning("SEJ加密待实现", LogCategory.Security);
+                _log.Warning("SEJ encrypt pending implementation", LogCategory.Security);
                 
                 return data;
             }
             catch (Exception ex)
             {
-                _log.Error("SEJ加密失败", LogCategory.Security, ex);
+                _log.Error("SEJ encrypt failed", LogCategory.Security, ex);
                 throw;
             }
         }
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         private void CheckLoaded()
         {
             if (_status != ExtensionsStatus.Loaded)
             {
-                throw new InvalidOperationException($"Extensions未加载 (当前状态: {_status})");
+                throw new InvalidOperationException($"Extensions not loaded (Current status: {_status})");
             }
         }
 
@@ -257,7 +262,7 @@ namespace LoveAlways.MediaTek.DA
     }
 
     /// <summary>
-    /// V6 (XML) DA Extensions 管理器
+    /// V6 (XML) DA Extensions Manager
     /// </summary>
     public class XmlExtensionsManager : IDaExtensionsManager
     {
@@ -275,11 +280,11 @@ namespace LoveAlways.MediaTek.DA
             _status = ExtensionsStatus.NotLoaded;
         }
 
-        #region 加载/卸载
+        #region Load/Unload
 
         public bool IsSupported()
         {
-            _log.Verbose("检查V6 Extensions支持", LogCategory.Da);
+            _log.Verbose("Checking V6 Extensions support", LogCategory.Da);
             return true;
         }
 
@@ -287,29 +292,29 @@ namespace LoveAlways.MediaTek.DA
         {
             try
             {
-                _log.Info("加载V6 (XML) Extensions...", LogCategory.Da);
+                _log.Info("Loading V6 (XML) Extensions...", LogCategory.Da);
                 _status = ExtensionsStatus.Loading;
 
                 if (config?.ExtensionsBinary == null)
                 {
-                    _log.Error("Extensions二进制数据为空", LogCategory.Da);
+                    _log.Error("Extensions binary data is null", LogCategory.Da);
                     _status = ExtensionsStatus.LoadFailed;
                     return false;
                 }
 
                 _config = config;
 
-                // TODO: 实际上传到设备
-                _log.Warning("Extensions上传待实现 (需要boot_to命令)", LogCategory.Da);
-                _log.Info($"配置: 地址=0x{config.GetLoadAddress():X8}, 大小={config.ExtensionsBinary.Length}", LogCategory.Da);
+                // TODO: Actual upload to device
+                _log.Warning("Extensions upload pending implementation (requires boot_to command)", LogCategory.Da);
+                _log.Info($"Config: Address=0x{config.GetLoadAddress():X8}, Size={config.ExtensionsBinary.Length}", LogCategory.Da);
 
                 _status = ExtensionsStatus.Loaded;
-                _log.Success("V6 Extensions配置完成", LogCategory.Da);
+                _log.Success("V6 Extensions configuration complete", LogCategory.Da);
                 return true;
             }
             catch (Exception ex)
             {
-                _log.Error("V6 Extensions加载失败", LogCategory.Da, ex);
+                _log.Error("V6 Extensions load failed", LogCategory.Da, ex);
                 _status = ExtensionsStatus.LoadFailed;
                 return false;
             }
@@ -317,34 +322,34 @@ namespace LoveAlways.MediaTek.DA
 
         public void UnloadExtensions()
         {
-            _log.Info("卸载V6 Extensions", LogCategory.Da);
+            _log.Info("Unloading V6 Extensions", LogCategory.Da);
             _status = ExtensionsStatus.NotLoaded;
             _config = null;
         }
 
         #endregion
 
-        #region RPMB操作
+        #region RPMB Operations
 
         public byte[] ReadRpmb(uint address, uint length)
         {
             CheckLoaded();
             
-            _log.Info($"RPMB读取 (XML): 地址=0x{address:X}, 长度={length}", LogCategory.Da);
+            _log.Info($"RPMB Read (XML): Address=0x{address:X}, Length={length}", LogCategory.Da);
             
             try
             {
-                // TODO: 发送XML CMD:READ-RPMB命令
+                // TODO: Send XML CMD:READ-RPMB command
                 var cmd = XmlExtensionCommands.CMD_READ_RPMB;
                 _log.Info($"→ {cmd}", LogCategory.Xml);
                 
-                _log.Warning("RPMB读取待实现 (XML协议)", LogCategory.Da);
+                _log.Warning("RPMB read pending implementation (XML protocol)", LogCategory.Da);
                 
                 return new byte[length];
             }
             catch (Exception ex)
             {
-                _log.Error("RPMB读取失败", LogCategory.Da, ex);
+                _log.Error("RPMB read failed", LogCategory.Da, ex);
                 throw;
             }
         }
@@ -353,47 +358,47 @@ namespace LoveAlways.MediaTek.DA
         {
             CheckLoaded();
             
-            _log.Info($"RPMB写入 (XML): 地址=0x{address:X}, 长度={data?.Length ?? 0}", LogCategory.Da);
+            _log.Info($"RPMB Write (XML): Address=0x{address:X}, Length={data?.Length ?? 0}", LogCategory.Da);
             
             try
             {
-                // TODO: 发送XML CMD:WRITE-RPMB命令
+                // TODO: Send XML CMD:WRITE-RPMB command
                 var cmd = XmlExtensionCommands.CMD_WRITE_RPMB;
                 _log.Info($"→ {cmd}", LogCategory.Xml);
                 
-                _log.Warning("RPMB写入待实现 (XML协议)", LogCategory.Da);
+                _log.Warning("RPMB write pending implementation (XML protocol)", LogCategory.Da);
                 
                 return true;
             }
             catch (Exception ex)
             {
-                _log.Error("RPMB写入失败", LogCategory.Da, ex);
+                _log.Error("RPMB write failed", LogCategory.Da, ex);
                 return false;
             }
         }
 
         #endregion
 
-        #region 寄存器访问
+        #region Register Access
 
         public uint ReadRegister(uint address)
         {
             CheckLoaded();
             
-            _log.Verbose($"读取寄存器 (XML): 0x{address:X8}", LogCategory.Da);
+            _log.Verbose($"Reading register (XML): 0x{address:X8}", LogCategory.Da);
             
             try
             {
                 var cmd = XmlExtensionCommands.CMD_READ_REG;
                 _log.Info($"→ {cmd}", LogCategory.Xml);
                 
-                _log.Warning("寄存器读取待实现 (XML协议)", LogCategory.Da);
+                _log.Warning("Register read pending implementation (XML protocol)", LogCategory.Da);
                 
                 return 0;
             }
             catch (Exception ex)
             {
-                _log.Error($"寄存器读取失败: 0x{address:X8}", LogCategory.Da, ex);
+                _log.Error($"Register read failed: 0x{address:X8}", LogCategory.Da, ex);
                 throw;
             }
         }
@@ -402,33 +407,33 @@ namespace LoveAlways.MediaTek.DA
         {
             CheckLoaded();
             
-            _log.Verbose($"写入寄存器 (XML): 0x{address:X8} = 0x{value:X8}", LogCategory.Da);
+            _log.Verbose($"Writing register (XML): 0x{address:X8} = 0x{value:X8}", LogCategory.Da);
             
             try
             {
                 var cmd = XmlExtensionCommands.CMD_WRITE_REG;
                 _log.Info($"→ {cmd}", LogCategory.Xml);
                 
-                _log.Warning("寄存器写入待实现 (XML协议)", LogCategory.Da);
+                _log.Warning("Register write pending implementation (XML protocol)", LogCategory.Da);
                 
                 return true;
             }
             catch (Exception ex)
             {
-                _log.Error($"寄存器写入失败: 0x{address:X8}", LogCategory.Da, ex);
+                _log.Error($"Register write failed: 0x{address:X8}", LogCategory.Da, ex);
                 return false;
             }
         }
 
         #endregion
 
-        #region SEJ操作
+        #region SEJ Operations
 
         public byte[] SejDecrypt(byte[] data)
         {
             CheckLoaded();
             
-            _log.Info($"SEJ解密 (XML): {data?.Length ?? 0} 字节", LogCategory.Security);
+            _log.Info($"SEJ Decrypt (XML): {data?.Length ?? 0} bytes", LogCategory.Security);
             
             try
             {
@@ -437,16 +442,16 @@ namespace LoveAlways.MediaTek.DA
                 
                 if (data != null)
                 {
-                    _log.LogHex("加密数据", data, 32, LogLevel.Verbose);
+                    _log.LogHex("Encrypted data", data, 32, LogLevel.Verbose);
                 }
                 
-                _log.Warning("SEJ解密待实现 (XML协议)", LogCategory.Security);
+                _log.Warning("SEJ decrypt pending implementation (XML protocol)", LogCategory.Security);
                 
                 return data;
             }
             catch (Exception ex)
             {
-                _log.Error("SEJ解密失败", LogCategory.Security, ex);
+                _log.Error("SEJ decrypt failed", LogCategory.Security, ex);
                 throw;
             }
         }
@@ -455,7 +460,7 @@ namespace LoveAlways.MediaTek.DA
         {
             CheckLoaded();
             
-            _log.Info($"SEJ加密 (XML): {data?.Length ?? 0} 字节", LogCategory.Security);
+            _log.Info($"SEJ Encrypt (XML): {data?.Length ?? 0} bytes", LogCategory.Security);
             
             try
             {
@@ -464,29 +469,29 @@ namespace LoveAlways.MediaTek.DA
                 
                 if (data != null)
                 {
-                    _log.LogHex("明文数据", data, 32, LogLevel.Verbose);
+                    _log.LogHex("Plaintext data", data, 32, LogLevel.Verbose);
                 }
                 
-                _log.Warning("SEJ加密待实现 (XML协议)", LogCategory.Security);
+                _log.Warning("SEJ encrypt pending implementation (XML protocol)", LogCategory.Security);
                 
                 return data;
             }
             catch (Exception ex)
             {
-                _log.Error("SEJ加密失败", LogCategory.Security, ex);
+                _log.Error("SEJ encrypt failed", LogCategory.Security, ex);
                 throw;
             }
         }
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         private void CheckLoaded()
         {
             if (_status != ExtensionsStatus.Loaded)
             {
-                throw new InvalidOperationException($"Extensions未加载 (当前状态: {_status})");
+                throw new InvalidOperationException($"Extensions not loaded (Current status: {_status})");
             }
         }
 
@@ -494,12 +499,12 @@ namespace LoveAlways.MediaTek.DA
     }
 
     /// <summary>
-    /// Extensions管理器工厂
+    /// Extensions Manager Factory
     /// </summary>
     public static class DaExtensionsManagerFactory
     {
         /// <summary>
-        /// 根据DA模式创建对应的Extensions管理器
+        /// Create corresponding Extensions manager based on DA mode
         /// </summary>
         public static IDaExtensionsManager Create(int daMode, IBromClient client, MtkLogger logger = null)
         {
@@ -507,12 +512,12 @@ namespace LoveAlways.MediaTek.DA
             {
                 5 => new XFlashExtensionsManager(client, logger),  // V5/XFlash
                 6 => new XmlExtensionsManager(client, logger),     // V6/XML
-                _ => throw new NotSupportedException($"不支持的DA模式: {daMode}")
+                _ => throw new NotSupportedException($"Unsupported DA mode: {daMode}")
             };
         }
 
         /// <summary>
-        /// 根据设备信息创建Extensions管理器
+        /// Create Extensions manager based on device info
         /// </summary>
         public static IDaExtensionsManager Create(MtkDeviceInfo deviceInfo, IBromClient client, MtkLogger logger = null)
         {

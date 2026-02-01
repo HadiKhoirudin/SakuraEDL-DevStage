@@ -1,8 +1,13 @@
 // ============================================================================
-// LoveAlways - 奇美拉签名数据库
-// Loader/Digest/Signature 全部从资源包 (firehose.pak) 加载
-// 仅支持 CPAK v2 格式 (Loader + Digest + Signature)
+// LoveAlways - Chimera Signature Database
+// Loader/Digest/Signature are all loaded from the resource pack (firehose.pak)
+// Only supports CPAK v2 format (Loader + Digest + Signature)
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -13,12 +18,12 @@ using System.Text;
 namespace LoveAlways.Qualcomm.Database
 {
     /// <summary>
-    /// 奇美拉签名数据库
+    /// Chimera Signature Database
     /// </summary>
     public static class ChimeraSignDatabase
     {
         /// <summary>
-        /// 签名数据项
+        /// Signature Data Item
         /// </summary>
         public class SignatureData
         {
@@ -26,7 +31,7 @@ namespace LoveAlways.Qualcomm.Database
             public string Name { get; set; }
             
             /// <summary>
-            /// 从资源包加载 Digest
+            /// Load Digest from resource pack
             /// </summary>
             public byte[] Digest
             {
@@ -34,7 +39,7 @@ namespace LoveAlways.Qualcomm.Database
             }
             
             /// <summary>
-            /// 从资源包加载 Signature
+            /// Load Signature from resource pack
             /// </summary>
             public byte[] Signature
             {
@@ -101,7 +106,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 从资源包加载 Loader
+        /// Load Loader from resource pack
         /// </summary>
         public static byte[] LoadLoader(string platform)
         {
@@ -110,7 +115,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 从资源包加载 Digest
+        /// Load Digest from resource pack
         /// </summary>
         public static byte[] LoadDigest(string platform)
         {
@@ -119,7 +124,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 从资源包加载 Signature
+        /// Load Signature from resource pack
         /// </summary>
         public static byte[] LoadSignature(string platform)
         {
@@ -128,7 +133,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 获取 Digest 文件路径 (从资源包提取到临时目录)
+        /// Get Digest file path (extracted from resource pack to temp directory)
         /// </summary>
         public static string GetDigestPath(string platform)
         {
@@ -138,7 +143,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 获取 Signature 文件路径 (从资源包提取到临时目录)
+        /// Get Signature file path (extracted from resource pack to temp directory)
         /// </summary>
         public static string GetSignaturePath(string platform)
         {
@@ -168,7 +173,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 检查资源包是否存在
+        /// Check if resource pack exists
         /// </summary>
         public static bool IsLoaderPackAvailable()
         {
@@ -177,7 +182,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 检查 VIP 认证数据是否可用 (资源包已加载且为 v2 格式)
+        /// Check if VIP authentication data is available (resource pack loaded and is v2 format)
         /// </summary>
         public static bool IsVipAuthPackAvailable()
         {
@@ -186,7 +191,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 检查指定平台是否有 VIP 认证数据
+        /// Check if the specified platform has VIP authentication data
         /// </summary>
         public static bool HasVipAuthData(string platform)
         {
@@ -198,7 +203,7 @@ namespace LoveAlways.Qualcomm.Database
         {
             var db = new Dictionary<string, SignatureData>(StringComparer.OrdinalIgnoreCase);
 
-            // 平台信息 (Loader/Digest/Signature 全部从 firehose.pak 加载)
+            // Platform info (Loader/Digest/Signature are all loaded from firehose.pak)
             db["SM6115"] = new SignatureData { Platform = "SM6115", Name = "Snapdragon 460" };
             db["SM6225"] = new SignatureData { Platform = "SM6225", Name = "Snapdragon 480" };
             db["SM6375"] = new SignatureData { Platform = "SM6375", Name = "Snapdragon 695/6SGen3" };
@@ -220,9 +225,9 @@ namespace LoveAlways.Qualcomm.Database
     }
 
     /// <summary>
-    /// Firehose 资源包读取器 (仅支持 CPAK v2)
+    /// Firehose Resource Pack Reader (CPAK v2 only)
     /// 
-    /// CPAK v2 格式 (Loader + Digest + Signature):
+    /// CPAK v2 format (Loader + Digest + Signature):
     /// Header: Magic(4) + Version(4) + Count(4)
     /// Entry: Platform(32) + LoaderOffset(8) + LoaderCompSize(4) + LoaderOrigSize(4) 
     ///        + DigestOffset(8) + DigestCompSize(4) + DigestOrigSize(4)
@@ -266,15 +271,15 @@ namespace LoveAlways.Qualcomm.Database
                 if (Encoding.ASCII.GetString(magic) != "CPAK")
                     throw new InvalidDataException("Invalid PAK file");
 
-                // Version (仅支持 v2)
+                // Version (v2 supported only)
                 Version = (int)br.ReadUInt32();
                 if (Version != 2)
-                    throw new InvalidDataException("仅支持 CPAK v2 格式，当前版本: " + Version);
+                    throw new InvalidDataException("Only CPAK v2 format is supported, current version: " + Version);
 
                 // Count
                 uint count = br.ReadUInt32();
 
-                // Index entries (v2 格式: Loader + Digest + Signature)
+                // Index entries (v2 format: Loader + Digest + Signature)
                 for (int i = 0; i < count; i++)
                 {
                     byte[] platformBytes = br.ReadBytes(32);
@@ -331,7 +336,7 @@ namespace LoveAlways.Qualcomm.Database
             if (entry.SignatureSize == 0)
                 return null;
 
-            // Signature 不压缩，直接读取
+            // Signature is not compressed, read directly
             using (var fs = new FileStream(_pakPath, FileMode.Open, FileAccess.Read))
             {
                 fs.Seek(entry.SignatureOffset, SeekOrigin.Begin);

@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,10 +12,10 @@ using System.Runtime.InteropServices;
 namespace LoveAlways.Fastboot.Image
 {
     /// <summary>
-    /// Android Sparse 镜像解析器
-    /// 基于 AOSP libsparse 实现
+    /// Android Sparse Image Parser
+    /// Based on AOSP libsparse implementation
     /// 
-    /// Sparse 镜像格式：
+    /// Sparse Image Format:
     /// - Header (28 bytes)
     /// - Chunk[] 
     ///   - Chunk Header (12 bytes)
@@ -18,10 +23,10 @@ namespace LoveAlways.Fastboot.Image
     /// </summary>
     public class SparseImage : IDisposable
     {
-        // Sparse 魔数
+        // Sparse magic number
         public const uint SPARSE_HEADER_MAGIC = 0xED26FF3A;
         
-        // Chunk 类型
+        // Chunk types
         public const ushort CHUNK_TYPE_RAW = 0xCAC1;
         public const ushort CHUNK_TYPE_FILL = 0xCAC2;
         public const ushort CHUNK_TYPE_DONT_CARE = 0xCAC3;
@@ -34,32 +39,32 @@ namespace LoveAlways.Fastboot.Image
         private bool _disposed;
         
         /// <summary>
-        /// 是否是 Sparse 镜像
+        /// Whether it's a Sparse image
         /// </summary>
         public bool IsSparse => _isSparse;
         
         /// <summary>
-        /// 原始文件大小（解压后）
+        /// Original file size (after decompression)
         /// </summary>
         public long OriginalSize => _isSparse ? (long)_header.TotalBlocks * _header.BlockSize : _stream.Length;
         
         /// <summary>
-        /// Sparse 文件大小
+        /// Sparse file size
         /// </summary>
         public long SparseSize => _stream.Length;
         
         /// <summary>
-        /// 块大小
+        /// Block size
         /// </summary>
         public uint BlockSize => _isSparse ? _header.BlockSize : 4096;
         
         /// <summary>
-        /// 总块数
+        /// Total blocks
         /// </summary>
         public uint TotalBlocks => _isSparse ? _header.TotalBlocks : (uint)((_stream.Length + BlockSize - 1) / BlockSize);
         
         /// <summary>
-        /// Chunk 数量
+        /// Number of chunks
         /// </summary>
         public int ChunkCount => _chunks?.Count ?? 0;
         
@@ -69,7 +74,7 @@ namespace LoveAlways.Fastboot.Image
         public SparseHeader Header => _header;
         
         /// <summary>
-        /// 所有 Chunks
+        /// All Chunks
         /// </summary>
         public IReadOnlyList<SparseChunk> Chunks => _chunks;
         
@@ -90,7 +95,7 @@ namespace LoveAlways.Fastboot.Image
         {
             _stream.Position = 0;
             
-            // 读取魔数
+            // Read magic number
             byte[] magicBytes = new byte[4];
             if (_stream.Read(magicBytes, 0, 4) != 4)
             {
@@ -108,7 +113,7 @@ namespace LoveAlways.Fastboot.Image
             _isSparse = true;
             _stream.Position = 0;
             
-            // 读取完整 header
+            // Read full header
             byte[] headerBytes = new byte[28];
             _stream.Read(headerBytes, 0, 28);
             
@@ -125,13 +130,13 @@ namespace LoveAlways.Fastboot.Image
                 ImageChecksum = BitConverter.ToUInt32(headerBytes, 24)
             };
             
-            // 跳过额外的 header 数据
+            // Skip additional header data
             if (_header.FileHeaderSize > 28)
             {
                 _stream.Position = _header.FileHeaderSize;
             }
             
-            // 解析所有 chunks
+            // Parse all chunks
             ParseChunks();
         }
         
@@ -154,11 +159,11 @@ namespace LoveAlways.Fastboot.Image
                     DataOffset = _stream.Position
                 };
                 
-                // 计算数据大小
+                // Calculate data size
                 uint dataSize = chunk.TotalSize - _header.ChunkHeaderSize;
                 chunk.DataSize = dataSize;
                 
-                // 跳过数据部分
+                // Skip data part
                 _stream.Position += dataSize;
                 
                 _chunks.Add(chunk);
@@ -166,7 +171,7 @@ namespace LoveAlways.Fastboot.Image
         }
         
         /// <summary>
-        /// 将 Sparse 镜像转换为原始数据流
+        /// Convert Sparse image to raw data stream
         /// </summary>
         public Stream ToRawStream()
         {
@@ -180,16 +185,15 @@ namespace LoveAlways.Fastboot.Image
         }
         
         /// <summary>
-        /// 分割为多个 Sparse 块用于传输
-        /// Sparse 镜像会被 resparse 成多个独立的 Sparse 文件
+        /// Split into multiple Sparse chunks for transfer
+        /// Sparse image will be resparsed into multiple independent Sparse files
         /// </summary>
-        /// <param name="maxSize">每块最大大小</param>
+        /// <param name="maxSize">Maximum size for each chunk</param>
         public IEnumerable<SparseChunkData> SplitForTransfer(long maxSize)
         {
             if (!_isSparse)
             {
-                // 非 Sparse 镜像，直接分块
-                _stream.Position = 0;
+                // Non-Sparse image, chunk directly                _stream.Position = 0;
                 long remaining = _stream.Length;
                 int chunkIndex = 0;
                 
@@ -212,7 +216,7 @@ namespace LoveAlways.Fastboot.Image
             }
             else
             {
-                // Sparse 镜像：如果小于 maxSize，直接发送整个文件
+                // Sparse image: If smaller than maxSize, send the entire file directly
                 if (_stream.Length <= maxSize)
                 {
                     _stream.Position = 0;
@@ -229,8 +233,8 @@ namespace LoveAlways.Fastboot.Image
                 }
                 else
                 {
-                    // Sparse 镜像太大，需要 resparse
-                    // 将 chunks 分组，每组生成一个独立的 Sparse 文件
+                    // Sparse image is too large, needs resparse
+                    // Group chunks, each group generates an independent Sparse file
                     foreach (var sparseChunk in ResparseSplitTransfer(maxSize))
                     {
                         yield return sparseChunk;
@@ -240,16 +244,16 @@ namespace LoveAlways.Fastboot.Image
         }
         
         /// <summary>
-        /// Resparse：将大的 Sparse 镜像分割成多个小的 Sparse 镜像
-        /// 优化内存使用：每次只分配必要的内存
+        /// Resparse: Split large Sparse image into multiple small Sparse images
+        /// Optimize memory usage: Allocate only necessary memory each time
         /// </summary>
         private IEnumerable<SparseChunkData> ResparseSplitTransfer(long maxSize)
         {
-            // 计算每个分片可以容纳多少数据（预留 header 空间）
+            // Calculate how much data each slice can hold (reserve header space)
             int headerSize = _header.FileHeaderSize;
             int chunkHeaderSize = _header.ChunkHeaderSize;
             
-            // 分组 chunks - 先计算分组信息，避免保存大量数据
+            // Group chunks - calculate group info first to avoid saving large amounts of data
             var groups = new List<List<int>>();
             var currentGroup = new List<int>();
             long currentGroupSize = headerSize;
@@ -259,11 +263,10 @@ namespace LoveAlways.Fastboot.Image
                 var chunk = _chunks[i];
                 long chunkTotalSize = chunk.TotalSize;
                 
-                // 如果单个 chunk 超过 maxSize，需要单独处理
+                // If a single chunk exceeds maxSize, it needs to be handled separately
                 if (chunkTotalSize + headerSize > maxSize && currentGroup.Count == 0)
                 {
-                    // 单个 chunk 太大，单独作为一组
-                    currentGroup.Add(i);
+                    // Single chunk too large, separate into a group alone                    currentGroup.Add(i);
                     groups.Add(currentGroup);
                     currentGroup = new List<int>();
                     currentGroupSize = headerSize;
@@ -272,8 +275,7 @@ namespace LoveAlways.Fastboot.Image
                 
                 if (currentGroup.Count > 0 && currentGroupSize + chunkTotalSize > maxSize)
                 {
-                    // 当前组已满，开始新组
-                    groups.Add(currentGroup);
+                    // Current group is full, start a new group                    groups.Add(currentGroup);
                     currentGroup = new List<int>();
                     currentGroupSize = headerSize;
                 }
@@ -287,14 +289,14 @@ namespace LoveAlways.Fastboot.Image
                 groups.Add(currentGroup);
             }
             
-            // 为每个组生成独立的 Sparse 文件
+            // Generate independent Sparse files for each group
             int totalGroups = groups.Count;
             
             for (int groupIndex = 0; groupIndex < totalGroups; groupIndex++)
             {
                 var group = groups[groupIndex];
                 
-                // 计算此组的总大小
+                // Calculate total size of this group
                 long groupDataSize = headerSize;
                 uint groupTotalBlocks = 0;
                 foreach (int idx in group)
@@ -303,11 +305,11 @@ namespace LoveAlways.Fastboot.Image
                     groupTotalBlocks += _chunks[idx].ChunkBlocks;
                 }
                 
-                // 预分配缓冲区
+                // Pre-allocate buffer
                 byte[] sparseData = new byte[groupDataSize];
                 int writeOffset = 0;
                 
-                // 写入 Sparse header (28 bytes)
+                // Write Sparse header (28 bytes)
                 Buffer.BlockCopy(BitConverter.GetBytes(SPARSE_HEADER_MAGIC), 0, sparseData, writeOffset, 4);
                 writeOffset += 4;
                 Buffer.BlockCopy(BitConverter.GetBytes(_header.MajorVersion), 0, sparseData, writeOffset, 2);
@@ -327,13 +329,12 @@ namespace LoveAlways.Fastboot.Image
                 Buffer.BlockCopy(BitConverter.GetBytes(0u), 0, sparseData, writeOffset, 4); // checksum = 0
                 writeOffset += 4;
                 
-                // 直接读取每个 chunk 数据到预分配的缓冲区
+                // Read each chunk data directly to the pre-allocated buffer
                 foreach (int idx in group)
                 {
                     var chunk = _chunks[idx];
                     
-                    // 定位到 chunk 数据（包含 header）
-                    _stream.Position = chunk.DataOffset - chunkHeaderSize;
+                    // Locate trunk data (including header)                    _stream.Position = chunk.DataOffset - chunkHeaderSize;
                     _stream.Read(sparseData, writeOffset, (int)chunk.TotalSize);
                     writeOffset += (int)chunk.TotalSize;
                 }
@@ -346,7 +347,7 @@ namespace LoveAlways.Fastboot.Image
                     Size = (int)groupDataSize
                 };
                 
-                // 显式释放引用，帮助 GC
+                // Explicitly release reference to help GC
                 sparseData = null;
             }
         }
@@ -406,7 +407,7 @@ namespace LoveAlways.Fastboot.Image
     }
     
     /// <summary>
-    /// 用于传输的 Chunk 数据
+    /// Chunk data for transfer
     /// </summary>
     public class SparseChunkData
     {
@@ -419,7 +420,7 @@ namespace LoveAlways.Fastboot.Image
     }
     
     /// <summary>
-    /// Sparse 到 Raw 的流转换器
+    /// Sparse to Raw stream converter
     /// </summary>
     internal class SparseToRawStream : Stream
     {
@@ -447,7 +448,7 @@ namespace LoveAlways.Fastboot.Image
         
         public override int Read(byte[] buffer, int offset, int count)
         {
-            // 简化实现：遍历 chunks 找到对应位置的数据
+            // Simplified implementation: traverse chunks to find data at corresponding position
             int totalRead = 0;
             long currentBlockOffset = 0;
             

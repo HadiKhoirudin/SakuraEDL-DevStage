@@ -1,8 +1,13 @@
 // ============================================================================
-// LoveAlways - EDL Loader 数据库
-// [已废弃] 本地 PAK 资源已替换为云端自动匹配
-// 保留此文件仅用于离线回退兼容
+// LoveAlways - EDL Loader Database
+// [Deprecated] Local PAK resources have been replaced by cloud automatic matching
+// This file is kept only for offline fallback compatibility
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -13,10 +18,10 @@ using System.Text;
 namespace LoveAlways.Qualcomm.Database
 {
     /// <summary>
-    /// EDL Loader 本地数据库 (已废弃)
-    /// 现在使用 CloudLoaderService 进行云端自动匹配
+    /// EDL Loader Local Database (Deprecated)
+    /// Now uses CloudLoaderService for cloud automatic matching
     /// </summary>
-    [Obsolete("使用 CloudLoaderService 进行云端自动匹配")]
+    [Obsolete("Use CloudLoaderService for cloud automatic matching")]
     public static class EdlLoaderDatabase
     {
         public class LoaderInfo
@@ -27,7 +32,7 @@ namespace LoveAlways.Qualcomm.Database
             public string Chip { get; set; }
             public bool IsCommon { get; set; }
             /// <summary>
-            /// 认证模式: "none" = 无需认证, "oneplus" = OnePlus认证
+            /// Authentication Mode: "none" = No auth needed, "oneplus" = OnePlus authentication
             /// </summary>
             public string AuthMode { get; set; }
         }
@@ -51,35 +56,35 @@ namespace LoveAlways.Qualcomm.Database
             }
         }
 
-        [Obsolete("使用 CloudLoaderService")]
+        [Obsolete("Use CloudLoaderService")]
         public static string[] GetBrands()
         {
-            return new string[0]; // 不再使用本地数据库
+            return new string[0]; // No longer using local database
         }
-
-        [Obsolete("使用 CloudLoaderService")]
+ 
+        [Obsolete("Use CloudLoaderService")]
         public static LoaderInfo[] GetByBrand(string brand)
         {
-            return new LoaderInfo[0]; // 不再使用本地数据库
+            return new LoaderInfo[0]; // No longer using local database
         }
-
-        [Obsolete("使用 CloudLoaderService")]
+ 
+        [Obsolete("Use CloudLoaderService")]
         public static LoaderInfo[] GetByChip(string chip)
         {
-            return new LoaderInfo[0]; // 不再使用本地数据库
+            return new LoaderInfo[0]; // No longer using local database
         }
-
-        [Obsolete("使用 CloudLoaderService")]
+ 
+        [Obsolete("Use CloudLoaderService")]
         public static byte[] LoadLoader(string id)
         {
-            // 不再从本地 PAK 加载，返回 null
+            // No longer loading from local PAK, return null
             return null;
         }
-
-        [Obsolete("使用 CloudLoaderService")]
+ 
+        [Obsolete("Use CloudLoaderService")]
         public static bool IsPakAvailable()
         {
-            // 始终返回 false，强制使用云端匹配
+            // Always return false, forcing use of cloud matching
             return false;
         }
 
@@ -92,8 +97,8 @@ namespace LoveAlways.Qualcomm.Database
             db["360_360N7Pro"] = new LoaderInfo { Id = "360_360N7Pro", Name = "360 360N7Pro", Brand = "360", Chip = "", IsCommon = false, AuthMode = "none" };
 
             // === BBK ===
-            db["BBK_660"] = new LoaderInfo { Id = "BBK_660", Name = "BBK 660 (通用)", Brand = "BBK", Chip = "660", IsCommon = true, AuthMode = "none" };
-            db["BBK_730G"] = new LoaderInfo { Id = "BBK_730G", Name = "BBK 730G (通用)", Brand = "BBK", Chip = "730G", IsCommon = true, AuthMode = "none" };
+            db["BBK_660"] = new LoaderInfo { Id = "BBK_660", Name = "BBK 660 (Generic)", Brand = "BBK", Chip = "660", IsCommon = true, AuthMode = "none" };
+            db["BBK_730G"] = new LoaderInfo { Id = "BBK_730G", Name = "BBK 730G (Generic)", Brand = "BBK", Chip = "730G", IsCommon = true, AuthMode = "none" };
 
             // === BlackShark ===
             db["BlackShark_BlackShark1"] = new LoaderInfo { Id = "BlackShark_BlackShark1", Name = "BlackShark BlackShark1", Brand = "BlackShark", Chip = "", IsCommon = false, AuthMode = "none" };
@@ -106,43 +111,43 @@ namespace LoveAlways.Qualcomm.Database
             db["BlackShark_BlackSharkHelo"] = new LoaderInfo { Id = "BlackShark_BlackSharkHelo", Name = "BlackShark BlackSharkHelo", Brand = "BlackShark", Chip = "", IsCommon = false, AuthMode = "none" };
 
             // === Huawei ===
-            db["Huawei_410"] = new LoaderInfo { Id = "Huawei_410", Name = "Huawei 410 (通用)", Brand = "Huawei", Chip = "410", IsCommon = true, AuthMode = "none" };
-            db["Huawei_425"] = new LoaderInfo { Id = "Huawei_425", Name = "Huawei 425 (通用)", Brand = "Huawei", Chip = "425", IsCommon = true, AuthMode = "none" };
-            db["Huawei_430"] = new LoaderInfo { Id = "Huawei_430", Name = "Huawei 430 (通用)", Brand = "Huawei", Chip = "430", IsCommon = true, AuthMode = "none" };
-            db["Huawei_430_2"] = new LoaderInfo { Id = "Huawei_430_2", Name = "Huawei 430 (通用)", Brand = "Huawei", Chip = "430", IsCommon = true, AuthMode = "none" };
-            db["Huawei_435"] = new LoaderInfo { Id = "Huawei_435", Name = "Huawei 435 (通用)", Brand = "Huawei", Chip = "435", IsCommon = true, AuthMode = "none" };
-            db["Huawei_450"] = new LoaderInfo { Id = "Huawei_450", Name = "Huawei 450 (通用)", Brand = "Huawei", Chip = "450", IsCommon = true, AuthMode = "none" };
-            db["Huawei_480"] = new LoaderInfo { Id = "Huawei_480", Name = "Huawei 480 (通用)", Brand = "Huawei", Chip = "480", IsCommon = true, AuthMode = "none" };
-            db["Huawei_625"] = new LoaderInfo { Id = "Huawei_625", Name = "Huawei 625 (通用)", Brand = "Huawei", Chip = "625", IsCommon = true, AuthMode = "none" };
-            db["Huawei_632"] = new LoaderInfo { Id = "Huawei_632", Name = "Huawei 632 (通用)", Brand = "Huawei", Chip = "632", IsCommon = true, AuthMode = "none" };
-            db["Huawei_636"] = new LoaderInfo { Id = "Huawei_636", Name = "Huawei 636 (通用)", Brand = "Huawei", Chip = "636", IsCommon = true, AuthMode = "none" };
-            db["Huawei_660"] = new LoaderInfo { Id = "Huawei_660", Name = "Huawei 660 (通用)", Brand = "Huawei", Chip = "660", IsCommon = true, AuthMode = "none" };
-            db["Huawei_662"] = new LoaderInfo { Id = "Huawei_662", Name = "Huawei 662 (通用)", Brand = "Huawei", Chip = "662", IsCommon = true, AuthMode = "none" };
-            db["Huawei_680"] = new LoaderInfo { Id = "Huawei_680", Name = "Huawei 680 (通用)", Brand = "Huawei", Chip = "680", IsCommon = true, AuthMode = "none" };
-            db["Huawei_680_2"] = new LoaderInfo { Id = "Huawei_680_2", Name = "Huawei 680 (通用)", Brand = "Huawei", Chip = "680", IsCommon = true, AuthMode = "none" };
-            db["Huawei_690"] = new LoaderInfo { Id = "Huawei_690", Name = "Huawei 690 (通用)", Brand = "Huawei", Chip = "690", IsCommon = true, AuthMode = "none" };
-            db["Huawei_690_2"] = new LoaderInfo { Id = "Huawei_690_2", Name = "Huawei 690 (通用)", Brand = "Huawei", Chip = "690", IsCommon = true, AuthMode = "none" };
-            db["Huawei_695"] = new LoaderInfo { Id = "Huawei_695", Name = "Huawei 695 (通用)", Brand = "Huawei", Chip = "695", IsCommon = true, AuthMode = "none" };
-            db["Huawei_695_2"] = new LoaderInfo { Id = "Huawei_695_2", Name = "Huawei 695 (通用)", Brand = "Huawei", Chip = "695", IsCommon = true, AuthMode = "none" };
-            db["Huawei_778G"] = new LoaderInfo { Id = "Huawei_778G", Name = "Huawei 778G (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G V2 (通用)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Huawei_8+Gen1"] = new LoaderInfo { Id = "Huawei_8+Gen1", Name = "Huawei 8+Gen1 (通用)", Brand = "Huawei", Chip = "8+Gen1", IsCommon = true, AuthMode = "none" };
-            db["Huawei_8+Gen1_2"] = new LoaderInfo { Id = "Huawei_8+Gen1_2", Name = "Huawei 8+Gen1 (通用)", Brand = "Huawei", Chip = "8+Gen1", IsCommon = true, AuthMode = "none" };
-            db["Huawei_870"] = new LoaderInfo { Id = "Huawei_870", Name = "Huawei 870 (通用)", Brand = "Huawei", Chip = "870", IsCommon = true, AuthMode = "none" };
-            db["Huawei_870_2"] = new LoaderInfo { Id = "Huawei_870_2", Name = "Huawei 870 (通用)", Brand = "Huawei", Chip = "870", IsCommon = true, AuthMode = "none" };
-            db["Huawei_888"] = new LoaderInfo { Id = "Huawei_888", Name = "Huawei 888 (通用)", Brand = "Huawei", Chip = "888", IsCommon = true, AuthMode = "none" };
-            db["Huawei_888_2"] = new LoaderInfo { Id = "Huawei_888_2", Name = "Huawei 888 V2 (通用)", Brand = "Huawei", Chip = "888", IsCommon = true, AuthMode = "none" };
-            db["Huawei_8Gen1"] = new LoaderInfo { Id = "Huawei_8Gen1", Name = "Huawei 8Gen1 (通用)", Brand = "Huawei", Chip = "8Gen1", IsCommon = true, AuthMode = "none" };
-            db["Huawei_8Gen1_2"] = new LoaderInfo { Id = "Huawei_8Gen1_2", Name = "Huawei 8Gen1 (通用)", Brand = "Huawei", Chip = "8Gen1", IsCommon = true, AuthMode = "none" };
-            db["Huawei_Common_615616"] = new LoaderInfo { Id = "Huawei_Common_615616", Name = "Huawei Common_615616 (通用)", Brand = "Huawei", Chip = "", IsCommon = true, AuthMode = "none" };
+            db["Huawei_410"] = new LoaderInfo { Id = "Huawei_410", Name = "Huawei 410 (Generic)", Brand = "Huawei", Chip = "410", IsCommon = true, AuthMode = "none" };
+            db["Huawei_425"] = new LoaderInfo { Id = "Huawei_425", Name = "Huawei 425 (Generic)", Brand = "Huawei", Chip = "425", IsCommon = true, AuthMode = "none" };
+            db["Huawei_430"] = new LoaderInfo { Id = "Huawei_430", Name = "Huawei 430 (Generic)", Brand = "Huawei", Chip = "430", IsCommon = true, AuthMode = "none" };
+            db["Huawei_430_2"] = new LoaderInfo { Id = "Huawei_430_2", Name = "Huawei 430 (Generic)", Brand = "Huawei", Chip = "430", IsCommon = true, AuthMode = "none" };
+            db["Huawei_435"] = new LoaderInfo { Id = "Huawei_435", Name = "Huawei 435 (Generic)", Brand = "Huawei", Chip = "435", IsCommon = true, AuthMode = "none" };
+            db["Huawei_450"] = new LoaderInfo { Id = "Huawei_450", Name = "Huawei 450 (Generic)", Brand = "Huawei", Chip = "450", IsCommon = true, AuthMode = "none" };
+            db["Huawei_480"] = new LoaderInfo { Id = "Huawei_480", Name = "Huawei 480 (Generic)", Brand = "Huawei", Chip = "480", IsCommon = true, AuthMode = "none" };
+            db["Huawei_625"] = new LoaderInfo { Id = "Huawei_625", Name = "Huawei 625 (Generic)", Brand = "Huawei", Chip = "625", IsCommon = true, AuthMode = "none" };
+            db["Huawei_632"] = new LoaderInfo { Id = "Huawei_632", Name = "Huawei 632 (Generic)", Brand = "Huawei", Chip = "632", IsCommon = true, AuthMode = "none" };
+            db["Huawei_636"] = new LoaderInfo { Id = "Huawei_636", Name = "Huawei 636 (Generic)", Brand = "Huawei", Chip = "636", IsCommon = true, AuthMode = "none" };
+            db["Huawei_660"] = new LoaderInfo { Id = "Huawei_660", Name = "Huawei 660 (Generic)", Brand = "Huawei", Chip = "660", IsCommon = true, AuthMode = "none" };
+            db["Huawei_662"] = new LoaderInfo { Id = "Huawei_662", Name = "Huawei 662 (Generic)", Brand = "Huawei", Chip = "662", IsCommon = true, AuthMode = "none" };
+            db["Huawei_680"] = new LoaderInfo { Id = "Huawei_680", Name = "Huawei 680 (Generic)", Brand = "Huawei", Chip = "680", IsCommon = true, AuthMode = "none" };
+            db["Huawei_680_2"] = new LoaderInfo { Id = "Huawei_680_2", Name = "Huawei 680 (Generic)", Brand = "Huawei", Chip = "680", IsCommon = true, AuthMode = "none" };
+            db["Huawei_690"] = new LoaderInfo { Id = "Huawei_690", Name = "Huawei 690 (Generic)", Brand = "Huawei", Chip = "690", IsCommon = true, AuthMode = "none" };
+            db["Huawei_690_2"] = new LoaderInfo { Id = "Huawei_690_2", Name = "Huawei 690 (Generic)", Brand = "Huawei", Chip = "690", IsCommon = true, AuthMode = "none" };
+            db["Huawei_695"] = new LoaderInfo { Id = "Huawei_695", Name = "Huawei 695 (Generic)", Brand = "Huawei", Chip = "695", IsCommon = true, AuthMode = "none" };
+            db["Huawei_695_2"] = new LoaderInfo { Id = "Huawei_695_2", Name = "Huawei 695 (Generic)", Brand = "Huawei", Chip = "695", IsCommon = true, AuthMode = "none" };
+            db["Huawei_778G"] = new LoaderInfo { Id = "Huawei_778G", Name = "Huawei 778G (Generic)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
+            db["Huawei_778G_2"] = new LoaderInfo { Id = "Huawei_778G_2", Name = "Huawei 778G V2 (Generic)", Brand = "Huawei", Chip = "778G", IsCommon = true, AuthMode = "none" };
+            db["Huawei_8+Gen1"] = new LoaderInfo { Id = "Huawei_8+Gen1", Name = "Huawei 8+Gen1 (Generic)", Brand = "Huawei", Chip = "8+Gen1", IsCommon = true, AuthMode = "none" };
+            db["Huawei_8+Gen1_2"] = new LoaderInfo { Id = "Huawei_8+Gen1_2", Name = "Huawei 8+Gen1 (Generic)", Brand = "Huawei", Chip = "8+Gen1", IsCommon = true, AuthMode = "none" };
+            db["Huawei_870"] = new LoaderInfo { Id = "Huawei_870", Name = "Huawei 870 (Generic)", Brand = "Huawei", Chip = "870", IsCommon = true, AuthMode = "none" };
+            db["Huawei_870_2"] = new LoaderInfo { Id = "Huawei_870_2", Name = "Huawei 870 (Generic)", Brand = "Huawei", Chip = "870", IsCommon = true, AuthMode = "none" };
+            db["Huawei_888"] = new LoaderInfo { Id = "Huawei_888", Name = "Huawei 888 (Generic)", Brand = "Huawei", Chip = "888", IsCommon = true, AuthMode = "none" };
+            db["Huawei_888_2"] = new LoaderInfo { Id = "Huawei_888_2", Name = "Huawei 888 V2 (Generic)", Brand = "Huawei", Chip = "888", IsCommon = true, AuthMode = "none" };
+            db["Huawei_8Gen1"] = new LoaderInfo { Id = "Huawei_8Gen1", Name = "Huawei 8Gen1 (Generic)", Brand = "Huawei", Chip = "8Gen1", IsCommon = true, AuthMode = "none" };
+            db["Huawei_8Gen1_2"] = new LoaderInfo { Id = "Huawei_8Gen1_2", Name = "Huawei 8Gen1 (Generic)", Brand = "Huawei", Chip = "8Gen1", IsCommon = true, AuthMode = "none" };
+            db["Huawei_Common_615616"] = new LoaderInfo { Id = "Huawei_Common_615616", Name = "Huawei Common_615616 (Generic)", Brand = "Huawei", Chip = "", IsCommon = true, AuthMode = "none" };
             db["Huawei_Huawei_Enjoy6S"] = new LoaderInfo { Id = "Huawei_Huawei_Enjoy6S", Name = "Huawei Huawei_Enjoy6S", Brand = "Huawei", Chip = "", IsCommon = false, AuthMode = "none" };
 
             // === LG ===
-            db["LG_765G"] = new LoaderInfo { Id = "LG_765G", Name = "LG 765G (通用)", Brand = "LG", Chip = "765G", IsCommon = true, AuthMode = "none" };
-            db["LG_835"] = new LoaderInfo { Id = "LG_835", Name = "LG 835 (通用)", Brand = "LG", Chip = "835", IsCommon = true, AuthMode = "none" };
-            db["LG_845"] = new LoaderInfo { Id = "LG_845", Name = "LG 845 (通用)", Brand = "LG", Chip = "845", IsCommon = true, AuthMode = "none" };
-            db["LG_855"] = new LoaderInfo { Id = "LG_855", Name = "LG 855 (通用)", Brand = "LG", Chip = "855", IsCommon = true, AuthMode = "none" };
-            db["LG_865"] = new LoaderInfo { Id = "LG_865", Name = "LG 865 (通用)", Brand = "LG", Chip = "865", IsCommon = true, AuthMode = "none" };
+            db["LG_765G"] = new LoaderInfo { Id = "LG_765G", Name = "LG 765G (Generic)", Brand = "LG", Chip = "765G", IsCommon = true, AuthMode = "none" };
+            db["LG_835"] = new LoaderInfo { Id = "LG_835", Name = "LG 835 (Generic)", Brand = "LG", Chip = "835", IsCommon = true, AuthMode = "none" };
+            db["LG_845"] = new LoaderInfo { Id = "LG_845", Name = "LG 845 (Generic)", Brand = "LG", Chip = "845", IsCommon = true, AuthMode = "none" };
+            db["LG_855"] = new LoaderInfo { Id = "LG_855", Name = "LG 855 (Generic)", Brand = "LG", Chip = "855", IsCommon = true, AuthMode = "none" };
+            db["LG_865"] = new LoaderInfo { Id = "LG_865", Name = "LG 865 (Generic)", Brand = "LG", Chip = "865", IsCommon = true, AuthMode = "none" };
             db["LG_LGG6"] = new LoaderInfo { Id = "LG_LGG6", Name = "LG LGG6", Brand = "LG", Chip = "", IsCommon = false, AuthMode = "none" };
             db["LG_LGG6_H872"] = new LoaderInfo { Id = "LG_LGG6_H872", Name = "LG LGG6-H872", Brand = "LG", Chip = "", IsCommon = false, AuthMode = "none" };
 
@@ -204,18 +209,18 @@ namespace LoveAlways.Qualcomm.Database
             db["Nothing_Nothing2"] = new LoaderInfo { Id = "Nothing_Nothing2", Name = "Nothing Nothing2", Brand = "Nothing", Chip = "", IsCommon = false, AuthMode = "none" };
 
             // === OPLUS ===
-            db["OPLUS_665"] = new LoaderInfo { Id = "OPLUS_665", Name = "OPLUS 665 (通用)", Brand = "OPLUS", Chip = "665", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_665_2"] = new LoaderInfo { Id = "OPLUS_665_2", Name = "OPLUS 665 (通用)", Brand = "OPLUS", Chip = "665", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_710"] = new LoaderInfo { Id = "OPLUS_710", Name = "OPLUS 710 (通用)", Brand = "OPLUS", Chip = "710", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_710_2"] = new LoaderInfo { Id = "OPLUS_710_2", Name = "OPLUS 710 (通用)", Brand = "OPLUS", Chip = "710", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_765G"] = new LoaderInfo { Id = "OPLUS_765G", Name = "OPLUS 765G (通用)", Brand = "OPLUS", Chip = "765G", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_765G_2"] = new LoaderInfo { Id = "OPLUS_765G_2", Name = "OPLUS 765G V2 (通用)", Brand = "OPLUS", Chip = "765G", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_778G"] = new LoaderInfo { Id = "OPLUS_778G", Name = "OPLUS 778G (通用)", Brand = "OPLUS", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_855"] = new LoaderInfo { Id = "OPLUS_855", Name = "OPLUS 855 (通用)", Brand = "OPLUS", Chip = "855", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_865"] = new LoaderInfo { Id = "OPLUS_865", Name = "OPLUS 865 (通用)", Brand = "OPLUS", Chip = "865", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_865_2"] = new LoaderInfo { Id = "OPLUS_865_2", Name = "OPLUS 865 (通用)", Brand = "OPLUS", Chip = "865", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_870"] = new LoaderInfo { Id = "OPLUS_870", Name = "OPLUS 870 (通用)", Brand = "OPLUS", Chip = "870", IsCommon = true, AuthMode = "none" };
-            db["OPLUS_870_2"] = new LoaderInfo { Id = "OPLUS_870_2", Name = "OPLUS 870 (通用)", Brand = "OPLUS", Chip = "870", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_665"] = new LoaderInfo { Id = "OPLUS_665", Name = "OPLUS 665 (Generic)", Brand = "OPLUS", Chip = "665", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_665_2"] = new LoaderInfo { Id = "OPLUS_665_2", Name = "OPLUS 665 (Generic)", Brand = "OPLUS", Chip = "665", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_710"] = new LoaderInfo { Id = "OPLUS_710", Name = "OPLUS 710 (Generic)", Brand = "OPLUS", Chip = "710", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_710_2"] = new LoaderInfo { Id = "OPLUS_710_2", Name = "OPLUS 710 (Generic)", Brand = "OPLUS", Chip = "710", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_765G"] = new LoaderInfo { Id = "OPLUS_765G", Name = "OPLUS 765G (Generic)", Brand = "OPLUS", Chip = "765G", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_765G_2"] = new LoaderInfo { Id = "OPLUS_765G_2", Name = "OPLUS 765G V2 (Generic)", Brand = "OPLUS", Chip = "765G", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_778G"] = new LoaderInfo { Id = "OPLUS_778G", Name = "OPLUS 778G (Generic)", Brand = "OPLUS", Chip = "778G", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_855"] = new LoaderInfo { Id = "OPLUS_855", Name = "OPLUS 855 (Generic)", Brand = "OPLUS", Chip = "855", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_865"] = new LoaderInfo { Id = "OPLUS_865", Name = "OPLUS 865 (Generic)", Brand = "OPLUS", Chip = "865", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_865_2"] = new LoaderInfo { Id = "OPLUS_865_2", Name = "OPLUS 865 (Generic)", Brand = "OPLUS", Chip = "865", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_870"] = new LoaderInfo { Id = "OPLUS_870", Name = "OPLUS 870 (Generic)", Brand = "OPLUS", Chip = "870", IsCommon = true, AuthMode = "none" };
+            db["OPLUS_870_2"] = new LoaderInfo { Id = "OPLUS_870_2", Name = "OPLUS 870 (Generic)", Brand = "OPLUS", Chip = "870", IsCommon = true, AuthMode = "none" };
             db["OPLUS_OnePlus_1"] = new LoaderInfo { Id = "OPLUS_OnePlus_1", Name = "OPLUS OnePlus_1", Brand = "OPLUS", Chip = "", IsCommon = false, AuthMode = "oneplus" };
             db["OPLUS_OnePlus_2"] = new LoaderInfo { Id = "OPLUS_OnePlus_2", Name = "OPLUS OnePlus_2", Brand = "OPLUS", Chip = "", IsCommon = false, AuthMode = "oneplus" };
             db["OPLUS_OnePlus_3"] = new LoaderInfo { Id = "OPLUS_OnePlus_3", Name = "OPLUS OnePlus_3", Brand = "OPLUS", Chip = "", IsCommon = false, AuthMode = "oneplus" };
@@ -278,44 +283,44 @@ namespace LoveAlways.Qualcomm.Database
             db["XTC_XTCWatch_Z8"] = new LoaderInfo { Id = "XTC_XTCWatch_Z8", Name = "XTC XTCWatch_Z8", Brand = "XTC", Chip = "", IsCommon = false, AuthMode = "none" };
 
             // === Xiaomi ===
-            db["Xiaomi_439"] = new LoaderInfo { Id = "Xiaomi_439", Name = "Xiaomi 439 (通用)", Brand = "Xiaomi", Chip = "439", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_625"] = new LoaderInfo { Id = "Xiaomi_625", Name = "Xiaomi 625 (通用)", Brand = "Xiaomi", Chip = "625", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_632"] = new LoaderInfo { Id = "Xiaomi_632", Name = "Xiaomi 632 (通用)", Brand = "Xiaomi", Chip = "632", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_636"] = new LoaderInfo { Id = "Xiaomi_636", Name = "Xiaomi 636 (通用)", Brand = "Xiaomi", Chip = "636", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_660"] = new LoaderInfo { Id = "Xiaomi_660", Name = "Xiaomi 660 (通用)", Brand = "Xiaomi", Chip = "660", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_662"] = new LoaderInfo { Id = "Xiaomi_662", Name = "Xiaomi 662 (通用)", Brand = "Xiaomi", Chip = "662", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_665"] = new LoaderInfo { Id = "Xiaomi_665", Name = "Xiaomi 665 (通用)", Brand = "Xiaomi", Chip = "665", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_675"] = new LoaderInfo { Id = "Xiaomi_675", Name = "Xiaomi 675 (通用)", Brand = "Xiaomi", Chip = "675", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_680"] = new LoaderInfo { Id = "Xiaomi_680", Name = "Xiaomi 680 (通用)", Brand = "Xiaomi", Chip = "680", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_710"] = new LoaderInfo { Id = "Xiaomi_710", Name = "Xiaomi 710 (通用)", Brand = "Xiaomi", Chip = "710", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_710_2"] = new LoaderInfo { Id = "Xiaomi_710_2", Name = "Xiaomi 710 (通用)", Brand = "Xiaomi", Chip = "710", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_730G"] = new LoaderInfo { Id = "Xiaomi_730G", Name = "Xiaomi 730G (通用)", Brand = "Xiaomi", Chip = "730G", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_778G"] = new LoaderInfo { Id = "Xiaomi_778G", Name = "Xiaomi 778G (通用)", Brand = "Xiaomi", Chip = "778G", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_835"] = new LoaderInfo { Id = "Xiaomi_835", Name = "Xiaomi 835 (通用)", Brand = "Xiaomi", Chip = "835", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_845"] = new LoaderInfo { Id = "Xiaomi_845", Name = "Xiaomi 845 (通用)", Brand = "Xiaomi", Chip = "845", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_845_2"] = new LoaderInfo { Id = "Xiaomi_845_2", Name = "Xiaomi 845 (通用)", Brand = "Xiaomi", Chip = "845", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_855"] = new LoaderInfo { Id = "Xiaomi_855", Name = "Xiaomi 855 (通用)", Brand = "Xiaomi", Chip = "855", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_865"] = new LoaderInfo { Id = "Xiaomi_865", Name = "Xiaomi 865 (通用)", Brand = "Xiaomi", Chip = "865", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_865_2"] = new LoaderInfo { Id = "Xiaomi_865_2", Name = "Xiaomi 865 (通用)", Brand = "Xiaomi", Chip = "865", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_870"] = new LoaderInfo { Id = "Xiaomi_870", Name = "Xiaomi 870 (通用)", Brand = "Xiaomi", Chip = "870", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_870_2"] = new LoaderInfo { Id = "Xiaomi_870_2", Name = "Xiaomi 870 (通用)", Brand = "Xiaomi", Chip = "870", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_888"] = new LoaderInfo { Id = "Xiaomi_888", Name = "Xiaomi 888 (通用)", Brand = "Xiaomi", Chip = "888", IsCommon = true, AuthMode = "none" };
-            db["Xiaomi_888_2"] = new LoaderInfo { Id = "Xiaomi_888_2", Name = "Xiaomi 888 (通用)", Brand = "Xiaomi", Chip = "888", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_439"] = new LoaderInfo { Id = "Xiaomi_439", Name = "Xiaomi 439 (Generic)", Brand = "Xiaomi", Chip = "439", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_625"] = new LoaderInfo { Id = "Xiaomi_625", Name = "Xiaomi 625 (Generic)", Brand = "Xiaomi", Chip = "625", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_632"] = new LoaderInfo { Id = "Xiaomi_632", Name = "Xiaomi 632 (Generic)", Brand = "Xiaomi", Chip = "632", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_636"] = new LoaderInfo { Id = "Xiaomi_636", Name = "Xiaomi 636 (Generic)", Brand = "Xiaomi", Chip = "636", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_660"] = new LoaderInfo { Id = "Xiaomi_660", Name = "Xiaomi 660 (Generic)", Brand = "Xiaomi", Chip = "660", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_662"] = new LoaderInfo { Id = "Xiaomi_662", Name = "Xiaomi 662 (Generic)", Brand = "Xiaomi", Chip = "662", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_665"] = new LoaderInfo { Id = "Xiaomi_665", Name = "Xiaomi 665 (Generic)", Brand = "Xiaomi", Chip = "665", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_675"] = new LoaderInfo { Id = "Xiaomi_675", Name = "Xiaomi 675 (Generic)", Brand = "Xiaomi", Chip = "675", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_680"] = new LoaderInfo { Id = "Xiaomi_680", Name = "Xiaomi 680 (Generic)", Brand = "Xiaomi", Chip = "680", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_710"] = new LoaderInfo { Id = "Xiaomi_710", Name = "Xiaomi 710 (Generic)", Brand = "Xiaomi", Chip = "710", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_710_2"] = new LoaderInfo { Id = "Xiaomi_710_2", Name = "Xiaomi 710 (Generic)", Brand = "Xiaomi", Chip = "710", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_730G"] = new LoaderInfo { Id = "Xiaomi_730G", Name = "Xiaomi 730G (Generic)", Brand = "Xiaomi", Chip = "730G", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_778G"] = new LoaderInfo { Id = "Xiaomi_778G", Name = "Xiaomi 778G (Generic)", Brand = "Xiaomi", Chip = "778G", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_835"] = new LoaderInfo { Id = "Xiaomi_835", Name = "Xiaomi 835 (Generic)", Brand = "Xiaomi", Chip = "835", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_845"] = new LoaderInfo { Id = "Xiaomi_845", Name = "Xiaomi 845 (Generic)", Brand = "Xiaomi", Chip = "845", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_845_2"] = new LoaderInfo { Id = "Xiaomi_845_2", Name = "Xiaomi 845 (Generic)", Brand = "Xiaomi", Chip = "845", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_855"] = new LoaderInfo { Id = "Xiaomi_855", Name = "Xiaomi 855 (Generic)", Brand = "Xiaomi", Chip = "855", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_865"] = new LoaderInfo { Id = "Xiaomi_865", Name = "Xiaomi 865 (Generic)", Brand = "Xiaomi", Chip = "865", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_865_2"] = new LoaderInfo { Id = "Xiaomi_865_2", Name = "Xiaomi 865 (Generic)", Brand = "Xiaomi", Chip = "865", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_870"] = new LoaderInfo { Id = "Xiaomi_870", Name = "Xiaomi 870 (Generic)", Brand = "Xiaomi", Chip = "870", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_870_2"] = new LoaderInfo { Id = "Xiaomi_870_2", Name = "Xiaomi 870 (Generic)", Brand = "Xiaomi", Chip = "870", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_888"] = new LoaderInfo { Id = "Xiaomi_888", Name = "Xiaomi 888 (Generic)", Brand = "Xiaomi", Chip = "888", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_888_2"] = new LoaderInfo { Id = "Xiaomi_888_2", Name = "Xiaomi 888 (Generic)", Brand = "Xiaomi", Chip = "888", IsCommon = true, AuthMode = "none" };
             db["Xiaomi_Xiaomi5"] = new LoaderInfo { Id = "Xiaomi_Xiaomi5", Name = "Xiaomi Xiaomi5", Brand = "Xiaomi", Chip = "", IsCommon = false, AuthMode = "none" };
-            db["Xiaomi_XiaomiCommon712"] = new LoaderInfo { Id = "Xiaomi_XiaomiCommon712", Name = "Xiaomi XiaomiCommon712 (通用)", Brand = "Xiaomi", Chip = "", IsCommon = true, AuthMode = "none" };
+            db["Xiaomi_XiaomiCommon712"] = new LoaderInfo { Id = "Xiaomi_XiaomiCommon712", Name = "Xiaomi XiaomiCommon712 (Generic)", Brand = "Xiaomi", Chip = "", IsCommon = true, AuthMode = "none" };
 
             // === ZTE ===
-            db["ZTE_765G"] = new LoaderInfo { Id = "ZTE_765G", Name = "ZTE 765G (通用)", Brand = "ZTE", Chip = "765G", IsCommon = true, AuthMode = "none" };
-            db["ZTE_768G"] = new LoaderInfo { Id = "ZTE_768G", Name = "ZTE 768G (通用)", Brand = "ZTE", Chip = "768G", IsCommon = true, AuthMode = "none" };
-            db["ZTE_845"] = new LoaderInfo { Id = "ZTE_845", Name = "ZTE 845 (通用)", Brand = "ZTE", Chip = "845", IsCommon = true, AuthMode = "none" };
-            db["ZTE_855"] = new LoaderInfo { Id = "ZTE_855", Name = "ZTE 855 (通用)", Brand = "ZTE", Chip = "855", IsCommon = true, AuthMode = "none" };
-            db["ZTE_855_2"] = new LoaderInfo { Id = "ZTE_855_2", Name = "ZTE 855 (通用)", Brand = "ZTE", Chip = "855", IsCommon = true, AuthMode = "none" };
-            db["ZTE_865"] = new LoaderInfo { Id = "ZTE_865", Name = "ZTE 865 (通用)", Brand = "ZTE", Chip = "865", IsCommon = true, AuthMode = "none" };
-            db["ZTE_865_2"] = new LoaderInfo { Id = "ZTE_865_2", Name = "ZTE 865 (通用)", Brand = "ZTE", Chip = "865", IsCommon = true, AuthMode = "none" };
-            db["ZTE_870"] = new LoaderInfo { Id = "ZTE_870", Name = "ZTE 870 (通用)", Brand = "ZTE", Chip = "870", IsCommon = true, AuthMode = "none" };
-            db["ZTE_888"] = new LoaderInfo { Id = "ZTE_888", Name = "ZTE 888 (通用)", Brand = "ZTE", Chip = "888", IsCommon = true, AuthMode = "none" };
-            db["ZTE_8Gen1"] = new LoaderInfo { Id = "ZTE_8Gen1", Name = "ZTE 8Gen1 (通用)", Brand = "ZTE", Chip = "8Gen1", IsCommon = true, AuthMode = "none" };
-            db["ZTE_8Gen2"] = new LoaderInfo { Id = "ZTE_8Gen2", Name = "ZTE 8Gen2 (通用)", Brand = "ZTE", Chip = "8Gen2", IsCommon = true, AuthMode = "none" };
+            db["ZTE_765G"] = new LoaderInfo { Id = "ZTE_765G", Name = "ZTE 765G (Generic)", Brand = "ZTE", Chip = "765G", IsCommon = true, AuthMode = "none" };
+            db["ZTE_768G"] = new LoaderInfo { Id = "ZTE_768G", Name = "ZTE 768G (Generic)", Brand = "ZTE", Chip = "768G", IsCommon = true, AuthMode = "none" };
+            db["ZTE_845"] = new LoaderInfo { Id = "ZTE_845", Name = "ZTE 845 (Generic)", Brand = "ZTE", Chip = "845", IsCommon = true, AuthMode = "none" };
+            db["ZTE_855"] = new LoaderInfo { Id = "ZTE_855", Name = "ZTE 855 (Generic)", Brand = "ZTE", Chip = "855", IsCommon = true, AuthMode = "none" };
+            db["ZTE_855_2"] = new LoaderInfo { Id = "ZTE_855_2", Name = "ZTE 855 (Generic)", Brand = "ZTE", Chip = "855", IsCommon = true, AuthMode = "none" };
+            db["ZTE_865"] = new LoaderInfo { Id = "ZTE_865", Name = "ZTE 865 (Generic)", Brand = "ZTE", Chip = "865", IsCommon = true, AuthMode = "none" };
+            db["ZTE_865_2"] = new LoaderInfo { Id = "ZTE_865_2", Name = "ZTE 865 (Generic)", Brand = "ZTE", Chip = "865", IsCommon = true, AuthMode = "none" };
+            db["ZTE_870"] = new LoaderInfo { Id = "ZTE_870", Name = "ZTE 870 (Generic)", Brand = "ZTE", Chip = "870", IsCommon = true, AuthMode = "none" };
+            db["ZTE_888"] = new LoaderInfo { Id = "ZTE_888", Name = "ZTE 888 (Generic)", Brand = "ZTE", Chip = "888", IsCommon = true, AuthMode = "none" };
+            db["ZTE_8Gen1"] = new LoaderInfo { Id = "ZTE_8Gen1", Name = "ZTE 8Gen1 (Generic)", Brand = "ZTE", Chip = "8Gen1", IsCommon = true, AuthMode = "none" };
+            db["ZTE_8Gen2"] = new LoaderInfo { Id = "ZTE_8Gen2", Name = "ZTE 8Gen2 (Generic)", Brand = "ZTE", Chip = "8Gen2", IsCommon = true, AuthMode = "none" };
             db["ZTE_Nubia_Play"] = new LoaderInfo { Id = "ZTE_Nubia_Play", Name = "ZTE Nubia_Play", Brand = "ZTE", Chip = "", IsCommon = false, AuthMode = "none" };
             db["ZTE_Nubia_RedMagic"] = new LoaderInfo { Id = "ZTE_Nubia_RedMagic", Name = "ZTE Nubia_RedMagic", Brand = "ZTE", Chip = "", IsCommon = false, AuthMode = "none" };
             db["ZTE_Nubia_X"] = new LoaderInfo { Id = "ZTE_Nubia_X", Name = "ZTE Nubia_X", Brand = "ZTE", Chip = "", IsCommon = false, AuthMode = "none" };
@@ -337,12 +342,12 @@ namespace LoveAlways.Qualcomm.Database
             db["ZTE_ZTE_Axon7MAX"] = new LoaderInfo { Id = "ZTE_ZTE_Axon7MAX", Name = "ZTE ZTE_Axon7MAX", Brand = "ZTE", Chip = "", IsCommon = false, AuthMode = "none" };
 
             // === vivo ===
-            db["vivo_425"] = new LoaderInfo { Id = "vivo_425", Name = "vivo 425 (通用)", Brand = "vivo", Chip = "425", IsCommon = true, AuthMode = "none" };
-            db["vivo_439"] = new LoaderInfo { Id = "vivo_439", Name = "vivo 439 (通用)", Brand = "vivo", Chip = "439", IsCommon = true, AuthMode = "none" };
-            db["vivo_665"] = new LoaderInfo { Id = "vivo_665", Name = "vivo 665 (通用)", Brand = "vivo", Chip = "665", IsCommon = true, AuthMode = "none" };
-            db["vivo_675"] = new LoaderInfo { Id = "vivo_675", Name = "vivo 675 (通用)", Brand = "vivo", Chip = "675", IsCommon = true, AuthMode = "none" };
-            db["vivo_720G"] = new LoaderInfo { Id = "vivo_720G", Name = "vivo 720G (通用)", Brand = "vivo", Chip = "720G", IsCommon = true, AuthMode = "none" };
-            db["vivo_855"] = new LoaderInfo { Id = "vivo_855", Name = "vivo 855 (通用)", Brand = "vivo", Chip = "855", IsCommon = true, AuthMode = "none" };
+            db["vivo_425"] = new LoaderInfo { Id = "vivo_425", Name = "vivo 425 (Generic)", Brand = "vivo", Chip = "425", IsCommon = true, AuthMode = "none" };
+            db["vivo_439"] = new LoaderInfo { Id = "vivo_439", Name = "vivo 439 (Generic)", Brand = "vivo", Chip = "439", IsCommon = true, AuthMode = "none" };
+            db["vivo_665"] = new LoaderInfo { Id = "vivo_665", Name = "vivo 665 (Generic)", Brand = "vivo", Chip = "665", IsCommon = true, AuthMode = "none" };
+            db["vivo_675"] = new LoaderInfo { Id = "vivo_675", Name = "vivo 675 (Generic)", Brand = "vivo", Chip = "675", IsCommon = true, AuthMode = "none" };
+            db["vivo_720G"] = new LoaderInfo { Id = "vivo_720G", Name = "vivo 720G (Generic)", Brand = "vivo", Chip = "720G", IsCommon = true, AuthMode = "none" };
+            db["vivo_855"] = new LoaderInfo { Id = "vivo_855", Name = "vivo 855 (Generic)", Brand = "vivo", Chip = "855", IsCommon = true, AuthMode = "none" };
             db["vivo_iQOO_Neo3"] = new LoaderInfo { Id = "vivo_iQOO_Neo3", Name = "vivo iQOO_Neo3", Brand = "vivo", Chip = "", IsCommon = false, AuthMode = "none" };
             db["vivo_iQOO_U1"] = new LoaderInfo { Id = "vivo_iQOO_U1", Name = "vivo iQOO_U1", Brand = "vivo", Chip = "", IsCommon = false, AuthMode = "none" };
             db["vivo_vivo_V11"] = new LoaderInfo { Id = "vivo_vivo_V11", Name = "vivo vivo_V11", Brand = "vivo", Chip = "", IsCommon = false, AuthMode = "none" };

@@ -1,10 +1,15 @@
 // ============================================================================
-// LoveAlways - MediaTek SLA 密钥数据库
+// LoveAlways - MediaTek SLA Key Database
 // MediaTek SLA Key Database
 // ============================================================================
-// 参考: mtkclient 项目 sla_keys.py
-// 注意: 仅包含已验证的真实密钥
+// Reference: mtkclient project sla_keys.py
+// Note: Contains only verified real keys
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System.Collections.Generic;
 using System.Numerics;
@@ -12,20 +17,20 @@ using System.Numerics;
 namespace LoveAlways.MediaTek.Auth
 {
     /// <summary>
-    /// SLA 密钥记录
+    /// SLA Key Record
     /// </summary>
     public class SlaKeyRecord
     {
         public string Vendor { get; set; }
         public string Name { get; set; }
         public ushort[] DaCodes { get; set; }
-        public string D { get; set; }  // 私钥指数 (Hex)
-        public string N { get; set; }  // 模数 (Hex)
-        public string E { get; set; }  // 公钥指数 (Hex)
+        public string D { get; set; }  // Private key exponent (Hex)
+        public string N { get; set; }  // Modulus (Hex)
+        public string E { get; set; }  // Public key exponent (Hex)
     }
 
     /// <summary>
-    /// MTK SLA 密钥数据库
+    /// MediaTek SLA Key Database
     /// </summary>
     public static class MtkSlaKeys
     {
@@ -38,7 +43,7 @@ namespace LoveAlways.MediaTek.Auth
 
         private static void InitializeKeys()
         {
-            // Tecno/Infinix (已验证的真实密钥)
+            // Tecno/Infinix (Verified real keys)
             _keys.Add(new SlaKeyRecord
             {
                 Vendor = "Tecno/Infinix",
@@ -49,7 +54,7 @@ namespace LoveAlways.MediaTek.Auth
                 E = "010001"
             });
 
-            // Generic - CodeSigKey (已验证)
+            // Generic - CodeSigKey (Verified)
             _keys.Add(new SlaKeyRecord
             {
                 Vendor = "Generic",
@@ -60,7 +65,7 @@ namespace LoveAlways.MediaTek.Auth
                 E = "010001"
             });
 
-            // Generic - SecureROSigKey (已验证)
+            // Generic - SecureROSigKey (Verified)
             _keys.Add(new SlaKeyRecord
             {
                 Vendor = "Generic",
@@ -71,7 +76,7 @@ namespace LoveAlways.MediaTek.Auth
                 E = "010001"
             });
 
-            // IOT (已验证)
+            // IOT (Verified)
             _keys.Add(new SlaKeyRecord
             {
                 Vendor = "IOT",
@@ -82,9 +87,9 @@ namespace LoveAlways.MediaTek.Auth
                 E = "010001"
             });
 
-            // === 来自mtkclient本地项目的真实密钥 ===
+            // === Real keys from mtkclient local project ===
             
-            // Motorola G24 (2024新机型，实测支持Carbonara)
+            // Motorola G24 (2024 model, tested to support Carbonara)
             _keys.Add(new SlaKeyRecord
             {
                 Vendor = "Motorola",
@@ -106,17 +111,17 @@ namespace LoveAlways.MediaTek.Auth
                 E = "010001"
             });
 
-            // TODO: 添加更多已验证的厂商密钥
-            // 密钥来源:
-            // 1. mtkclient 项目 sla_keys.py (已验证)
-            // 2. 从真实设备证书提取
-            // 3. 官方认证文件
+            // TODO: Add more verified manufacturer keys
+            // Key sources:
+            // 1. mtkclient project sla_keys.py (Verified)
+            // 2. Extracted from real device certificates
+            // 3. Official authentication files
             //
-            // 注意: 不要添加伪造或未验证的密钥
+            // Note: Do not add forged or unverified keys
         }
 
         /// <summary>
-        /// 根据 DA Code 获取 SLA 密钥
+        /// Get SLA key by DA Code
         /// </summary>
         public static SlaKeyRecord GetKeyByDaCode(ushort daCode)
         {
@@ -135,7 +140,7 @@ namespace LoveAlways.MediaTek.Auth
         }
 
         /// <summary>
-        /// 根据厂商获取 SLA 密钥
+        /// Get SLA key by vendor
         /// </summary>
         public static SlaKeyRecord GetKeyByVendor(string vendor)
         {
@@ -148,7 +153,7 @@ namespace LoveAlways.MediaTek.Auth
         }
 
         /// <summary>
-        /// 获取通用密钥 (用于尝试)
+        /// Get generic keys (for trial)
         /// </summary>
         public static IEnumerable<SlaKeyRecord> GetGenericKeys()
         {
@@ -160,7 +165,7 @@ namespace LoveAlways.MediaTek.Auth
         }
 
         /// <summary>
-        /// 获取所有密钥
+        /// Get all keys
         /// </summary>
         public static IReadOnlyList<SlaKeyRecord> GetAllKeys()
         {

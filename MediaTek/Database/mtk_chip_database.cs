@@ -1,9 +1,14 @@
 // ============================================================================
-// LoveAlways - MediaTek 芯片数据库
+// LoveAlways - MediaTek Chip Database
 // MediaTek Chip Information Database
 // ============================================================================
-// 参考: mtkclient 项目 brom_config.py
+// Reference: mtkclient project brom_config.py
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -14,7 +19,7 @@ using LoveAlways.MediaTek.Protocol;
 namespace LoveAlways.MediaTek.Database
 {
     /// <summary>
-    /// MTK 芯片信息记录
+    /// MTK Chip Information Record
     /// </summary>
     public class MtkChipRecord
     {
@@ -33,48 +38,48 @@ namespace LoveAlways.MediaTek.Database
         public bool HasExploit { get; set; }
         public string ExploitType { get; set; }
         
-        // V6 协议相关
+        // V6 protocol related
         /// <summary>
-        /// BROM 是否已被修补 (kamakiri/linecode 等 BROM 漏洞无效)
+        /// Whether BROM has been patched (kamakiri/linecode BROM exploits would be invalid)
         /// </summary>
         public bool BromPatched { get; set; }
         
         /// <summary>
-        /// 是否需要使用 V6 Loader (Preloader 模式)
+        /// Whether V6 Loader is required (Preloader mode)
         /// </summary>
         public bool RequiresLoader { get; set; }
         
         /// <summary>
-        /// Loader 文件名 (如果需要)
+        /// Loader filename (if required)
         /// </summary>
         public string LoaderName { get; set; }
         
         /// <summary>
-        /// SoC 版本 (用于区分同一芯片的不同版本)
+        /// SoC version (used to distinguish versions of the same chip)
         /// </summary>
         public ushort SocVer { get; set; }
         
         /// <summary>
-        /// 芯片代号 (用于 Loader 匹配)
+        /// Chip code name (used for Loader matching)
         /// </summary>
         public string Codename { get; set; }
     }
 
     /// <summary>
-    /// MTK 芯片数据库
+    /// MTK Chip Database
     /// </summary>
     public static class MtkChipDatabase
     {
         private static readonly Dictionary<ushort, MtkChipRecord> _chips = new Dictionary<ushort, MtkChipRecord>();
         
-        // Preloader 模式下 HW Code 别名映射
-        // 有些芯片在 Preloader 模式下报告不同的 HW Code
+        // HW Code alias mapping in Preloader mode
+        // Some chips report different HW Codes in Preloader mode
         private static readonly Dictionary<ushort, ushort> _preloaderAliases = new Dictionary<ushort, ushort>
         {
             // Preloader HW Code => BROM HW Code
             { 0x1236, 0x0950 },   // MT6989 Preloader => MT6989 BROM
             { 0x0951, 0x0950 },   // MT6989 Alt => MT6989 BROM
-            { 0x1172, 0x0996 },   // MT6895 Dimensity 8200 => MT6895 (需确认)
+            { 0x1172, 0x0996 },   // MT6895 Dimensity 8200 => MT6895 (Needs confirmation)
             { 0x0959, 0x0766 },   // MT6877 Preloader => MT6877 BROM
         };
 
@@ -84,27 +89,27 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 初始化芯片数据库
+        /// Initialize chip database
         /// </summary>
         private static void InitializeDatabase()
         {
-            // MT6261 系列 (功能机)
+            // MT6261 Series (Feature phones)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x6261,
                 ChipName = "MT6261",
-                Description = "功能机芯片",
+                Description = "Feature phone chip",
                 WatchdogAddr = 0xA0030000,
                 DaMode = (int)DaMode.Legacy,
                 Is64Bit = false
             });
 
-            // MT6572/MT6582 系列
+            // MT6572/MT6582 Series
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x6572,
                 ChipName = "MT6572",
-                Description = "双核智能机芯片",
+                Description = "Dual-core smartphone chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -117,7 +122,7 @@ namespace LoveAlways.MediaTek.Database
             {
                 HwCode = 0x6582,
                 ChipName = "MT6582",
-                Description = "四核智能机芯片",
+                Description = "Quad-core smartphone chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -126,12 +131,12 @@ namespace LoveAlways.MediaTek.Database
                 Is64Bit = false
             });
 
-            // MT6735/MT6737 系列
+            // MT6735/MT6737 Series
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0321,
                 ChipName = "MT6735",
-                Description = "64位四核芯片",
+                Description = "64-bit quad-core chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -144,7 +149,7 @@ namespace LoveAlways.MediaTek.Database
             {
                 HwCode = 0x0335,
                 ChipName = "MT6737",
-                Description = "64位四核芯片",
+                Description = "64-bit quad-core chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -153,7 +158,7 @@ namespace LoveAlways.MediaTek.Database
                 Is64Bit = true
             });
 
-            // MT6755/MT6757 系列 (Helio P10/P20)
+            // MT6755/MT6757 Series (Helio P10/P20)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0326,
@@ -182,7 +187,7 @@ namespace LoveAlways.MediaTek.Database
                 Is64Bit = true
             });
 
-            // MT6761/MT6762/MT6763 系列 (Helio A/P22/P23)
+            // MT6761/MT6762/MT6763 Series (Helio A/P22/P23)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0562,
@@ -252,7 +257,7 @@ namespace LoveAlways.MediaTek.Database
             {
                 HwCode = 0x0725,
                 ChipName = "MT6765",
-                Description = "Helio P35 (变体)",
+                Description = "Helio P35 (Variant)",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -352,7 +357,7 @@ namespace LoveAlways.MediaTek.Database
             {
                 HwCode = 0x0699,
                 ChipName = "MT6739",
-                Description = "入门级 4G 芯片",
+                Description = "Entry-level 4G chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -415,8 +420,8 @@ namespace LoveAlways.MediaTek.Database
                 ExploitType = "Carbonara"
             });
 
-            // MT6877 (Dimensity 900) - BROM 模式
-            // 参考 Config.xml: DA1Address=2097152 (0x200000)
+            // MT6877 (Dimensity 900) - BROM mode
+            // Reference Config.xml: DA1Address=2097152 (0x200000)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0766,
@@ -433,8 +438,8 @@ namespace LoveAlways.MediaTek.Database
                 ExploitType = "Carbonara"
             });
             
-            // MT6877 (Dimensity 900) - Preloader 模式 HW Code
-            // 参考 Config.xml: DA1Address=2097152 (0x200000)
+            // MT6877 (Dimensity 900) - Preloader mode HW Code
+            // Reference Config.xml: DA1Address=2097152 (0x200000)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0959,
@@ -520,28 +525,28 @@ namespace LoveAlways.MediaTek.Database
             });
 
             // MT6895 (Dimensity 8200) - HW Code 0x1172
-            // 注意: 之前误标为 MT6983，根据实际测试 HW Code 0x1172 = MT6895
+            // Note: previously mislabeled as MT6983, actual test HW Code 0x1172 = MT6895
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x1172,
                 ChipName = "MT6895",
                 Description = "Dimensity 8200",
-                WatchdogAddr = 0x1C007000,  // 根据截图修正
-                UartAddr = 0x11001000,      // 根据截图修正
+                WatchdogAddr = 0x1C007000,  // Corrected based on screenshot
+                UartAddr = 0x11001000,      // Corrected based on screenshot
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x201000,   // 根据截图: 0x201000
+                DaPayloadAddr = 0x201000,   // Per screenshot: 0x201000
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.Xml,
-                Var1 = 0x0A,                // 根据截图: Var1 = A
+                Var1 = 0x0A,                // Per screenshot: Var1 = A
                 Is64Bit = true,
                 HasExploit = true,
                 ExploitType = "Carbonara"
             });
 
             // ═══════════════════════════════════════════════════════════════
-            // MT6989 (Dimensity 9300) - iQOO Z9 Turbo, VIVO 等
-            // 支持 ALLINONE-SIGNATURE 漏洞
-            // ChimeraTool 日志确认 DA1 地址: 0x02000000
+            // MT6989 (Dimensity 9300) - iQOO Z9 Turbo, VIVO, etc.
+            // Supports ALLINONE-SIGNATURE exploit
+            // ChimeraTool logs confirm DA1 address: 0x02000000
             // ═══════════════════════════════════════════════════════════════
             AddChip(new MtkChipRecord
             {
@@ -551,7 +556,7 @@ namespace LoveAlways.MediaTek.Database
                 WatchdogAddr = 0x1C007000,
                 UartAddr = 0x11001000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x02000000,  // DA1 地址 (ChimeraTool 确认)
+                DaPayloadAddr = 0x02000000,  // DA1 address (ChimeraTool confirmed)
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.Xml,
                 Var1 = 0x0A,
@@ -560,27 +565,27 @@ namespace LoveAlways.MediaTek.Database
                 ExploitType = "AllinoneSignature"
             });
 
-            // MT6989 Preloader 模式 HW Code - 0x1236 (实测确认)
-            // VIVO 设备在 Preloader 模式下报告此 HW Code
-            // ChimeraTool 日志确认 DA1 地址: 0x02000000
+            // MT6989 Preloader mode HW Code - 0x1236 (Confirmed by testing)
+            // VIVO devices report this HW Code in Preloader mode
+            // ChimeraTool logs confirm DA1 address: 0x02000000
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x1236,
                 ChipName = "MT6989",
                 Description = "Dimensity 9300 (Preloader)",
-                WatchdogAddr = 0x1C007000,  // Preloader 模式下可能无法访问
+                WatchdogAddr = 0x1C007000,  // Might be inaccessible in Preloader mode
                 UartAddr = 0x11001000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x02000000,  // DA1 地址 (ChimeraTool 确认)
+                DaPayloadAddr = 0x02000000,  // DA1 address (ChimeraTool confirmed)
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.Xml,
                 Var1 = 0x0A,
                 Is64Bit = true,
                 HasExploit = true,
-                ExploitType = "AllinoneSignature"  // 使用 DA2 级别漏洞
+                ExploitType = "AllinoneSignature"  // Use DA2 level exploit
             });
 
-            // MT6989 其他可能的 Preloader HW Code
+            // MT6989 other possible Preloader HW Codes
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0951,
@@ -589,7 +594,7 @@ namespace LoveAlways.MediaTek.Database
                 WatchdogAddr = 0x1C007000,
                 UartAddr = 0x11001000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x02000000,  // DA1 地址
+                DaPayloadAddr = 0x02000000,  // DA1 address
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.Xml,
                 Var1 = 0x0A,
@@ -598,7 +603,7 @@ namespace LoveAlways.MediaTek.Database
                 ExploitType = "AllinoneSignature"
             });
 
-            // MT6983 (Dimensity 9000) - 可能也支持 ALLINONE-SIGNATURE
+            // MT6983 (Dimensity 9000) - Might also support ALLINONE-SIGNATURE
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0900,
@@ -615,7 +620,7 @@ namespace LoveAlways.MediaTek.Database
                 ExploitType = "AllinoneSignature"
             });
 
-            // MT6985 (Dimensity 9200) - 可能也支持 ALLINONE-SIGNATURE
+            // MT6985 (Dimensity 9200) - Might also support ALLINONE-SIGNATURE
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0930,
@@ -636,32 +641,32 @@ namespace LoveAlways.MediaTek.Database
             });
 
             // ═══════════════════════════════════════════════════════════════
-            // V6 新芯片 (BROM 已修补, 需要 V6 Loader)
-            // 参考: mtkclient brom_config.py
-            // 这些芯片需要使用 Preloader 模式 + 签名 Loader
+            // V6 New chips (BROM patched, requires V6 Loader)
+            // Reference: mtkclient brom_config.py
+            // These chips require Preloader mode + signed Loader
             // ═══════════════════════════════════════════════════════════════
 
             // ═══════════════════════════════════════════════════════════════
-            // 注意: 以下芯片的 HW Code 与已有芯片冲突，需要设备验证
-            // 暂时注释，避免覆盖已验证的芯片配置
+            // Note: HW Codes below conflict with existing chips, needs device validation
+            // Temporarily commented out to avoid overwriting verified chip configurations
             // ═══════════════════════════════════════════════════════════════
             
-            // MT6781 (Helio G96) - HW Code 0x0788 与 MT6873 冲突
-            // MT6789 (Helio G99) - HW Code 0x0813 与 MT6833 冲突
-            // MT6855 (Dimensity 930) - HW Code 0x0886 与 MT6885 冲突
-            // MT6879 (Dimensity 920) - HW Code 0x0959 与 MT6877 Preloader 冲突
-            // MT6886 (Dimensity 7050) - HW Code 0x0996 与 MT6895 冲突
+            // MT6781 (Helio G96) - HW Code 0x0788 conflicts with MT6873
+            // MT6789 (Helio G99) - HW Code 0x0813 conflicts with MT6833
+            // MT6855 (Dimensity 930) - HW Code 0x0886 conflicts with MT6885
+            // MT6879 (Dimensity 920) - HW Code 0x0959 conflicts with MT6877 Preloader
+            // MT6886 (Dimensity 7050) - HW Code 0x0996 conflicts with MT6895
             //
-            // TODO: 需要真实设备验证这些芯片的 HW Code
-            // 可能这些是 Preloader 模式的别名，需要添加到 _preloaderAliases
+            // TODO: Real device validation needed for these chips' HW Codes
+            // These might be aliases for Preloader mode, need to add to _preloaderAliases
 
-            // MT6897 (Dimensity 8300) - V6 协议
-            // TODO: 需要验证真实 HW Code，0x0950 与 MT6989 冲突
-            // 暂时注释，等待设备验证
+            // MT6897 (Dimensity 8300) - V6 protocol
+            // TODO: Needs verification of real HW Code, 0x0950 conflicts with MT6989
+            // Temporarily commented out, waiting for device validation
             /*
             AddChip(new MtkChipRecord
             {
-                HwCode = 0x????,  // 待验证
+                HwCode = 0x????,  // To be verified
                 ChipName = "MT6897",
                 Description = "Dimensity 8300",
                 WatchdogAddr = 0x1C007000,
@@ -679,20 +684,20 @@ namespace LoveAlways.MediaTek.Database
             });
             */
 
-            // MT8168, MT8183, MT8185 - HW Code 冲突，暂时注释
-            // MT8168/MT8183 的 0x0699 与 MT6739 冲突
-            // MT8185 的 0x0717 与 MT6765 冲突
-            // TODO: 需要设备验证真实 HW Code
+            // MT8168, MT8183, MT8185 - HW Code conflict, temporarily commented out
+            // MT8168/MT8183's 0x0699 conflicts with MT6739
+            // MT8185's 0x0717 conflicts with MT6765
+            // TODO: Real HW Code validation needed
 
-            // MT8188 - V6 协议
-            // TODO: 需要验证真实 HW Code，0x0950 与 MT6989 冲突
-            // 暂时注释，等待设备验证
+            // MT8188 - V6 protocol
+            // TODO: Needs verification of real HW Code, 0x0950 conflicts with MT6989
+            // Temporarily commented out, waiting for device validation
             /*
             AddChip(new MtkChipRecord
             {
-                HwCode = 0x????,  // 待验证
+                HwCode = 0x????,  // To be verified
                 ChipName = "MT8188",
-                Description = "IoT/平板旗舰芯片",
+                Description = "IoT/Tablet flagship chip",
                 WatchdogAddr = 0x1C007000,
                 UartAddr = 0x11001000,
                 BromPayloadAddr = 0x100A00,
@@ -706,20 +711,20 @@ namespace LoveAlways.MediaTek.Database
             });
             */
 
-            // MT8195, MT6769, MT6769V, MT6769Z, MT6750 - HW Code 冲突，暂时注释
-            // MT8195 的 0x0816 与 MT6893 冲突
-            // MT6769 的 0x0707 与 MT6762 冲突 (可能是同一芯片的不同命名)
-            // MT6769V 的 0x0725 与 MT6765 变体冲突
-            // MT6769Z 的 0x0562 与 MT6761 冲突
-            // MT6750 的 0x0326 与 MT6755 冲突
-            // TODO: 验证这些是否为同一芯片的不同市场命名
+            // MT8195, MT6769, MT6769V, MT6769Z, MT6750 - HW Code conflict, temporarily commented out
+            // MT8195's 0x0816 conflicts with MT6893
+            // MT6769's 0x0707 conflicts with MT6762 (might be different names for the same chip)
+            // MT6769V's 0x0725 conflicts with MT6765 variant
+            // MT6769Z's 0x0562 conflicts with MT6761
+            // MT6750's 0x0326 conflicts with MT6755
+            // TODO: Verify if these are different market names for the same chip
 
-            // MT6580 (入门级芯片)
+            // MT6580 (Entry-level chip)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x6580,
                 ChipName = "MT6580",
-                Description = "入门级四核芯片",
+                Description = "Entry-level quad-core chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -729,12 +734,12 @@ namespace LoveAlways.MediaTek.Database
                 Codename = "mt6580"
             });
 
-            // MT6592 (八核芯片)
+            // MT6592 (Octa-core chip)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x6592,
                 ChipName = "MT6592",
-                Description = "八核芯片",
+                Description = "Octa-core chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -744,12 +749,12 @@ namespace LoveAlways.MediaTek.Database
                 Codename = "mt6592"
             });
 
-            // MT6595 (首款 64 位芯片)
+            // MT6595 (First 64-bit chip)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x6595,
                 ChipName = "MT6595",
-                Description = "首款 64 位芯片",
+                Description = "First 64-bit chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -759,17 +764,17 @@ namespace LoveAlways.MediaTek.Database
                 Codename = "mt6595"
             });
 
-            // MT6752, MT6753, MT6732 - HW Code 冲突，暂时注释
-            // MT6752 的 0x0321 与 MT6735 冲突
-            // MT6753 的 0x0337 是独立的，可以保留
-            // MT6732 的 0x0335 与 MT6737 冲突
+            // MT6752, MT6753, MT6732 - HW Code conflict, temporarily commented out
+            // MT6752's 0x0321 conflicts with MT6735
+            // MT6753's 0x0337 is independent, can be kept
+            // MT6732's 0x0335 conflicts with MT6737
             
-            // MT6753 (MT6752 增强版) - 独立 HW Code
+            // MT6753 (MT6752 Enhanced) - Independent HW Code
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0337,
                 ChipName = "MT6753",
-                Description = "MT6752 增强版",
+                Description = "MT6752 Enhanced Edition",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -779,12 +784,12 @@ namespace LoveAlways.MediaTek.Database
                 Codename = "mt6753"
             });
 
-            // MT6570 (入门级芯片)
+            // MT6570 (Entry-level chip)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x6570,
                 ChipName = "MT6570",
-                Description = "入门级芯片",
+                Description = "Entry-level chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -794,12 +799,12 @@ namespace LoveAlways.MediaTek.Database
                 Codename = "mt6570"
             });
 
-            // MT8127 (平板芯片)
+            // MT8127 (Tablet chip)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x8127,
                 ChipName = "MT8127",
-                Description = "平板芯片",
+                Description = "Tablet chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -809,12 +814,12 @@ namespace LoveAlways.MediaTek.Database
                 Codename = "mt8127"
             });
 
-            // MT8163 (平板芯片)
+            // MT8163 (Tablet chip)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x8163,
                 ChipName = "MT8163",
-                Description = "平板芯片",
+                Description = "Tablet chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -824,12 +829,12 @@ namespace LoveAlways.MediaTek.Database
                 Codename = "mt8163"
             });
 
-            // MT8167 (平板芯片)
+            // MT8167 (Tablet chip)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x8167,
                 ChipName = "MT8167",
-                Description = "平板芯片",
+                Description = "Tablet chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -839,12 +844,12 @@ namespace LoveAlways.MediaTek.Database
                 Codename = "mt8167"
             });
 
-            // MT8173 (Chromebook 芯片)
+            // MT8173 (Chromebook chip)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x8173,
                 ChipName = "MT8173",
-                Description = "Chromebook 芯片",
+                Description = "Chromebook chip",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -854,12 +859,12 @@ namespace LoveAlways.MediaTek.Database
                 Codename = "mt8173"
             });
 
-            // MT8176 (MT8173 增强版)
+            // MT8176 (MT8173 Enhanced Edition)
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x8176,
                 ChipName = "MT8176",
-                Description = "MT8173 增强版",
+                Description = "MT8173 Enhanced Edition",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
@@ -870,20 +875,21 @@ namespace LoveAlways.MediaTek.Database
             });
 
             // ═══════════════════════════════════════════════════════════════
-            // 新增 Preloader HW Code 别名映射 (部分芯片在不同模式下 HW Code 不同)
+            // Added Preloader HW Code alias mapping (some chips have different HW Codes in different modes)
             // ═══════════════════════════════════════════════════════════════
             
-            // TODO: 添加更多已验证的芯片
-            // 芯片信息来源:
-            // 1. mtkclient 项目 brom_config.py (已验证)
-            // 2. 真实设备测试数据
-            // 3. 官方技术文档
+            // TODO: Add more verified chips
+            // Chip information source:
+            // 1. mtkclient project brom_config.py (Verified)
+            // 2. Real device test data
+            // 3. Official technical documentation
             //
-            // 注意: 不要添加未验证的芯片或猜测的HW Code
+            // Note: Do not add unverified chips or guessed HW Codes
         }
+        
 
         /// <summary>
-        /// 添加芯片记录
+        /// Add chip record
         /// </summary>
         private static void AddChip(MtkChipRecord chip)
         {
@@ -891,15 +897,15 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 根据 HW Code 获取芯片信息
+        /// Get chip information by HW Code
         /// </summary>
         public static MtkChipRecord GetChip(ushort hwCode)
         {
-            // 先直接查找
+            // Direct lookup first
             if (_chips.TryGetValue(hwCode, out var chip))
                 return chip;
             
-            // 检查 Preloader 别名
+            // Check Preloader alias
             if (_preloaderAliases.TryGetValue(hwCode, out var bromHwCode))
             {
                 if (_chips.TryGetValue(bromHwCode, out chip))
@@ -910,15 +916,15 @@ namespace LoveAlways.MediaTek.Database
         }
         
         /// <summary>
-        /// 根据 HW Code 获取芯片信息 (包含 Preloader 模式检测)
+        /// Get chip information by HW Code (including Preloader mode detection)
         /// </summary>
         public static (MtkChipRecord chip, bool isPreloaderAlias) GetChipWithAlias(ushort hwCode)
         {
-            // 先直接查找
+            // Direct lookup first
             if (_chips.TryGetValue(hwCode, out var chip))
                 return (chip, false);
             
-            // 检查 Preloader 别名
+            // Check Preloader alias
             if (_preloaderAliases.TryGetValue(hwCode, out var bromHwCode))
             {
                 if (_chips.TryGetValue(bromHwCode, out chip))
@@ -929,7 +935,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取芯片名称
+        /// Get chip name
         /// </summary>
         public static string GetChipName(ushort hwCode)
         {
@@ -938,7 +944,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取所有支持的芯片
+        /// Get all supported chips
         /// </summary>
         public static IReadOnlyList<MtkChipRecord> GetAllChips()
         {
@@ -946,7 +952,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取支持漏洞利用的芯片列表
+        /// Get chips with exploit support
         /// </summary>
         public static IReadOnlyList<MtkChipRecord> GetExploitableChips()
         {
@@ -954,9 +960,9 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取支持指定漏洞类型的芯片列表
+        /// Get chips by exploit type
         /// </summary>
-        /// <param name="exploitType">漏洞类型: Carbonara, AllinoneSignature, Kamakiri2</param>
+        /// <param name="exploitType">Exploit type: Carbonara, AllinoneSignature, Kamakiri2</param>
         public static IReadOnlyList<MtkChipRecord> GetChipsByExploitType(string exploitType)
         {
             return _chips.Values
@@ -966,7 +972,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取支持 ALLINONE-SIGNATURE 漏洞的芯片列表
+        /// Get chips supporting ALLINONE-SIGNATURE exploit
         /// </summary>
         public static IReadOnlyList<MtkChipRecord> GetAllinoneSignatureChips()
         {
@@ -974,7 +980,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 检查芯片是否支持 ALLINONE-SIGNATURE 漏洞
+        /// Check if chip supports ALLINONE-SIGNATURE exploit
         /// </summary>
         public static bool IsAllinoneSignatureSupported(ushort hwCode)
         {
@@ -985,7 +991,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取芯片的漏洞类型
+        /// Get chip exploit type
         /// </summary>
         public static string GetExploitType(ushort hwCode)
         {
@@ -994,7 +1000,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 转换为 MtkChipInfo
+        /// Convert to MtkChipInfo
         /// </summary>
         public static MtkChipInfo ToChipInfo(MtkChipRecord record)
         {
@@ -1013,7 +1019,7 @@ namespace LoveAlways.MediaTek.Database
                 DaMode = record.DaMode,
                 SupportsXFlash = record.SupportsXFlash,
                 Is64Bit = record.Is64Bit,
-                // V6 新字段
+                // V6 New fields
                 BromPatched = record.BromPatched,
                 RequiresLoader = record.RequiresLoader,
                 LoaderName = record.LoaderName,
@@ -1023,10 +1029,10 @@ namespace LoveAlways.MediaTek.Database
             };
         }
 
-        #region V6 协议相关方法
+        #region V6 Protocol Methods
 
         /// <summary>
-        /// 检查芯片是否需要 V6 Loader
+        /// Check if chip requires V6 Loader
         /// </summary>
         public static bool RequiresV6Loader(ushort hwCode)
         {
@@ -1035,7 +1041,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 检查 BROM 是否已被修补
+        /// Check if BROM has been patched
         /// </summary>
         public static bool IsBromPatched(ushort hwCode)
         {
@@ -1044,7 +1050,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取需要 V6 Loader 的芯片列表
+        /// Get list of chips requiring V6 Loader
         /// </summary>
         public static IReadOnlyList<MtkChipRecord> GetV6LoaderChips()
         {
@@ -1052,7 +1058,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取 BROM 已修补的芯片列表
+        /// Get list of BROM patched chips
         /// </summary>
         public static IReadOnlyList<MtkChipRecord> GetBromPatchedChips()
         {
@@ -1060,23 +1066,23 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取芯片的 Loader 文件名
+        /// Get chip loader filename
         /// </summary>
         public static string GetLoaderName(ushort hwCode)
         {
             var chip = GetChip(hwCode);
             if (chip == null) return null;
             
-            // 如果有指定的 Loader 名称则返回
+            // Return designated loader name if available
             if (!string.IsNullOrEmpty(chip.LoaderName))
                 return chip.LoaderName;
             
-            // 否则根据芯片名生成默认名称
+            // Otherwise generate default name based on chip name
             return $"{chip.ChipName.ToLower()}_loader.bin";
         }
 
         /// <summary>
-        /// 获取芯片的代号
+        /// Get chip codename
         /// </summary>
         public static string GetCodename(ushort hwCode)
         {
@@ -1086,10 +1092,10 @@ namespace LoveAlways.MediaTek.Database
 
         #endregion
 
-        #region 统计方法
+        #region Statistics Methods
 
         /// <summary>
-        /// 获取数据库统计信息
+        /// Get database statistics
         /// </summary>
         public static MtkDatabaseStats GetStats()
         {
@@ -1112,7 +1118,7 @@ namespace LoveAlways.MediaTek.Database
     }
 
     /// <summary>
-    /// 芯片数据库统计信息
+    /// Chip Database Statistics
     /// </summary>
     public class MtkDatabaseStats
     {
@@ -1128,14 +1134,14 @@ namespace LoveAlways.MediaTek.Database
 
         public override string ToString()
         {
-            return $"MTK 芯片数据库统计:\n" +
-                   $"  总芯片数: {TotalChips}\n" +
-                   $"  可利用漏洞: {ExploitableChips}\n" +
+            return $"MTK Chip Database Statistics:\n" +
+                   $"  Total Chips: {TotalChips}\n" +
+                   $"  Exploitable: {ExploitableChips}\n" +
                    $"  - Carbonara: {CarbonaraChips}\n" +
                    $"  - AllinoneSignature: {AllinoneSignatureChips}\n" +
-                   $"  需要 V6 Loader: {V6LoaderChips}\n" +
-                   $"  BROM 已修补: {BromPatchedChips}\n" +
-                   $"  协议分布: Legacy={LegacyChips}, XML={XmlChips}, XFlash={XFlashChips}";
+                   $"  Requires V6 Loader: {V6LoaderChips}\n" +
+                   $"  BROM Patched: {BromPatchedChips}\n" +
+                   $"  Protocol Distribution: Legacy={LegacyChips}, XML={XmlChips}, XFlash={XFlashChips}";
         }
     }
 }

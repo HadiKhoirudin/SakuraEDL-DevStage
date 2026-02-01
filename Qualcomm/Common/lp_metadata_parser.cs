@@ -10,7 +10,7 @@ namespace LoveAlways.Qualcomm.Common
 {
     /// <summary>
     /// Android Logical Partition (LP) Metadata Parser
-    /// 用于解析 super 分区的布局信息 (带缓存)
+    /// Used to parse super partition layout information (with cache)
     /// </summary>
     public class LpMetadataParser
     {
@@ -20,7 +20,7 @@ namespace LoveAlways.Qualcomm.Common
         // LP Metadata 使用的固定扇区大小
         public const int LP_SECTOR_SIZE = 512;
 
-        // 静态解析缓存 (按数据哈希缓存结果)
+        // Static parse cache (results cached by data hash)
         private static readonly ConcurrentDictionary<string, List<LpPartitionInfo>> _parseCache 
             = new ConcurrentDictionary<string, List<LpPartitionInfo>>();
 
@@ -33,24 +33,24 @@ namespace LoveAlways.Qualcomm.Common
             public List<LpExtentInfo> Extents { get; set; } = new List<LpExtentInfo>();
             
             /// <summary>
-            /// 总大小（LP 扇区数，每扇区 512 字节）
+            /// Total size (LP sectors, 512 bytes per sector)
             /// </summary>
             public long TotalSizeLpSectors => Extents.Sum(e => (long)e.NumSectors);
             
             /// <summary>
-            /// 总大小（字节）
+            /// Total size (bytes)
             /// </summary>
             public long TotalSizeBytes => TotalSizeLpSectors * LP_SECTOR_SIZE;
             
             /// <summary>
-            /// 第一个 Extent 的物理偏移（LP 扇区，512 字节/扇区）
-            /// 仅对 LINEAR 类型有效
+            /// Physical offset of the first extent (LP sectors, 512 bytes per sector)
+            /// Only valid for LINEAR type
             /// </summary>
             public long FirstLpSectorOffset => GetFirstLinearOffset();
             
             private long GetFirstLinearOffset()
             {
-                // 只返回 LINEAR 类型的 Extent 偏移
+                // Only return LINEAR type Extent offset
                 foreach (var ext in Extents)
                 {
                     if (ext.TargetType == 0) // LP_TARGET_TYPE_LINEAR
@@ -60,10 +60,10 @@ namespace LoveAlways.Qualcomm.Common
             }
             
             /// <summary>
-            /// 计算设备扇区偏移（考虑扇区大小转换）
+            /// Calculate device sector offset (considering sector size conversion)
             /// </summary>
-            /// <param name="deviceSectorSize">设备扇区大小（如 4096）</param>
-            /// <returns>设备扇区偏移</returns>
+            /// <param name="deviceSectorSize">Device sector size (e.g., 4096)</param>
+            /// <returns>Device sector offset</returns>
             public long GetDeviceSectorOffset(int deviceSectorSize)
             {
                 long lpOffset = FirstLpSectorOffset;
@@ -75,21 +75,21 @@ namespace LoveAlways.Qualcomm.Common
             }
             
             /// <summary>
-            /// 是否有有效的 LINEAR Extent
+            /// Has valid LINEAR extent
             /// </summary>
             public bool HasLinearExtent => Extents.Any(e => e.TargetType == 0);
         }
 
         public class LpExtentInfo
         {
-            public ulong NumSectors { get; set; }      // LP 扇区数（512B）
+            public ulong NumSectors { get; set; }      // LP sector count (512B)
             public uint TargetType { get; set; }       // 0=LINEAR, 1=ZERO
-            public ulong TargetData { get; set; }      // 物理偏移（LP 扇区）
-            public uint TargetSource { get; set; }     // 块设备索引
+            public ulong TargetData { get; set; }      // Physical offset (LP sectors)
+            public uint TargetSource { get; set; }     // Block device index
         }
 
         /// <summary>
-        /// 从 super_meta.raw 或 super 分区头部解析分区表 (带缓存)
+        /// Parse partition table from super_meta.raw or super partition header (with cache)
         /// </summary>
         public List<LpPartitionInfo> ParseMetadata(byte[] data)
         {
@@ -100,17 +100,17 @@ namespace LoveAlways.Qualcomm.Common
             List<LpPartitionInfo> cached;
             if (_parseCache.TryGetValue(cacheKey, out cached))
             {
-                // 返回深拷贝，防止缓存被修改
+                // Return deep copy to prevent cache modification
                 return DeepCopyPartitions(cached);
             }
             
             var partitions = new List<LpPartitionInfo>();
             
-            // 1. 查找 ALP0 魔数 (可能会有多个备份，取第一个有效的)
+            // 1. Find ALP0 magic (possible multiple backups, take the first valid one)
             int headerOffset = FindAlp0Header(data);
 
             if (headerOffset == -1)
-                throw new Exception("未能在数据中找到有效的 LP Metadata Header (ALP0)");
+                throw new Exception("Could not find a valid LP Metadata Header (ALP0) in the data");
 
             using (var ms = new MemoryStream(data))
             using (var br = new BinaryReader(ms))
@@ -192,10 +192,10 @@ namespace LoveAlways.Qualcomm.Common
                 }
             }
 
-            // 存入缓存 (限制缓存大小)
+            // Store in cache (limit cache size)
             if (_parseCache.Count >= MAX_CACHE_ENTRIES)
             {
-                // 简单策略: 清空缓存
+                // Simple strategy: Clear cache
                 _parseCache.Clear();
             }
             _parseCache[cacheKey] = partitions;
@@ -204,23 +204,23 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 查找 ALP0 Header 位置 (优化版: 只检查常见偏移)
+        /// Find ALP0 Header position (optimized version: only check common offsets)
         /// </summary>
         private static int FindAlp0Header(byte[] data)
         {
             // ALP0 magic bytes: 0x30 0x50 0x4C 0x41 ("0PLA" little-endian)
-            // 常见偏移位置
+            // Common offset locations
             int[] commonOffsets = { 4096, 8192, 0x1000, 0x2000, 0x3000 };
             
-            // 先检查常见位置
+            // First check common locations
             foreach (int offset in commonOffsets)
             {
                 if (offset + 6 <= data.Length && IsAlp0Header(data, offset))
                     return offset;
             }
             
-            // 逐字节搜索 (限制范围避免全量扫描)
-            int maxSearch = Math.Min(data.Length - 4, 0x10000); // 最多搜索 64KB
+            // Byte-by-byte search (limit range to avoid full scan)
+            int maxSearch = Math.Min(data.Length - 4, 0x10000); // Search up to 64KB
             for (int i = 0; i < maxSearch; i++)
             {
                 if (IsAlp0Header(data, i))
@@ -231,7 +231,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 检查是否为有效的 ALP0 Header
+        /// Check if it is a valid ALP0 Header
         /// </summary>
         private static bool IsAlp0Header(byte[] data, int offset)
         {
@@ -248,11 +248,11 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 计算数据哈希 (用于缓存键)
+        /// Calculate data hash (for cache key)
         /// </summary>
         private static string ComputeDataHash(byte[] data)
         {
-            // 只取前 4KB 计算哈希 (性能优化)
+            // Only take the first 4KB to calculate hash (performance optimization)
             int hashLen = Math.Min(data.Length, 4096);
             using (var md5 = MD5.Create())
             {
@@ -262,7 +262,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 深拷贝分区列表
+        /// Deep copy partition list
         /// </summary>
         private static List<LpPartitionInfo> DeepCopyPartitions(List<LpPartitionInfo> source)
         {
@@ -286,7 +286,7 @@ namespace LoveAlways.Qualcomm.Common
         }
 
         /// <summary>
-        /// 清除解析缓存
+        /// Clear parse cache
         /// </summary>
         public static void ClearCache()
         {

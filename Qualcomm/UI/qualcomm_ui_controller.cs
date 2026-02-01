@@ -1,6 +1,11 @@
 // ============================================================================
-// LoveAlways - 高通 UI 控制器
+// LoveAlways - Qualcomm UI Controller
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -24,59 +29,59 @@ namespace LoveAlways.Qualcomm.UI
         private QualcommService _service;
         private CancellationTokenSource _cts;
         private readonly Action<string, Color?> _log;
-        private readonly Action<string> _logDetail;  // 详细调试日志 (只写入文件)
+        private readonly Action<string> _logDetail;  // Detailed debug log (written to file only)
         private bool _disposed;
 
-        // UI 控件引用 - 使用 dynamic 或反射来处理不同类型的控件
+        // UI Control References - Use dynamic or reflection to handle different types of controls
         private dynamic _portComboBox;
         private ListView _partitionListView;
-        private dynamic _progressBar;        // 总进度条 (长)
-        private dynamic _subProgressBar;     // 子进度条 (短)
+        private dynamic _progressBar;        // Total Progress Bar (Long)
+        private dynamic _subProgressBar;     // Sub Progress Bar (Short)
         private dynamic _statusLabel;
         private dynamic _skipSaharaCheckbox;
         private dynamic _protectPartitionsCheckbox;
         private dynamic _programmerPathTextbox;
         private dynamic _outputPathTextbox;
         
-        // 时间/速度/操作状态标签
+        // Time/Speed/Operation Status Labels
         private dynamic _timeLabel;
         private dynamic _speedLabel;
         private dynamic _operationLabel;
         
-        // 设备信息标签
-        private dynamic _brandLabel;         // 品牌
-        private dynamic _chipLabel;          // 芯片
-        private dynamic _modelLabel;         // 设备型号
-        private dynamic _serialLabel;        // 序列号
-        private dynamic _storageLabel;       // 存储类型
-        private dynamic _unlockLabel;        // 设备型号2 (第二个型号标签)
-        private dynamic _otaVersionLabel;    // OTA版本
+        // Device Info Labels
+        private dynamic _brandLabel;         // Brand
+        private dynamic _chipLabel;          // Chip
+        private dynamic _modelLabel;         // Device Model
+        private dynamic _serialLabel;        // Serial Number
+        private dynamic _storageLabel;       // Storage Type
+        private dynamic _unlockLabel;        // Device Model 2 (Second Model Label)
+        private dynamic _otaVersionLabel;    // OTA Version
         
-        // 计时器和速度计算
+        // Timer and Speed Calculation
         private Stopwatch _operationStopwatch;
         private long _lastBytes;
         private DateTime _lastSpeedUpdate;
-        private double _currentSpeed; // 当前速度 (bytes/s)
+        private double _currentSpeed; // Current Speed (bytes/s)
         
-        // 端口状态监控定时器
+        // Port Status Monitor Timer
         private System.Windows.Forms.Timer _portMonitorTimer;
-        private string _connectedPortName; // 当前连接的端口名称
+        private string _connectedPortName; // Currently Connected Port Name
         
-        // 总进度追踪
+        // Total Progress Tracking
         private int _totalSteps;
         private int _currentStep;
-        private long _totalOperationBytes;    // 当前总任务的总字节数
-        private long _completedStepBytes;     // 已完成步骤的总字节数
-        private long _currentStepBytes;       // 当前步骤的字节数 (用于准确速度计算)
-        private string _currentOperationName; // 当前操作名称保存
+        private long _totalOperationBytes;    // Total bytes of the current total task
+        private long _completedStepBytes;     // Total bytes of completed steps
+        private long _currentStepBytes;       // Bytes of the current step (for accurate speed calculation)
+        private string _currentOperationName; // Current operation name saved
 
         /// <summary>
-        /// 快速检查连接状态（不触发端口验证，避免意外断开）
+        /// Quick check connection status (without triggering port validation to avoid accidental disconnection)
         /// </summary>
         public bool IsConnected { get { return _service != null && _service.IsConnectedFast; } }
         
         /// <summary>
-        /// 检查是否可以快速重连（端口已释放但 Firehose 仍可用）
+        /// Check if quick reconnect is possible (port released but Firehose still available)
         /// </summary>
         public bool CanQuickReconnect { get { return _service != null && _service.IsPortReleased && _service.State == QualcommConnectionState.Ready; } }
         
@@ -84,7 +89,7 @@ namespace LoveAlways.Qualcomm.UI
         public List<PartitionInfo> Partitions { get; private set; }
 
         /// <summary>
-        /// 获取当前槽位 ("a", "b", "undefined", "nonexistent")
+        /// Get current slot ("a", "b", "undefined", "nonexistent")
         /// </summary>
         public string GetCurrentSlot()
         {
@@ -96,44 +101,44 @@ namespace LoveAlways.Qualcomm.UI
         public event EventHandler<List<PartitionInfo>> PartitionsLoaded;
         
         /// <summary>
-        /// 小米授权令牌事件 (内置签名失败时触发，需要弹窗显示令牌)
-        /// Token 格式: VQ 开头的 Base64 字符串
+        /// Xiaomi Auth Token Event (Triggered when built-in signature fails, requires popup to show token)
+        /// Token Format: Base64 string starting with VQ
         /// </summary>
         public event Action<string> XiaomiAuthTokenRequired;
         
         /// <summary>
-        /// 小米授权令牌事件处理 (内置签名失败时触发)
+        /// Xiaomi Auth Token Event Handler (Triggered when built-in signature fails)
         /// </summary>
         private void OnXiaomiAuthTokenRequired(string token)
         {
-            Log("[小米授权] 内置签名无效，需要在线授权", Color.Orange);
-            Log(string.Format("[小米授权] 令牌: {0}", token), Color.Cyan);
+            Log("[Xiaomi Auth] Built-in signature invalid, online authorization required", Color.Orange);
+            Log(string.Format("[Xiaomi Auth] Token: {0}", token), Color.Cyan);
             
-            // 触发公开事件，让 Form1 弹窗显示
+            // Trigger public event to let Form1 show popup
             XiaomiAuthTokenRequired?.Invoke(token);
         }
         
         /// <summary>
-        /// 端口断开事件处理 (设备自己断开时触发)
+        /// Port Disconnected Event Handler (Triggered when device disconnects itself)
         /// </summary>
         private void OnServicePortDisconnected(object sender, EventArgs e)
         {
-            // 确保在 UI 线程上执行
+            // Ensure execution on UI thread
             if (_partitionListView != null && _partitionListView.InvokeRequired)
             {
                 _partitionListView.BeginInvoke(new Action(() => OnServicePortDisconnected(sender, e)));
                 return;
             }
             
-            // 停止端口监控
+            // Stop port monitoring
             StopPortMonitor();
             
-            Log("设备已断开连接，需要重新完整配置", Color.Red);
+            Log("Device disconnected, full reconfiguration required", Color.Red);
             
-            // 取消正在进行的操作
+            // Cancel ongoing operation
             CancelOperation();
             
-            // 断开服务连接并释放资源
+            // Disconnect service and release resources
             if (_service != null)
             {
                 try
@@ -144,12 +149,12 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 catch (Exception ex) 
                 { 
-                    _logDetail?.Invoke($"[UI] 断开服务异常: {ex.Message}"); 
+                    _logDetail?.Invoke($"[UI] Disconnect service exception: {ex.Message}"); 
                 }
                 _service = null;
             }
             
-            // 清空分区列表
+            // Clear partition list
             Partitions?.Clear();
             if (_partitionListView != null)
             {
@@ -158,38 +163,38 @@ namespace LoveAlways.Qualcomm.UI
                 _partitionListView.EndUpdate();
             }
             
-            // 重置进度条
+            // Reset progress bar
             UpdateProgressBarDirect(_progressBar, 0);
             UpdateProgressBarDirect(_subProgressBar, 0);
             
-            // 自动取消勾选"跳过引导"，设备断开后需要重新完整配置
+            // Automatically uncheck "Skip Loader", full reconfiguration required after device disconnection
             SetSkipSaharaChecked(false);
             
-            // 更新 UI 状态
+            // Update UI status
             ConnectionStateChanged?.Invoke(this, false);
             ClearDeviceInfoLabels();
             
-            // 刷新端口列表，等待设备重新连接
+            // Refresh port list, wait for device reconnection
             RefreshPorts();
             
-            Log("请等待设备重新进入 EDL 模式后重新连接", Color.Orange);
+            Log("Please wait for the device to re-enter EDL mode before reconnecting", Color.Orange);
         }
         
         /// <summary>
-        /// 验证连接状态 (在操作前调用)
+        /// Validate connection status (Call before operation)
         /// </summary>
         public bool ValidateConnection()
         {
             if (_service == null)
             {
-                Log("未连接设备", Color.Red);
+                Log("Device not connected", Color.Red);
                 return false;
             }
             
             if (!_service.ValidateConnection())
             {
-                Log("设备连接已失效，需要重新完整配置", Color.Red);
-                // 取消勾选"跳过引导"，需要重新完整配置
+                Log("Device connection lost, full reconfiguration required", Color.Red);
+                // Uncheck "Skip Loader", full reconfiguration required
                 SetSkipSaharaChecked(false);
                 ConnectionStateChanged?.Invoke(this, false);
                 ClearDeviceInfoLabels();
@@ -220,7 +225,7 @@ namespace LoveAlways.Qualcomm.UI
             object speedLabel = null,
             object operationLabel = null,
             object subProgressBar = null,
-            // 设备信息标签
+            // Device Info Labels
             object brandLabel = null,
             object chipLabel = null,
             object modelLabel = null,
@@ -242,7 +247,7 @@ namespace LoveAlways.Qualcomm.UI
             _speedLabel = speedLabel;
             _operationLabel = operationLabel;
             
-            // 设备信息标签绑定
+            // Bind Device Info Labels
             _brandLabel = brandLabel;
             _chipLabel = chipLabel;
             _modelLabel = modelLabel;
@@ -251,41 +256,41 @@ namespace LoveAlways.Qualcomm.UI
             _unlockLabel = unlockLabel;
             _otaVersionLabel = otaVersionLabel;
             
-            // 初始化端口状态监控定时器 (每 2 秒检查一次)
+            // Initialize port status monitor timer (Check every 2 seconds)
             _portMonitorTimer = new System.Windows.Forms.Timer();
             _portMonitorTimer.Interval = 2000;
             _portMonitorTimer.Tick += OnPortMonitorTick;
         }
         
         /// <summary>
-        /// 端口状态监控定时器回调
+        /// Port Status Monitor Timer Callback
         /// </summary>
         private void OnPortMonitorTick(object sender, EventArgs e)
         {
-            // 如果没有连接，不需要检查
+            // If not connected, no need to check
             if (string.IsNullOrEmpty(_connectedPortName) || _service == null)
                 return;
             
-            // 检查端口是否还存在于设备管理器中
+            // Check if port still exists in Device Manager
             var availablePorts = System.IO.Ports.SerialPort.GetPortNames();
             bool portExists = Array.Exists(availablePorts, p => 
                 p.Equals(_connectedPortName, StringComparison.OrdinalIgnoreCase));
             
             if (!portExists)
             {
-                // 端口已从设备管理器中消失 - 显示在主日志中
-                Log(string.Format("检测到端口 {0} 已断开", _connectedPortName), Color.Orange);
+                // Port disappeared from Device Manager - Show in main log
+                Log(string.Format("Detected port {0} disconnected", _connectedPortName), Color.Orange);
                 
-                // 停止定时器
+                // Stop timer
                 _portMonitorTimer.Stop();
                 
-                // 触发断开处理
+                // Trigger disconnect handling
                 OnServicePortDisconnected(this, EventArgs.Empty);
             }
         }
         
         /// <summary>
-        /// 启动端口监控
+        /// Start Port Monitoring
         /// </summary>
         private void StartPortMonitor(string portName)
         {
@@ -293,28 +298,28 @@ namespace LoveAlways.Qualcomm.UI
             if (_portMonitorTimer != null && !_portMonitorTimer.Enabled)
             {
                 _portMonitorTimer.Start();
-                _logDetail(string.Format("[端口监控] 开始监控端口: {0}", portName));
+                _logDetail(string.Format("[Port Monitor] Start monitoring port: {0}", portName));
             }
         }
         
         /// <summary>
-        /// 停止端口监控
+        /// Stop Port Monitoring
         /// </summary>
         private void StopPortMonitor()
         {
             if (_portMonitorTimer != null && _portMonitorTimer.Enabled)
             {
                 _portMonitorTimer.Stop();
-                _logDetail("[端口监控] 停止监控");
+                _logDetail("[Port Monitor] Stop monitoring");
             }
             _connectedPortName = null;
         }
 
         /// <summary>
-        /// 刷新端口列表
+        /// Refresh Port List
         /// </summary>
-        /// <param name="silent">静默模式，不输出日志</param>
-        /// <returns>检测到的EDL端口数量</returns>
+        /// <param name="silent">Silent mode, no log output</param>
+        /// <returns>Number of detected EDL ports</returns>
         public int RefreshPorts(bool silent = false)
         {
             if (_portComboBox == null) return 0;
@@ -324,15 +329,15 @@ namespace LoveAlways.Qualcomm.UI
                 var ports = PortDetector.DetectAllPorts();
                 var edlPorts = PortDetector.DetectEdlPorts();
                 
-                // 保存当前选择的端口名称
+                // Save currently selected port name
                 string previousSelectedPort = GetSelectedPortName();
                 
                 _portComboBox.Items.Clear();
 
                 if (ports.Count == 0)
                 {
-                    // 没有设备时显示默认文本
-                    _portComboBox.Text = "设备状态：未连接任何设备";
+                    // Show default text when no device
+                    _portComboBox.Text = "Device Status: No device connected";
                 }
                 else
                 {
@@ -344,14 +349,14 @@ namespace LoveAlways.Qualcomm.UI
                         _portComboBox.Items.Add(display);
                     }
 
-                    // 简单的选择逻辑：
-                    // 1. 优先恢复之前的选择（如果存在）
-                    // 2. 否则选择第一个 EDL 端口
-                    // 3. 否则选择第一个端口
+                    // Simple selection logic:
+                    // 1. Prioritize restoring previous selection (if exists)
+                    // 2. Otherwise select the first EDL port
+                    // 3. Otherwise select the first port
                     
                     int selectedIndex = -1;
                     
-                    // 尝试恢复之前的选择
+                    // Try to restore previous selection
                     if (!string.IsNullOrEmpty(previousSelectedPort))
                     {
                         for (int i = 0; i < _portComboBox.Items.Count; i++)
@@ -364,7 +369,7 @@ namespace LoveAlways.Qualcomm.UI
                         }
                     }
                     
-                    // 如果之前没有选择或选择的端口不存在了，选择 EDL 端口
+                    // If no previous selection or selected port no longer exists, select EDL port
                     if (selectedIndex < 0 && edlPorts.Count > 0)
                     {
                         for (int i = 0; i < _portComboBox.Items.Count; i++)
@@ -377,13 +382,13 @@ namespace LoveAlways.Qualcomm.UI
                         }
                     }
                     
-                    // 默认选择第一个
+                    // Default select the first one
                     if (selectedIndex < 0 && _portComboBox.Items.Count > 0)
                     {
                         selectedIndex = 0;
                     }
                     
-                    // 设置选择
+                    // Set selection
                     if (selectedIndex >= 0)
                     {
                         _portComboBox.SelectedIndex = selectedIndex;
@@ -396,7 +401,7 @@ namespace LoveAlways.Qualcomm.UI
             {
                 if (!silent)
                 {
-                    Log(string.Format("刷新端口失败: {0}", ex.Message), Color.Red);
+                    Log(string.Format("Failed to refresh ports: {0}", ex.Message), Color.Red);
                 }
                 return 0;
             }
@@ -408,15 +413,15 @@ namespace LoveAlways.Qualcomm.UI
         }
         
         /// <summary>
-        /// 仅获取 Sahara 设备信息 (用于云端自动匹配)
+        /// Get Sahara Device Info Only (For cloud auto-matching)
         /// </summary>
-        /// <returns>设备信息对象，失败返回 null</returns>
+        /// <returns>Device info object, returns null if failed</returns>
         public async Task<LoveAlways.Qualcomm.Services.SaharaDeviceInfo> GetSaharaDeviceInfoAsync()
         {
-            if (IsBusy) { Log("操作进行中", Color.Orange); return null; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return null; }
 
             string portName = GetSelectedPortName();
-            if (string.IsNullOrEmpty(portName)) { Log("请选择端口", Color.Red); return null; }
+            if (string.IsNullOrEmpty(portName)) { Log("Please select a port", Color.Red); return null; }
 
             try
             {
@@ -433,11 +438,11 @@ namespace LoveAlways.Qualcomm.UI
                 
                 if (chipInfo == null)
                 {
-                    Log("无法获取设备信息", Color.Red);
+                    Log("Unable to get device info", Color.Red);
                     return null;
                 }
 
-                // 转换为 SaharaDeviceInfo
+                // Convert to SaharaDeviceInfo
                 return new LoveAlways.Qualcomm.Services.SaharaDeviceInfo
                 {
                     MsmId = chipInfo.MsmId.ToString("X8"),
@@ -450,7 +455,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             catch (Exception ex)
             {
-                Log("获取设备信息异常: " + ex.Message, Color.Red);
+                Log("Exception getting device info: " + ex.Message, Color.Red);
                 return null;
             }
             finally
@@ -460,12 +465,12 @@ namespace LoveAlways.Qualcomm.UI
         }
         
         /// <summary>
-        /// 使用云端匹配的 Loader 继续连接
+        /// Continue connection with cloud-matched Loader
         /// </summary>
         public async Task<bool> ContinueConnectWithCloudLoaderAsync(byte[] loaderData, string storageType, string authMode)
         {
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
-            if (_service == null) { Log("请先获取设备信息", Color.Red); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
+            if (_service == null) { Log("Please get device info first", Color.Red); return false; }
 
             try
             {
@@ -476,7 +481,7 @@ namespace LoveAlways.Qualcomm.UI
                 if (success)
                 {
                     string portName = GetSelectedPortName();
-                    Log("连接成功！", Color.Green);
+                    Log("Connected successfully!", Color.Green);
                     UpdateDeviceInfoLabels();
                     
                     _service.PortDisconnected += OnServicePortDisconnected;
@@ -488,14 +493,14 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 else
                 {
-                    Log("连接失败", Color.Red);
+                    Log("Connection failed", Color.Red);
                 }
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log("连接异常: " + ex.Message, Color.Red);
+                Log("Connection exception: " + ex.Message, Color.Red);
                 return false;
             }
             finally
@@ -506,14 +511,14 @@ namespace LoveAlways.Qualcomm.UI
 
         public async Task<bool> ConnectWithOptionsAsync(string programmerPath, string storageType, bool skipSahara, string authMode, string digestPath = "", string signaturePath = "")
         {
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
 
             string portName = GetSelectedPortName();
-            if (string.IsNullOrEmpty(portName)) { Log("请选择端口", Color.Red); return false; }
+            if (string.IsNullOrEmpty(portName)) { Log("Please select a port", Color.Red); return false; }
 
             if (!skipSahara && string.IsNullOrEmpty(programmerPath))
             {
-                Log("请选择引导文件", Color.Red);
+                Log("Please select a programmer file", Color.Red);
                 return false;
             }
 
@@ -522,15 +527,15 @@ namespace LoveAlways.Qualcomm.UI
                 IsBusy = true;
                 ResetCancellationToken();
                 
-                // 启动进度条 - 连接过程分4个阶段: Sahara(40%) -> Firehose配置(20%) -> 认证(20%) -> 完成(20%)
-                StartOperationTimer("连接设备", 100, 0);
+                // Start progress bar - Connection process has 4 stages: Sahara(40%) -> Firehose Config(20%) -> Auth(20%) -> Complete(20%)
+                StartOperationTimer("Connect Device", 100, 0);
                 UpdateProgressBarDirect(_progressBar, 0);
                 UpdateProgressBarDirect(_subProgressBar, 0);
 
                 _service = new QualcommService(
                     msg => Log(msg, null),
                     (current, total) => {
-                        // Sahara 阶段进度映射到 0-40%
+                        // Sahara stage progress mapped to 0-40%
                         if (total > 0)
                         {
                             double percent = 40.0 * current / total;
@@ -538,23 +543,23 @@ namespace LoveAlways.Qualcomm.UI
                             UpdateProgressBarDirect(_subProgressBar, 100.0 * current / total);
                         }
                     },
-                    _logDetail  // 传递详细调试日志委托
+                    _logDetail  // Pass detailed debug log delegate
                 );
 
                 bool success;
                 if (skipSahara)
                 {
-                    UpdateProgressBarDirect(_progressBar, 40); // 跳过 Sahara
+                    UpdateProgressBarDirect(_progressBar, 40); // Skip Sahara
                     success = await _service.ConnectFirehoseDirectAsync(portName, storageType, _cts.Token);
                     UpdateProgressBarDirect(_progressBar, 60);
                 }
                 else
                 {
-                    Log(string.Format("连接设备 (存储: {0}, 认证: {1})...", storageType, authMode), Color.Blue);
-                    // 传递认证模式和文件路径给 ConnectAsync，认证在内部按正确顺序执行
+                    Log(string.Format("Connecting device (Storage: {0}, Auth: {1})...", storageType, authMode), Color.Blue);
+                    // Pass auth mode and file path to ConnectAsync, auth is executed internally in correct order
                     success = await _service.ConnectAsync(portName, programmerPath, storageType, 
                         authMode, digestPath, signaturePath, _cts.Token);
-                    UpdateProgressBarDirect(_progressBar, 80); // Sahara + 认证 + Firehose 配置完成
+                    UpdateProgressBarDirect(_progressBar, 80); // Sahara + Auth + Firehose Config complete
                     
                     if (success)
                         SetSkipSaharaChecked(true);
@@ -562,25 +567,25 @@ namespace LoveAlways.Qualcomm.UI
 
                 if (success)
                 {
-                    Log("连接成功！", Color.Green);
+                    Log("Connected successfully!", Color.Green);
                     UpdateProgressBarDirect(_progressBar, 100);
                     UpdateProgressBarDirect(_subProgressBar, 100);
                     UpdateDeviceInfoLabels();
                     
-                    // 注册端口断开事件 (设备自己断开时会触发)
+                    // Register port disconnected event (Triggered when device disconnects itself)
                     _service.PortDisconnected += OnServicePortDisconnected;
                     
-                    // 注册小米授权令牌事件
+                    // Register Xiaomi Auth Token event
                     _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
                     
-                    // 启动端口监控 (检测设备管理器中的端口状态)
+                    // Start port monitor (Check port status in Device Manager)
                     StartPortMonitor(portName);
                     
                     ConnectionStateChanged?.Invoke(this, true);
                 }
                 else
                 {
-                    Log("连接失败", Color.Red);
+                    Log("Connection failed", Color.Red);
                     UpdateProgressBarDirect(_progressBar, 0);
                     UpdateProgressBarDirect(_subProgressBar, 0);
                 }
@@ -589,7 +594,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             catch (Exception ex)
             {
-                Log("连接异常: " + ex.Message, Color.Red);
+                Log("Connection exception: " + ex.Message, Color.Red);
                 return false;
             }
             finally
@@ -599,27 +604,27 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 使用完整 VIP 数据连接设备 (Loader + Digest + Signature 文件路径)
+        /// Connect device using full VIP data (Loader + Digest + Signature file paths)
         /// </summary>
-        /// <param name="storageType">存储类型 (ufs/emmc)</param>
-        /// <param name="platform">平台名称 (如 SM8550)</param>
-        /// <param name="loaderData">Loader (Firehose) 数据</param>
-        /// <param name="digestPath">Digest 文件路径</param>
-        /// <param name="signaturePath">Signature 文件路径</param>
+        /// <param name="storageType">Storage Type (ufs/emmc)</param>
+        /// <param name="platform">Platform Name (e.g. SM8550)</param>
+        /// <param name="loaderData">Loader (Firehose) Data</param>
+        /// <param name="digestPath">Digest File Path</param>
+        /// <param name="signaturePath">Signature File Path</param>
         public async Task<bool> ConnectWithVipDataAsync(string storageType, string platform, byte[] loaderData, string digestPath, string signaturePath)
         {
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
 
             string portName = GetSelectedPortName();
-            if (string.IsNullOrEmpty(portName)) { Log("请选择端口", Color.Red); return false; }
+            if (string.IsNullOrEmpty(portName)) { Log("Please select a port", Color.Red); return false; }
 
             if (loaderData == null)
             {
-                Log("Loader 数据无效", Color.Red);
+                Log("Loader data invalid", Color.Red);
                 return false;
             }
 
-            // 检查认证文件
+            // Check auth files
             bool hasAuth = !string.IsNullOrEmpty(digestPath) && !string.IsNullOrEmpty(signaturePath) &&
                           File.Exists(digestPath) && File.Exists(signaturePath);
 
@@ -628,24 +633,24 @@ namespace LoveAlways.Qualcomm.UI
                 IsBusy = true;
                 ResetCancellationToken();
                 
-                // 启动进度条
-                StartOperationTimer("VIP 连接", 100, 0);
+                // Start progress bar
+                StartOperationTimer("VIP Connect", 100, 0);
                 UpdateProgressBarDirect(_progressBar, 0);
                 UpdateProgressBarDirect(_subProgressBar, 0);
 
-                Log(string.Format("[VIP] 平台: {0}", platform), Color.Blue);
-                Log(string.Format("[VIP] Loader: {0} KB (资源包)", loaderData.Length / 1024), Color.Gray);
+                Log(string.Format("[VIP] Platform: {0}", platform), Color.Blue);
+                Log(string.Format("[VIP] Loader: {0} KB (Resource Pack)", loaderData.Length / 1024), Color.Gray);
                 
                 if (hasAuth)
                 {
                     var digestInfo = new FileInfo(digestPath);
                     var sigInfo = new FileInfo(signaturePath);
-                    Log(string.Format("[VIP] Digest: {0} KB (资源包)", digestInfo.Length / 1024), Color.Gray);
-                    Log(string.Format("[VIP] Signature: {0} 字节 (资源包)", sigInfo.Length), Color.Gray);
+                    Log(string.Format("[VIP] Digest: {0} KB (Resource Pack)", digestInfo.Length / 1024), Color.Gray);
+                    Log(string.Format("[VIP] Signature: {0} Bytes (Resource Pack)", sigInfo.Length), Color.Gray);
                 }
                 else
                 {
-                    Log("[VIP] 无认证文件，将使用普通模式", Color.Orange);
+                    Log("[VIP] No auth files, using normal mode", Color.Orange);
                 }
 
                 _service = new QualcommService(
@@ -653,7 +658,7 @@ namespace LoveAlways.Qualcomm.UI
                     (current, total) => {
                         if (total > 0)
                         {
-                            // Sahara 阶段进度映射到 0-40%
+                            // Sahara stage progress mapped to 0-40%
                             double percent = 40.0 * current / total;
                             UpdateProgressBarDirect(_progressBar, percent);
                             UpdateProgressBarDirect(_subProgressBar, 100.0 * current / total);
@@ -662,18 +667,18 @@ namespace LoveAlways.Qualcomm.UI
                     _logDetail
                 );
 
-                // 一步完成：上传 Loader + VIP 认证 + Firehose 配置
-                // 重要：VIP 认证必须在 Firehose 配置之前执行
+                // One step: Upload Loader + VIP Auth + Firehose Config
+                // Important: VIP Auth must be executed before Firehose Config
                 UpdateProgressBarDirect(_progressBar, 5);
-                Log("[VIP] 开始连接 (Loader + 认证 + 配置)...", Color.Blue);
+                Log("[VIP] Connecting (Loader + Auth + Config)...", Color.Blue);
                 
-                // 使用文件路径方式进行 VIP 认证
+                // Perform VIP Auth using file paths
                 bool connectOk = await _service.ConnectWithVipAuthAsync(portName, loaderData, digestPath ?? "", signaturePath ?? "", storageType, _cts.Token);
                 UpdateProgressBarDirect(_progressBar, 85);
 
                 if (connectOk)
                 {
-                    Log("[VIP] 连接成功！高权限模式已激活", Color.Green);
+                    Log("[VIP] Connected successfully! High privilege mode activated", Color.Green);
                     UpdateProgressBarDirect(_progressBar, 100);
                     UpdateProgressBarDirect(_subProgressBar, 100);
                     UpdateDeviceInfoLabels();
@@ -681,19 +686,19 @@ namespace LoveAlways.Qualcomm.UI
                     _service.PortDisconnected += OnServicePortDisconnected;
                     _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
                     
-                    // 启动端口监控 (检测设备管理器中的端口状态)
+                    // Start port monitor (Check port status in Device Manager)
                     StartPortMonitor(portName);
                     
                     ConnectionStateChanged?.Invoke(this, true);
                     
-                    // 自动勾选跳过 Sahara (下次可以直接连接)
+                    // Automatically check Skip Sahara (Can connect directly next time)
                     SetSkipSaharaChecked(true);
                     
                     return true;
                 }
                 else
                 {
-                    Log("[VIP] 连接失败，请检查 Loader/签名是否匹配", Color.Red);
+                    Log("[VIP] Connection failed, please check if Loader/Signature match", Color.Red);
                     UpdateProgressBarDirect(_progressBar, 0);
                     UpdateProgressBarDirect(_subProgressBar, 0);
                     return false;
@@ -701,7 +706,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             catch (Exception ex)
             {
-                Log("[VIP] 连接异常: " + ex.Message, Color.Red);
+                Log("[VIP] Connection exception: " + ex.Message, Color.Red);
                 return false;
             }
             finally
@@ -711,23 +716,23 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 使用内嵌 Loader 数据连接
-        /// 适用于通用 EDL Loader，支持可选认证
+        /// Connect using embedded Loader data
+        /// Suitable for generic EDL Loader, supports optional auth
         /// </summary>
-        /// <param name="storageType">存储类型 (ufs/emmc)</param>
-        /// <param name="loaderData">Loader 二进制数据</param>
-        /// <param name="loaderName">Loader 名称 (用于日志)</param>
-        /// <param name="authMode">认证模式: none, oneplus</param>
+        /// <param name="storageType">Storage Type (ufs/emmc)</param>
+        /// <param name="loaderData">Loader Binary Data</param>
+        /// <param name="loaderName">Loader Name (for logging)</param>
+        /// <param name="authMode">Auth Mode: none, oneplus</param>
         public async Task<bool> ConnectWithLoaderDataAsync(string storageType, byte[] loaderData, string loaderName, string authMode = "none")
         {
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
 
             string portName = GetSelectedPortName();
-            if (string.IsNullOrEmpty(portName)) { Log("请选择端口", Color.Red); return false; }
+            if (string.IsNullOrEmpty(portName)) { Log("Please select a port", Color.Red); return false; }
 
             if (loaderData == null || loaderData.Length < 100)
             {
-                Log("Loader 数据无效", Color.Red);
+                Log("Loader data invalid", Color.Red);
                 return false;
             }
 
@@ -736,12 +741,12 @@ namespace LoveAlways.Qualcomm.UI
                 IsBusy = true;
                 ResetCancellationToken();
                 
-                // 启动进度条
-                StartOperationTimer("EDL 连接", 100, 0);
+                // Start progress bar
+                StartOperationTimer("EDL Connect", 100, 0);
                 UpdateProgressBarDirect(_progressBar, 0);
                 UpdateProgressBarDirect(_subProgressBar, 0);
 
-                string authInfo = authMode != "none" ? $", 认证: {authMode}" : "";
+                string authInfo = authMode != "none" ? $", Auth: {authMode}" : "";
                 Log(string.Format("[EDL] Loader: {0} ({1} KB{2})", loaderName, loaderData.Length / 1024, authInfo), Color.Cyan);
 
                 _service = new QualcommService(
@@ -757,73 +762,73 @@ namespace LoveAlways.Qualcomm.UI
                     _logDetail
                 );
 
-                // 通过 Sahara 上传 Loader
-                Log("[EDL] 上传 Loader (Sahara)...", Color.Cyan);
+                // Upload Loader via Sahara
+                Log("[EDL] Uploading Loader (Sahara)...", Color.Cyan);
                 
                 bool success = await _service.ConnectWithLoaderDataAsync(portName, loaderData, storageType, _cts.Token);
                 
                 if (!success)
                 {
-                    Log("[EDL] Sahara 握手/Loader 上传失败", Color.Red);
+                    Log("[EDL] Sahara handshake/Loader upload failed", Color.Red);
                     UpdateProgressBarDirect(_progressBar, 0);
                     UpdateProgressBarDirect(_subProgressBar, 0);
                     return false;
                 }
                 
                 UpdateProgressBarDirect(_progressBar, 75);
-                Log("[EDL] Loader 上传成功，已进入 Firehose 模式", Color.Green);
+                Log("[EDL] Loader uploaded successfully, entered Firehose mode", Color.Green);
                 
-                // 执行品牌特定认证
+                // Execute brand-specific auth
                 string authLower = authMode.ToLowerInvariant();
                 
                 if (authLower == "oneplus")
                 {
-                    Log("[EDL] 执行 OnePlus 认证...", Color.Cyan);
+                    Log("[EDL] Performing OnePlus Auth...", Color.Cyan);
                     bool authOk = await _service.PerformOnePlusAuthAsync(_cts.Token);
                     UpdateProgressBarDirect(_progressBar, 90);
                     
                     if (authOk)
                     {
-                        Log("[EDL] OnePlus 认证成功", Color.Green);
+                        Log("[EDL] OnePlus Auth success", Color.Green);
                     }
                     else
                     {
-                        Log("[EDL] OnePlus 认证失败，部分功能可能受限", Color.Orange);
+                        Log("[EDL] OnePlus Auth failed, some features may be restricted", Color.Orange);
                     }
                 }
                 else if (authLower == "xiaomi")
                 {
-                    Log("[EDL] 执行小米认证...", Color.Cyan);
+                    Log("[EDL] Performing Xiaomi Auth...", Color.Cyan);
                     bool authOk = await _service.PerformXiaomiAuthAsync(_cts.Token);
                     UpdateProgressBarDirect(_progressBar, 90);
                     
                     if (authOk)
                     {
-                        Log("[EDL] 小米认证成功", Color.Green);
+                        Log("[EDL] Xiaomi Auth success", Color.Green);
                     }
                     else
                     {
-                        Log("[EDL] 小米认证失败，部分功能可能受限", Color.Orange);
+                        Log("[EDL] Xiaomi Auth failed, some features may be restricted", Color.Orange);
                     }
                 }
                 else if (authLower == "none" && _service.IsXiaomiDevice())
                 {
-                    // 小米设备自动认证
-                    Log("[EDL] 检测到小米设备，自动执行认证...", Color.Cyan);
+                    // Xiaomi Device Auto Auth
+                    Log("[EDL] Xiaomi device detected, performing auto auth...", Color.Cyan);
                     bool authOk = await _service.PerformXiaomiAuthAsync(_cts.Token);
                     UpdateProgressBarDirect(_progressBar, 90);
                     
                     if (authOk)
                     {
-                        Log("[EDL] 小米自动认证成功", Color.Green);
+                        Log("[EDL] Xiaomi auto auth success", Color.Green);
                     }
                     else
                     {
-                        Log("[EDL] 小米自动认证失败，部分功能可能受限", Color.Orange);
+                        Log("[EDL] Xiaomi auto auth failed, some features may be restricted", Color.Orange);
                     }
                 }
                 
-                Log("[EDL] 连接成功！", Color.Green);
+                Log("[EDL] Connected successfully!", Color.Green);
                 UpdateProgressBarDirect(_progressBar, 100);
                 UpdateProgressBarDirect(_subProgressBar, 100);
                 UpdateDeviceInfoLabels();
@@ -831,19 +836,19 @@ namespace LoveAlways.Qualcomm.UI
                 _service.PortDisconnected += OnServicePortDisconnected;
                 _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
                 
-                // 启动端口监控 (检测设备管理器中的端口状态)
+                // Start port monitor (Check port status in Device Manager)
                 StartPortMonitor(portName);
                 
                 ConnectionStateChanged?.Invoke(this, true);
                 
-                // 自动勾选跳过 Sahara
+                // Automatically check Skip Sahara
                 SetSkipSaharaChecked(true);
 
                 return true;
             }
             catch (Exception ex)
             {
-                Log("[EDL] 连接异常: " + ex.Message, Color.Red);
+                Log("[EDL] Connection exception: " + ex.Message, Color.Red);
                 return false;
             }
             finally
@@ -863,25 +868,25 @@ namespace LoveAlways.Qualcomm.UI
             CancelOperation();
             ConnectionStateChanged?.Invoke(this, false);
             ClearDeviceInfoLabels();
-            Log("已断开连接", Color.Gray);
+            Log("Disconnected", Color.Gray);
         }
         
         /// <summary>
-        /// 重置卡住的 Sahara 状态
-        /// 当设备因为其他软件或引导错误导致卡在 Sahara 模式时使用
+        /// Reset stuck Sahara state
+        /// Used when device is stuck in Sahara mode due to software or loader errors
         /// </summary>
         public async Task<bool> ResetSaharaAsync()
         {
             string portName = GetSelectedPortName();
             if (string.IsNullOrEmpty(portName))
             {
-                Log("请选择端口", Color.Red);
+                Log("Please select a port", Color.Red);
                 return false;
             }
             
             if (IsBusy)
             {
-                Log("操作进行中", Color.Orange);
+                Log("Operation in progress", Color.Orange);
                 return false;
             }
             
@@ -890,9 +895,9 @@ namespace LoveAlways.Qualcomm.UI
                 IsBusy = true;
                 ResetCancellationToken();
                 
-                Log("正在重置 Sahara 状态...", Color.Blue);
+                Log("Resetting Sahara state...", Color.Blue);
                 
-                // 确保 service 存在
+                // Ensure service exists
                 if (_service == null)
                 {
                     _service = new QualcommService(
@@ -907,27 +912,27 @@ namespace LoveAlways.Qualcomm.UI
                 if (success)
                 {
                     Log("------------------------------------------------", Color.Gray);
-                    Log("✓ Sahara 状态重置成功！", Color.Green);
-                    Log("请点击[连接]按钮重新连接设备", Color.Blue);
+                    Log("✓ Sahara state reset successfully!", Color.Green);
+                    Log("Please click [Connect] button to reconnect device", Color.Blue);
                     Log("------------------------------------------------", Color.Gray);
                     
-                    // 取消勾选"跳过引导"，因为需要重新完整握手
+                    // Uncheck "Skip Loader", full handshake required
                     SetSkipSaharaChecked(false);
-                    // 刷新端口
+                    // Refresh ports
                     RefreshPorts();
-                    // 清除设备信息显示
+                    // Clear device info display
                     ClearDeviceInfoLabels();
-                    // 通知连接状态变化
+                    // Notify connection status change
                     ConnectionStateChanged?.Invoke(this, false);
                 }
                 else
                 {
                     Log("------------------------------------------------", Color.Gray);
-                    Log("❌ 无法重置 Sahara 状态", Color.Red);
-                    Log("请尝试以下步骤：", Color.Orange);
-                    Log("  1. 断开 USB 连接", Color.Orange);
-                    Log("  2. 断电重启设备（拔电池或长按电源键）", Color.Orange);
-                    Log("  3. 重新连接 USB", Color.Orange);
+                    Log("❌ Unable to reset Sahara state", Color.Red);
+                    Log("Please try the following steps:", Color.Orange);
+                    Log("  1. Disconnect USB cable", Color.Orange);
+                    Log("  2. Power cycle device (remove battery or hold power button)", Color.Orange);
+                    Log("  3. Reconnect USB", Color.Orange);
                     Log("------------------------------------------------", Color.Gray);
                 }
                 
@@ -935,12 +940,12 @@ namespace LoveAlways.Qualcomm.UI
             }
             catch (OperationCanceledException)
             {
-                Log("重置已取消", Color.Orange);
+                Log("Reset canceled", Color.Orange);
                 return false;
             }
             catch (Exception ex)
             {
-                Log("重置异常: " + ex.Message, Color.Red);
+                Log("Reset exception: " + ex.Message, Color.Red);
                 return false;
             }
             finally
@@ -951,20 +956,20 @@ namespace LoveAlways.Qualcomm.UI
         }
         
         /// <summary>
-        /// 硬重置设备 (完全重启)
+        /// Hard Reset Device (Full Reboot)
         /// </summary>
         public async Task<bool> HardResetDeviceAsync()
         {
             string portName = GetSelectedPortName();
             if (string.IsNullOrEmpty(portName))
             {
-                Log("请选择端口", Color.Red);
+                Log("Please select a port", Color.Red);
                 return false;
             }
             
             if (IsBusy)
             {
-                Log("操作进行中", Color.Orange);
+                Log("Operation in progress", Color.Orange);
                 return false;
             }
             
@@ -973,7 +978,7 @@ namespace LoveAlways.Qualcomm.UI
                 IsBusy = true;
                 ResetCancellationToken();
                 
-                Log("正在发送硬重置命令...", Color.Blue);
+                Log("Sending hard reset command...", Color.Blue);
                 
                 if (_service == null)
                 {
@@ -988,30 +993,30 @@ namespace LoveAlways.Qualcomm.UI
                 
                 if (success)
                 {
-                    Log("设备正在重启，请等待设备重新进入 EDL 模式", Color.Green);
+                    Log("Device is rebooting, please wait for device to re-enter EDL mode", Color.Green);
                     ConnectionStateChanged?.Invoke(this, false);
                     ClearDeviceInfoLabels();
                     SetSkipSaharaChecked(false);
                     
-                    // 等待一段时间后刷新端口
+                    // Wait a moment before refreshing ports
                     await Task.Delay(2000);
                     RefreshPorts();
                 }
                 else
                 {
-                    Log("硬重置失败", Color.Red);
+                    Log("Hard reset failed", Color.Red);
                 }
                 
                 return success;
             }
             catch (OperationCanceledException)
             {
-                Log("操作已取消", Color.Orange);
+                Log("Operation canceled", Color.Orange);
                 return false;
             }
             catch (Exception ex)
             {
-                Log("硬重置异常: " + ex.Message, Color.Red);
+                Log("Hard reset exception: " + ex.Message, Color.Red);
                 return false;
             }
             finally
@@ -1021,13 +1026,13 @@ namespace LoveAlways.Qualcomm.UI
             }
         }
 
-        #region 设备信息显示
+        #region Device Info Display
 
         private DeviceInfoService _deviceInfoService;
         private DeviceFullInfo _currentDeviceInfo;
 
         /// <summary>
-        /// 获取当前芯片信息
+        /// Get current chip info
         /// </summary>
         public QualcommChipInfo ChipInfo
         {
@@ -1035,7 +1040,7 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 获取当前完整设备信息
+        /// Get current full device info
         /// </summary>
         public DeviceFullInfo CurrentDeviceInfo
         {
@@ -1043,42 +1048,42 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 更新设备信息标签 (Sahara + Firehose 模式获取的信息)
+        /// Update device info labels (Info obtained from Sahara + Firehose)
         /// </summary>
         public void UpdateDeviceInfoLabels()
         {
             if (_service == null) return;
 
-            // 初始化设备信息服务
+            // Initialize device info service
             if (_deviceInfoService == null)
             {
                 _deviceInfoService = new DeviceInfoService(
                     msg => Log(msg, null),
-                    msg => { } // 详细日志可选
+                    msg => { } // Detailed log optional
                 );
             }
 
-            // 从 Qualcomm 服务获取设备信息
+            // Get device info from Qualcomm service
             _currentDeviceInfo = _deviceInfoService.GetInfoFromQualcommService(_service);
 
             var chipInfo = _service.ChipInfo;
             
-            // Sahara 模式获取的信息
+            // Info obtained from Sahara mode
             if (chipInfo != null)
             {
-                // 品牌 (从 PK Hash 或 OEM ID 识别)
+                // Brand (Identified from PK Hash or OEM ID)
                 string brand = _currentDeviceInfo.Vendor;
                 if (brand == "Unknown" && !string.IsNullOrEmpty(chipInfo.PkHash))
                 {
                     brand = QualcommDatabase.GetVendorByPkHash(chipInfo.PkHash);
                     _currentDeviceInfo.Vendor = brand;
                 }
-                UpdateLabelSafe(_brandLabel, "品牌：" + (brand != "Unknown" ? brand : "正在识别..."));
+                UpdateLabelSafe(_brandLabel, "Brand: " + (brand != "Unknown" ? brand : "Identifying..."));
                 
-                // 芯片型号 - 根据 Sahara 读取的 MSM ID 进行数据库映射
-                string chipDisplay = "识别中...";
+                // Chip Model - Map from Sahara read MSM ID using database
+                string chipDisplay = "Identifying...";
                 
-                // 优先使用数据库映射的芯片代号
+                // Prioritize using database mapped chip codename
                 string chipCodename = QualcommDatabase.GetChipCodename(chipInfo.MsmId);
                 if (!string.IsNullOrEmpty(chipCodename))
                 {
@@ -1086,52 +1091,52 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 else if (!string.IsNullOrEmpty(chipInfo.ChipName) && chipInfo.ChipName != "Unknown")
                 {
-                    // 使用已解析的芯片名称
+                    // Use parsed chip name
                     int parenIndex = chipInfo.ChipName.IndexOf('(');
                     chipDisplay = parenIndex > 0 ? chipInfo.ChipName.Substring(0, parenIndex).Trim() : chipInfo.ChipName;
                 }
                 else if (chipInfo.MsmId != 0)
                 {
-                    // 显示 MSM ID (方便添加到数据库)
+                    // Show MSM ID (Easier to add to database)
                     chipDisplay = string.Format("0x{0:X8}", chipInfo.MsmId);
                 }
                 else if (!string.IsNullOrEmpty(chipInfo.HwIdHex) && chipInfo.HwIdHex.Length >= 4)
                 {
-                    // 显示 HWID
+                    // Show HWID
                     chipDisplay = chipInfo.HwIdHex.StartsWith("0x") ? chipInfo.HwIdHex : "0x" + chipInfo.HwIdHex;
                 }
                 
-                UpdateLabelSafe(_chipLabel, "芯片：" + chipDisplay);
+                UpdateLabelSafe(_chipLabel, "Chip: " + chipDisplay);
                 
-                // 序列号 - 强制锁定为 Sahara 读取的芯片序列号
-                UpdateLabelSafe(_serialLabel, "芯片序列号：" + (!string.IsNullOrEmpty(chipInfo.SerialHex) ? chipInfo.SerialHex : "未获取"));
+                // Serial Number - Forced lock to Sahara read chip serial
+                UpdateLabelSafe(_serialLabel, "Chip Serial: " + (!string.IsNullOrEmpty(chipInfo.SerialHex) ? chipInfo.SerialHex : "Not Obtained"));
                 
-                // 设备型号 - 需要从 Firehose 读取分区信息后才能获取
-                UpdateLabelSafe(_modelLabel, "型号：待深度扫描");
+                // Device Model - Requires reading partition info from Firehose
+                UpdateLabelSafe(_modelLabel, "Model: Deep Scan Pending");
             }
             else
             {
-                // Sahara 未获取到芯片信息，显示默认值
-                UpdateLabelSafe(_brandLabel, "品牌：未识别");
-                UpdateLabelSafe(_chipLabel, "芯片：未识别");
-                UpdateLabelSafe(_serialLabel, "芯片序列号：未获取");
-                UpdateLabelSafe(_modelLabel, "型号：待深度扫描");
+                // Sahara did not get chip info, show defaults
+                UpdateLabelSafe(_brandLabel, "Brand: Unknown");
+                UpdateLabelSafe(_chipLabel, "Chip: Unknown");
+                UpdateLabelSafe(_serialLabel, "Chip Serial: Not Obtained");
+                UpdateLabelSafe(_modelLabel, "Model: Deep Scan Pending");
             }
             
-            // Firehose 模式获取的信息
+            // Info obtained from Firehose mode
             string storageType = _service.StorageType ?? "UFS";
             int sectorSize = _service.SectorSize;
-            UpdateLabelSafe(_storageLabel, string.Format("存储：{0} ({1}B)", storageType.ToUpper(), sectorSize));
+            UpdateLabelSafe(_storageLabel, string.Format("Storage: {0} ({1}B)", storageType.ToUpper(), sectorSize));
             
-            // 设备型号 (待深度扫描)
-            UpdateLabelSafe(_unlockLabel, "型号：待深度扫描");
+            // Device Model (Deep Scan Pending)
+            UpdateLabelSafe(_unlockLabel, "Model: Deep Scan Pending");
             
-            // OTA版本
-            UpdateLabelSafe(_otaVersionLabel, "版本：待深度扫描");
+            // OTA Version
+            UpdateLabelSafe(_otaVersionLabel, "Version: Deep Scan Pending");
         }
 
         /// <summary>
-        /// 读取分区表后更新更多设备信息
+        /// Update more device info after reading partition table
         /// </summary>
         public void UpdateDeviceInfoFromPartitions()
         {
@@ -1142,9 +1147,9 @@ namespace LoveAlways.Qualcomm.UI
                 _currentDeviceInfo = new DeviceFullInfo();
             }
 
-            // 1. 尝试读取硬件分区 (devinfo, proinfo)
+            // 1. Try reading hardware partitions (devinfo, proinfo)
             Task.Run(async () => {
-                // devinfo (通用/小米/OPPO)
+                // devinfo (Generic/Xiaomi/OPPO)
                 var devinfoPart = Partitions.FirstOrDefault(p => p.Name == "devinfo");
                 if (devinfoPart != null)
                 {
@@ -1155,7 +1160,7 @@ namespace LoveAlways.Qualcomm.UI
                     }
                 }
 
-                // proinfo (联想)
+                // proinfo (Lenovo)
                 var proinfoPart = Partitions.FirstOrDefault(p => p.Name == "proinfo");
                 if (proinfoPart != null)
                 {
@@ -1167,17 +1172,17 @@ namespace LoveAlways.Qualcomm.UI
                 }
             });
 
-            // 2. 检查 A/B 分区结构
+            // 2. Check A/B partition structure
             bool hasAbSlot = Partitions.Exists(p => p.Name.EndsWith("_a") || p.Name.EndsWith("_b"));
             _currentDeviceInfo.IsAbDevice = hasAbSlot;
             
-            // 更新基础描述
-            string storageDesc = string.Format("存储：{0} ({1})", 
+            // Update basic description
+            string storageDesc = string.Format("Storage: {0} ({1})", 
                 _service.StorageType.ToUpper(), 
-                hasAbSlot ? "A/B 分区" : "常规分区");
+                hasAbSlot ? "A/B Partition" : "Normal Partition");
             UpdateLabelSafe(_storageLabel, storageDesc);
 
-            // 如果已经有 brand 信息，不在这里覆盖
+            // If brand info already exists, do not overwrite here
             if (string.IsNullOrEmpty(_currentDeviceInfo.Brand) || _currentDeviceInfo.Brand == "Unknown")
             {
                 bool isOplus = Partitions.Exists(p => p.Name.StartsWith("my_") || p.Name.Contains("oplus") || p.Name.Contains("oppo"));
@@ -1188,22 +1193,22 @@ namespace LoveAlways.Qualcomm.UI
                 else if (isXiaomi) _currentDeviceInfo.Brand = "Xiaomi/Redmi";
                 else if (isLenovo)
                 {
-                    // 检查是否为拯救者系列
+                    // Check if it is Legion series
                     bool isLegion = Partitions.Exists(p => p.Name.Contains("legion"));
                     _currentDeviceInfo.Brand = isLegion ? "Lenovo (Legion)" : "Lenovo";
                 }
                 
                 if (!string.IsNullOrEmpty(_currentDeviceInfo.Brand))
                 {
-                    UpdateLabelSafe(_brandLabel, "品牌：" + _currentDeviceInfo.Brand);
+                    UpdateLabelSafe(_brandLabel, "Brand: " + _currentDeviceInfo.Brand);
                 }
             }
             
-            UpdateLabelSafe(_unlockLabel, "型号：分区表已读取");
+            UpdateLabelSafe(_unlockLabel, "Model: Partition Table Read");
         }
 
         /// <summary>
-        /// 打印符合专业刷机工具格式的全量设备信息日志
+        /// Print full device info log in professional flash tool format
         /// </summary>
         public void PrintFullDeviceLog()
         {
@@ -1213,77 +1218,77 @@ namespace LoveAlways.Qualcomm.UI
             var info = _currentDeviceInfo;
 
             Log("------------------------------------------------", Color.Gray);
-            Log("读取设备信息 : 成功", Color.Green);
+            Log("Read Device Info : Success", Color.Green);
 
-            // 1. 核心身份信息
+            // 1. Core Identity Info
             string marketName = !string.IsNullOrEmpty(info.MarketName) ? info.MarketName : 
-                               (!string.IsNullOrEmpty(info.Brand) && !string.IsNullOrEmpty(info.Model) ? info.Brand + " " + info.Model : "未知");
-            Log(string.Format("- 市场名称 : {0}", marketName), Color.Blue);
+                               (!string.IsNullOrEmpty(info.Brand) && !string.IsNullOrEmpty(info.Model) ? info.Brand + " " + info.Model : "Unknown");
+            Log(string.Format("- Market Name : {0}", marketName), Color.Blue);
             
-            // 产品名称 (Name)
+            // Product Name
             if (!string.IsNullOrEmpty(info.MarketNameEn) && info.MarketNameEn != marketName)
-                Log(string.Format("- 产品名称 : {0}", info.MarketNameEn), Color.Blue);
+                Log(string.Format("- Product Name : {0}", info.MarketNameEn), Color.Blue);
             else if (!string.IsNullOrEmpty(info.DeviceCodename))
-                Log(string.Format("- 产品名称 : {0}", info.DeviceCodename), Color.Blue);
+                Log(string.Format("- Product Name : {0}", info.DeviceCodename), Color.Blue);
             
-            // 型号
+            // Model
             if (!string.IsNullOrEmpty(info.Model))
-                Log(string.Format("- 设备型号 : {0}", info.Model), Color.Blue);
+                Log(string.Format("- Device Model : {0}", info.Model), Color.Blue);
             
-            // 生产厂商
+            // Manufacturer
             if (!string.IsNullOrEmpty(info.Brand))
-                Log(string.Format("- 生产厂家 : {0}", info.Brand), Color.Blue);
+                Log(string.Format("- Manufacturer : {0}", info.Brand), Color.Blue);
             
-            // 2. 系统版本信息
+            // 2. System Version Info
             if (!string.IsNullOrEmpty(info.AndroidVersion))
-                Log(string.Format("- 安卓版本 : {0}{1}", info.AndroidVersion, 
+                Log(string.Format("- Android Ver : {0}{1}", info.AndroidVersion, 
                     !string.IsNullOrEmpty(info.SdkVersion) ? " [SDK:" + info.SdkVersion + "]" : ""), Color.Blue);
             
             if (!string.IsNullOrEmpty(info.SecurityPatch))
-                Log(string.Format("- 安全补丁 : {0}", info.SecurityPatch), Color.Blue);
+                Log(string.Format("- Security Patch : {0}", info.SecurityPatch), Color.Blue);
             
-            // 3. 设备/产品信息
+            // 3. Device/Product Info
             if (!string.IsNullOrEmpty(info.DevProduct))
-                Log(string.Format("- 芯片平台 : {0}", info.DevProduct), Color.Blue);
+                Log(string.Format("- Chip Platform : {0}", info.DevProduct), Color.Blue);
             
             if (!string.IsNullOrEmpty(info.Product))
-                Log(string.Format("- 产品代号 : {0}", info.Product), Color.Blue);
+                Log(string.Format("- Product Code : {0}", info.Product), Color.Blue);
             
-            // 市场区域
+            // Market Region
             if (!string.IsNullOrEmpty(info.MarketRegion))
-                Log(string.Format("- 市场区域 : {0}", info.MarketRegion), Color.Blue);
+                Log(string.Format("- Market Region : {0}", info.MarketRegion), Color.Blue);
             
-            // 区域代码
+            // Region Code
             if (!string.IsNullOrEmpty(info.Region))
-                Log(string.Format("- 区域代码 : {0}", info.Region), Color.Blue);
+                Log(string.Format("- Region Code : {0}", info.Region), Color.Blue);
             
-            // 4. 构建信息
+            // 4. Build Info
             if (!string.IsNullOrEmpty(info.BuildId))
-                Log(string.Format("- 构建 ID : {0}", info.BuildId), Color.Blue);
+                Log(string.Format("- Build ID : {0}", info.BuildId), Color.Blue);
             
             if (!string.IsNullOrEmpty(info.DisplayId))
-                Log(string.Format("- 展示 ID : {0}", info.DisplayId), Color.Blue);
+                Log(string.Format("- Display ID : {0}", info.DisplayId), Color.Blue);
             
             if (!string.IsNullOrEmpty(info.BuiltDate))
-                Log(string.Format("- 编译日期 : {0}", info.BuiltDate), Color.Blue);
+                Log(string.Format("- Build Date : {0}", info.BuiltDate), Color.Blue);
             
             if (!string.IsNullOrEmpty(info.BuildTimestamp))
-                Log(string.Format("- 时间戳 : {0}", info.BuildTimestamp), Color.Blue);
+                Log(string.Format("- Timestamp : {0}", info.BuildTimestamp), Color.Blue);
             
-            // 5. OTA 版本信息 (高亮显示)
+            // 5. OTA Version Info (Highlighted)
             if (!string.IsNullOrEmpty(info.OtaVersion))
-                Log(string.Format("- OTA 版本 : {0}", info.OtaVersion), Color.Green);
+                Log(string.Format("- OTA Version : {0}", info.OtaVersion), Color.Green);
             
             if (!string.IsNullOrEmpty(info.OtaVersionFull) && info.OtaVersionFull != info.OtaVersion)
-                Log(string.Format("- 完整 OTA : {0}", info.OtaVersionFull), Color.Green);
+                Log(string.Format("- Full OTA : {0}", info.OtaVersionFull), Color.Green);
             
-            // 6. 完整构建指纹
+            // 6. Full Build Fingerprint
             if (!string.IsNullOrEmpty(info.Fingerprint))
-                Log(string.Format("- 构建指纹 : {0}", info.Fingerprint), Color.Blue);
+                Log(string.Format("- Build Fingerprint : {0}", info.Fingerprint), Color.Blue);
             
-            // 7. 厂商特有信息 (OPLUS)
+            // 7. Vendor Specific Info (OPLUS)
             if (!string.IsNullOrEmpty(info.OplusProject))
-                Log(string.Format("- OPLUS 项目 : {0}", info.OplusProject), Color.Blue);
+                Log(string.Format("- OPLUS Project : {0}", info.OplusProject), Color.Blue);
             if (!string.IsNullOrEmpty(info.OplusNvId))
                 Log(string.Format("- OPLUS NV ID : {0}", info.OplusNvId), Color.Blue);
             
@@ -1291,13 +1296,13 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 从分区列表推断设备型号
+        /// Infer device model from partition list
         /// </summary>
         private string GetDeviceModelFromPartitions()
         {
             if (Partitions == null || Partitions.Count == 0) return null;
 
-            // 基于芯片信息
+            // Based on chip info
             var chipInfo = ChipInfo;
             if (chipInfo != null)
             {
@@ -1311,7 +1316,7 @@ namespace LoveAlways.Qualcomm.UI
                 }
             }
 
-            // 基于特征分区名推断设备类型
+            // Infer device type based on partition names
             bool isOnePlus = Partitions.Exists(p => p.Name.Contains("oem") && p.Name.Contains("op"));
             bool isXiaomi = Partitions.Exists(p => p.Name.Contains("cust") || p.Name == "persist");
             bool isOppo = Partitions.Exists(p => p.Name.Contains("oplus") || p.Name.Contains("my_"));
@@ -1324,12 +1329,12 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 内部方法：尝试读取 build.prop（不检查 IsBusy）
-        /// 根据厂商自动选择对应的解析策略
+        /// Internal method: Try to read build.prop (No IsBusy check)
+        /// Automatically select parsing strategy based on vendor
         /// </summary>
         private async Task TryReadBuildPropInternalAsync()
         {
-            // 创建总超时保护 (60 秒)
+            // Create total timeout protection (60 seconds)
             using (var totalTimeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
             using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, totalTimeoutCts.Token))
             {
@@ -1341,37 +1346,37 @@ namespace LoveAlways.Qualcomm.UI
                 {
                     if (totalTimeoutCts.IsCancellationRequested)
                     {
-                        Log("设备信息解析超时 (60秒)，已跳过", Color.Orange);
+                        Log("Device info parsing timed out (60s), skipped", Color.Orange);
                     }
                     else
                     {
-                        Log("设备信息解析已取消", Color.Orange);
+                        Log("Device info parsing canceled", Color.Orange);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log(string.Format("设备信息解析失败: {0}", ex.Message), Color.Orange);
+                    Log(string.Format("Device info parsing failed: {0}", ex.Message), Color.Orange);
                 }
             }
         }
 
         /// <summary>
-        /// 设备信息解析核心逻辑 (带取消令牌支持)
+        /// Device info parsing core logic (With cancellation token support)
         /// </summary>
         private async Task TryReadBuildPropCoreAsync(CancellationToken ct)
         {
             try
             {
-                // 检查是否有可用于读取设备信息的分区
+                // Check if there are partitions available for reading device info
                 bool hasSuper = Partitions != null && Partitions.Exists(p => p.Name == "super");
                 bool hasVendor = Partitions != null && Partitions.Exists(p => p.Name == "vendor" || p.Name.StartsWith("vendor_"));
                 bool hasSystem = Partitions != null && Partitions.Exists(p => p.Name == "system" || p.Name.StartsWith("system_"));
                 bool hasMyManifest = Partitions != null && Partitions.Exists(p => p.Name.StartsWith("my_manifest"));
                 
-                // 如果没有任何可用分区，直接返回
+                // If no available partitions, return directly
                 if (!hasSuper && !hasVendor && !hasSystem && !hasMyManifest)
                 {
-                    Log("设备无 super/vendor/system 分区，跳过设备信息读取", Color.Orange);
+                    Log("Device has no super/vendor/system partitions, skipping device info read", Color.Orange);
                     return;
                 }
 
@@ -1383,14 +1388,14 @@ namespace LoveAlways.Qualcomm.UI
                     );
                 }
 
-                // 创建带超时的分区读取委托 (使用传入的取消令牌)
-                // 增加超时时间到 30 秒，因为 VIP 模式下读取较慢
+                // Create partition read delegate with timeout (Using passed cancellation token)
+                // Increase timeout to 30 seconds as reading is slower in VIP mode
                 Func<string, long, int, Task<byte[]>> readPartition = async (partName, offset, size) =>
                 {
-                    // 检查取消
+                    // Check cancellation
                     if (ct.IsCancellationRequested) return null;
                     
-                    // 检查分区是否存在
+                    // Check if partition exists
                     if (Partitions == null || !Partitions.Exists(p => p.Name == partName || p.Name.StartsWith(partName + "_")))
                     {
                         return null;
@@ -1398,7 +1403,7 @@ namespace LoveAlways.Qualcomm.UI
                     
                     try
                     {
-                        // 增加到 30 秒超时保护 (VIP 模式下需要更长时间)
+                        // Increase to 30 seconds timeout protection (VIP mode needs more time)
                         using (var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                         using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token))
                         {
@@ -1407,20 +1412,20 @@ namespace LoveAlways.Qualcomm.UI
                     }
                     catch (OperationCanceledException)
                     {
-                        // 如果是外部取消，返回 null 而不是抛出异常
+                        // If external cancellation, return null instead of throwing exception
                         if (ct.IsCancellationRequested) return null;
-                        // 否则是超时，静默返回 null
-                        _logDetail(string.Format("读取 {0} 超时", partName));
+                        // Otherwise it is timeout, silently return null
+                        _logDetail(string.Format("Read {0} timed out", partName));
                         return null;
                     }
                     catch (Exception ex)
                     {
-                        _logDetail(string.Format("读取 {0} 异常: {1}", partName, ex.Message));
+                        _logDetail(string.Format("Read {0} exception: {1}", partName, ex.Message));
                         return null;
                     }
                 };
 
-                // 获取当前状态
+                // Get current status
                 string activeSlot = _service.CurrentSlot;
                 long superStart = 0;
                 if (hasSuper)
@@ -1430,17 +1435,17 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 int sectorSize = _service.SectorSize > 0 ? _service.SectorSize : 512;
 
-                // 自动识别厂商并选择对应的解析策略
+                // Auto identify vendor and select corresponding parsing strategy
                 string detectedVendor = DetectDeviceVendor();
-                Log(string.Format("检测到设备厂商: {0}", detectedVendor), Color.Blue);
+                Log(string.Format("Detected Device Vendor: {0}", detectedVendor), Color.Blue);
                 
-                // 更新进度: 厂商识别完成 (85%)
+                // Update progress: Vendor identification complete (85%)
                 UpdateProgressBarDirect(_progressBar, 85);
                 UpdateProgressBarDirect(_subProgressBar, 25);
 
                 BuildPropInfo buildProp = null;
 
-                // 根据厂商使用对应的读取策略
+                // Use corresponding reading strategy based on vendor
                 switch (detectedVendor.ToLower())
                 {
                     case "oppo":
@@ -1471,7 +1476,7 @@ namespace LoveAlways.Qualcomm.UI
                         break;
 
                     default:
-                        // 通用策略 - 只在有 super 分区时尝试
+                        // Generic strategy - Only try when super partition exists
                         if (hasSuper)
                         {
                             UpdateProgressBarDirect(_subProgressBar, 40);
@@ -1481,37 +1486,37 @@ namespace LoveAlways.Qualcomm.UI
                         break;
                 }
 
-                // 更新进度: 解析完成 (95%)
+                // Update progress: Parsing complete (95%)
                 UpdateProgressBarDirect(_progressBar, 95);
                 UpdateProgressBarDirect(_subProgressBar, 80);
 
                 if (buildProp != null)
                 {
-                    Log("成功读取设备 build.prop", Color.Green);
+                    Log("Successfully read device build.prop", Color.Green);
                     ApplyBuildPropInfo(buildProp);
                     
-                    // 打印全量设备信息日志
+                    // Print full device info log
                     PrintFullDeviceLog();
                 }
                 else
                 {
-                    Log("未能读取到设备信息（设备可能不支持或分区格式不兼容）", Color.Orange);
+                    Log("Failed to read device info (Device might not support or partition format incompatible)", Color.Orange);
                 }
             }
             catch (OperationCanceledException)
             {
-                // 重新抛出，由外层处理
+                // Rethrow, handled by outer layer
                 throw;
             }
             catch (Exception ex)
             {
-                Log(string.Format("读取设备信息失败: {0}", ex.Message), Color.Orange);
+                Log(string.Format("Failed to read device info: {0}", ex.Message), Color.Orange);
             }
         }
 
         /// <summary>
-        /// 自动检测设备厂商 (综合 Sahara 芯片信息 + 分区特征)
-        /// 注意：OEM ID 和 PK Hash 可能不准确，优先使用分区特征
+        /// Auto detect device vendor (Combine Sahara chip info + Partition characteristics)
+        /// Note: OEM ID and PK Hash might be inaccurate, prioritize partition characteristics
         /// </summary>
         private string DetectDeviceVendor()
         {
@@ -1519,42 +1524,42 @@ namespace LoveAlways.Qualcomm.UI
             string detectedSource = "";
             string detectedVendor = "Unknown";
 
-            // 1. 首先从设备信息获取 (如果已经有的话)
+            // 1. First get from device info (if available)
             if (_currentDeviceInfo != null && !string.IsNullOrEmpty(_currentDeviceInfo.Vendor) && 
                 _currentDeviceInfo.Vendor != "Unknown" && !_currentDeviceInfo.Vendor.Contains("Unknown"))
             {
                 detectedVendor = NormalizeVendorName(_currentDeviceInfo.Vendor);
-                detectedSource = "设备信息";
-                _logDetail(string.Format("厂商检测 [{0}]: {1}", detectedSource, detectedVendor));
+                detectedSource = "Device Info";
+                _logDetail(string.Format("Vendor Detect [{0}]: {1}", detectedSource, detectedVendor));
                 return detectedVendor;
             }
 
-            // 2. 优先从分区特征识别 (最可靠的来源，因为 OEM ID 和 PK Hash 可能不准确)
+            // 2. Prioritize detection from partition characteristics (Most reliable source, as OEM ID and PK Hash might be inaccurate)
             if (Partitions != null && Partitions.Count > 0)
             {
-                // 收集所有分区名称用于调试
+                // Collect all partition names for debugging
                 var partNames = new List<string>();
                 foreach (var p in Partitions) partNames.Add(p.Name);
-                _logDetail(string.Format("检测到 {0} 个分区，开始特征分析...", Partitions.Count));
+                _logDetail(string.Format("Detected {0} partitions, starting characteristic analysis...", Partitions.Count));
 
-                // 联想系特有分区 (优先检测)
+                // Lenovo specific partitions (Prioritize detection)
                 bool hasLenovoMarker = Partitions.Exists(p => 
                     p.Name == "proinfo" || 
                     p.Name == "lenovocust" || 
                     p.Name.Contains("lenovo"));
                 if (hasLenovoMarker)
                 {
-                    _logDetail("检测到联想特征分区 (proinfo/lenovocust)");
+                    _logDetail("Detected Lenovo characteristic partition (proinfo/lenovocust)");
                     return "Lenovo";
                 }
 
-                // OPLUS 系 - 严格检测：必须有明确的 oplus/oppo 标记，或至少 2 个 OPLUS 特有分区
+                // OPLUS series - Strict detection: Must have explicit oplus/oppo marker, or at least 2 OPLUS specific partitions
                 bool hasOplusExplicit = Partitions.Exists(p => 
                     p.Name.Contains("oplus") || p.Name.Contains("oppo") || p.Name.Contains("realme"));
                 int oplusSpecificCount = 0;
                 foreach (var p in Partitions)
                 {
-                    // OPLUS 特有分区（小米设备不会有这些）
+                    // OPLUS specific partitions (Xiaomi devices won't have these)
                     if (p.Name == "my_engineering" || p.Name == "my_carrier" || 
                         p.Name == "my_stock" || p.Name == "my_region" || 
                         p.Name == "my_custom" || p.Name == "my_bigball" ||
@@ -1567,75 +1572,75 @@ namespace LoveAlways.Qualcomm.UI
                         oplusSpecificCount++;
                     }
                 }
-                // 需要明确标记或至少 2 个特有分区才能确定是 OPLUS
+                // Needs explicit marker or at least 2 specific partitions to determine OPLUS
                 if (hasOplusExplicit || oplusSpecificCount >= 2)
                 {
-                    _logDetail(string.Format("检测到 OPLUS 特征: 明确标记={0}, 特有分区数={1}", hasOplusExplicit, oplusSpecificCount));
+                    _logDetail(string.Format("Detected OPLUS characteristics: Explicit market={0}, Specific partition count={1}", hasOplusExplicit, oplusSpecificCount));
                     return "OPLUS";
                 }
 
-                // 小米系检测（在 OPLUS 严格检测后）
+                // Xiaomi series detection (After OPLUS strict detection)
                 bool hasXiaomiMarker = Partitions.Exists(p => 
                     p.Name.Contains("xiaomi") || p.Name.Contains("miui") || p.Name.Contains("redmi"));
                 bool hasCust = Partitions.Exists(p => p.Name == "cust");
                 bool hasPersist = Partitions.Exists(p => p.Name == "persist");
-                bool hasSpunvm = Partitions.Exists(p => p.Name == "spunvm"); // 小米常用基带分区
+                bool hasSpunvm = Partitions.Exists(p => p.Name == "spunvm"); // Xiaomi common baseband partition
                 
-                // 小米特征: 有明确标记，或有 cust+persist 组合（且不是联想/OPLUS）
+                // Xiaomi characteristics: Has explicit marker, or cust+persist combination (and not Lenovo/OPLUS)
                 if (hasXiaomiMarker || (hasCust && hasPersist))
                 {
-                    _logDetail(string.Format("检测到小米特征: 明确标记={0}, cust={1}, persist={2}", 
+                    _logDetail(string.Format("Detected Xiaomi characteristics: Explicit marker={0}, cust={1}, persist={2}", 
                         hasXiaomiMarker, hasCust, hasPersist));
                     return "Xiaomi";
                 }
 
-                // 中兴系 (ZTE/nubia/红魔)
+                // ZTE series (ZTE/nubia/RedMagic)
                 if (Partitions.Exists(p => p.Name.Contains("zte") || p.Name.Contains("nubia")))
                 {
-                    _logDetail("检测到中兴特征分区");
+                    _logDetail("Detected ZTE characteristic partition");
                     return "ZTE";
                 }
             }
 
-            // 3. 从芯片 OEM ID 识别 (Sahara 阶段获取) - 作为备用
+            // 3. Identify from Chip OEM ID (Obtained in Sahara stage) - As backup
             if (chipInfo != null && chipInfo.OemId > 0)
             {
                 string vendorFromOem = QualcommDatabase.GetVendorName(chipInfo.OemId);
                 if (!string.IsNullOrEmpty(vendorFromOem) && !vendorFromOem.Contains("Unknown"))
                 {
                     detectedVendor = NormalizeVendorName(vendorFromOem);
-                    _logDetail(string.Format("厂商检测 [OEM ID 0x{0:X4}]: {1}", chipInfo.OemId, detectedVendor));
+                    _logDetail(string.Format("Vendor Detect [OEM ID 0x{0:X4}]: {1}", chipInfo.OemId, detectedVendor));
                     return detectedVendor;
                 }
             }
 
-            // 4. 从芯片 Vendor 字段
+            // 4. From Chip Vendor field
             if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.Vendor) && 
                 chipInfo.Vendor != "Unknown" && !chipInfo.Vendor.Contains("Unknown"))
             {
                 detectedVendor = NormalizeVendorName(chipInfo.Vendor);
-                _logDetail(string.Format("厂商检测 [芯片Vendor]: {0}", detectedVendor));
+                _logDetail(string.Format("Vendor Detect [Chip Vendor]: {0}", detectedVendor));
                 return detectedVendor;
             }
 
-            // 5. 从 PK Hash 识别 (最后备用)
+            // 5. Identify from PK Hash (Last backup)
             if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.PkHash))
             {
                 string vendor = QualcommDatabase.GetVendorByPkHash(chipInfo.PkHash);
                 if (!string.IsNullOrEmpty(vendor) && vendor != "Unknown")
                 {
                     detectedVendor = NormalizeVendorName(vendor);
-                    _logDetail(string.Format("厂商检测 [PK Hash]: {0}", detectedVendor));
+                    _logDetail(string.Format("Vendor Detect [PK Hash]: {0}", detectedVendor));
                     return detectedVendor;
                 }
             }
 
-            _logDetail("无法确定设备厂商，将使用通用策略");
+            _logDetail("Unable to determine device vendor, using generic strategy");
             return "Unknown";
         }
 
         /// <summary>
-        /// 标准化厂商名称
+        /// Normalize Vendor Name
         /// </summary>
         private string NormalizeVendorName(string vendor)
         {
@@ -1659,50 +1664,50 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// OPLUS (OPPO/Realme/OnePlus) 专用读取策略
-        /// 直接使用 DeviceInfoService 的通用策略，它会按正确顺序读取 my_manifest
-        /// 顺序: system -> system_ext -> product -> vendor -> odm -> my_manifest (高优先级覆盖低优先级)
+        /// OPLUS (OPPO/Realme/OnePlus) specific read strategy
+        /// Uses DeviceInfoService generic strategy directly, which reads my_manifest in correct order
+        /// Order: system -> system_ext -> product -> vendor -> odm -> my_manifest (High priority overrides low priority)
         /// </summary>
         private async Task<BuildPropInfo> ReadOplusBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition, 
             string activeSlot, bool hasSuper, long superStart, int sectorSize)
         {
-            Log("使用 OPLUS 专用解析策略...", Color.Blue);
+            Log("Using OPLUS specific parsing strategy...", Color.Blue);
             
-            // OPLUS 设备的 my_manifest 是 EROFS 文件系统，不是纯文本
-            // 使用 DeviceInfoService 的通用策略（会正确解析 EROFS 并按优先级合并属性）
+            // OPLUS device's my_manifest is EROFS filesystem, not plain text
+            // Using DeviceInfoService generic strategy (Correctly parses EROFS and merges properties by priority)
             var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "OnePlus");
             
             if (result != null && !string.IsNullOrEmpty(result.MarketName))
             {
-                Log("从 OPLUS 分区成功读取设备信息", Color.Green);
+                Log("Successfully read device info from OPLUS partitions", Color.Green);
             }
             else
             {
-                Log("OPLUS 设备信息解析不完整，部分字段可能缺失", Color.Orange);
+                Log("OPLUS device info parsing incomplete, some fields might be missing", Color.Orange);
             }
 
             return result;
         }
 
         /// <summary>
-        /// 小米 (Xiaomi/Redmi/POCO) 专用读取策略
-        /// 优先级: vendor > product > system
+        /// Xiaomi (Xiaomi/Redmi/POCO) specific read strategy
+        /// Priority: vendor > product > system
         /// </summary>
         private async Task<BuildPropInfo> ReadXiaomiBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition, 
             string activeSlot, bool hasSuper, long superStart, int sectorSize)
         {
-            Log("使用 Xiaomi 专用解析策略...", Color.Blue);
+            Log("Using Xiaomi specific parsing strategy...", Color.Blue);
             
-            // 小米设备使用标准策略，但优先 vendor 分区
+            // Xiaomi devices use standard strategy, but prioritize vendor partition
             var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "Xiaomi");
             
-            // 小米特有属性增强：检测 MIUI/HyperOS 版本
+            // Xiaomi specific property enhancement: Detect MIUI/HyperOS version
             if (result != null)
             {
-                // 修正品牌显示
+                // Correct brand display
                 if (string.IsNullOrEmpty(result.Brand) || result.Brand.ToLower() == "xiaomi")
                 {
-                    // 从 OTA 版本判断系列
+                    // Determine series from OTA version
                     if (!string.IsNullOrEmpty(result.OtaVersion))
                     {
                         if (result.OtaVersion.Contains("OS3."))
@@ -1719,23 +1724,23 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 联想 (Lenovo/Motorola) 专用读取策略
-        /// 优先级: lenovocust > proinfo > vendor
+        /// Lenovo (Lenovo/Motorola) specific read strategy
+        /// Priority: lenovocust > proinfo > vendor
         /// </summary>
         private async Task<BuildPropInfo> ReadLenovoBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition, 
             string activeSlot, bool hasSuper, long superStart, int sectorSize)
         {
-            Log("使用 Lenovo 专用解析策略...", Color.Blue);
+            Log("Using Lenovo specific parsing strategy...", Color.Blue);
 
             BuildPropInfo result = null;
 
-            // 联想特有分区：lenovocust
+            // Lenovo specific partition: lenovocust
             var lenovoCustPart = Partitions?.FirstOrDefault(p => p.Name == "lenovocust");
             if (lenovoCustPart != null)
             {
                 try
                 {
-                    Log("尝试从 lenovocust 读取...", Color.Gray);
+                    Log("Attempting to read from lenovocust...", Color.Gray);
                     byte[] data = await readPartition("lenovocust", 0, 512 * 1024);
                     if (data != null)
                     {
@@ -1745,11 +1750,11 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 catch (Exception ex)
                 {
-                    _logDetail?.Invoke($"读取 lenovocust 分区异常: {ex.Message}");
+                    _logDetail?.Invoke($"Read lenovocust partition exception: {ex.Message}");
                 }
             }
 
-            // 联想 proinfo 分区（包含序列号等信息）
+            // Lenovo proinfo partition (Contains serial number etc.)
             var proinfoPart = Partitions?.FirstOrDefault(p => p.Name == "proinfo");
             if (proinfoPart != null && _currentDeviceInfo != null)
             {
@@ -1763,24 +1768,24 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 catch (Exception ex)
                 {
-                    _logDetail?.Invoke($"读取 proinfo 分区异常: {ex.Message}");
+                    _logDetail?.Invoke($"Read proinfo partition exception: {ex.Message}");
                 }
             }
 
-            // 回落到通用策略
+            // Fallback to generic strategy
             if (result == null || string.IsNullOrEmpty(result.MarketName))
             {
                 result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "Lenovo");
             }
 
-            // 联想特有处理：识别拯救者系列
+            // Lenovo specific processing: Identify Legion series
             if (result != null)
             {
                 string model = result.MarketName ?? result.Model ?? "";
                 if (model.Contains("Y700") || model.Contains("Legion") || model.Contains("TB"))
                 {
-                    if (!model.Contains("拯救者"))
-                        result.MarketName = "联想拯救者平板 " + model;
+                    if (!model.Contains("Legion"))
+                        result.MarketName = "Lenovo Legion Tablet " + model;
                     result.Brand = "Lenovo (Legion)";
                 }
             }
@@ -1789,34 +1794,34 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 中兴/努比亚 专用读取策略
+        /// ZTE/Nubia specific read strategy
         /// </summary>
         private async Task<BuildPropInfo> ReadZteBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition, 
             string activeSlot, bool hasSuper, long superStart, int sectorSize)
         {
-            Log("使用 ZTE/nubia 专用解析策略...", Color.Blue);
+            Log("Using ZTE/nubia specific parsing strategy...", Color.Blue);
             
             var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "ZTE");
             
-            // 中兴/努比亚特有处理
+            // ZTE/Nubia specific processing
             if (result != null)
             {
                 string brand = result.Brand?.ToLower() ?? "";
                 string ota = result.OtaVersion ?? "";
 
-                // 识别红魔系列
+                // Identify RedMagic series
                 if (ota.Contains("RedMagic") || brand.Contains("nubia"))
                 {
-                    string model = result.MarketName ?? result.Model ?? "手机";
-                    if (!model.Contains("红魔") && ota.Contains("RedMagic"))
+                    string model = result.MarketName ?? result.Model ?? "Phone";
+                    if (!model.Contains("RedMagic") && ota.Contains("RedMagic"))
                     {
-                        result.MarketName = "努比亚 红魔 " + model;
+                        result.MarketName = "Nubia RedMagic " + model;
                     }
-                    result.Brand = "努比亚 (nubia)";
+                    result.Brand = "Nubia";
                 }
                 else if (brand.Contains("zte"))
                 {
-                    result.Brand = "中兴 (ZTE)";
+                    result.Brand = "ZTE";
                 }
             }
 
@@ -1824,7 +1829,7 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 应用 build.prop 信息到界面
+        /// Apply build.prop info to UI
         /// </summary>
         private void ApplyBuildPropInfo(BuildPropInfo buildProp)
         {
@@ -1835,35 +1840,35 @@ namespace LoveAlways.Qualcomm.UI
                 _currentDeviceInfo = new DeviceFullInfo();
             }
 
-            // 品牌 (格式化显示)
+            // Brand (Formatted display)
             if (!string.IsNullOrEmpty(buildProp.Brand))
             {
                 string displayBrand = FormatBrandForDisplay(buildProp.Brand);
                 _currentDeviceInfo.Brand = displayBrand;
-                UpdateLabelSafe(_brandLabel, "品牌：" + displayBrand);
+                UpdateLabelSafe(_brandLabel, "Brand: " + displayBrand);
             }
 
-            // 型号与市场名称 (最高优先级)
+            // Model and Market Name (Highest priority)
             if (!string.IsNullOrEmpty(buildProp.MarketName))
             {
-                // 通用增强逻辑：如果市场名包含关键代号，尝试格式化显示
+                // Generic enhancement logic: If market name contains key codename, try to format display
                 string finalMarket = buildProp.MarketName;
                 
-                // 通用联想修正
-                if ((finalMarket.Contains("Y700") || finalMarket.Contains("Legion")) && !finalMarket.Contains("拯救者"))
-                    finalMarket = "联想拯救者平板 " + finalMarket;
+                // Generic Lenovo correction
+                if ((finalMarket.Contains("Y700") || finalMarket.Contains("Legion")) && !finalMarket.Contains("Rescue"))
+                    finalMarket = "Lenovo Legion Tablet " + finalMarket;
 
                 _currentDeviceInfo.MarketName = finalMarket;
-                UpdateLabelSafe(_modelLabel, "型号：" + finalMarket);
+                UpdateLabelSafe(_modelLabel, "Model: " + finalMarket);
             }
             else if (!string.IsNullOrEmpty(buildProp.Model))
             {
                 _currentDeviceInfo.Model = buildProp.Model;
-                UpdateLabelSafe(_modelLabel, "型号：" + buildProp.Model);
+                UpdateLabelSafe(_modelLabel, "Model: " + buildProp.Model);
             }
 
-            // 版本信息 (OTA版本/region)
-            // 优先级: OtaVersion > Incremental > DisplayId
+            // Version Info (OTA Version/Region)
+            // Priority: OtaVersion > Incremental > DisplayId
             string otaVer = "";
             if (!string.IsNullOrEmpty(buildProp.OtaVersion))
                 otaVer = buildProp.OtaVersion;
@@ -1874,12 +1879,12 @@ namespace LoveAlways.Qualcomm.UI
 
             if (!string.IsNullOrEmpty(otaVer))
             {
-                // 获取品牌用于判断
+                // Get brand for judgment
                 string brandLower = (buildProp.Brand ?? "").ToLowerInvariant();
                 string manufacturerLower = (buildProp.Manufacturer ?? "").ToLowerInvariant();
                 
-                // OPLUS 设备 (OnePlus/OPPO/Realme) 版本号清理
-                // 原始格式如: PJD110_14.0.0.801(CN01) -> 14.0.0.801(CN01)
+                // OPLUS Device (OnePlus/OPPO/Realme) Version Number Cleanup
+                // Original format e.g.: PJD110_14.0.0.801(CN01) -> 14.0.0.801(CN01)
                 bool isOneplus = brandLower.Contains("oneplus") || manufacturerLower.Contains("oneplus");
                 bool isOppo = brandLower.Contains("oppo") || manufacturerLower.Contains("oppo");
                 bool isRealme = brandLower.Contains("realme") || manufacturerLower.Contains("realme");
@@ -1887,14 +1892,14 @@ namespace LoveAlways.Qualcomm.UI
                 
                 if (isOplus)
                 {
-                    // 提取版本号: "PJD110_14.0.0.801(CN01)" -> "14.0.0.801(CN01)"
-                    // 或者 "A.70" 格式 -> 跳过
+                    // Extract version number: "PJD110_14.0.0.801(CN01)" -> "14.0.0.801(CN01)"
+                    // Or "A.70" format -> Skip
                     var versionMatch = Regex.Match(otaVer, @"(\d+\.\d+\.\d+\.\d+(?:\([A-Z]{2}\d+\))?)");
                     if (versionMatch.Success)
                     {
                         string cleanVersion = versionMatch.Groups[1].Value;
                         
-                        // 根据品牌添加系统名前缀
+                        // Add system name prefix based on brand
                         if (isOneplus)
                             otaVer = "OxygenOS " + cleanVersion;
                         else if (isRealme)
@@ -1903,52 +1908,52 @@ namespace LoveAlways.Qualcomm.UI
                             otaVer = "ColorOS " + cleanVersion;
                     }
                 }
-                // 联想 ZUI 版本: 提取 17.0.x.x 格式
+                // Lenovo ZUI Version: Extract 17.0.x.x format
                 else if (brandLower.Contains("lenovo"))
                 {
                     var zuiMatch = Regex.Match(otaVer, @"(\d+\.\d+\.\d+\.\d+)");
                     if (zuiMatch.Success && !otaVer.Contains("ZUI"))
                         otaVer = "ZUI " + zuiMatch.Groups[1].Value;
                 }
-                // 小米 HyperOS 3.0 (Android 16+)
+                // Xiaomi HyperOS 3.0 (Android 16+)
                 else if (otaVer.StartsWith("OS3.") && !otaVer.Contains("HyperOS"))
                 {
                     otaVer = "HyperOS 3.0 " + otaVer;
                 }
-                // 小米 HyperOS 1.0/2.0
+                // Xiaomi HyperOS 1.0/2.0
                 else if (otaVer.StartsWith("OS") && !otaVer.Contains("HyperOS"))
                 {
                     otaVer = "HyperOS " + otaVer;
                 }
-                // 小米 MIUI 时代
+                // Xiaomi MIUI Era
                 else if (otaVer.StartsWith("V") && !otaVer.Contains("MIUI") && (brandLower.Contains("xiaomi") || brandLower.Contains("redmi")))
                 {
                     otaVer = "MIUI " + otaVer;
                 }
-                // 红魔 RedMagicOS
+                // RedMagic RedMagicOS
                 else if (otaVer.Contains("RedMagic") && !otaVer.StartsWith("RedMagicOS"))
                 {
                     otaVer = otaVer.Replace("RedMagic", "RedMagicOS ");
                 }
-                // 中兴 NebulaOS/MiFavor
+                // ZTE NebulaOS/MiFavor
                 else if (brandLower.Contains("zte") && !otaVer.Contains("NebulaOS"))
                 {
                     otaVer = "NebulaOS " + otaVer;
                 }
 
                 _currentDeviceInfo.OtaVersion = otaVer;
-                UpdateLabelSafe(_otaVersionLabel, "版本：" + otaVer);
+                UpdateLabelSafe(_otaVersionLabel, "Version: " + otaVer);
             }
 
-            // Android 版本
+            // Android Version
             if (!string.IsNullOrEmpty(buildProp.AndroidVersion))
             {
                 _currentDeviceInfo.AndroidVersion = buildProp.AndroidVersion;
                 _currentDeviceInfo.SdkVersion = buildProp.SdkVersion;
             }
             
-            // 设备代号 (使用 unlockLabel 显示设备内部代号)
-            // 优先级: Codename > Device > DeviceName
+            // Device Codename (Use unlockLabel to display internal device codename)
+            // Priority: Codename > Device > DeviceName
             string codename = "";
             if (!string.IsNullOrEmpty(buildProp.Codename))
                 codename = buildProp.Codename;
@@ -1960,16 +1965,16 @@ namespace LoveAlways.Qualcomm.UI
             if (!string.IsNullOrEmpty(codename))
             {
                 _currentDeviceInfo.DeviceCodename = codename;
-                UpdateLabelSafe(_unlockLabel, "代号：" + codename);
+                UpdateLabelSafe(_unlockLabel, "Codename: " + codename);
             }
             else if (!string.IsNullOrEmpty(buildProp.Model))
             {
-                // 如果没有代号，使用型号作为备选
+                // If no codename, use model as alternative
                 _currentDeviceInfo.Model = buildProp.Model;
-                UpdateLabelSafe(_unlockLabel, "代号：" + buildProp.Model);
+                UpdateLabelSafe(_unlockLabel, "Codename: " + buildProp.Model);
             }
 
-            // 区域信息
+            // Region Info
             if (!string.IsNullOrEmpty(buildProp.Region))
                 _currentDeviceInfo.Region = buildProp.Region;
             if (!string.IsNullOrEmpty(buildProp.MarketRegion))
@@ -1979,7 +1984,7 @@ namespace LoveAlways.Qualcomm.UI
             if (!string.IsNullOrEmpty(buildProp.Product))
                 _currentDeviceInfo.Product = buildProp.Product;
             
-            // 构建信息
+            // Build Info
             if (!string.IsNullOrEmpty(buildProp.BuildId))
                 _currentDeviceInfo.BuildId = buildProp.BuildId;
             if (!string.IsNullOrEmpty(buildProp.DisplayId))
@@ -1995,68 +2000,68 @@ namespace LoveAlways.Qualcomm.UI
             if (!string.IsNullOrEmpty(buildProp.OtaVersionFull))
                 _currentDeviceInfo.OtaVersionFull = buildProp.OtaVersionFull;
 
-            // OPLUS/Realme 特有属性
+            // OPLUS/Realme Specific Properties
             if (!string.IsNullOrEmpty(buildProp.OplusProject))
                 _currentDeviceInfo.OplusProject = buildProp.OplusProject;
             if (!string.IsNullOrEmpty(buildProp.OplusNvId))
                 _currentDeviceInfo.OplusNvId = buildProp.OplusNvId;
 
-            // Lenovo 特有属性
+            // Lenovo Specific Properties
             if (!string.IsNullOrEmpty(buildProp.LenovoSeries))
             {
                 _currentDeviceInfo.LenovoSeries = buildProp.LenovoSeries;
-                Log(string.Format("  联想系列: {0}", buildProp.LenovoSeries), Color.Blue);
-                // 联想系列通常比型号更直观，如果 MarketName 为空，可用它替代
+                Log(string.Format("  Lenovo Series: {0}", buildProp.LenovoSeries), Color.Blue);
+                // Lenovo series is usually more intuitive than model, can use it if MarketName is empty
                 if (string.IsNullOrEmpty(_currentDeviceInfo.MarketName))
                 {
-                    UpdateLabelSafe(_modelLabel, "型号：" + buildProp.LenovoSeries);
+                    UpdateLabelSafe(_modelLabel, "Model: " + buildProp.LenovoSeries);
                 }
             }
 
-            // 中兴/努比亚/红魔 特殊处理 (型号名称修正)
+            // ZTE/Nubia/RedMagic special processing (Model name correction)
             if (!string.IsNullOrEmpty(buildProp.Brand))
             {
                 string b = buildProp.Brand.ToLower();
                 if (b == "nubia" || b == "zte")
                 {
-                    // 如果是红魔系列，更新型号名称
+                    // If RedMagic series, update model name
                     string ota = buildProp.OtaVersion ?? buildProp.DisplayId ?? "";
                     if (ota.Contains("RedMagic"))
                     {
-                        // 红魔系列型号格式化
+                        // RedMagic series model formatting
                         string rmMarket = "";
                         if (buildProp.Model == "NX789J")
-                            rmMarket = "红魔 10 Pro (NX789J)";
+                            rmMarket = "RedMagic 10 Pro (NX789J)";
                         else if (!string.IsNullOrEmpty(buildProp.MarketName))
-                            rmMarket = buildProp.MarketName.Contains("红魔") ? buildProp.MarketName : "红魔 " + buildProp.MarketName;
+                            rmMarket = buildProp.MarketName.Contains("RedMagic") ? buildProp.MarketName : "RedMagic " + buildProp.MarketName;
                         else
-                            rmMarket = "红魔 " + buildProp.Model;
+                            rmMarket = "RedMagic " + buildProp.Model;
                         
                         _currentDeviceInfo.MarketName = rmMarket;
-                        UpdateLabelSafe(_modelLabel, "型号：" + rmMarket);
+                        UpdateLabelSafe(_modelLabel, "Model: " + rmMarket);
                     }
                     else if (buildProp.Model == "NX789J")
                     {
-                        _currentDeviceInfo.MarketName = "红魔 10 Pro";
-                        UpdateLabelSafe(_modelLabel, "型号：红魔 10 Pro");
+                        _currentDeviceInfo.MarketName = "RedMagic 10 Pro";
+                        UpdateLabelSafe(_modelLabel, "Model: RedMagic 10 Pro");
                     }
                 }
             }
         }
 
         /// <summary>
-        /// 从设备 Super 分区在线读取 build.prop 并更新设备信息（公开方法，可单独调用）
+        /// Read build.prop online from device Super partition and update device info (Public method, can be called independently)
         /// </summary>
         public async Task<bool> ReadBuildPropFromDeviceAsync()
         {
             if (!await EnsureConnectedAsync()) return false;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
 
-            // 检查是否有 super 分区
+            // Check if super partition exists
             bool hasSuper = Partitions != null && Partitions.Exists(p => p.Name == "super");
             if (!hasSuper)
             {
-                Log("未找到 super 分区，无法读取 build.prop", Color.Orange);
+                Log("Super partition not found, cannot read build.prop", Color.Orange);
                 return false;
             }
 
@@ -2064,8 +2069,8 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                StartOperationTimer("读取设备信息", 1, 0);
-                Log("正在从设备读取 build.prop...", Color.Blue);
+                StartOperationTimer("Read Device Info", 1, 0);
+                Log("Reading build.prop from device...", Color.Blue);
 
                 await TryReadBuildPropInternalAsync();
                 
@@ -2074,7 +2079,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             catch (Exception ex)
             {
-                Log("读取 build.prop 失败: " + ex.Message, Color.Red);
+                Log("Failed to read build.prop: " + ex.Message, Color.Red);
                 return false;
             }
             finally
@@ -2085,17 +2090,17 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 格式化品牌显示名称
+        /// Format Brand Display Name
         /// </summary>
         private string FormatBrandForDisplay(string brand)
         {
-            if (string.IsNullOrEmpty(brand)) return "未知";
+            if (string.IsNullOrEmpty(brand)) return "Unknown";
             
             string lower = brand.ToLowerInvariant();
             
             // OnePlus
             if (lower.Contains("oneplus"))
-                return "一加 (OnePlus)";
+                return "OnePlus";
             // OPPO
             if (lower == "oppo")
                 return "OPPO";
@@ -2104,31 +2109,31 @@ namespace LoveAlways.Qualcomm.UI
                 return "realme";
             // Xiaomi / MIUI
             if (lower == "xiaomi" || lower == "miui" || lower.Contains("xiaomi"))
-                return "小米 (Xiaomi)";
+                return "Xiaomi";
             // Redmi
             if (lower == "redmi" || lower.Contains("redmi"))
-                return "红米 (Redmi)";
+                return "Redmi";
             // POCO
             if (lower == "poco" || lower.Contains("poco"))
                 return "POCO";
             // nubia
             if (lower == "nubia")
-                return "努比亚 (nubia)";
+                return "Nubia";
             // ZTE
             if (lower == "zte")
-                return "中兴 (ZTE)";
+                return "ZTE";
             // Lenovo
             if (lower.Contains("lenovo"))
-                return "联想 (Lenovo)";
+                return "Lenovo";
             // Motorola
             if (lower.Contains("motorola") || lower.Contains("moto"))
-                return "摩托罗拉 (Motorola)";
+                return "Motorola";
             // Samsung
             if (lower.Contains("samsung"))
-                return "三星 (Samsung)";
+                return "Samsung";
             // Meizu
             if (lower.Contains("meizu"))
-                return "魅族 (Meizu)";
+                return "Meizu";
             // vivo
             if (lower == "vivo")
                 return "vivo";
@@ -2136,23 +2141,23 @@ namespace LoveAlways.Qualcomm.UI
             if (lower == "iqoo")
                 return "iQOO";
             
-            // 首字母大写返回
+            // Return with first letter capitalized
             return char.ToUpper(brand[0]) + brand.Substring(1).ToLower();
         }
 
         /// <summary>
-        /// 清空设备信息标签
+        /// Clear Device Info Labels
         /// </summary>
         public void ClearDeviceInfoLabels()
         {
             _currentDeviceInfo = null;
-            UpdateLabelSafe(_brandLabel, "品牌：等待连接");
-            UpdateLabelSafe(_chipLabel, "芯片：等待连接");
-            UpdateLabelSafe(_modelLabel, "型号：等待连接");
-            UpdateLabelSafe(_serialLabel, "芯片序列号：等待连接");
-            UpdateLabelSafe(_storageLabel, "存储：等待连接");
-            UpdateLabelSafe(_unlockLabel, "型号：等待连接");
-            UpdateLabelSafe(_otaVersionLabel, "版本：等待连接");
+            UpdateLabelSafe(_brandLabel, "Brand: Waiting for connection");
+            UpdateLabelSafe(_chipLabel, "Chip: Waiting for connection");
+            UpdateLabelSafe(_modelLabel, "Model: Waiting for connection");
+            UpdateLabelSafe(_serialLabel, "Chip Serial: Waiting for connection");
+            UpdateLabelSafe(_storageLabel, "Storage: Waiting for connection");
+            UpdateLabelSafe(_unlockLabel, "Codename: Waiting for connection");
+            UpdateLabelSafe(_otaVersionLabel, "Version: Waiting for connection");
         }
 
         #endregion
@@ -2160,20 +2165,20 @@ namespace LoveAlways.Qualcomm.UI
         public async Task<bool> ReadPartitionTableAsync()
         {
             if (!await EnsureConnectedAsync()) return false;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
 
             try
             {
                 IsBusy = true;
                 ResetCancellationToken();
                 
-                // 读取分区表：分两阶段 - GPT读取(80%) + 设备信息解析(20%)
-                StartOperationTimer("读取分区表", 100, 0);
+                // Read partition table: Two stages - GPT Read (80%) + Device Info Parse (20%)
+                StartOperationTimer("Read GPT", 100, 0);
                 UpdateProgressBarDirect(_progressBar, 0);
                 UpdateProgressBarDirect(_subProgressBar, 0);
-                Log("正在读取分区表 (GPT)...", Color.Blue);
+                Log("Reading Partition Table (GPT)...", Color.Blue);
 
-                // 进度回调 - GPT 读取映射到 0-80%
+                // Progress callback - GPT read mapped to 0-80%
                 int maxLuns = 6;
                 var totalProgress = new Progress<Tuple<int, int>>(t => {
                     double percent = 80.0 * t.Item1 / t.Item2;
@@ -2181,7 +2186,7 @@ namespace LoveAlways.Qualcomm.UI
                 });
                 var subProgress = new Progress<double>(p => UpdateProgressBarDirect(_subProgressBar, p));
 
-                // 使用带进度的 ReadAllGptAsync
+                // Use ReadAllGptAsync with progress
                 var partitions = await _service.ReadAllGptAsync(maxLuns, totalProgress, subProgress, _cts.Token);
                 
                 UpdateProgressBarDirect(_progressBar, 80);
@@ -2191,11 +2196,11 @@ namespace LoveAlways.Qualcomm.UI
                 {
                     Partitions = partitions;
                     UpdatePartitionListView(partitions);
-                    UpdateDeviceInfoFromPartitions();  // 更新设备信息（从分区获取更多信息）
+                    UpdateDeviceInfoFromPartitions();  // Update device info (Get more info from partitions)
                     PartitionsLoaded?.Invoke(this, partitions);
-                    Log(string.Format("成功读取 {0} 个分区", partitions.Count), Color.Green);
+                    Log(string.Format("Successfully read {0} partitions", partitions.Count), Color.Green);
                     
-                    // 读取分区表后，尝试读取设备信息（build.prop）- 占 80-100%
+                    // After reading partition table, try to read device info (build.prop) - Takes 80-100%
                     var superPart = partitions.Find(p => p.Name.Equals("super", StringComparison.OrdinalIgnoreCase));
                     var systemPart = partitions.Find(p => p.Name.Equals("system", StringComparison.OrdinalIgnoreCase) ||
                                                           p.Name.Equals("system_a", StringComparison.OrdinalIgnoreCase));
@@ -2205,13 +2210,13 @@ namespace LoveAlways.Qualcomm.UI
                     if (superPart != null || systemPart != null || vendorPart != null)
                     {
                         string partType = superPart != null ? "super" : (systemPart != null ? "system" : "vendor");
-                        Log(string.Format("检测到 {0} 分区，开始读取设备信息...", partType), Color.Blue);
+                        Log(string.Format("Detected {0} partition, starting to read device info...", partType), Color.Blue);
                         UpdateProgressBarDirect(_subProgressBar, 0);
                         await TryReadBuildPropInternalAsync();
                     }
                     else
                     {
-                        Log("未检测到 super/system/vendor 分区，跳过设备信息读取", Color.Orange);
+                        Log("Super/system/vendor partition not detected, skipping device info read", Color.Orange);
                     }
                     
                     UpdateProgressBarDirect(_progressBar, 100);
@@ -2221,25 +2226,25 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 else
                 {
-                    Log("未读取到分区", Color.Orange);
+                    Log("No partitions read", Color.Orange);
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                Log("读取分区表失败: " + ex.Message, Color.Red);
+                Log("Failed to read partition table: " + ex.Message, Color.Red);
                 return false;
             }
             finally
             {
-                EndOperation(releasePort: true);  // 读取分区表后释放端口
+                EndOperation(releasePort: true);  // Release port after reading partition table
             }
         }
 
         public async Task<bool> ReadPartitionAsync(string partitionName, string outputPath)
         {
             if (!await EnsureConnectedAsync()) return false;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
 
             var p = _service.FindPartition(partitionName);
             long totalBytes = p?.Size ?? 0;
@@ -2248,39 +2253,39 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                StartOperationTimer("读取 " + partitionName, 1, 0, totalBytes);
-                Log(string.Format("正在读取分区 {0}...", partitionName), Color.Blue);
+                StartOperationTimer("Read " + partitionName, 1, 0, totalBytes);
+                Log(string.Format("Reading partition {0}...", partitionName), Color.Blue);
 
                 var progress = new Progress<double>(p => UpdateSubProgressFromPercent(p));
                 bool success = await _service.ReadPartitionAsync(partitionName, outputPath, progress, _cts.Token);
 
                 UpdateTotalProgress(1, 1, totalBytes);
 
-                if (success) Log(string.Format("分区 {0} 已保存到 {1}", partitionName, outputPath), Color.Green);
-                else Log(string.Format("读取 {0} 失败", partitionName), Color.Red);
+                if (success) Log(string.Format("Partition {0} saved to {1}", partitionName, outputPath), Color.Green);
+                else Log(string.Format("Read {0} failed", partitionName), Color.Red);
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log("读取分区失败: " + ex.Message, Color.Red);
+                Log("Read partition failed: " + ex.Message, Color.Red);
                 return false;
             }
             finally
             {
-                EndOperation(releasePort: true);  // 操作完成后释放端口
+                EndOperation(releasePort: true);  // Release port after operation completion
             }
         }
 
         public async Task<bool> WritePartitionAsync(string partitionName, string filePath)
         {
             if (!await EnsureConnectedAsync()) return false;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
-            if (!File.Exists(filePath)) { Log("文件不存在: " + filePath, Color.Red); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
+            if (!File.Exists(filePath)) { Log("File not found: " + filePath, Color.Red); return false; }
 
             if (IsProtectPartitionsEnabled() && RawprogramParser.IsSensitivePartition(partitionName))
             {
-                Log(string.Format("跳过敏感分区: {0}", partitionName), Color.Orange);
+                Log(string.Format("Skipping sensitive partition: {0}", partitionName), Color.Orange);
                 return false;
             }
 
@@ -2290,38 +2295,38 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                StartOperationTimer("写入 " + partitionName, 1, 0, totalBytes);
-                Log(string.Format("正在写入分区 {0}...", partitionName), Color.Blue);
+                StartOperationTimer("Write " + partitionName, 1, 0, totalBytes);
+                Log(string.Format("Writing partition {0}...", partitionName), Color.Blue);
 
                 var progress = new Progress<double>(p => UpdateSubProgressFromPercent(p));
                 bool success = await _service.WritePartitionAsync(partitionName, filePath, progress, _cts.Token);
 
                 UpdateTotalProgress(1, 1, totalBytes);
 
-                if (success) Log(string.Format("分区 {0} 写入成功", partitionName), Color.Green);
-                else Log(string.Format("写入 {0} 失败", partitionName), Color.Red);
+                if (success) Log(string.Format("Partition {0} write success", partitionName), Color.Green);
+                else Log(string.Format("Write {0} failed", partitionName), Color.Red);
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log("写入分区失败: " + ex.Message, Color.Red);
+                Log("Write partition failed: " + ex.Message, Color.Red);
                 return false;
             }
             finally
             {
-                EndOperation(releasePort: true);  // 操作完成后释放端口
+                EndOperation(releasePort: true);  // Release port after operation completion
             }
         }
 
         public async Task<bool> ErasePartitionAsync(string partitionName)
         {
             if (!await EnsureConnectedAsync()) return false;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
 
             if (IsProtectPartitionsEnabled() && RawprogramParser.IsSensitivePartition(partitionName))
             {
-                Log(string.Format("跳过敏感分区: {0}", partitionName), Color.Orange);
+                Log(string.Format("Skipping sensitive partition: {0}", partitionName), Color.Orange);
                 return false;
             }
 
@@ -2329,11 +2334,11 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                StartOperationTimer("擦除 " + partitionName, 1, 0);
-                Log(string.Format("正在擦除分区 {0}...", partitionName), Color.Blue);
-                UpdateLabelSafe(_speedLabel, "速度：擦除中...");
+                StartOperationTimer("Erase " + partitionName, 1, 0);
+                Log(string.Format("Erasing partition {0}...", partitionName), Color.Blue);
+                UpdateLabelSafe(_speedLabel, "Speed: Erasing...");
 
-                // 擦除没有细粒度进度，模拟进度
+                // Erase has no granular progress, simulate progress
                 UpdateProgressBarDirect(_subProgressBar, 50);
 
                 bool success = await _service.ErasePartitionAsync(partitionName, _cts.Token);
@@ -2341,36 +2346,36 @@ namespace LoveAlways.Qualcomm.UI
                 UpdateProgressBarDirect(_subProgressBar, 100);
                 UpdateTotalProgress(1, 1);
 
-                if (success) Log(string.Format("分区 {0} 已擦除", partitionName), Color.Green);
-                else Log(string.Format("擦除 {0} 失败", partitionName), Color.Red);
+                if (success) Log(string.Format("Partition {0} erased", partitionName), Color.Green);
+                else Log(string.Format("Erase {0} failed", partitionName), Color.Red);
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log("擦除分区失败: " + ex.Message, Color.Red);
+                Log("Erase partition failed: " + ex.Message, Color.Red);
                 return false;
             }
             finally
             {
-                EndOperation(releasePort: true);  // 操作完成后释放端口
+                EndOperation(releasePort: true);  // Release port after operation completion
             }
         }
 
-        #region 批量操作 (支持双进度条)
+        #region Batch Operation (Supports Dual Progress Bar)
 
         /// <summary>
-        /// 批量读取分区
+        /// Batch Read Partitions
         /// </summary>
         public async Task<int> ReadPartitionsBatchAsync(List<Tuple<string, string>> partitionsToRead)
         {
             if (!await EnsureConnectedAsync()) return 0;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return 0; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return 0; }
 
             int total = partitionsToRead.Count;
             int success = 0;
             
-            // 预先获取各分区的总大小，用于流畅进度条
+            // Pre-fetch total size of partitions for smooth progress bar
             long totalBytes = 0;
             foreach (var item in partitionsToRead)
             {
@@ -2382,8 +2387,8 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                StartOperationTimer("批量读取", total, 0, totalBytes);
-                Log(string.Format("开始批量读取 {0} 个分区 (总计: {1:F2} MB)...", total, totalBytes / 1024.0 / 1024.0), Color.Blue);
+                StartOperationTimer("Batch Read", total, 0, totalBytes);
+                Log(string.Format("Starting batch read of {0} partitions (Total: {1:F2} MB)...", total, totalBytes / 1024.0 / 1024.0), Color.Blue);
 
                 long currentCompletedBytes = 0;
                 for (int i = 0; i < total; i++)
@@ -2397,9 +2402,9 @@ namespace LoveAlways.Qualcomm.UI
                     var p = _service.FindPartition(partitionName);
                     long pSize = p?.Size ?? 0;
 
-                    // 传入当前分区大小用于准确速度计算
+                    // Pass current partition size for accurate speed calculation
                     UpdateTotalProgress(i, total, currentCompletedBytes, pSize);
-                    UpdateLabelSafe(_operationLabel, string.Format("读取 {0} ({1}/{2})", partitionName, i + 1, total));
+                    UpdateLabelSafe(_operationLabel, string.Format("Reading {0} ({1}/{2})", partitionName, i + 1, total));
 
                     var progress = new Progress<double>(percent => UpdateSubProgressFromPercent(percent));
                     bool ok = await _service.ReadPartitionAsync(partitionName, outputPath, progress, _cts.Token);
@@ -2408,49 +2413,49 @@ namespace LoveAlways.Qualcomm.UI
                     {
                         success++;
                         currentCompletedBytes += pSize;
-                        Log(string.Format("[{0}/{1}] {2} 读取成功", i + 1, total, partitionName), Color.Green);
+                        Log(string.Format("[{0}/{1}] {2} read success", i + 1, total, partitionName), Color.Green);
                     }
                     else
                     {
-                        Log(string.Format("[{0}/{1}] {2} 读取失败", i + 1, total, partitionName), Color.Red);
+                        Log(string.Format("[{0}/{1}] {2} read failed", i + 1, total, partitionName), Color.Red);
                     }
                 }
 
                 UpdateTotalProgress(total, total, totalBytes, 0);
-                Log(string.Format("批量读取完成: {0}/{1} 成功", success, total), success == total ? Color.Green : Color.Orange);
+                Log(string.Format("Batch read complete: {0}/{1} success", success, total), success == total ? Color.Green : Color.Orange);
                 return success;
             }
             catch (Exception ex)
             {
-                Log("批量读取失败: " + ex.Message, Color.Red);
+                Log("Batch read failed: " + ex.Message, Color.Red);
                 return success;
             }
             finally
             {
-                EndOperation(releasePort: true);  // 批量操作完成后释放端口
+                EndOperation(releasePort: true);  // Release port after batch operation
             }
         }
 
         /// <summary>
-        /// 批量写入分区 (简单版本)
+        /// Batch Write Partitions (Simple Version)
         /// </summary>
         public async Task<int> WritePartitionsBatchAsync(List<Tuple<string, string>> partitionsToWrite)
         {
-            // 转换为新格式 (使用 LUN=0, StartSector=0 作为占位)
+            // Convert to new format (Use LUN=0, StartSector=0 as placeholder)
             var converted = partitionsToWrite.Select(t => Tuple.Create(t.Item1, t.Item2, 0, 0L)).ToList();
             return await WritePartitionsBatchAsync(converted, null, false);
         }
 
         /// <summary>
-        /// 批量写入分区 (支持 Patch 和激活启动分区)
+        /// Batch Write Partitions (Supports Patch and Boot Partition Activation)
         /// </summary>
-        /// <param name="partitionsToWrite">分区信息列表 (名称, 文件路径, LUN, StartSector)</param>
-        /// <param name="patchFiles">Patch XML 文件列表 (可选)</param>
-        /// <param name="activateBootLun">是否激活启动 LUN (UFS)</param>
+        /// <param name="partitionsToWrite">Partition info list (Name, File Path, LUN, StartSector)</param>
+        /// <param name="patchFiles">Patch XML file list (Optional)</param>
+        /// <param name="activateBootLun">Activate Boot LUN (UFS)</param>
         public async Task<int> WritePartitionsBatchAsync(List<Tuple<string, string, int, long>> partitionsToWrite, List<string> patchFiles, bool activateBootLun)
         {
             if (!await EnsureConnectedAsync()) return 0;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return 0; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return 0; }
 
             int total = partitionsToWrite.Count;
             int success = 0;
@@ -2461,10 +2466,10 @@ namespace LoveAlways.Qualcomm.UI
                 IsBusy = true;
                 ResetCancellationToken();
                 
-                // 计算总步骤: 分区写入 + Patch + 激活
+                // Calculate total steps: Partition write + Patch + Activate
                 int totalSteps = total + (hasPatch ? 1 : 0) + (activateBootLun ? 1 : 0);
                 
-                // 预先获取总字节数，用于流畅进度条
+                // Pre-fetch total bytes for smooth progress bar
                 long totalBytes = 0;
                 foreach (var item in partitionsToWrite)
                 {
@@ -2473,7 +2478,7 @@ namespace LoveAlways.Qualcomm.UI
                     {
                         if (SparseStream.IsSparseFile(path))
                         {
-                            // 使用实际数据大小，而非展开后的大小
+                            // Use real data size, not expanded size
                             using (var ss = SparseStream.Open(path))
                                 totalBytes += ss.GetRealDataSize();
                         }
@@ -2484,8 +2489,8 @@ namespace LoveAlways.Qualcomm.UI
                     }
                 }
 
-                StartOperationTimer("批量写入", totalSteps, 0, totalBytes);
-                Log(string.Format("开始批量写入 {0} 个分区 (实际数据: {1:F2} MB)...", total, totalBytes / 1024.0 / 1024.0), Color.Blue);
+                StartOperationTimer("Batch Write", totalSteps, 0, totalBytes);
+                Log(string.Format("Starting batch write of {0} partitions (Real data: {1:F2} MB)...", total, totalBytes / 1024.0 / 1024.0), Color.Blue);
 
                 long currentCompletedBytes = 0;
                 for (int i = 0; i < total; i++)
@@ -2503,7 +2508,7 @@ namespace LoveAlways.Qualcomm.UI
                     {
                         if (SparseStream.IsSparseFile(filePath))
                         {
-                            // 使用实际数据大小，而非展开后的大小
+                            // Use real data size, not expanded size
                             using (var ss = SparseStream.Open(filePath))
                                 fSize = ss.GetRealDataSize();
                         }
@@ -2515,23 +2520,23 @@ namespace LoveAlways.Qualcomm.UI
 
                     if (IsProtectPartitionsEnabled() && RawprogramParser.IsSensitivePartition(partitionName))
                     {
-                        Log(string.Format("[{0}/{1}] 跳过敏感分区: {2}", i + 1, total, partitionName), Color.Orange);
+                        Log(string.Format("[{0}/{1}] Skipping sensitive partition: {2}", i + 1, total, partitionName), Color.Orange);
                         currentCompletedBytes += fSize;
                         continue;
                     }
 
-                    // 传入当前文件大小用于准确速度计算
+                    // Pass current file size for accurate speed calculation
                     UpdateTotalProgress(i, totalSteps, currentCompletedBytes, fSize);
-                    UpdateLabelSafe(_operationLabel, string.Format("写入 {0} ({1}/{2})", partitionName, i + 1, total));
+                    UpdateLabelSafe(_operationLabel, string.Format("Writing {0} ({1}/{2})", partitionName, i + 1, total));
 
                     var progress = new Progress<double>(percent => UpdateSubProgressFromPercent(percent));
                     bool ok;
 
-                    // 如果有 XML 中的 LUN 和 StartSector 信息，优先使用直接写入
-                    // 这确保按照 XML 定义的位置写入，而不是依赖设备 GPT
+                    // If LUN and StartSector info exists in XML, use direct write
+                    // This ensures writing to position defined in XML, not relying on device GPT
                     bool useDirectWrite = partitionName == "PrimaryGPT" || partitionName == "BackupGPT" || 
                         partitionName.StartsWith("gpt_main") || partitionName.StartsWith("gpt_backup") ||
-                        startSector != 0;  // 如果有明确的起始扇区，使用直接写入
+                        startSector != 0;  // If explicit start sector, use direct write
                     
                     if (useDirectWrite)
                     {
@@ -2539,7 +2544,7 @@ namespace LoveAlways.Qualcomm.UI
                     }
                     else
                     {
-                        // 没有明确扇区信息时，尝试通过分区名查找 (依赖设备 GPT)
+                        // When no explicit sector info, try finding by partition name (Relies on device GPT)
                         ok = await _service.WritePartitionAsync(partitionName, filePath, progress, _cts.Token);
                     }
 
@@ -2547,64 +2552,64 @@ namespace LoveAlways.Qualcomm.UI
                     {
                         success++;
                         currentCompletedBytes += fSize;
-                        // 成功时不单独打印日志，只在最后汇总
+                        // Do not print log for success, only summarize at the end
                     }
                     else
                     {
-                        // 失败时打印详细信息
-                        Log(string.Format("写入失败: {0}", partitionName), Color.Red);
+                        // Print detailed info on failure
+                        Log(string.Format("Write failed: {0}", partitionName), Color.Red);
                     }
                 }
 
-                // 汇总显示结果
+                // Summarize results
                 if (success == total)
-                    Log(string.Format("分区写入完成: {0} 个分区全部成功", total), Color.Green);
+                    Log(string.Format("Partition write complete: All {0} partitions success", total), Color.Green);
                 else
-                    Log(string.Format("分区写入完成: {0}/{1} 成功，{2} 个失败", success, total, total - success), Color.Orange);
+                    Log(string.Format("Partition write complete: {0}/{1} success, {2} failed", success, total, total - success), Color.Orange);
 
-                // 2. 应用 Patch (如果有)
+                // 2. Apply Patch (If any)
                 if (hasPatch && !_cts.Token.IsCancellationRequested)
                 {
                     UpdateTotalProgress(total, totalSteps, currentCompletedBytes, 0);
-                    UpdateLabelSafe(_operationLabel, "应用补丁...");
-                    Log(string.Format("开始应用 {0} 个 Patch 文件...", patchFiles.Count), Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "Applying patch...");
+                    Log(string.Format("Starting to apply {0} Patch files...", patchFiles.Count), Color.Blue);
 
                     int patchCount = await _service.ApplyPatchFilesAsync(patchFiles, _cts.Token);
-                    Log(string.Format("成功应用 {0} 个补丁", patchCount), patchCount > 0 ? Color.Green : Color.Orange);
+                    Log(string.Format("Successfully applied {0} patches", patchCount), patchCount > 0 ? Color.Green : Color.Orange);
                 }
                 else if (!hasPatch)
                 {
-                    Log("无 Patch 文件，跳过补丁步骤", Color.Gray);
+                    Log("No Patch files, skipping patch step", Color.Gray);
                 }
 
-                // 3. 修复 GPT (关键步骤！修复主备 GPT 和 CRC)
+                // 3. Fix GPT (Critical step! Fix primary/backup GPT and CRC)
                 if (!_cts.Token.IsCancellationRequested)
                 {
-                    UpdateLabelSafe(_operationLabel, "修复 GPT...");
-                    Log("修复 GPT 分区表 (主备同步 + CRC)...", Color.Blue);
+                    UpdateLabelSafe(_operationLabel, "Fixing GPT...");
+                    Log("Fixing GPT partition table (Sync Primary/Backup + CRC)...", Color.Blue);
                     
-                    // 修复所有 LUN 的 GPT (-1 表示所有 LUN)
+                    // Fix GPT for all LUNs (-1 means all LUNs)
                     bool fixOk = await _service.FixGptAsync(-1, _cts.Token);
                     if (fixOk)
-                        Log("GPT 修复成功", Color.Green);
+                        Log("GPT fix success", Color.Green);
                     else
-                        Log("GPT 修复失败 (可能导致无法启动)", Color.Orange);
+                        Log("GPT fix failed (May cause boot failure)", Color.Orange);
                 }
 
-                // 4. 激活启动分区 (UFS 设备需要激活，eMMC 只有 LUN0)
+                // 4. Activate Boot Partition (UFS devices need activation, eMMC only LUN0)
                 if (activateBootLun && !_cts.Token.IsCancellationRequested)
                 {
                     UpdateTotalProgress(total + (hasPatch ? 1 : 0), totalSteps, currentCompletedBytes);
-                    UpdateLabelSafe(_operationLabel, "回读分区表检测槽位...");
+                    UpdateLabelSafe(_operationLabel, "Reading back partition table to detect slot...");
                     
-                    // 回读 GPT 检测当前槽位
-                    Log("回读 GPT 检测当前槽位...", Color.Blue);
+                    // Read back GPT to detect current slot
+                    Log("Reading back GPT to detect current slot...", Color.Blue);
                     var partitions = await _service.ReadAllGptAsync(6, _cts.Token);
                     
                     string currentSlot = _service.CurrentSlot;
-                    Log(string.Format("检测到当前槽位: {0}", currentSlot), Color.Blue);
+                    Log(string.Format("Detected current slot: {0}", currentSlot), Color.Blue);
 
-                    // 根据槽位确定启动 LUN - 严格按照 A/B 分区状态
+                    // Determine boot LUN based on slot - Strictly follow A/B partition state
                     int bootLun = -1;
                     string bootSlotName = "";
                     
@@ -2620,53 +2625,53 @@ namespace LoveAlways.Qualcomm.UI
                     }
                     else if (currentSlot == "undefined" || currentSlot == "unknown")
                     {
-                        // A/B 分区存在但未设置激活状态，尝试从写入的分区推断
-                        // 检查是否写入了 _a 或 _b 后缀的分区
+                        // A/B partitions exist but activation state not set, try to infer from written partitions
+                        // Check if partitions with _a or _b suffix were written
                         int slotACount = partitionsToWrite.Count(p => p.Item1.EndsWith("_a"));
                         int slotBCount = partitionsToWrite.Count(p => p.Item1.EndsWith("_b"));
                         
                         if (slotACount > slotBCount)
                         {
                             bootLun = 1;
-                            bootSlotName = "boot_a (根据写入分区推断)";
-                            Log("槽位未激活，根据写入的 _a 分区推断使用 LUN1", Color.Blue);
+                            bootSlotName = "boot_a (Inferred from written partitions)";
+                            Log("Slot not activated, inferred LUN1 usage based on written _a partition", Color.Blue);
                         }
                         else if (slotBCount > slotACount)
                         {
                             bootLun = 2;
-                            bootSlotName = "boot_b (根据写入分区推断)";
-                            Log("槽位未激活，根据写入的 _b 分区推断使用 LUN2", Color.Blue);
+                            bootSlotName = "boot_b (Inferred from written partitions)";
+                            Log("Slot not activated, inferred LUN2 usage based on written _b partition", Color.Blue);
                         }
                         else if (slotACount > 0 && slotBCount > 0)
                         {
-                            // 全量刷机：同时刷写了 _a 和 _b 分区，默认激活 slot_a
+                            // Full flash: Written both _a and _b partitions, default activate slot_a
                             bootLun = 1;
-                            bootSlotName = "boot_a (全量刷机默认)";
-                            Log("全量刷机模式，默认激活 slot_a (LUN1)", Color.Blue);
+                            bootSlotName = "boot_a (Full flash default)";
+                            Log("Full flash mode, default activate slot_a (LUN1)", Color.Blue);
                         }
                         else
                         {
-                            // 没有 A/B 分区，跳过激活
-                            Log("未检测到 A/B 分区，跳过启动分区激活", Color.Gray);
+                            // No A/B partitions, skipping activation
+                            Log("A/B partitions not detected, skipping boot partition activation", Color.Gray);
                         }
                     }
                     else if (currentSlot == "nonexistent")
                     {
-                        // 设备不支持 A/B 分区，跳过激活
-                        Log("设备不支持 A/B 分区，跳过启动分区激活", Color.Gray);
+                        // Device does not support A/B partitions, skipping activation
+                        Log("Device does not support A/B partitions, skipping boot partition activation", Color.Gray);
                     }
 
-                    // 只有在确定了 bootLun 后才执行激活
+                    // Only activate after determining bootLun
                     if (bootLun > 0)
                     {
-                        UpdateLabelSafe(_operationLabel, string.Format("激活启动分区 LUN{0}...", bootLun));
-                        Log(string.Format("激活 LUN{0} ({1})...", bootLun, bootSlotName), Color.Blue);
+                        UpdateLabelSafe(_operationLabel, string.Format("Activating boot partition LUN{0}...", bootLun));
+                        Log(string.Format("Activating LUN{0} ({1})...", bootLun, bootSlotName), Color.Blue);
 
                         bool bootOk = await _service.SetBootLunAsync(bootLun, _cts.Token);
                         if (bootOk)
-                            Log(string.Format("LUN{0} 激活成功", bootLun), Color.Green);
+                            Log(string.Format("LUN{0} activation success", bootLun), Color.Green);
                         else
-                            Log(string.Format("LUN{0} 激活失败 (部分设备可能不支持)", bootLun), Color.Orange);
+                            Log(string.Format("LUN{0} activation failed (Some devices might not support)", bootLun), Color.Orange);
                     }
                 }
 
@@ -2675,7 +2680,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             catch (Exception ex)
             {
-                Log("批量写入失败: " + ex.Message, Color.Red);
+                Log("Batch write failed: " + ex.Message, Color.Red);
                 return success;
             }
             finally
@@ -2686,20 +2691,20 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 应用 Patch 文件
+        /// Apply Patch File
         /// </summary>
         public async Task<int> ApplyPatchFilesAsync(List<string> patchFiles)
         {
             if (!await EnsureConnectedAsync()) return 0;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return 0; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return 0; }
             if (patchFiles == null || patchFiles.Count == 0) return 0;
 
             try
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                StartOperationTimer("应用补丁", patchFiles.Count, 0);
-                Log(string.Format("开始应用 {0} 个 Patch 文件...", patchFiles.Count), Color.Blue);
+                StartOperationTimer("Apply Patch", patchFiles.Count, 0);
+                Log(string.Format("Starting to apply {0} Patch files...", patchFiles.Count), Color.Blue);
 
                 int totalPatches = 0;
                 for (int i = 0; i < patchFiles.Count; i++)
@@ -2711,17 +2716,17 @@ namespace LoveAlways.Qualcomm.UI
 
                     int count = await _service.ApplyPatchXmlAsync(patchFiles[i], _cts.Token);
                     totalPatches += count;
-                    Log(string.Format("[{0}/{1}] {2}: {3} 个补丁", i + 1, patchFiles.Count, 
+                    Log(string.Format("[{0}/{1}] {2}: {3} patches", i + 1, patchFiles.Count, 
                         Path.GetFileName(patchFiles[i]), count), Color.Green);
                 }
 
                 UpdateTotalProgress(patchFiles.Count, patchFiles.Count);
-                Log(string.Format("Patch 完成: 共 {0} 个补丁", totalPatches), Color.Green);
+                Log(string.Format("Patch complete: Total {0} patches", totalPatches), Color.Green);
                 return totalPatches;
             }
             catch (Exception ex)
             {
-                Log("应用 Patch 失败: " + ex.Message, Color.Red);
+                Log("Apply Patch failed: " + ex.Message, Color.Red);
                 return 0;
             }
             finally
@@ -2732,12 +2737,12 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 批量擦除分区
+        /// Batch Erase Partitions
         /// </summary>
         public async Task<int> ErasePartitionsBatchAsync(List<string> partitionNames)
         {
             if (!await EnsureConnectedAsync()) return 0;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return 0; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return 0; }
 
             int total = partitionNames.Count;
             int success = 0;
@@ -2746,9 +2751,9 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                StartOperationTimer("批量擦除", total, 0);
-                Log(string.Format("开始批量擦除 {0} 个分区...", total), Color.Blue);
-                UpdateLabelSafe(_speedLabel, "速度：擦除中...");
+                StartOperationTimer("Batch Erase", total, 0);
+                Log(string.Format("Starting batch erase of {0} partitions...", total), Color.Blue);
+                UpdateLabelSafe(_speedLabel, "Speed: Erasing...");
 
                 for (int i = 0; i < total; i++)
                 {
@@ -2758,14 +2763,14 @@ namespace LoveAlways.Qualcomm.UI
 
                     if (IsProtectPartitionsEnabled() && RawprogramParser.IsSensitivePartition(partitionName))
                     {
-                        Log(string.Format("[{0}/{1}] 跳过敏感分区: {2}", i + 1, total, partitionName), Color.Orange);
+                        Log(string.Format("[{0}/{1}] Skipping sensitive partition: {2}", i + 1, total, partitionName), Color.Orange);
                         continue;
                     }
 
                     UpdateTotalProgress(i, total);
-                    UpdateLabelSafe(_operationLabel, string.Format("擦除 {0} ({1}/{2})", partitionName, i + 1, total));
+                    UpdateLabelSafe(_operationLabel, string.Format("Erasing {0} ({1}/{2})", partitionName, i + 1, total));
 
-                    // 擦除没有细粒度进度，直接更新子进度
+                    // Erase has no granular progress, directly update sub progress
                     UpdateProgressBarDirect(_subProgressBar, 50);
                     
                     bool ok = await _service.ErasePartitionAsync(partitionName, _cts.Token);
@@ -2775,26 +2780,26 @@ namespace LoveAlways.Qualcomm.UI
                     if (ok)
                     {
                         success++;
-                        Log(string.Format("[{0}/{1}] {2} 擦除成功", i + 1, total, partitionName), Color.Green);
+                        Log(string.Format("[{0}/{1}] {2} erase success", i + 1, total, partitionName), Color.Green);
                     }
                     else
                     {
-                        Log(string.Format("[{0}/{1}] {2} 擦除失败", i + 1, total, partitionName), Color.Red);
+                        Log(string.Format("[{0}/{1}] {2} erase failed", i + 1, total, partitionName), Color.Red);
                     }
                 }
 
                 UpdateTotalProgress(total, total);
-                Log(string.Format("批量擦除完成: {0}/{1} 成功", success, total), success == total ? Color.Green : Color.Orange);
+                Log(string.Format("Batch erase complete: {0}/{1} success", success, total), success == total ? Color.Green : Color.Orange);
                 return success;
             }
             catch (Exception ex)
             {
-                Log("批量擦除失败: " + ex.Message, Color.Red);
+                Log("Batch erase failed: " + ex.Message, Color.Red);
                 return success;
             }
             finally
             {
-                EndOperation(releasePort: true);  // 批量操作完成后释放端口
+                EndOperation(releasePort: true);  // Release port after batch operation
             }
         }
 
@@ -2806,10 +2811,10 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 bool success = await _service.RebootToEdlAsync(_cts?.Token ?? CancellationToken.None);
-                if (success) Log("已发送重启到 EDL 命令", Color.Green);
+                if (success) Log("Sent Reboot to EDL command", Color.Green);
                 return success;
             }
-            catch (Exception ex) { Log("重启到 EDL 失败: " + ex.Message, Color.Red); return false; }
+            catch (Exception ex) { Log("Reboot to EDL failed: " + ex.Message, Color.Red); return false; }
         }
 
         public async Task<bool> RebootToSystemAsync()
@@ -2818,10 +2823,10 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 bool success = await _service.RebootAsync(_cts?.Token ?? CancellationToken.None);
-                if (success) { Log("设备正在重启到系统", Color.Green); Disconnect(); }
+                if (success) { Log("Device is rebooting to system", Color.Green); Disconnect(); }
                 return success;
             }
-            catch (Exception ex) { Log("重启失败: " + ex.Message, Color.Red); return false; }
+            catch (Exception ex) { Log("Reboot failed: " + ex.Message, Color.Red); return false; }
         }
 
         public async Task<bool> SwitchSlotAsync(string slot)
@@ -2830,11 +2835,11 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 bool success = await _service.SetActiveSlotAsync(slot, _cts?.Token ?? CancellationToken.None);
-                if (success) Log(string.Format("已切换到槽位 {0}", slot), Color.Green);
-                else Log("切换槽位失败", Color.Red);
+                if (success) Log(string.Format("Switched to slot {0}", slot), Color.Green);
+                else Log("Switch slot failed", Color.Red);
                 return success;
             }
-            catch (Exception ex) { Log("切换槽位失败: " + ex.Message, Color.Red); return false; }
+            catch (Exception ex) { Log("Switch slot failed: " + ex.Message, Color.Red); return false; }
         }
 
         public async Task<bool> SetBootLunAsync(int lun)
@@ -2843,11 +2848,11 @@ namespace LoveAlways.Qualcomm.UI
             try
             {
                 bool success = await _service.SetBootLunAsync(lun, _cts?.Token ?? CancellationToken.None);
-                if (success) Log(string.Format("LUN {0} 已激活", lun), Color.Green);
-                else Log("激活 LUN 失败", Color.Red);
+                if (success) Log(string.Format("LUN {0} activated", lun), Color.Green);
+                else Log("Activate LUN failed", Color.Red);
                 return success;
             }
-            catch (Exception ex) { Log("激活 LUN 失败: " + ex.Message, Color.Red); return false; }
+            catch (Exception ex) { Log("Activate LUN failed: " + ex.Message, Color.Red); return false; }
         }
 
         public PartitionInfo FindPartition(string keyword)
@@ -2901,40 +2906,40 @@ namespace LoveAlways.Qualcomm.UI
         private void SetSkipSaharaChecked(bool value)
         {
             try { if (_skipSaharaCheckbox != null) _skipSaharaCheckbox.Checked = value; }
-            catch { /* UI 控件访问失败可忽略 */ }
+            catch { /* UI control access failure can be ignored */ }
         }
 
         /// <summary>
-        /// 尝试快速重连（仅重新打开端口，不重新配置 Firehose）
-        /// 适用于操作完成后端口被释放的情况
+        /// Try quick reconnect (Only reopen port, do not reconfigure Firehose)
+        /// Applicable when port is released after operation
         /// </summary>
-        /// <returns>是否成功重连</returns>
+        /// <returns>Whether reconnect successful</returns>
         public async Task<bool> QuickReconnectAsync()
         {
             if (_service == null)
             {
-                Log("未连接设备", Color.Red);
+                Log("Device not connected", Color.Red);
                 return false;
             }
             
             if (!_service.IsPortReleased)
             {
-                // 端口未释放，检查是否仍然可用
+                // Port not released, check if still available
                 if (_service.IsConnectedFast)
                     return true;
             }
             
-            _logDetail("[UI] 尝试快速重连...");
+            _logDetail("[UI] Attempting quick reconnect...");
             
-            // 尝试重新打开端口
+            // Try to reopen port
             bool success = await _service.EnsurePortOpenAsync(CancellationToken.None);
             if (success)
             {
-                _logDetail("[UI] 快速重连成功");
+                _logDetail("[UI] Quick reconnect success");
                 return true;
             }
             
-            _logDetail("[UI] 快速重连失败");
+            _logDetail("[UI] Quick reconnect failed");
             return false;
         }
         
@@ -2942,27 +2947,27 @@ namespace LoveAlways.Qualcomm.UI
         {
             if (_service == null)
             {
-                Log("未连接设备", Color.Red);
+                Log("Device not connected", Color.Red);
                 return false;
             }
             
-            // 如果端口已释放，尝试重新打开
+            // If port is released, try to reopen
             if (_service.IsPortReleased)
             {
-                _logDetail("[UI] 端口已释放，尝试重新打开...");
+                _logDetail("[UI] Port released, attempting to reopen...");
                 if (!await _service.EnsurePortOpenAsync(CancellationToken.None))
                 {
-                    // 不立即报错和清理状态，让调用者决定如何处理
-                    _logDetail("[UI] 端口重新打开失败");
+                    // Do not report error and clear state immediately, let caller decide how to handle
+                    _logDetail("[UI] Port reopen failed");
                     return false;
                 }
-                _logDetail("[UI] 端口重新打开成功");
+                _logDetail("[UI] Port reopen success");
             }
             
-            // 使用 ValidateConnection 检测端口是否真正可用
+            // Use ValidateConnection to detect if port is truly available
             if (!_service.ValidateConnection())
             {
-                _logDetail("[UI] 端口验证失败");
+                _logDetail("[UI] Port validation failed");
                 return false;
             }
             
@@ -2970,15 +2975,15 @@ namespace LoveAlways.Qualcomm.UI
         }
         
         /// <summary>
-        /// 确保连接可用，失败时显示错误并清理状态
+        /// Ensure connection available, show error and clear state on failure
         /// </summary>
         private async Task<bool> EnsureConnectedWithCleanupAsync()
         {
             if (await EnsureConnectedAsync())
                 return true;
             
-            // 连接失败，清理状态
-            Log("设备连接已失效，需要重新完整配置", Color.Red);
+            // Connection failed, clear state
+            Log("Device connection lost, full reconfiguration required", Color.Red);
             SetSkipSaharaChecked(false);
             ConnectionStateChanged?.Invoke(this, false);
             ClearDeviceInfoLabels();
@@ -2987,13 +2992,13 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 取消当前操作
+        /// Cancel current operation
         /// </summary>
         public void CancelOperation()
         {
             if (_cts != null) 
             { 
-                Log("正在取消操作...", Color.Orange);
+                Log("Canceling operation...", Color.Orange);
                 _cts.Cancel(); 
                 _cts.Dispose(); 
                 _cts = null; 
@@ -3001,22 +3006,22 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 安全重置 CancellationTokenSource（释放旧实例后创建新实例）
+        /// Safely reset CancellationTokenSource (Create new instance after disposing old one)
         /// </summary>
         private void ResetCancellationToken()
         {
             if (_cts != null)
             {
                 try { _cts.Cancel(); } 
-                catch (Exception ex) { _logDetail?.Invoke($"[UI] 取消令牌异常: {ex.Message}"); }
+                catch (Exception ex) { _logDetail?.Invoke($"[UI] Cancel token exception: {ex.Message}"); }
                 try { _cts.Dispose(); } 
-                catch (Exception ex) { _logDetail?.Invoke($"[UI] 释放令牌异常: {ex.Message}"); }
+                catch (Exception ex) { _logDetail?.Invoke($"[UI] Dispose token exception: {ex.Message}"); }
             }
             _cts = new CancellationTokenSource();
         }
 
         /// <summary>
-        /// 是否有操作正在进行
+        /// Is there an operation in progress
         /// </summary>
         public bool HasPendingOperation
         {
@@ -3030,36 +3035,36 @@ namespace LoveAlways.Qualcomm.UI
 
         private void UpdateProgress(long current, long total)
         {
-            // 实时计算速度 (current=已传输字节, total=总字节)
+            // Calculate real-time speed (current=transferred bytes, total=total bytes)
             if (total > 0 && _operationStopwatch != null)
             {
-                // 计算实时速度
+                // Calculate real-time speed
                 long bytesDelta = current - _lastBytes;
                 double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
                 
-                if (timeDelta >= 0.2 && bytesDelta > 0) // 每200ms更新一次
+                if (timeDelta >= 0.2 && bytesDelta > 0) // Update every 200ms
                 {
                     double instantSpeed = bytesDelta / timeDelta;
-                    // 指数移动平均平滑速度
+                    // Exponential moving average smoothing speed
                     _currentSpeed = (_currentSpeed > 0) ? (_currentSpeed * 0.6 + instantSpeed * 0.4) : instantSpeed;
                     _lastBytes = current;
                     _lastSpeedUpdate = DateTime.Now;
                     
-                    // 更新速度显示
+                    // Update speed display
                     UpdateSpeedDisplayInternal();
                     
-                    // 更新时间
+                    // Update time
                     var elapsed = _operationStopwatch.Elapsed;
-                    string timeText = string.Format("时间：{0:00}:{1:00}", (int)elapsed.TotalMinutes, elapsed.Seconds);
+                    string timeText = string.Format("Time: {0:00}:{1:00}", (int)elapsed.TotalMinutes, elapsed.Seconds);
                     UpdateLabelSafe(_timeLabel, timeText);
                 }
                 
-                // 1. 计算子进度 (带小数精度)
+                // 1. Calculate sub progress (With decimal precision)
                 double subPercent = (100.0 * current / total);
                 subPercent = Math.Max(0, Math.Min(100, subPercent));
                 UpdateProgressBarDirect(_subProgressBar, subPercent);
                 
-                // 2. 计算总进度 (极速流利版 - 基于字节总数)
+                // 2. Calculate total progress (High speed smooth version - Based on total bytes)
                 if (_totalOperationBytes > 0 && _progressBar != null)
                 {
                     long totalProcessed = _completedStepBytes + current;
@@ -3067,12 +3072,12 @@ namespace LoveAlways.Qualcomm.UI
                     totalPercent = Math.Max(0, Math.Min(100, totalPercent));
                     UpdateProgressBarDirect(_progressBar, totalPercent);
 
-                    // 3. 在界面显示精确到两位小数的百分比
+                    // 3. Display percentage with two decimal places on UI
                     UpdateLabelSafe(_operationLabel, string.Format("{0} [{1:F2}%]", _currentOperationName, totalPercent));
                 }
                 else if (_totalSteps > 0 && _progressBar != null)
                 {
-                    // 退避方案：基于步骤
+                    // Fallback: Based on steps
                     double totalProgress = (_currentStep + subPercent / 100.0) / _totalSteps * 100.0;
                     UpdateProgressBarDirect(_progressBar, totalProgress);
                     UpdateLabelSafe(_operationLabel, string.Format("{0} [{1:F2}%]", _currentOperationName, totalProgress));
@@ -3081,7 +3086,7 @@ namespace LoveAlways.Qualcomm.UI
         }
         
         /// <summary>
-        /// 直接更新进度条 (支持 double 精度，防闪烁优化)
+        /// Update progress bar directly (Supports double precision, anti-flicker optimization)
         /// </summary>
         private int _lastProgressValue = -1;
         private int _lastSubProgressValue = -1;
@@ -3091,17 +3096,17 @@ namespace LoveAlways.Qualcomm.UI
             if (progressBar == null) return;
             try
             {
-                // 将 0-100 映射到 0-10000 以获得更高精度
+                // Map 0-100 to 0-10000 for higher precision
                 int intValue = (int)Math.Max(0, Math.Min(10000, percent * 100));
                 
-                // 检查是哪个进度条，避免重复更新相同值
+                // Check which progress bar, avoid duplicate updates
                 bool isMainProgress = (progressBar == _progressBar);
                 int lastValue = isMainProgress ? _lastProgressValue : _lastSubProgressValue;
                 
-                // 值未变化时跳过更新，防止闪烁
+                // Skip update if value unchanged to prevent flicker
                 if (intValue == lastValue) return;
                 
-                // 更新缓存值
+                // Update cached value
                 if (isMainProgress) _lastProgressValue = intValue;
                 else _lastSubProgressValue = intValue;
                 
@@ -3118,7 +3123,7 @@ namespace LoveAlways.Qualcomm.UI
                     if (progressBar.Value != intValue) progressBar.Value = intValue;
                 }
             }
-            catch { /* UI 进度条更新失败可忽略 */ }
+            catch { /* UI progress bar update failure can be ignored */ }
         }
         
         private void UpdateSpeedDisplayInternal()
@@ -3127,60 +3132,60 @@ namespace LoveAlways.Qualcomm.UI
             
             string speedText;
             if (_currentSpeed >= 1024 * 1024)
-                speedText = string.Format("速度：{0:F1} MB/s", _currentSpeed / (1024 * 1024));
+                speedText = string.Format("Speed: {0:F1} MB/s", _currentSpeed / (1024 * 1024));
             else if (_currentSpeed >= 1024)
-                speedText = string.Format("速度：{0:F1} KB/s", _currentSpeed / 1024);
+                speedText = string.Format("Speed: {0:F1} KB/s", _currentSpeed / 1024);
             else if (_currentSpeed > 0)
-                speedText = string.Format("速度：{0:F0} B/s", _currentSpeed);
+                speedText = string.Format("Speed: {0:F0} B/s", _currentSpeed);
             else
-                speedText = "速度：--";
+                speedText = "Speed: --";
             
             UpdateLabelSafe(_speedLabel, speedText);
         }
         
         /// <summary>
-        /// 更新子进度条 (短) - 从百分比
-        /// 改进：使用当前步骤的字节数计算真实速度
+        /// Update sub progress bar (Short) - From percentage
+        /// Improvement: Use current step bytes to calculate real speed
         /// </summary>
         private void UpdateSubProgressFromPercent(double percent)
         {
             percent = Math.Max(0, Math.Min(100, percent));
             UpdateProgressBarDirect(_subProgressBar, percent);
             
-            // 基于当前步骤的字节数估算已传输字节（不是总操作字节数！）
+            // Estimate transferred bytes based on current step bytes (Not total operation bytes!)
             long currentStepTransferred = 0;
             if (_currentStepBytes > 0)
             {
-                // 使用当前步骤的字节数，而不是整个操作的总字节数
+                // Use current step bytes, not total operation bytes
                 currentStepTransferred = (long)(_currentStepBytes * percent / 100.0);
             }
             
-            // 计算实时速度 (基于增量)
+            // Calculate real-time speed (Based on delta)
             if (_operationStopwatch != null)
             {
-                // 更新时间显示
+                // Update time display
                 var elapsed = _operationStopwatch.Elapsed;
-                string timeText = string.Format("时间：{0:00}:{1:00}", (int)elapsed.TotalMinutes, elapsed.Seconds);
+                string timeText = string.Format("Time: {0:00}:{1:00}", (int)elapsed.TotalMinutes, elapsed.Seconds);
                 UpdateLabelSafe(_timeLabel, timeText);
                 
-                // 实时速度计算 - 基于当前步骤的实际传输字节
+                // Real-time speed calculation - Based on actual transferred bytes of current step
                 long bytesDelta = currentStepTransferred - _lastBytes;
                 double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
                 
-                if (timeDelta >= 0.2 && bytesDelta > 0) // 每200ms更新一次
+                if (timeDelta >= 0.2 && bytesDelta > 0) // Update every 200ms
                 {
                     double instantSpeed = bytesDelta / timeDelta;
-                    // 指数移动平均平滑速度 (更重的历史权重以避免跳动)
+                    // Exponential moving average smoothing speed (Heavier historical weight to avoid jumping)
                     _currentSpeed = (_currentSpeed > 0) ? (_currentSpeed * 0.7 + instantSpeed * 0.3) : instantSpeed;
                     _lastBytes = currentStepTransferred;
                     _lastSpeedUpdate = DateTime.Now;
                     
-                    // 更新速度显示
+                    // Update speed display
                     UpdateSpeedDisplayInternal();
                 }
             }
             
-            // 更新操作标签（显示百分比）- 使用总操作字节数计算总进度
+            // Update operation label (Show percentage) - Use total operation bytes to calculate total progress
             if (_totalOperationBytes > 0)
             {
                 long totalProcessed = _completedStepBytes + currentStepTransferred;
@@ -3190,7 +3195,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             else if (_totalSteps > 0)
             {
-                // 基于步骤计算总进度
+                // Calculate total progress based on steps
                 double totalProgress = (_currentStep + percent / 100.0) / _totalSteps * 100.0;
                 UpdateProgressBarDirect(_progressBar, totalProgress);
                 UpdateLabelSafe(_operationLabel, string.Format("{0} [{1:F2}%]", _currentOperationName, totalProgress));
@@ -3198,12 +3203,12 @@ namespace LoveAlways.Qualcomm.UI
         }
         
         /// <summary>
-        /// 更新总进度条 (长) - 多步骤操作的总进度
+        /// Update total progress bar (Long) - Total progress of multi-step operation
         /// </summary>
-        /// <param name="currentStep">当前步骤索引</param>
-        /// <param name="totalSteps">总步骤数</param>
-        /// <param name="completedBytes">已完成步骤的总字节数</param>
-        /// <param name="currentStepBytes">当前步骤的字节数 (用于准确速度计算)</param>
+        /// <param name="currentStep">Current step index</param>
+        /// <param name="totalSteps">Total steps</param>
+        /// <param name="completedBytes">Total bytes of completed steps</param>
+        /// <param name="currentStepBytes">Current step bytes (For accurate speed calculation)</param>
         public void UpdateTotalProgress(int currentStep, int totalSteps, long completedBytes = 0, long currentStepBytes = 0)
         {
             _currentStep = currentStep;
@@ -3211,7 +3216,7 @@ namespace LoveAlways.Qualcomm.UI
             _completedStepBytes = completedBytes;
             _currentStepBytes = currentStepBytes;
             
-            // 重置速度计算变量（新步骤开始）
+            // Reset speed calculation variables (New step starts)
             _lastBytes = 0;
             _lastSpeedUpdate = DateTime.Now;
             UpdateProgressBarDirect(_subProgressBar, 0);
@@ -3227,11 +3232,11 @@ namespace LoveAlways.Qualcomm.UI
                 else
                     label.Text = text;
             }
-            catch { /* UI 标签更新失败可忽略 */ }
+            catch { /* UI label update failure can be ignored */ }
         }
         
         /// <summary>
-        /// 开始计时 (单步操作)
+        /// Start timer (Single step operation)
         /// </summary>
         public void StartOperationTimer(string operationName)
         {
@@ -3239,7 +3244,7 @@ namespace LoveAlways.Qualcomm.UI
         }
         
         /// <summary>
-        /// 开始计时 (多步操作)
+        /// Start timer (Multi-step operation)
         /// </summary>
         public void StartOperationTimer(string operationName, int totalSteps, int currentStep = 0, long totalBytes = 0)
         {
@@ -3251,36 +3256,36 @@ namespace LoveAlways.Qualcomm.UI
             _currentStep = currentStep;
             _totalOperationBytes = totalBytes;
             _completedStepBytes = 0;
-            _currentStepBytes = totalBytes; // 单文件操作时，当前步骤字节数 = 总字节数
+            _currentStepBytes = totalBytes; // For single file operation, current step bytes = total bytes
             _currentOperationName = operationName;
             
-            // 重置进度条缓存 (防闪烁)
+            // Reset progress bar cache (Anti-flicker)
             _lastProgressValue = -1;
             _lastSubProgressValue = -1;
             
-            UpdateLabelSafe(_operationLabel, "当前操作：" + operationName);
-            UpdateLabelSafe(_timeLabel, "时间：00:00");
-            UpdateLabelSafe(_speedLabel, "速度：--");
+            UpdateLabelSafe(_operationLabel, "Current Operation: " + operationName);
+            UpdateLabelSafe(_timeLabel, "Time: 00:00");
+            UpdateLabelSafe(_speedLabel, "Speed: --");
             
-            // 重置进度条为0 (使用高精度模式)
+            // Reset progress bar to 0 (Use high precision mode)
             UpdateProgressBarDirect(_progressBar, 0);
             UpdateProgressBarDirect(_subProgressBar, 0);
         }
         
         /// <summary>
-        /// 重置子进度条 (单个操作开始前调用)
+        /// Reset sub progress bar (Call before single operation starts)
         /// </summary>
         public void ResetSubProgress()
         {
             _lastBytes = 0;
             _lastSpeedUpdate = DateTime.Now;
             _currentSpeed = 0;
-            _lastSubProgressValue = -1; // 重置缓存，确保下次更新生效
+            _lastSubProgressValue = -1; // Reset cache to ensure next update takes effect
             UpdateProgressBarDirect(_subProgressBar, 0);
         }
         
         /// <summary>
-        /// 停止计时
+        /// Stop timer
         /// </summary>
         public void StopOperationTimer()
         {
@@ -3292,21 +3297,21 @@ namespace LoveAlways.Qualcomm.UI
             _totalSteps = 0;
             _currentStep = 0;
             _currentSpeed = 0;
-            UpdateLabelSafe(_operationLabel, "当前操作：完成");
+            UpdateLabelSafe(_operationLabel, "Current Operation: Completed");
             UpdateProgressBarDirect(_progressBar, 100);
             UpdateProgressBarDirect(_subProgressBar, 100);
         }
         
         /// <summary>
-        /// 结束操作并释放端口 (操作完成后调用)
+        /// End operation and release port (Call after operation completion)
         /// </summary>
-        /// <param name="releasePort">是否释放端口 (默认 true)</param>
+        /// <param name="releasePort">Release port (Default true)</param>
         private void EndOperation(bool releasePort = true)
         {
             IsBusy = false;
             StopOperationTimer();
             
-            // 释放端口让其他程序可以连接设备
+            // Release port to allow other programs to connect to device
             if (releasePort && _service != null)
             {
                 _service.ReleasePort();
@@ -3314,7 +3319,7 @@ namespace LoveAlways.Qualcomm.UI
         }
         
         /// <summary>
-        /// 设置是否保持端口打开 (批量操作时使用)
+        /// Set whether to keep port open (Used in batch operations)
         /// </summary>
         public void SetKeepPortOpen(bool keepOpen)
         {
@@ -3322,7 +3327,7 @@ namespace LoveAlways.Qualcomm.UI
         }
         
         /// <summary>
-        /// 重置所有进度显示
+        /// Reset all progress displays
         /// </summary>
         public void ResetProgress()
         {
@@ -3330,13 +3335,13 @@ namespace LoveAlways.Qualcomm.UI
             _currentStep = 0;
             _lastBytes = 0;
             _currentSpeed = 0;
-            _lastProgressValue = -1;    // 重置缓存
-            _lastSubProgressValue = -1; // 重置缓存
+            _lastProgressValue = -1;    // Reset cache
+            _lastSubProgressValue = -1; // Reset cache
             UpdateProgressBarDirect(_progressBar, 0);
             UpdateProgressBarDirect(_subProgressBar, 0);
-            UpdateLabelSafe(_timeLabel, "时间：00:00");
-            UpdateLabelSafe(_speedLabel, "速度：--");
-            UpdateLabelSafe(_operationLabel, "当前操作：待命");
+            UpdateLabelSafe(_timeLabel, "Time: 00:00");
+            UpdateLabelSafe(_speedLabel, "Speed: --");
+            UpdateLabelSafe(_operationLabel, "Current Operation: Standby");
         }
 
         private void UpdatePartitionListView(List<PartitionInfo> partitions)
@@ -3353,24 +3358,24 @@ namespace LoveAlways.Qualcomm.UI
 
             foreach (var p in partitions)
             {
-                // 计算地址
+                // Calculate address
                 long startAddress = p.StartSector * p.SectorSize;
                 long endSector = p.StartSector + p.NumSectors - 1;
                 long endAddress = (endSector + 1) * p.SectorSize;
 
-                // 列顺序: 分区, LUN, 大小, 起始扇区, 结束扇区, 扇区数, 起始地址, 结束地址, 文件路径
-                var item = new ListViewItem(p.Name);                           // 分区
+                // Column order: Partition, LUN, Size, Start Sector, End Sector, Sector Count, Start Address, End Address, File Path
+                var item = new ListViewItem(p.Name);                           // Partition
                 item.SubItems.Add(p.Lun.ToString());                           // LUN
-                item.SubItems.Add(p.FormattedSize);                            // 大小
-                item.SubItems.Add(p.StartSector.ToString());                   // 起始扇区
-                item.SubItems.Add(endSector.ToString());                       // 结束扇区
-                item.SubItems.Add(p.NumSectors.ToString());                    // 扇区数
-                item.SubItems.Add(string.Format("0x{0:X}", startAddress));     // 起始地址
-                item.SubItems.Add(string.Format("0x{0:X}", endAddress));       // 结束地址
-                item.SubItems.Add("");                                         // 文件路径 (GPT 读取时无文件)
+                item.SubItems.Add(p.FormattedSize);                            // Size
+                item.SubItems.Add(p.StartSector.ToString());                   // Start Sector
+                item.SubItems.Add(endSector.ToString());                       // End Sector
+                item.SubItems.Add(p.NumSectors.ToString());                    // Sector Count
+                item.SubItems.Add(string.Format("0x{0:X}", startAddress));     // Start Address
+                item.SubItems.Add(string.Format("0x{0:X}", endAddress));       // End Address
+                item.SubItems.Add("");                                         // File Path (No file when reading GPT)
                 item.Tag = p;
 
-                // 只有勾选"保护分区"时，敏感分区才显示灰色
+                // Sensitive partitions show gray only when "Protect Partitions" is checked
                 if (IsProtectPartitionsEnabled() && RawprogramParser.IsSensitivePartition(p.Name))
                     item.ForeColor = Color.Gray;
 
@@ -3384,7 +3389,7 @@ namespace LoveAlways.Qualcomm.UI
         {
             if (!_disposed)
             {
-                // 停止端口监控定时器
+                // Stop port monitor timer
                 StopPortMonitor();
                 if (_portMonitorTimer != null)
                 {
@@ -3398,32 +3403,32 @@ namespace LoveAlways.Qualcomm.UI
             }
         }
         /// <summary>
-        /// 手动执行 VIP 认证 (基于 Digest 和 Signature)
+        /// Perform VIP Auth Manually (Based on Digest and Signature)
         /// </summary>
         public async Task<bool> PerformVipAuthAsync(string digestPath, string signaturePath)
         {
             if (!await EnsureConnectedAsync()) return false;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
 
             try
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                StartOperationTimer("VIP 认证", 1, 0);
-                Log("正在执行 OPLUS VIP 认证 (Digest + Sign)...", Color.Blue);
+                StartOperationTimer("VIP Auth", 1, 0);
+                Log("Executing OPLUS VIP Auth (Digest + Sign)...", Color.Blue);
 
                 bool success = await _service.PerformVipAuthManualAsync(digestPath, signaturePath, _cts.Token);
                 
                 UpdateTotalProgress(1, 1);
 
-                if (success) Log("VIP 认证成功，高权限分区已解锁", Color.Green);
-                else Log("VIP 认证失败，请检查文件是否匹配", Color.Red);
+                if (success) Log("VIP auth success, high privilege partitions unlocked", Color.Green);
+                else Log("VIP auth failed, please check if files match", Color.Red);
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log("VIP 认证异常: " + ex.Message, Color.Red);
+                Log("VIP auth exception: " + ex.Message, Color.Red);
                 return false;
             }
             finally
@@ -3434,7 +3439,7 @@ namespace LoveAlways.Qualcomm.UI
         }
 
         /// <summary>
-        /// 获取 VIP 挑战码 (用于在线获取签名)
+        /// Get VIP Challenge (For online signature retrieval)
         /// </summary>
         public async Task<string> GetVipChallengeAsync()
         {
@@ -3448,25 +3453,25 @@ namespace LoveAlways.Qualcomm.UI
         public async Task<bool> FlashOplusSuperAsync(string firmwareRoot)
         {
             if (!await EnsureConnectedAsync()) return false;
-            if (IsBusy) { Log("操作进行中", Color.Orange); return false; }
-            if (!Directory.Exists(firmwareRoot)) { Log("固件目录不存在: " + firmwareRoot, Color.Red); return false; }
+            if (IsBusy) { Log("Operation in progress", Color.Orange); return false; }
+            if (!Directory.Exists(firmwareRoot)) { Log("Firmware directory not found: " + firmwareRoot, Color.Red); return false; }
 
             try
             {
                 IsBusy = true;
                 ResetCancellationToken();
                 
-                Log("[高通] 正在深度分析 OPLUS Super 布局...", Color.Blue);
+                Log("[Qualcomm] Analyzing OPLUS Super layout deeply...", Color.Blue);
                 
-                // 1. 获取 super 分区信息
+                // 1. Get super partition info
                 var superPart = _service.FindPartition("super");
                 if (superPart == null)
                 {
-                    Log("未在设备上找到 super 分区", Color.Red);
+                    Log("Super partition not found on device", Color.Red);
                     return false;
                 }
 
-                // 2. 预分析任务以获取总字节数
+                // 2. Pre-analyze tasks to get total bytes
                 string activeSlot = _service.CurrentSlot;
                 if (activeSlot == "nonexistent" || string.IsNullOrEmpty(activeSlot)) activeSlot = "a";
                 
@@ -3477,14 +3482,14 @@ namespace LoveAlways.Qualcomm.UI
 
                 if (tasks.Count == 0)
                 {
-                    Log("未找到可用的 Super 逻辑分区镜像", Color.Red);
+                    Log("No available Super logic partition image found", Color.Red);
                     return false;
                 }
 
                 long totalBytes = tasks.Sum(t => t.SizeInBytes);
 
-                StartOperationTimer("OPLUS Super 写入", 1, 0, totalBytes);
-                Log(string.Format("[高通] 开始执行 OPLUS Super 拆解写入 (共 {0} 个镜像, 总计展开 {1:F2} MB)...", 
+                StartOperationTimer("OPLUS Super Write", 1, 0, totalBytes);
+                Log(string.Format("[Qualcomm] Starting OPLUS Super dismantle write ({0} images, Total unpacked {1:F2} MB)...", 
                     tasks.Count, totalBytes / 1024.0 / 1024.0), Color.Blue);
 
                 var progress = new Progress<double>(p => UpdateSubProgressFromPercent(p));
@@ -3492,14 +3497,14 @@ namespace LoveAlways.Qualcomm.UI
 
                 UpdateTotalProgress(1, 1, totalBytes);
 
-                if (success) Log("[高通] OPLUS Super 写入完成", Color.Green);
-                else Log("[高通] OPLUS Super 写入失败", Color.Red);
+                if (success) Log("[Qualcomm] OPLUS Super write complete", Color.Green);
+                else Log("[Qualcomm] OPLUS Super write failed", Color.Red);
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log("OPLUS Super 写入异常: " + ex.Message, Color.Red);
+                Log("OPLUS Super write exception: " + ex.Message, Color.Red);
                 return false;
             }
             finally

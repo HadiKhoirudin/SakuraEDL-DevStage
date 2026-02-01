@@ -1,17 +1,21 @@
+// LoveAlways - Qualcomm Chipset Database
+// Qualcomm Chipset Database - Device Identification Info Repository
 // ============================================================================
-// LoveAlways - 高通芯片数据库
-// Qualcomm Chipset Database - 设备识别信息库
+// Module: Qualcomm.Database
+// Function: Contains MSM ID, chipset name, vendor info, and hardware specifications
 // ============================================================================
-// 模块: Qualcomm.Database
-// 功能: 包含 MSM ID、芯片名称、厂商信息和硬件规格
-// ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System.Collections.Generic;
 
 namespace LoveAlways.Qualcomm.Database
 {
     /// <summary>
-    /// 存储类型枚举
+    /// Storage Type Enum
     /// </summary>
     public enum MemoryType
     {
@@ -23,11 +27,11 @@ namespace LoveAlways.Qualcomm.Database
     }
 
     /// <summary>
-    /// 高通芯片数据库
+    /// Qualcomm Chipset Database
     /// </summary>
     public static class QualcommDatabase
     {
-        // OEM ID -> 厂商名称 (完整列表)
+        // OEM ID -> Vendor Name (Full list)
         public static readonly Dictionary<ushort, string> VendorIds = new Dictionary<ushort, string>
         {
             { 0x0000, "Qualcomm" },
@@ -67,18 +71,18 @@ namespace LoveAlways.Qualcomm.Database
             { 0x2A70, "Oxygen" },
             { 0x2A96, "Micromax" },
             { 0x50E1, "OnePlus" },
-            { 0xB0E1, "Xiaomi" },      // 小米 (新设备)
-            { 0x01E8, "Motorola" },    // Moto 新设备
-            { 0x0488, "Motorola" },    // Moto Edge 系列
-            { 0x0508, "Motorola" },    // Moto G 系列
-            { 0x0070, "Google" },      // Pixel 系列
-            { 0x00A1, "Meizu" },       // 魅族
-            { 0x00A8, "Meizu" },       // 魅族
-            { 0x0110, "POCO" },        // POCO 设备
+            { 0xB0E1, "Xiaomi" },      // Xiaomi (New devices)
+            { 0x01E8, "Motorola" },    // Moto new devices
+            { 0x0488, "Motorola" },    // Moto Edge series
+            { 0x0508, "Motorola" },    // Moto G series
+            { 0x0070, "Google" },      // Pixel series
+            { 0x00A1, "Meizu" },       // Meizu
+            { 0x00A8, "Meizu" },       // Meizu
+            { 0x0110, "POCO" },        // POCO devices
             { 0x0200, "Realme" },      // Realme
-            { 0x0201, "Realme" },      // Realme (备用)
+            { 0x0201, "Realme" },      // Realme (Alternate)
             { 0x0250, "Redmi" },       // Redmi
-            { 0x0260, "Honor" },       // 荣耀
+            { 0x0260, "Honor" },       // Honor
             { 0x0270, "iQOO" },        // iQOO
             { 0x0290, "Nothing" },     // Nothing Phone
             { 0x0300, "Sony" },        // Sony Xperia
@@ -86,16 +90,16 @@ namespace LoveAlways.Qualcomm.Database
             { 0x0320, "Fairphone" },   // Fairphone
         };
 
-        // HWID -> 芯片名称 (完整数据库 - 200+ 芯片)
+        // HWID -> Chipset Name (Full database - 200+ chips)
         public static readonly Dictionary<uint, string> MsmIds = new Dictionary<uint, string>
         {
-            // ======================= 早期芯片 =======================
+            // ======================= Early Chips =======================
             { 0x0002C0E1, "APQ8098" },
             { 0x0002E0E1, "APQ8097" },
             { 0x0003D0E1, "SDX20M" },
             { 0x0003E0E1, "SDX20" },
             
-            // ======================= Snapdragon 1xx/2xx (入门级) =======================
+            // ======================= Snapdragon 1xx/2xx (Entry-level) =======================
             { 0x009600E1, "MSM8909 (Snapdragon 210)" },
             { 0x007220E1, "MSM8909 (Snapdragon 210)" },
             { 0x007200E1, "APQ8009 (Snapdragon 212)" },
@@ -106,7 +110,7 @@ namespace LoveAlways.Qualcomm.Database
             { 0x001AE0E1, "QCM2290" },
             { 0x0015A0E1, "SM4125 (Snapdragon 215)" },
             
-            // ======================= Snapdragon 4xx (低端) =======================
+            // ======================= Snapdragon 4xx (Low-end) =======================
             { 0x007050E1, "MSM8916 (Snapdragon 410)" },
             { 0x007060E1, "APQ8016 (Snapdragon 410)" },
             { 0x007090E1, "MSM8216 (Snapdragon 410)" },
@@ -134,7 +138,7 @@ namespace LoveAlways.Qualcomm.Database
             { 0x001FD0E1, "SM4635 (Snapdragon 4s Gen 2)" },
             { 0x0027A0E1, "SM4550 (Snapdragon 4 Gen 3)" },
             
-            // ======================= Snapdragon 6xx (中端) =======================
+            // ======================= Snapdragon 6xx (Mid-range) =======================
             { 0x009900E1, "MSM8976 (Snapdragon 652)" },
             { 0x009910E1, "APQ8076 (Snapdragon 652)" },
             { 0x0009B0E1, "MSM8956 (Snapdragon 650)" },
@@ -160,7 +164,7 @@ namespace LoveAlways.Qualcomm.Database
             { 0x0025C0E1, "SM6475 (Snapdragon 6s Gen 3)" },
             { 0x002790E1, "SM6550 (Snapdragon 6 Gen 3)" },
             
-            // ======================= Snapdragon 7xx (中高端) =======================
+            // ======================= Snapdragon 7xx (Upper Mid-range) =======================
             { 0x000910E1, "SDM670 (Snapdragon 670)" },
             { 0x000920E1, "SDA670 (Snapdragon 670)" },
             { 0x000DB0E1, "SDM710 (Snapdragon 710)" },
@@ -184,7 +188,7 @@ namespace LoveAlways.Qualcomm.Database
             { 0x0023E0E1, "SM7550 (Snapdragon 7 Gen 3)" },
             { 0x0025E0E1, "SM7675 (Snapdragon 7+ Gen 3)" },
             
-            // ======================= Snapdragon 8xx (旗舰) =======================
+            // ======================= Snapdragon 8xx (Flagship) =======================
             { 0x007B00E1, "MSM8974 (Snapdragon 800)" },
             { 0x007B10E1, "MSM8974-AA (Snapdragon 800)" },
             { 0x007B20E1, "MSM8974-AB (Snapdragon 801)" },
@@ -232,13 +236,13 @@ namespace LoveAlways.Qualcomm.Database
             { 0x0028C0E1, "SM8750 (Snapdragon 8 Elite)" },
             { 0x0028C0E2, "SM8750-AB (Snapdragon 8 Elite)" },
             { 0x0028D0E1, "SA8750 (Snapdragon 8 Elite)" },
-            { 0x0029C0E1, "SM8775 (Snapdragon 8 Elite 2)" },   // 预测: 下一代旗舰
+            { 0x0029C0E1, "SM8775 (Snapdragon 8 Elite 2)" },   // Prediction: Next-generation flagship
             
-            // ======================= Snapdragon 8 系列 (精简版) =======================
-            { 0x002630E1, "SM8635 (Snapdragon 8s Gen 3)" },    // 8s Gen 3 备用 ID
+            // ======================= Snapdragon 8 Series (Lite version) =======================
+            { 0x002630E1, "SM8635 (Snapdragon 8s Gen 3)" },    // 8s Gen 3 alternate ID
             { 0x0026B0E1, "SA8635 (Snapdragon 8s Gen 3)" },
             
-            // ======================= 调制解调器/基带 (MDM/SDX) =======================
+            // ======================= Modem / Baseband (MDM/SDX) =======================
             { 0x007F50E1, "MDM9x25" },
             { 0x009100E1, "MDM9x35 (X7 LTE)" },
             { 0x009530E1, "MDM9x40 (X10 LTE)" },
@@ -264,7 +268,7 @@ namespace LoveAlways.Qualcomm.Database
             { 0x001C20E1, "SDX35" },
             { 0x001D80E1, "SDX35M" },
             
-            // ======================= IoT/嵌入式芯片 (QCS/QCM/SA) =======================
+            // ======================= IoT / Embedded Chips (QCS/QCM/SA) =======================
             { 0x000B20E1, "QCS605" },
             { 0x000B30E1, "QCS603" },
             { 0x000DA0E1, "QCS404" },
@@ -284,10 +288,10 @@ namespace LoveAlways.Qualcomm.Database
             { 0x001BB0E1, "SA8650P" },
             { 0x001BC0E1, "SA8770P" },
             { 0x000EA0E1, "SA415M" },
-            { 0x001BD0E2, "SA7775P" },  // 修复: 原 0x001BC0E1 重复
+            { 0x001BD0E2, "SA7775P" },  // Fix: Original 0x001BC0E1 was duplicated
             { 0x001F40E1, "QCS8250" },
             
-            // ======================= 可穿戴 (SW/SW) =======================
+            // ======================= Wearables (SW/SDW) =======================
             { 0x009000E1, "MSM8928 (Snapdragon Wear 2100)" },
             { 0x000470E1, "MSW8909W (Snapdragon Wear 2100)" },
             { 0x000EC0E1, "SDW3100 (Snapdragon Wear 3100)" },
@@ -295,7 +299,7 @@ namespace LoveAlways.Qualcomm.Database
             { 0x0016A0E1, "SW5100 (Snapdragon Wear W5)" },
             { 0x0016B0E1, "SW5100+ (Snapdragon Wear W5+)" },
             
-            // ======================= 计算平台 (SC8180X/SC8280X) =======================
+            // ======================= Computing Platforms (SC8180X/SC8280X) =======================
             { 0x0014A0E1, "SC8280X (Snapdragon 8cx Gen 3)" },
             { 0x000B70E1, "SDM850 (Snapdragon 850)" },
             { 0x000B80E1, "SC8180X (Snapdragon 8cx)" },
@@ -308,12 +312,12 @@ namespace LoveAlways.Qualcomm.Database
             { 0x001D10E1, "SC8380XP (Snapdragon X Elite)" },
             { 0x002070E1, "SC8280XP (Snapdragon 8cx Gen 3)" },
             
-            // ======================= XR/VR 芯片 =======================
+            // ======================= XR / VR Chips =======================
             { 0x001100E1, "XR2 (Snapdragon XR2)" },
             { 0x001110E1, "XR2+ (Snapdragon XR2+)" },
             { 0x001D90E1, "XR2 Gen 2" },
             
-            // ======================= 其他芯片 =======================
+            // ======================= Other Chips =======================
             { 0x007100E1, "MSM8926 (Snapdragon 400)" },
             { 0x007130E1, "MSM8226 (Snapdragon 400)" },
             { 0x007140E1, "MSM8626 (Snapdragon 400)" },
@@ -342,7 +346,7 @@ namespace LoveAlways.Qualcomm.Database
             { 0x001870E1, "QRB2210" },
         };
 
-        // PK Hash 前缀 -> 厂商
+        // PK Hash Prefix -> Vendor
         public static readonly Dictionary<string, string> PkHashVendorPrefix = new Dictionary<string, string>
         {
             // OPPO
@@ -353,10 +357,10 @@ namespace LoveAlways.Qualcomm.Database
             { "08239eab", "OPPO" },
             { "daedb40c", "OPPO" },
             { "f10bd691", "OPPO" },
-            { "91057040", "OPPO" },  // SDM710 OPPO 设备
+            { "91057040", "OPPO" },  // SDM710 OPPO devices
             
-            // OnePlus (注意：部分 OnePlus 设备使用 OPPO 的 SecBoot)
-            { "2acf3a85", "OnePlus" },  // OnePlus 7T/7 Pro 等
+            // OnePlus (Note: Some OnePlus devices use OPPO's SecBoot)
+            { "2acf3a85", "OnePlus" },  // OnePlus 7T/7 Pro, etc.
             { "7c15a98d", "OnePlus" },
             { "a26bc257", "OnePlus" },
             { "3cceb55b", "OnePlus" },
@@ -375,7 +379,7 @@ namespace LoveAlways.Qualcomm.Database
             { "58b4add1", "Xiaomi" },
             { "dd0cba2f", "Xiaomi" },
             { "1bebe386", "Xiaomi" },
-            { "c924a35f", "Xiaomi" },  // SDM845 设备
+            { "c924a35f", "Xiaomi" },  // SDM845 devices
             
             // Vivo
             { "60ba997f", "Vivo" },
@@ -474,17 +478,17 @@ namespace LoveAlways.Qualcomm.Database
         };
 
         /// <summary>
-        /// 获取芯片名称
+        /// Get Chip Name
         /// </summary>
         public static string GetChipName(uint hwId)
         {
             string name;
             
-            // 1. 直接查找完整 HWID
+            // 1. Direct search for full HWID
             if (MsmIds.TryGetValue(hwId, out name))
                 return name;
 
-            // 2. 尝试带 E1 后缀 (Qualcomm 标准格式)
+            // 2. Try with E1 suffix (Qualcomm standard format)
             if ((hwId & 0xFF) != 0xE1)
             {
                 uint withE1 = (hwId & 0xFFFFFF00) | 0xE1;
@@ -492,13 +496,13 @@ namespace LoveAlways.Qualcomm.Database
                     return name;
             }
             
-            // 3. 尝试低 24 位 + E1
+            // 3. Try low 24 bits + E1
             uint low24WithE1 = ((hwId & 0x00FFFF00) >> 8) | 0xE1;
             if (low24WithE1 != hwId && MsmIds.TryGetValue(low24WithE1, out name))
                 return name;
             
-            // 4. 遍历查找（用于处理非标准格式）
-            uint msmPart = hwId & 0x00FFFFF0;  // 提取核心标识部分
+            // 4. Iterate to find (for handling non-standard formats)
+            uint msmPart = hwId & 0x00FFFFF0;  // Extract core identification part
             foreach (var kvp in MsmIds)
             {
                 if ((kvp.Key & 0x00FFFFF0) == msmPart)
@@ -509,7 +513,7 @@ namespace LoveAlways.Qualcomm.Database
         }
         
         /// <summary>
-        /// 根据 HWID 获取芯片简称 (仅返回 SM/SDM/MSM 等代号)
+        /// Get Chip Codename by HWID (returns only codes like SM/SDM/MSM)
         /// </summary>
         public static string GetChipCodename(uint hwId)
         {
@@ -517,7 +521,7 @@ namespace LoveAlways.Qualcomm.Database
             if (fullName == "Unknown")
                 return null;
             
-            // 提取括号前的代号部分
+            // Extract the part before the parentheses
             int parenIndex = fullName.IndexOf('(');
             if (parenIndex > 0)
                 return fullName.Substring(0, parenIndex).Trim();
@@ -526,7 +530,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 获取厂商名称
+        /// Get Vendor Name
         /// </summary>
         public static string GetVendorName(ushort oemId)
         {
@@ -537,7 +541,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 根据 PK Hash 获取厂商
+        /// Get Vendor by PK Hash
         /// </summary>
         public static string GetVendorByPkHash(string pkHash)
         {
@@ -553,7 +557,7 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 获取 PK Hash 详细信息
+        /// Get PK Hash Details
         /// </summary>
         public static string GetPkHashInfo(string pkHash)
         {
@@ -564,7 +568,7 @@ namespace LoveAlways.Qualcomm.Database
             if (vendor != "Unknown")
                 return vendor + " SecBoot";
 
-            // 检查是否为空 Hash (无安全启动)
+            // Check if empty Hash (No SecBoot)
             if (pkHash.StartsWith("0000000000"))
                 return "No SecBoot (Unlocked)";
 
@@ -572,18 +576,18 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 判断是否需要 VIP 认证 (OPPO/Realme 伪装模式)
-        /// 注意：OnePlus 使用 Demacia 认证，不需要 VIP 伪装
+        /// Determine if VIP authentication is needed (OPPO/Realme spoofing mode)
+        /// Note: OnePlus uses Demacia authentication, no VIP spoofing needed
         /// </summary>
         public static bool RequiresVipAuth(string pkHash)
         {
             string vendor = GetVendorByPkHash(pkHash);
-            // OnePlus 使用 Demacia 认证，认证成功后可直接写入，不需要 VIP 伪装
+            // OnePlus uses Demacia authentication, can write directly after successful authentication, no VIP spoofing needed
             return vendor == "OPPO" || vendor == "Realme";
         }
 
         /// <summary>
-        /// 判断是否为 OnePlus 设备 (使用 Demacia 认证)
+        /// Determine if it is a OnePlus device (uses Demacia authentication)
         /// </summary>
         public static bool IsOnePlusDevice(string pkHash)
         {
@@ -592,18 +596,18 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 获取存储类型
+        /// Get Storage Type
         /// </summary>
         public static MemoryType GetMemoryType(string chipName)
         {
             if (string.IsNullOrEmpty(chipName))
                 return MemoryType.Ufs;
 
-            // UFS 设备
+            // UFS devices
             if (chipName.StartsWith("SM8") || chipName.StartsWith("SC8"))
                 return MemoryType.Ufs;
 
-            // eMMC 设备
+            // eMMC devices
             if (chipName.Contains("MSM891") || chipName.Contains("MSM890") ||
                 chipName.Contains("SDM4") || chipName.Contains("SDM6"))
                 return MemoryType.Emmc;
@@ -611,10 +615,10 @@ namespace LoveAlways.Qualcomm.Database
             return MemoryType.Ufs;
         }
 
-        #region 数据库统计和辅助方法
+        #region Database Statistics and Utility Methods
 
         /// <summary>
-        /// 获取数据库统计信息
+        /// Get Database Statistics Info
         /// </summary>
         public static QualcommDatabaseStats GetStats()
         {
@@ -624,7 +628,7 @@ namespace LoveAlways.Qualcomm.Database
             stats.TotalVendors = VendorIds.Count;
             stats.TotalPkHashPrefixes = PkHashVendorPrefix.Count;
             
-            // 统计各系列芯片数量
+            // Count chips by series
             var seriesCounts = new Dictionary<string, int>();
             foreach (var kvp in MsmIds)
             {
@@ -639,37 +643,37 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 获取芯片所属系列
+        /// Get Chip Series
         /// </summary>
         private static string GetChipSeries(string chipName)
         {
             if (string.IsNullOrEmpty(chipName))
                 return "Unknown";
 
-            // 提取芯片代号前缀
+            // Extract chip codename prefix
             string codename = chipName.Split(' ')[0].Split('(')[0].Trim();
             
-            // Snapdragon 8xx 系列 (旗舰)
+            // Snapdragon 8 Series (Flagship)
             if (codename.StartsWith("SM8") || codename.StartsWith("SDM8") || 
                 codename.Contains("855") || codename.Contains("865") || codename.Contains("888"))
                 return "Snapdragon 8 Series (Flagship)";
             
-            // Snapdragon 7xx 系列 (中高端)
+            // Snapdragon 7 Series (Upper Mid-Range)
             if (codename.StartsWith("SM7") || codename.StartsWith("SDM7") ||
                 codename.Contains("765") || codename.Contains("778") || codename.Contains("780"))
                 return "Snapdragon 7 Series (Upper Mid-Range)";
             
-            // Snapdragon 6xx 系列 (中端)
+            // Snapdragon 6 Series (Mid-Range)
             if (codename.StartsWith("SM6") || codename.StartsWith("SDM6") ||
                 codename.Contains("660") || codename.Contains("675") || codename.Contains("690"))
                 return "Snapdragon 6 Series (Mid-Range)";
             
-            // Snapdragon 4xx 系列 (入门)
+            // Snapdragon 4 Series (Entry-Level)
             if (codename.StartsWith("SM4") || codename.StartsWith("SDM4") ||
                 codename.Contains("MSM8917") || codename.Contains("MSM8937"))
                 return "Snapdragon 4 Series (Entry-Level)";
             
-            // MDM/SDX 基带
+            // MDM/SDX Baseband
             if (codename.StartsWith("MDM") || codename.StartsWith("SDX"))
                 return "Modem/Baseband (MDM/SDX)";
             
@@ -677,7 +681,7 @@ namespace LoveAlways.Qualcomm.Database
             if (codename.StartsWith("SC") || codename.StartsWith("QCS") || codename.StartsWith("QCM"))
                 return "IoT/Compute (SC/QCS)";
             
-            // 可穿戴
+            // Wearable
             if (codename.StartsWith("SW") || codename.StartsWith("SDW") || codename.Contains("Wear"))
                 return "Wearable (Snapdragon Wear)";
             
@@ -685,7 +689,7 @@ namespace LoveAlways.Qualcomm.Database
             if (codename.StartsWith("XR") || codename.StartsWith("SXR"))
                 return "XR/VR";
             
-            // 旧 MSM 系列
+            // Legacy MSM 系列
             if (codename.StartsWith("MSM") || codename.StartsWith("APQ"))
                 return "Legacy MSM/APQ";
             
@@ -693,13 +697,13 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 智能识别芯片 (支持多种 HWID 格式)
+        /// Smart Chip Identification (supports multiple HWID formats)
         /// </summary>
         public static QualcommChipIdentification IdentifyChip(uint hwId)
         {
             var result = new QualcommChipIdentification { HwId = hwId };
             
-            // 1. 直接匹配
+            // 1. Exact match
             if (MsmIds.TryGetValue(hwId, out string name))
             {
                 result.ChipName = name;
@@ -708,14 +712,14 @@ namespace LoveAlways.Qualcomm.Database
                 return result;
             }
             
-            // 2. 尝试标准化 HWID 格式 (添加/移除 E1 后缀)
+            // 2. Try normalizing HWID format (adding/removing E1 suffix)
             uint[] variants = new uint[]
             {
-                (hwId & 0xFFFFFF00) | 0xE1,          // 替换最后字节为 E1
-                (hwId & 0xFFFFFF00) | 0xE2,          // 替换最后字节为 E2
-                hwId | 0xE1,                          // 低位添加 E1
-                hwId >> 8,                            // 右移 8 位
-                (hwId & 0x00FFFFFF),                  // 取低 24 位
+                (hwId & 0xFFFFFF00) | 0xE1,          // Replace last byte with E1
+                (hwId & 0xFFFFFF00) | 0xE2,          // Replace last byte with E2
+                hwId | 0xE1,                          // Add E1 to low bits
+                hwId >> 8,                            // Right shift 8 bits
+                (hwId & 0x00FFFFFF),                  // Take low 24 bits
             };
             
             foreach (var variant in variants)
@@ -729,7 +733,7 @@ namespace LoveAlways.Qualcomm.Database
                 }
             }
             
-            // 3. 模糊匹配 - 比较核心标识部分
+            // 3. Fuzzy match - compare core identification parts
             uint msmCore = (hwId >> 4) & 0x00FFFF;
             foreach (var kvp in MsmIds)
             {
@@ -743,7 +747,7 @@ namespace LoveAlways.Qualcomm.Database
                 }
             }
             
-            // 4. 基于特征猜测
+            // 4. Feature-based guessing
             result.ChipName = GuessChipByFeatures(hwId);
             result.MatchType = result.ChipName != "Unknown" ? "Guess" : "Unknown";
             result.Confidence = result.ChipName != "Unknown" ? 30 : 0;
@@ -752,31 +756,31 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 基于 HWID 特征猜测芯片系列
+        /// Guess chip series based on HWID features
         /// </summary>
         private static string GuessChipByFeatures(uint hwId)
         {
-            // 高通 HWID 通常以 E1/E2 结尾
+            // Qualcomm HWID usually ends with E1/E2
             uint suffix = hwId & 0xFF;
             if (suffix != 0xE1 && suffix != 0xE2)
                 return "Unknown";
             
-            // 根据 HWID 范围猜测
+            // Guess by HWID range
             uint idPart = (hwId >> 8) & 0xFFFF;
             
-            // SM8xxx 范围
+            // SM8xxx range
             if (idPart >= 0x1CA && idPart <= 0x2FF)
                 return "SM8xxx Series (Flagship, Exact Model Unknown)";
             
-            // SM7xxx 范围
+            // SM7xxx range
             if (idPart >= 0x190 && idPart <= 0x1C9)
                 return "SM7xxx Series (Upper Mid-Range, Exact Model Unknown)";
             
-            // SM6xxx 范围
+            // SM6xxx range
             if (idPart >= 0x10E && idPart <= 0x18F)
                 return "SM6xxx Series (Mid-Range, Exact Model Unknown)";
             
-            // SDX 基带范围
+            // SDX Modem range
             if (idPart >= 0x160 && idPart <= 0x285 && ((hwId >> 4) & 0xF) >= 0x5)
                 return "SDX Series (Modem, Exact Model Unknown)";
             
@@ -784,19 +788,19 @@ namespace LoveAlways.Qualcomm.Database
         }
 
         /// <summary>
-        /// 获取芯片的推荐存储类型
+        /// Get Recommended Storage Type for chip
         /// </summary>
         public static MemoryType GetRecommendedMemoryType(uint hwId)
         {
             string chipName = GetChipName(hwId);
             if (chipName == "Unknown")
             {
-                // 基于 HWID 猜测
+                // Guess based on HWID
                 uint idPart = (hwId >> 8) & 0xFFFF;
-                // 新旗舰芯片一般使用 UFS
+                // New flagship chips generally use UFS
                 if (idPart >= 0x1CA)
                     return MemoryType.Ufs;
-                // 入门级芯片可能使用 eMMC
+                // Entry-level chips may use eMMC
                 if (idPart <= 0x100)
                     return MemoryType.Emmc;
                 return MemoryType.Ufs;
@@ -878,10 +882,10 @@ namespace LoveAlways.Qualcomm.Database
         public override string ToString()
         {
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine(string.Format("Qualcomm 数据库统计:"));
-            sb.AppendLine(string.Format("  总芯片数: {0}", TotalChips));
-            sb.AppendLine(string.Format("  总厂商数: {0}", TotalVendors));
-            sb.AppendLine(string.Format("  PK Hash 前缀数: {0}", TotalPkHashPrefixes));
+            sb.AppendLine(string.Format("Qualcomm Chips:"));
+            sb.AppendLine(string.Format("  Total Chips: {0}", TotalChips));
+            sb.AppendLine(string.Format("  Manufacturer: {0}", TotalVendors));
+            sb.AppendLine(string.Format("  PK Hash: {0}", TotalPkHashPrefixes));
             sb.AppendLine("  按系列分布:");
             foreach (var kvp in ChipsBySeries)
             {

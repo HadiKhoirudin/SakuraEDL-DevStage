@@ -1,10 +1,15 @@
 // ============================================================================
-// LoveAlways - MediaTek DA 解析器
+// LoveAlways - MediaTek DA Parser
 // MediaTek Download Agent Parser
 // ============================================================================
-// 参考: Penumbra 项目 https://github.com/shomykohai/penumbra/blob/main/src/da/da.rs
-// 支持多SoC DA文件解析，完整的DA结构提取
+// Reference: Penumbra project https://github.com/shomykohai/penumbra/blob/main/src/da/da.rs
+// Supports multi-SoC DA file parsing, complete DA structure extraction
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -13,29 +18,29 @@ using System.Text;
 namespace LoveAlways.MediaTek.Common
 {
     /// <summary>
-    /// DA Region (DA段)
+    /// DA Region
     /// </summary>
     public class DaRegion
     {
-        /// <summary>DA文件中的偏移位置</summary>
+        /// <summary>Offset position in DA file</summary>
         public uint FileOffset { get; set; }
         
-        /// <summary>总长度（含签名）</summary>
+        /// <summary>Total length (including signature)</summary>
         public uint TotalLength { get; set; }
         
-        /// <summary>加载到设备的内存地址</summary>
+        /// <summary>Memory address loaded into device</summary>
         public uint LoadAddress { get; set; }
         
-        /// <summary>Region长度（不含签名）</summary>
+        /// <summary>Region length (excluding signature)</summary>
         public uint RegionLength { get; set; }
         
-        /// <summary>签名长度</summary>
+        /// <summary>Signature length</summary>
         public uint SignatureLength { get; set; }
         
-        /// <summary>实际数据（不含签名）</summary>
+        /// <summary>Actual data (excluding signature)</summary>
         public byte[] Data { get; set; }
         
-        /// <summary>签名数据</summary>
+        /// <summary>Signature data</summary>
         public byte[] Signature { get; set; }
 
         public override string ToString()
@@ -45,29 +50,29 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// DA Entry (单个芯片的DA配置)
+    /// DA Entry (DA configuration for a single chip)
     /// </summary>
     public class DaEntry
     {
-        /// <summary>Magic (通常为 "DADA")</summary>
+        /// <summary>Magic (usually "DADA")</summary>
         public ushort Magic { get; set; }
         
-        /// <summary>HW Code (芯片代码，如 0x6768 for MT6768)</summary>
+        /// <summary>HW Code (chip code, e.g., 0x6768 for MT6768)</summary>
         public ushort HwCode { get; set; }
         
-        /// <summary>HW Sub Code (芯片子代码，用于区分修订版)</summary>
+        /// <summary>HW Sub Code (chip sub-code, used to distinguish revisions)</summary>
         public ushort HwSubCode { get; set; }
         
-        /// <summary>HW Version (芯片版本)</summary>
+        /// <summary>HW Version (chip version)</summary>
         public ushort HwVersion { get; set; }
         
         /// <summary>Entry Region Index</summary>
         public ushort RegionIndex { get; set; }
         
-        /// <summary>Region数量</summary>
+        /// <summary>Region count</summary>
         public ushort RegionCount { get; set; }
         
-        /// <summary>所有Region列表</summary>
+        /// <summary>All region list</summary>
         public List<DaRegion> Regions { get; set; }
 
         public DaEntry()
@@ -82,33 +87,33 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// DA File (完整的DA文件)
+    /// DA File (complete DA file)
     /// </summary>
     public class DaFile
     {
-        /// <summary>DA文件魔术字符串 ("MTK_DOWNLOAD_AGENT")</summary>
+        /// <summary>DA file magic string ("MTK_DOWNLOAD_AGENT")</summary>
         public string Magic { get; set; }
         
-        /// <summary>DA文件ID ("MTK_AllInOne_DA_v3" for XFlash, "MTK_DA_v6" for XML)</summary>
+        /// <summary>DA file ID ("MTK_AllInOne_DA_v3" for XFlash, "MTK_DA_v6" for XML)</summary>
         public string FileId { get; set; }
         
-        /// <summary>DA版本（通常为4）</summary>
+        /// <summary>DA version (usually 4)</summary>
         public uint Version { get; set; }
         
         /// <summary>DA Magic (0x99886622)</summary>
         public uint DaMagic { get; set; }
         
-        /// <summary>SoC数量（一个DA文件可包含多个芯片的配置）</summary>
+        /// <summary>SoC count (one DA file can contain configurations for multiple chips)</summary>
         public ushort SocCount { get; set; }
         
-        /// <summary>所有DA Entry列表</summary>
+        /// <summary>All DA Entry list</summary>
         public List<DaEntry> Entries { get; set; }
         
-        /// <summary>是否为V6 (XML) DA</summary>
+        /// <summary>Whether it is V6 (XML) DA</summary>
         public bool IsV6 => FileId?.Contains("v6") == true;
         
-        /// <summary>是否为V5 (XFlash) DA</summary>
-        public bool IsV5 => FileId?.Contains("v3") == true;  // "AllInOne_DA_v3" 实际是V5
+        /// <summary>Whether it is V5 (XFlash) DA</summary>
+        public bool IsV5 => FileId?.Contains("v3") == true;  // "AllInOne_DA_v3" is actually V5
 
         public DaFile()
         {
@@ -116,7 +121,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 根据HW Code查找对应的DA Entry
+        /// Find corresponding DA Entry based on HW Code
         /// </summary>
         public DaEntry FindEntry(ushort hwCode)
         {
@@ -130,8 +135,8 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// MTK DA 解析器
-    /// 支持 Legacy (V3), XFlash (V5), XML (V6) DA文件
+    /// MTK DA Parser
+    /// Supports Legacy (V3), XFlash (V5), XML (V6) DA files
     /// </summary>
     public static class MtkDaParser
     {
@@ -143,46 +148,46 @@ namespace LoveAlways.MediaTek.Common
         private const int REGION_SIZE = 0x20;
 
         /// <summary>
-        /// 解析DA文件
+        /// Parse DA file
         /// </summary>
         public static DaFile Parse(byte[] daData)
         {
             if (daData == null || daData.Length < 0x100)
-                throw new ArgumentException("DA文件数据无效或过小");
+                throw new ArgumentException("Invalid or too small DA file data");
 
             var da = new DaFile();
             int offset = 0;
 
-            // 读取Magic (0x00-0x12, 18字节)
+            // Read Magic (0x00-0x12, 18 bytes)
             da.Magic = ReadString(daData, offset, 18);
-            offset += 0x20;  // 跳到0x20
+            offset += 0x20;  // Jump to 0x20
 
             if (!da.Magic.StartsWith(EXPECTED_MAGIC))
-                throw new FormatException($"无效的DA Magic: {da.Magic}");
+                throw new FormatException($"Invalid DA Magic: {da.Magic}");
 
-            // 读取File ID (0x20-0x60, 64字节)
+            // Read File ID (0x20-0x60, 64 bytes)
             da.FileId = ReadString(daData, offset, 64).TrimEnd('\0');
-            offset += 0x40;  // 跳到0x60
+            offset += 0x40;  // Jump to 0x60
 
-            // 读取Version (0x60, 4字节)
+            // Read Version (0x60, 4 bytes)
             da.Version = ReadUInt32(daData, offset);
             offset += 4;
 
-            // 读取DA Magic (0x64, 4字节)
+            // Read DA Magic (0x64, 4 bytes)
             da.DaMagic = ReadUInt32(daData, offset);
             offset += 4;
 
             if (da.DaMagic != EXPECTED_DA_MAGIC)
-                throw new FormatException($"无效的DA Magic: 0x{da.DaMagic:X8}, 期望: 0x{EXPECTED_DA_MAGIC:X8}");
+                throw new FormatException($"Invalid DA Magic: 0x{da.DaMagic:X8}, expected: 0x{EXPECTED_DA_MAGIC:X8}");
 
-            // 读取SoC Count (0x68, 4字节)
+            // Read SoC Count (0x68, 4 bytes)
             da.SocCount = ReadUInt16(daData, offset);
-            offset += 4;  // 跳过完整的4字节
+            offset += 4;  // Skip full 4 bytes
 
-            // 确定Entry大小 (Legacy=0xD8, XFlash/XML=0xDC)
+            // Determine Entry size (Legacy=0xD8, XFlash/XML=0xDC)
             int entrySize = da.IsV5 || da.IsV6 ? XFLASH_ENTRY_SIZE : LEGACY_ENTRY_SIZE;
 
-            // 解析所有DA Entry
+            // Parse all DA Entries
             for (int i = 0; i < da.SocCount; i++)
             {
                 var entry = ParseEntry(daData, offset, entrySize, daData);
@@ -197,7 +202,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 解析单个DA Entry
+        /// Parse single DA Entry
         /// </summary>
         private static DaEntry ParseEntry(byte[] data, int entryOffset, int entrySize, byte[] fullDaData)
         {
@@ -207,38 +212,38 @@ namespace LoveAlways.MediaTek.Common
             var entry = new DaEntry();
             int offset = entryOffset;
 
-            // Magic (0x00, 2字节) - "DADA"
+            // Magic (0x00, 2 bytes) - "DADA"
             entry.Magic = ReadUInt16(data, offset);
             offset += 2;
 
-            // HW Code (0x02, 2字节)
+            // HW Code (0x02, 2 bytes)
             entry.HwCode = ReadUInt16(data, offset);
             offset += 2;
 
-            // HW Sub Code (0x04, 2字节)
+            // HW Sub Code (0x04, 2 bytes)
             entry.HwSubCode = ReadUInt16(data, offset);
             offset += 2;
 
-            // HW Version (0x06, 2字节)
+            // HW Version (0x06, 2 bytes)
             entry.HwVersion = ReadUInt16(data, offset);
             offset += 2;
 
-            // 跳过保留字段到0x10
+            // Skip reserved fields to 0x10
             offset = entryOffset + 0x10;
 
-            // Entry Region Index (0x10, 2字节)
+            // Entry Region Index (0x10, 2 bytes)
             entry.RegionIndex = ReadUInt16(data, offset);
             offset += 2;
 
-            // Entry Region Count (0x12, 2字节)
+            // Entry Region Count (0x12, 2 bytes)
             entry.RegionCount = ReadUInt16(data, offset);
             offset += 2;
 
-            // Region Table开始于0x14
+            // Region Table starts at 0x14
             offset = entryOffset + 0x14;
 
-            // 解析所有Region
-            for (int i = 0; i < entry.RegionCount && i < 6; i++)  // 最多6个region
+            // Parse all regions
+            for (int i = 0; i < entry.RegionCount && i < 6; i++)  // Max 6 regions
             {
                 if (offset + REGION_SIZE > entryOffset + entrySize)
                     break;
@@ -255,35 +260,35 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 解析单个Region
+        /// Parse single Region
         /// </summary>
         private static DaRegion ParseRegion(byte[] entryData, int regionOffset, byte[] fullDaData)
         {
             var region = new DaRegion();
 
-            // Offset (0x00, 4字节)
+            // Offset (0x00, 4 bytes)
             region.FileOffset = ReadUInt32(entryData, regionOffset);
 
-            // Total Length (0x04, 4字节)
+            // Total Length (0x04, 4 bytes)
             region.TotalLength = ReadUInt32(entryData, regionOffset + 4);
 
-            // Load Address (0x08, 4字节)
+            // Load Address (0x08, 4 bytes)
             region.LoadAddress = ReadUInt32(entryData, regionOffset + 8);
 
-            // Region Length (0x0C, 4字节)
+            // Region Length (0x0C, 4 bytes)
             region.RegionLength = ReadUInt32(entryData, regionOffset + 12);
 
-            // Signature Length (0x10, 4字节)
+            // Signature Length (0x10, 4 bytes)
             region.SignatureLength = ReadUInt32(entryData, regionOffset + 16);
 
-            // 提取实际数据（如果在DA文件范围内）
+            // Extract actual data (if within DA file range)
             if (region.FileOffset + region.TotalLength <= fullDaData.Length)
             {
-                // 提取region数据（不含签名）
+                // Extract region data (excluding signature)
                 region.Data = new byte[region.RegionLength];
                 Array.Copy(fullDaData, region.FileOffset, region.Data, 0, region.RegionLength);
 
-                // 提取签名数据
+                // Extract signature data
                 if (region.SignatureLength > 0 && region.FileOffset + region.RegionLength + region.SignatureLength <= fullDaData.Length)
                 {
                     region.Signature = new byte[region.SignatureLength];
@@ -319,10 +324,10 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region DA提取辅助方法
+        #region DA Extraction Helper Methods
 
         /// <summary>
-        /// 提取DA1数据（第一个Region）
+        /// Extract DA1 data (first Region)
         /// </summary>
         public static byte[] ExtractDa1(DaFile daFile, ushort hwCode)
         {
@@ -334,7 +339,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 提取DA2数据（第二个Region）
+        /// Extract DA2 data (second Region)
         /// </summary>
         public static byte[] ExtractDa2(DaFile daFile, ushort hwCode)
         {
@@ -346,7 +351,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 获取DA1签名长度
+        /// Get DA1 signature length
         /// </summary>
         public static uint GetDa1SigLen(DaFile daFile, ushort hwCode)
         {
@@ -358,7 +363,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 获取DA2签名长度
+        /// Get DA2 signature length
         /// </summary>
         public static uint GetDa2SigLen(DaFile daFile, ushort hwCode)
         {

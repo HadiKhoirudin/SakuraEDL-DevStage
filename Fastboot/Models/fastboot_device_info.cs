@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,100 +10,100 @@ using System.Linq;
 namespace LoveAlways.Fastboot.Models
 {
     /// <summary>
-    /// Fastboot 设备信息
+    /// Fastboot Device Information
     /// </summary>
     public class FastbootDeviceInfo
     {
         /// <summary>
-        /// 设备序列号
+        /// Device serial number
         /// </summary>
         public string Serial { get; set; }
 
         /// <summary>
-        /// 设备状态（fastboot/fastbootd）
+        /// Device status (fastboot/fastbootd)
         /// </summary>
         public string Status { get; set; }
 
         /// <summary>
-        /// 产品名称
+        /// Product name
         /// </summary>
         public string Product { get; set; }
 
         /// <summary>
-        /// 是否启用安全启动
+        /// Whether secure boot is enabled
         /// </summary>
         public bool SecureBoot { get; set; }
 
         /// <summary>
-        /// 当前槽位（A/B 分区）
+        /// Current slot (A/B partition)
         /// </summary>
         public string CurrentSlot { get; set; }
 
         /// <summary>
-        /// 是否处于 fastbootd 用户空间模式
+        /// Whether in fastbootd userspace mode
         /// </summary>
         public bool IsFastbootd { get; set; }
 
         /// <summary>
-        /// 最大下载大小
+        /// Maximum download size
         /// </summary>
         public long MaxDownloadSize { get; set; } = -1;
 
         /// <summary>
-        /// 快照更新状态
+        /// Snapshot update status
         /// </summary>
         public string SnapshotUpdateStatus { get; set; }
 
         /// <summary>
-        /// 解锁状态
+        /// Unlock status
         /// </summary>
         public bool? Unlocked { get; set; }
 
         /// <summary>
-        /// Bootloader 版本
+        /// Bootloader version
         /// </summary>
         public string BootloaderVersion { get; set; }
 
         /// <summary>
-        /// Baseband 版本
+        /// Baseband version
         /// </summary>
         public string BasebandVersion { get; set; }
 
         /// <summary>
-        /// 硬件版本
+        /// Hardware version
         /// </summary>
         public string HardwareVersion { get; set; }
 
         /// <summary>
-        /// 变体 (variant)
+        /// Variant
         /// </summary>
         public string Variant { get; set; }
 
         /// <summary>
-        /// 分区大小字典
+        /// Partition size dictionary
         /// </summary>
         public Dictionary<string, long> PartitionSizes { get; private set; } = new Dictionary<string, long>();
 
         /// <summary>
-        /// 分区是否为逻辑分区字典
+        /// Partition logical status dictionary
         /// </summary>
         public Dictionary<string, bool?> PartitionIsLogical { get; private set; } = new Dictionary<string, bool?>();
 
         /// <summary>
-        /// 所有原始变量
+        /// All raw variables
         /// </summary>
         public Dictionary<string, string> RawVariables { get; private set; } = new Dictionary<string, string>();
 
         /// <summary>
-        /// 是否支持 A/B 分区
+        /// Whether A/B partition is supported
         /// </summary>
         public bool HasABPartition => !string.IsNullOrEmpty(CurrentSlot);
 
         /// <summary>
-        /// 获取指定变量的值
+        /// Get the value of a specified variable
         /// </summary>
-        /// <param name="key">变量名（不区分大小写）</param>
-        /// <returns>变量值，如果不存在返回 null</returns>
+        /// <param name="key">Variable name (case-insensitive)</param>
+        /// <returns>Variable value, or null if it doesn't exist</returns>
         public string GetVariable(string key)
         {
             if (string.IsNullOrEmpty(key)) return null;
@@ -111,7 +116,7 @@ namespace LoveAlways.Fastboot.Models
         }
 
         /// <summary>
-        /// 从 getvar all 输出解析设备信息
+        /// Parse device information from getvar:all output
         /// </summary>
         public static FastbootDeviceInfo ParseFromGetvarAll(string rawData)
         {
@@ -122,26 +127,26 @@ namespace LoveAlways.Fastboot.Models
 
             foreach (string line in rawData.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
             {
-                // fastboot 输出格式: (bootloader) key: value 或 key: value
+                // fastboot output format: (bootloader) key: value or key: value
                 string processedLine = line.Trim();
                 
-                // 移除 (bootloader) 前缀
+                // Remove (bootloader) prefix
                 if (processedLine.StartsWith("(bootloader)"))
                 {
                     processedLine = processedLine.Substring(12).Trim();
                 }
 
-                // 解析 key: value 格式
+                // Parse key: value format
                 int colonIndex = processedLine.IndexOf(':');
                 if (colonIndex <= 0) continue;
 
                 string key = processedLine.Substring(0, colonIndex).Trim().ToLowerInvariant();
                 string value = processedLine.Substring(colonIndex + 1).Trim();
 
-                // 保存原始变量
+                // Store raw variables
                 info.RawVariables[key] = value;
 
-                // 解析分区大小: partition-size:boot_a: 0x4000000
+                // Parse partition size: partition-size:boot_a: 0x4000000
                 if (key.StartsWith("partition-size:"))
                 {
                     string partName = key.Substring("partition-size:".Length);
@@ -152,7 +157,7 @@ namespace LoveAlways.Fastboot.Models
                     continue;
                 }
 
-                // 解析逻辑分区: is-logical:system_a: yes
+                // Parse logical partition: is-logical:system_a: yes
                 if (key.StartsWith("is-logical:"))
                 {
                     string partName = key.Substring("is-logical:".Length);
@@ -160,7 +165,7 @@ namespace LoveAlways.Fastboot.Models
                     continue;
                 }
 
-                // 解析其他常用变量
+                // Parse other common variables
                 switch (key)
                 {
                     case "product":
@@ -204,7 +209,7 @@ namespace LoveAlways.Fastboot.Models
         }
 
         /// <summary>
-        /// 尝试解析十六进制或十进制数字
+        /// Try to parse hex or decimal number
         /// </summary>
         private static bool TryParseHexOrDecimal(string value, out long result)
         {
@@ -232,7 +237,7 @@ namespace LoveAlways.Fastboot.Models
         }
 
         /// <summary>
-        /// 获取分区列表
+        /// Get partition list
         /// </summary>
         public List<FastbootPartitionInfo> GetPartitions()
         {
@@ -256,7 +261,7 @@ namespace LoveAlways.Fastboot.Models
     }
 
     /// <summary>
-    /// Fastboot 分区信息
+    /// Fastboot Partition Information
     /// </summary>
     public class FastbootPartitionInfo
     {
@@ -265,13 +270,13 @@ namespace LoveAlways.Fastboot.Models
         public bool? IsLogical { get; set; }
 
         /// <summary>
-        /// 格式化大小显示
+        /// Formatted size display
         /// </summary>
         public string SizeFormatted
         {
             get
             {
-                if (Size < 0) return "未知";
+                if (Size < 0) return "Unknown";
                 if (Size >= 1024L * 1024 * 1024)
                     return $"{Size / (1024.0 * 1024 * 1024):F2} GB";
                 if (Size >= 1024 * 1024)
@@ -283,20 +288,20 @@ namespace LoveAlways.Fastboot.Models
         }
 
         /// <summary>
-        /// 是否为逻辑分区的显示文本
+        /// Display text for whether it's a logical partition
         /// </summary>
         public string IsLogicalText
         {
             get
             {
                 if (IsLogical == null) return "-";
-                return IsLogical.Value ? "是" : "否";
+                return IsLogical.Value ? "Yes" : "No";
             }
         }
     }
 
     /// <summary>
-    /// Fastboot 设备列表项
+    /// Fastboot Device List Item
     /// </summary>
     public class FastbootDeviceListItem
     {

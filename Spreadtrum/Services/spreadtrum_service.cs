@@ -1,7 +1,12 @@
 // ============================================================================
-// LoveAlways - 展讯刷机服务
+// LoveAlways - Spreadtrum Flashing Service
 // Spreadtrum/Unisoc Flashing Service
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -19,7 +24,7 @@ using LoveAlways.Spreadtrum.Protocol;
 namespace LoveAlways.Spreadtrum.Services
 {
     /// <summary>
-    /// 展讯刷机服务 - 主服务类
+    /// Spreadtrum Flashing Service - Main Service Class
     /// </summary>
     public class SpreadtrumService : IDisposable
     {
@@ -29,7 +34,7 @@ namespace LoveAlways.Spreadtrum.Services
         private CancellationTokenSource _cts;
         private SprdExploitService _exploitService;
 
-        // 事件
+        // Events
         public event Action<string, Color> OnLog;
         public event Action<int, int> OnProgress;
         public event Action<SprdDeviceState> OnStateChanged;
@@ -38,29 +43,29 @@ namespace LoveAlways.Spreadtrum.Services
         public event Action<SprdVulnerabilityCheckResult> OnVulnerabilityDetected;
         public event Action<SprdExploitResult> OnExploitCompleted;
 
-        // 属性
+        // Properties
         public bool IsConnected => _client?.IsConnected ?? false;
         public bool IsBromMode => _client?.IsBromMode ?? true;
         public FdlStage CurrentStage => _client?.CurrentStage ?? FdlStage.None;
         public SprdDeviceState State => _client?.State ?? SprdDeviceState.Disconnected;
 
-        // 当前加载的 PAC 信息
+        // Current loaded PAC information
         public PacInfo CurrentPac { get; private set; }
 
-        // 设备分区表缓存
+        // Device partition table cache
         public List<SprdPartitionInfo> CachedPartitions { get; private set; }
 
-        // 芯片 ID (0 表示自动检测)
+        // Chip ID (0 for auto-detection)
         public uint ChipId { get; private set; }
 
-        // 自定义 FDL 配置
+        // Custom FDL configuration
         public string CustomFdl1Path { get; private set; }
         public string CustomFdl2Path { get; private set; }
         public uint CustomFdl1Address { get; private set; }
         public uint CustomFdl2Address { get; private set; }
 
         /// <summary>
-        /// 设置芯片 ID
+        /// Set Chip ID
         /// </summary>
         public void SetChipId(uint chipId)
         {
@@ -72,7 +77,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 设置自定义 FDL1
+        /// Set custom FDL1
         /// </summary>
         public void SetCustomFdl1(string filePath, uint address)
         {
@@ -82,7 +87,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 设置自定义 FDL2
+        /// Set custom FDL2
         /// </summary>
         public void SetCustomFdl2(string filePath, uint address)
         {
@@ -92,7 +97,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 清除自定义 FDL 配置
+        /// Clear custom FDL configuration
         /// </summary>
         public void ClearCustomFdl()
         {
@@ -103,7 +108,7 @@ namespace LoveAlways.Spreadtrum.Services
             _client?.ClearCustomFdl();
         }
 
-        // 看门狗
+        // Watchdog
         private Watchdog _watchdog;
         
         public SpreadtrumService()
@@ -116,50 +121,50 @@ namespace LoveAlways.Spreadtrum.Services
             _portDetector.OnDeviceConnected += dev => OnDeviceConnected?.Invoke(dev);
             _portDetector.OnDeviceDisconnected += dev => OnDeviceDisconnected?.Invoke(dev);
 
-            // 漏洞利用事件
+            // Exploit events
             _exploitService.OnVulnerabilityDetected += result => OnVulnerabilityDetected?.Invoke(result);
             _exploitService.OnExploitCompleted += result => OnExploitCompleted?.Invoke(result);
             
-            // 初始化看门狗
+            // Initialize watchdog
             _watchdog = new Watchdog("Spreadtrum", WatchdogManager.DefaultTimeouts.Spreadtrum, 
                 msg => Log(msg, Color.Gray));
             _watchdog.OnTimeout += OnWatchdogTimeout;
         }
         
         /// <summary>
-        /// 看门狗超时处理
+        /// Watchdog timeout handling
         /// </summary>
         private void OnWatchdogTimeout(object sender, WatchdogTimeoutEventArgs e)
         {
-            Log($"[展讯] 看门狗超时: {e.OperationName} (等待 {e.ElapsedTime.TotalSeconds:F1}秒)", Color.Orange);
+            Log($"[Spreadtrum] Watchdog timeout: {e.OperationName} (Waiting {e.ElapsedTime.TotalSeconds:F1}s)", Color.Orange);
             
             if (e.TimeoutCount >= 3)
             {
-                Log("[展讯] 多次超时，断开连接", Color.Red);
+                Log("[Spreadtrum] Multiple timeouts, disconnecting", Color.Red);
                 e.ShouldReset = false;
                 Disconnect();
             }
         }
         
         /// <summary>
-        /// 喂狗
+        /// Feed watchdog
         /// </summary>
         public void FeedWatchdog() => _watchdog?.Feed();
         
         /// <summary>
-        /// 启动看门狗
+        /// Start watchdog
         /// </summary>
         public void StartWatchdog(string operation) => _watchdog?.Start(operation);
         
         /// <summary>
-        /// 停止看门狗
+        /// Stop watchdog
         /// </summary>
         public void StopWatchdog() => _watchdog?.Stop();
 
-        #region 设备连接
+        #region Device Connection
 
         /// <summary>
-        /// 开始监听设备
+        /// Start listening for devices
         /// </summary>
         public void StartDeviceMonitor()
         {
@@ -167,7 +172,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 停止监听设备
+        /// Stop listening for devices
         /// </summary>
         public void StopDeviceMonitor()
         {
@@ -175,7 +180,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 获取当前连接的设备列表
+        /// Get currently connected device list
         /// </summary>
         public IReadOnlyList<SprdDeviceInfo> GetConnectedDevices()
         {
@@ -183,7 +188,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 连接设备
+        /// Connect device
         /// </summary>
         public async Task<bool> ConnectAsync(string comPort, int baudRate = 115200)
         {
@@ -196,45 +201,45 @@ namespace LoveAlways.Spreadtrum.Services
                 _client.OnProgress += (current, total) => OnProgress?.Invoke(current, total);
                 _client.OnStateChanged += state => OnStateChanged?.Invoke(state);
                 
-                // 应用已保存的配置到新客户端
+                // Apply saved settings to new client
                 ApplyClientConfiguration();
 
-                Log(string.Format("[展讯] 连接设备: {0}", comPort), Color.Cyan);
+                Log(string.Format("[Spreadtrum] Connecting device: {0}", comPort), Color.Cyan);
 
                 bool success = await _client.ConnectAsync(comPort, baudRate);
                 
                 if (success)
                 {
-                    Log("[展讯] 设备连接成功", Color.Green);
+                    Log("[Spreadtrum] Device connected successfully", Color.Green);
                 }
                 else
                 {
-                    Log("[展讯] 设备连接失败", Color.Red);
+                    Log("[Spreadtrum] Device connection failed", Color.Red);
                 }
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log(string.Format("[展讯] 连接异常: {0}", ex.Message), Color.Red);
+                Log(string.Format("[Spreadtrum] Connection error: {0}", ex.Message), Color.Red);
                 return false;
             }
         }
         
         /// <summary>
-        /// 应用已保存的配置到 FdlClient
+        /// Apply saved settings to FdlClient
         /// </summary>
         private void ApplyClientConfiguration()
         {
             if (_client == null) return;
             
-            // 应用芯片 ID (这会自动设置 exec_addr)
+            // Apply chip ID (this will automatically set exec_addr)
             if (ChipId > 0)
             {
                 _client.SetChipId(ChipId);
             }
             
-            // 应用自定义 FDL 配置
+            // Apply custom FDL configuration
             if (!string.IsNullOrEmpty(CustomFdl1Path) || CustomFdl1Address > 0)
             {
                 _client.SetCustomFdl1(CustomFdl1Path, CustomFdl1Address);
@@ -247,11 +252,11 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 等待设备并自动连接
+        /// Wait for device and automatically connect
         /// </summary>
         public async Task<bool> WaitAndConnectAsync(int timeoutMs = 30000)
         {
-            Log("[展讯] 等待设备连接...", Color.Yellow);
+            Log("[Spreadtrum] Waiting for device connection...", Color.Yellow);
 
             ResetCancellationToken();
             var device = await _portDetector.WaitForDeviceAsync(timeoutMs, _cts.Token);
@@ -261,12 +266,12 @@ namespace LoveAlways.Spreadtrum.Services
                 return await ConnectAsync(device.ComPort);
             }
 
-            Log("[展讯] 等待设备超时", Color.Orange);
+            Log("[Spreadtrum] Waiting for device timeout", Color.Orange);
             return false;
         }
 
         /// <summary>
-        /// 断开连接
+        /// Disconnect
         /// </summary>
         public void Disconnect()
         {
@@ -277,41 +282,41 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 初始化设备 - 自动检测模式并下载 FDL
+        /// Initialize device - Automatically detect mode and download FDL
         /// </summary>
-        /// <returns>true: 已进入 FDL2 模式，可以操作分区; false: 初始化失败</returns>
+        /// <returns>true: Already entered FDL2 mode, ready for partition operations; false: Initialization failed</returns>
         public async Task<bool> InitializeDeviceAsync()
         {
             if (!IsConnected)
             {
-                Log("[展讯] 设备未连接", Color.Red);
+                Log("[Spreadtrum] Device not connected", Color.Red);
                 return false;
             }
 
-            // 检查当前状态
+            // Check current status
             if (CurrentStage == FdlStage.FDL2)
             {
-                Log("[展讯] 设备已在 FDL2 模式", Color.Green);
+                Log("[Spreadtrum] Device already in FDL2 mode", Color.Green);
                 return true;
             }
 
-            // 如果是 BROM 模式，需要下载 FDL
+            // If in BROM mode, need to download FDL
             if (IsBromMode || CurrentStage == FdlStage.None)
             {
-                Log("[展讯] 设备处于 BROM 模式，开始下载 FDL...", Color.Yellow);
+                Log("[Spreadtrum] Device in BROM mode, starting FDL download...", Color.Yellow);
                 
-                // 获取 FDL1 数据和地址
+                // Get FDL1 data and address
                 byte[] fdl1Data = null;
                 uint fdl1Addr = 0;
                 
-                // 优先使用自定义 FDL1
+                // Prioritize custom FDL1
                 if (!string.IsNullOrEmpty(CustomFdl1Path) && File.Exists(CustomFdl1Path))
                 {
                     fdl1Data = File.ReadAllBytes(CustomFdl1Path);
                     fdl1Addr = CustomFdl1Address;
-                    Log($"[展讯] 使用自定义 FDL1: {Path.GetFileName(CustomFdl1Path)}", Color.Cyan);
+                    Log($"[Spreadtrum] Using custom FDL1: {Path.GetFileName(CustomFdl1Path)}", Color.Cyan);
                 }
-                // 其次使用 PAC 中的 FDL1
+                // Next use FDL1 from PAC
                 else if (CurrentPac != null)
                 {
                     var fdl1Entry = _pacParser.GetFdl1(CurrentPac);
@@ -322,66 +327,66 @@ namespace LoveAlways.Spreadtrum.Services
                         fdl1Data = File.ReadAllBytes(tempFdl1);
                         fdl1Addr = fdl1Entry.Address != 0 ? fdl1Entry.Address : CustomFdl1Address;
                         File.Delete(tempFdl1);
-                        Log($"[展讯] 使用 PAC 内置 FDL1", Color.Cyan);
+                        Log($"[Spreadtrum] Using PAC built-in FDL1", Color.Cyan);
                     }
                 }
-                // 最后使用芯片默认地址
+                // Finally use chip default address
                 else if (CustomFdl1Address != 0)
                 {
                     fdl1Addr = CustomFdl1Address;
-                    Log($"[展讯] 使用芯片默认 FDL1 地址: 0x{fdl1Addr:X}", Color.Yellow);
+                    Log($"[Spreadtrum] Using chip default FDL1 address: 0x{fdl1Addr:X}", Color.Yellow);
                 }
 
-                // 如果没有 FDL1 数据但有地址，尝试从数据库获取
+                // If no FDL1 data but have address, try getting from database
                 if (fdl1Data == null && ChipId != 0)
                 {
                     var chipInfo = Database.SprdFdlDatabase.GetChipById(ChipId);
                     if (chipInfo != null)
                     {
                         fdl1Addr = chipInfo.Fdl1Address;
-                        Log($"[展讯] 芯片 {chipInfo.ChipName} FDL1 地址: 0x{fdl1Addr:X}", Color.Cyan);
+                        Log($"[Spreadtrum] Chip {chipInfo.ChipName} FDL1 Address: 0x{fdl1Addr:X}", Color.Cyan);
                         
-                        // 尝试查找设备特定的 FDL
+                        // Try finding device specific FDL
                         var deviceFdls = Database.SprdFdlDatabase.GetDeviceNames(chipInfo.ChipName);
                         if (deviceFdls.Length > 0)
                         {
-                            Log($"[展讯] 提示: 数据库中有 {deviceFdls.Length} 个 {chipInfo.ChipName} 设备的 FDL 可用", Color.Gray);
+                            Log($"[Spreadtrum] Hint: {deviceFdls.Length} FDLs available for {chipInfo.ChipName} in database", Color.Gray);
                         }
                     }
                 }
 
-                // 下载 FDL1
+                // Download FDL1
                 if (fdl1Data != null && fdl1Addr != 0)
                 {
-                    Log("[展讯] 下载 FDL1...", Color.White);
+                    Log("[Spreadtrum] Downloading FDL1...", Color.White);
                     if (!await _client.DownloadFdlAsync(fdl1Data, fdl1Addr, FdlStage.FDL1))
                     {
-                        Log("[展讯] FDL1 下载失败", Color.Red);
+                        Log("[Spreadtrum] FDL1 download failed", Color.Red);
                         return false;
                     }
-                    Log("[展讯] FDL1 下载成功", Color.Green);
+                    Log("[Spreadtrum] FDL1 download success", Color.Green);
                 }
                 else
                 {
-                    Log("[展讯] 缺少 FDL1 数据或地址，请加载 PAC 或选择芯片型号", Color.Orange);
+                    Log("[Spreadtrum] Missing FDL1 data or address, please load PAC or select chip model", Color.Orange);
                     return false;
                 }
             }
 
-            // 下载 FDL2
+            // Download FDL2
             if (CurrentStage == FdlStage.FDL1)
             {
                 byte[] fdl2Data = null;
                 uint fdl2Addr = 0;
                 
-                // 优先使用自定义 FDL2
+                // Prioritize custom FDL2
                 if (!string.IsNullOrEmpty(CustomFdl2Path) && File.Exists(CustomFdl2Path))
                 {
                     fdl2Data = File.ReadAllBytes(CustomFdl2Path);
                     fdl2Addr = CustomFdl2Address;
-                    Log($"[展讯] 使用自定义 FDL2: {Path.GetFileName(CustomFdl2Path)}", Color.Cyan);
+                    Log($"[Spreadtrum] Using custom FDL2: {Path.GetFileName(CustomFdl2Path)}", Color.Cyan);
                 }
-                // 其次使用 PAC 中的 FDL2
+                // Next use FDL2 from PAC
                 else if (CurrentPac != null)
                 {
                     var fdl2Entry = _pacParser.GetFdl2(CurrentPac);
@@ -392,7 +397,7 @@ namespace LoveAlways.Spreadtrum.Services
                         fdl2Data = File.ReadAllBytes(tempFdl2);
                         fdl2Addr = fdl2Entry.Address != 0 ? fdl2Entry.Address : CustomFdl2Address;
                         File.Delete(tempFdl2);
-                        Log($"[展讯] 使用 PAC 内置 FDL2", Color.Cyan);
+                        Log($"[Spreadtrum] Using PAC built-in FDL2", Color.Cyan);
                     }
                 }
                 else if (CustomFdl2Address != 0)
@@ -400,49 +405,49 @@ namespace LoveAlways.Spreadtrum.Services
                     fdl2Addr = CustomFdl2Address;
                 }
 
-                // 从数据库获取 FDL2 地址
+                // Get FDL2 address from database
                 if (fdl2Data == null && ChipId != 0)
                 {
                     var chipInfo = Database.SprdFdlDatabase.GetChipById(ChipId);
                     if (chipInfo != null)
                     {
                         fdl2Addr = chipInfo.Fdl2Address;
-                        Log($"[展讯] 芯片 {chipInfo.ChipName} FDL2 地址: 0x{fdl2Addr:X}", Color.Cyan);
+                        Log($"[Spreadtrum] Chip {chipInfo.ChipName} FDL2 Address: 0x{fdl2Addr:X}", Color.Cyan);
                     }
                 }
 
-                // 下载 FDL2
+                // Download FDL2
                 if (fdl2Data != null && fdl2Addr != 0)
                 {
-                    Log("[展讯] 下载 FDL2...", Color.White);
+                    Log("[Spreadtrum] Downloading FDL2...", Color.White);
                     if (!await _client.DownloadFdlAsync(fdl2Data, fdl2Addr, FdlStage.FDL2))
                     {
-                        Log("[展讯] FDL2 下载失败", Color.Red);
+                        Log("[Spreadtrum] FDL2 download failed", Color.Red);
                         return false;
                     }
-                    Log("[展讯] FDL2 下载成功", Color.Green);
+                    Log("[Spreadtrum] FDL2 download success", Color.Green);
                 }
                 else
                 {
-                    Log("[展讯] 缺少 FDL2 数据或地址，请加载 PAC 或选择芯片型号", Color.Orange);
+                    Log("[Spreadtrum] Missing FDL2 data or address, please load PAC or select chip model", Color.Orange);
                     return false;
                 }
             }
 
-            // 验证最终状态
+            // Verify final state
             if (CurrentStage == FdlStage.FDL2)
             {
-                Log("[展讯] 设备初始化完成，已进入 FDL2 模式", Color.Green);
+                Log("[Spreadtrum] Device initialization complete, already in FDL2 mode", Color.Green);
                 OnStateChanged?.Invoke(SprdDeviceState.Fdl2Loaded);
                 return true;
             }
 
-            Log("[展讯] 设备初始化失败", Color.Red);
+            Log("[Spreadtrum] Device initialization failed", Color.Red);
             return false;
         }
 
         /// <summary>
-        /// 连接并初始化设备 (一键操作)
+        /// Connect and initialize device (One-click operation)
         /// </summary>
         public async Task<bool> ConnectAndInitializeAsync(string comPort, int baudRate = 115200)
         {
@@ -456,48 +461,48 @@ namespace LoveAlways.Spreadtrum.Services
 
         #endregion
 
-        #region PAC 固件操作
+        #region PAC Firmware Operations
 
         /// <summary>
-        /// 加载 PAC 固件包
+        /// Load PAC firmware package
         /// </summary>
         public PacInfo LoadPac(string pacFilePath)
         {
             try
             {
-                Log(string.Format("[展讯] 加载 PAC: {0}", Path.GetFileName(pacFilePath)), Color.Cyan);
+                Log(string.Format("[Spreadtrum] Loading PAC: {0}", Path.GetFileName(pacFilePath)), Color.Cyan);
 
                 CurrentPac = _pacParser.Parse(pacFilePath);
 
-                Log(string.Format("[展讯] 产品: {0}", CurrentPac.Header.ProductName), Color.White);
-                Log(string.Format("[展讯] 固件: {0}", CurrentPac.Header.FirmwareName), Color.White);
-                Log(string.Format("[展讯] 版本: {0}", CurrentPac.Header.Version), Color.White);
-                Log(string.Format("[展讯] 文件数: {0}", CurrentPac.Files.Count), Color.White);
+                Log(string.Format("[Spreadtrum] Product: {0}", CurrentPac.Header.ProductName), Color.White);
+                Log(string.Format("[Spreadtrum] Firmware: {0}", CurrentPac.Header.FirmwareName), Color.White);
+                Log(string.Format("[Spreadtrum] Version: {0}", CurrentPac.Header.Version), Color.White);
+                Log(string.Format("[Spreadtrum] File Count: {0}", CurrentPac.Files.Count), Color.White);
 
-                // 解析 XML 配置
+                // Parse XML configuration
                 _pacParser.ParseXmlConfigs(CurrentPac);
 
                 if (CurrentPac.XmlConfig != null)
                 {
-                    Log(string.Format("[展讯] XML 配置: {0}", CurrentPac.XmlConfig.ConfigType), Color.Gray);
+                    Log(string.Format("[Spreadtrum] XML Config: {0}", CurrentPac.XmlConfig.ConfigType), Color.Gray);
                     
                     if (CurrentPac.XmlConfig.Fdl1Config != null)
                     {
-                        Log(string.Format("[展讯] FDL1: {0} @ 0x{1:X}", 
+                        Log(string.Format("[Spreadtrum] FDL1: {0} @ 0x{1:X}", 
                             CurrentPac.XmlConfig.Fdl1Config.FileName, 
                             CurrentPac.XmlConfig.Fdl1Config.Address), Color.Gray);
                     }
                     
                     if (CurrentPac.XmlConfig.Fdl2Config != null)
                     {
-                        Log(string.Format("[展讯] FDL2: {0} @ 0x{1:X}", 
+                        Log(string.Format("[Spreadtrum] FDL2: {0} @ 0x{1:X}", 
                             CurrentPac.XmlConfig.Fdl2Config.FileName, 
                             CurrentPac.XmlConfig.Fdl2Config.Address), Color.Gray);
                     }
 
                     if (CurrentPac.XmlConfig.EraseConfig != null)
                     {
-                        Log(string.Format("[展讯] 擦除配置: 全部={0}, 用户数据={1}", 
+                        Log(string.Format("[Spreadtrum] Erase Config: All={0}, UserData={1}", 
                             CurrentPac.XmlConfig.EraseConfig.EraseAll,
                             CurrentPac.XmlConfig.EraseConfig.EraseUserData), Color.Gray);
                     }
@@ -507,19 +512,19 @@ namespace LoveAlways.Spreadtrum.Services
             }
             catch (Exception ex)
             {
-                Log(string.Format("[展讯] 加载 PAC 失败: {0}", ex.Message), Color.Red);
+                Log(string.Format("[Spreadtrum] Load PAC failed: {0}", ex.Message), Color.Red);
                 return null;
             }
         }
 
         /// <summary>
-        /// 提取 PAC 文件
+        /// Extract PAC files
         /// </summary>
         public async Task ExtractPacAsync(string outputDir, CancellationToken cancellationToken = default)
         {
             if (CurrentPac == null)
             {
-                Log("[展讯] 未加载 PAC 文件", Color.Orange);
+                Log("[Spreadtrum] PAC file not loaded", Color.Orange);
                 return;
             }
 
@@ -527,44 +532,44 @@ namespace LoveAlways.Spreadtrum.Services
             {
                 _pacParser.ExtractAll(CurrentPac, outputDir, (current, total, name) =>
                 {
-                    Log(string.Format("[展讯] 提取 ({0}/{1}): {2}", current, total, name), Color.Gray);
+                    Log(string.Format("[Spreadtrum] Extracting ({0}/{1}): {2}", current, total, name), Color.Gray);
                     OnProgress?.Invoke(current, total);
                 });
             }, cancellationToken);
 
-            Log("[展讯] PAC 提取完成", Color.Green);
+            Log("[Spreadtrum] PAC extraction complete", Color.Green);
         }
 
         #endregion
 
-        #region 刷机操作
+        #region Flashing Operations
 
         /// <summary>
-        /// 完整刷机流程
+        /// Full flashing process
         /// </summary>
         public async Task<bool> FlashPacAsync(List<string> selectedPartitions = null, CancellationToken cancellationToken = default)
         {
             if (CurrentPac == null)
             {
-                Log("[展讯] 未加载 PAC 文件", Color.Orange);
+                Log("[Spreadtrum] PAC file not loaded", Color.Orange);
                 return false;
             }
 
             if (!IsConnected)
             {
-                Log("[展讯] 设备未连接", Color.Orange);
+                Log("[Spreadtrum] Device not connected", Color.Orange);
                 return false;
             }
 
             try
             {
-                Log("[展讯] 开始刷机...", Color.Cyan);
+                Log("[Spreadtrum] Starting flash process...", Color.Cyan);
 
-                // 1. 下载 FDL1
+                // 1. Download FDL1
                 var fdl1Entry = _pacParser.GetFdl1(CurrentPac);
                 if (fdl1Entry != null)
                 {
-                    Log("[展讯] 下载 FDL1...", Color.White);
+                    Log("[Spreadtrum] Downloading FDL1...", Color.White);
                     
                     string tempFdl1 = Path.Combine(Path.GetTempPath(), "fdl1.bin");
                     _pacParser.ExtractFile(CurrentPac.FilePath, fdl1Entry, tempFdl1);
@@ -574,18 +579,18 @@ namespace LoveAlways.Spreadtrum.Services
 
                     if (!await _client.DownloadFdlAsync(fdl1Data, fdl1Addr, FdlStage.FDL1))
                     {
-                        Log("[展讯] FDL1 下载失败", Color.Red);
+                        Log("[Spreadtrum] FDL1 download failed", Color.Red);
                         return false;
                     }
                     
                     File.Delete(tempFdl1);
                 }
 
-                // 2. 下载 FDL2
+                // 2. Download FDL2
                 var fdl2Entry = _pacParser.GetFdl2(CurrentPac);
                 if (fdl2Entry != null)
                 {
-                    Log("[展讯] 下载 FDL2...", Color.White);
+                    Log("[Spreadtrum] Downloading FDL2...", Color.White);
                     
                     string tempFdl2 = Path.Combine(Path.GetTempPath(), "fdl2.bin");
                     _pacParser.ExtractFile(CurrentPac.FilePath, fdl2Entry, tempFdl2);
@@ -595,29 +600,29 @@ namespace LoveAlways.Spreadtrum.Services
 
                     if (!await _client.DownloadFdlAsync(fdl2Data, fdl2Addr, FdlStage.FDL2))
                     {
-                        Log("[展讯] FDL2 下载失败", Color.Red);
+                        Log("[Spreadtrum] FDL2 download failed", Color.Red);
                         return false;
                     }
                     
                     File.Delete(tempFdl2);
                 }
 
-                // 3. 读取设备信息
+                // 3. Read device info
                 string version = await _client.ReadVersionAsync();
                 if (!string.IsNullOrEmpty(version))
                 {
-                    Log(string.Format("[展讯] 设备版本: {0}", version), Color.Cyan);
+                    Log(string.Format("[Spreadtrum] Device version: {0}", version), Color.Cyan);
                 }
 
-                // 4. 刷写分区
+                // 4. Flash partitions
                 int totalPartitions = 0;
                 int currentPartition = 0;
 
-                // 筛选要刷写的分区
+                // Filter partitions to be flashed
                 var partitionsToFlash = new List<PacFileEntry>();
                 foreach (var entry in CurrentPac.Files)
                 {
-                    // 跳过 FDL、XML 等
+                    // Skip FDL, XML, etc.
                     if (entry.Type == PacFileType.FDL1 || 
                         entry.Type == PacFileType.FDL2 ||
                         entry.Type == PacFileType.XML ||
@@ -626,7 +631,7 @@ namespace LoveAlways.Spreadtrum.Services
                         continue;
                     }
 
-                    // 如果指定了分区列表，检查是否包含
+                    // If partition list specified, check if included
                     if (selectedPartitions != null && 
                         !selectedPartitions.Contains(entry.PartitionName))
                     {
@@ -637,36 +642,36 @@ namespace LoveAlways.Spreadtrum.Services
                 }
 
                 totalPartitions = partitionsToFlash.Count;
-                Log(string.Format("[展讯] 准备刷写 {0} 个分区", totalPartitions), Color.White);
+                Log(string.Format("[Spreadtrum] Preparing to flash {0} partitions", totalPartitions), Color.White);
 
                 foreach (var entry in partitionsToFlash)
                 {
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        Log("[展讯] 刷机已取消", Color.Orange);
+                        Log("[Spreadtrum] Flash cancelled", Color.Orange);
                         return false;
                     }
 
                     currentPartition++;
-                    Log(string.Format("[展讯] 刷写分区 ({0}/{1}): {2}", 
+                    Log(string.Format("[Spreadtrum] Flashing partition ({0}/{1}): {2}", 
                         currentPartition, totalPartitions, entry.PartitionName), Color.White);
 
-                    // 提取分区数据
+                    // Extract partition data
                     string tempFile = Path.Combine(Path.GetTempPath(), entry.FileName);
                     _pacParser.ExtractFile(CurrentPac.FilePath, entry, tempFile);
 
-                    // 处理 Sparse Image
+                    // Handle Sparse Image
                     string dataFile = tempFile;
                     bool isSparse = SparseHandler.IsSparseImage(tempFile);
                     
                     if (isSparse)
                     {
-                        Log(string.Format("[展讯] 检测到 Sparse Image, 解压中..."), Color.Gray);
+                        Log(string.Format("[Spreadtrum] Sparse Image detected, decompressing..."), Color.Gray);
                         string rawFile = tempFile + ".raw";
                         var sparseHandler = new SparseHandler(msg => Log(msg, Color.Gray));
                         sparseHandler.Decompress(tempFile, rawFile, (current, total) =>
                         {
-                            // 解压进度
+                            // Decompression progress
                         });
                         dataFile = rawFile;
                         File.Delete(tempFile);
@@ -674,10 +679,10 @@ namespace LoveAlways.Spreadtrum.Services
 
                     byte[] partitionData = File.ReadAllBytes(dataFile);
 
-                    // 写入分区
+                    // Write partition
                     bool success = await _client.WritePartitionAsync(entry.PartitionName, partitionData, cancellationToken);
                     
-                    // 清理临时文件
+                    // Clean temporary files
                     if (isSparse)
                     {
                         if (File.Exists(dataFile))
@@ -691,168 +696,168 @@ namespace LoveAlways.Spreadtrum.Services
 
                     if (!success)
                     {
-                        Log(string.Format("[展讯] 分区 {0} 刷写失败", entry.PartitionName), Color.Red);
+                        Log(string.Format("[Spreadtrum] Partition {0} flash failed", entry.PartitionName), Color.Red);
                         return false;
                     }
                 }
 
-                Log("[展讯] 刷机完成！", Color.Green);
+                Log("[Spreadtrum] Flash complete!", Color.Green);
                 return true;
             }
             catch (Exception ex)
             {
-                Log(string.Format("[展讯] 刷机异常: {0}", ex.Message), Color.Red);
+                Log(string.Format("[Spreadtrum] Flash exception: {0}", ex.Message), Color.Red);
                 return false;
             }
         }
 
         /// <summary>
-        /// 刷写单个分区
+        /// Flash single partition
         /// </summary>
         public async Task<bool> FlashPartitionAsync(string partitionName, string filePath)
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪 (需要加载 FDL2)", Color.Orange);
+                Log("[Spreadtrum] Device not ready (FDL2 needs to be loaded)", Color.Orange);
                 return false;
             }
 
             if (!File.Exists(filePath))
             {
-                Log(string.Format("[展讯] 文件不存在: {0}", filePath), Color.Red);
+                Log(string.Format("[Spreadtrum] File not found: {0}", filePath), Color.Red);
                 return false;
             }
 
             try
             {
-                Log(string.Format("[展讯] 刷写分区: {0}", partitionName), Color.White);
+                Log(string.Format("[Spreadtrum] Flashing partition: {0}", partitionName), Color.White);
 
                 byte[] data = File.ReadAllBytes(filePath);
                 bool success = await _client.WritePartitionAsync(partitionName, data);
 
                 if (success)
                 {
-                    Log(string.Format("[展讯] 分区 {0} 刷写成功", partitionName), Color.Green);
+                    Log(string.Format("[Spreadtrum] Partition {0} flash success", partitionName), Color.Green);
                 }
                 else
                 {
-                    Log(string.Format("[展讯] 分区 {0} 刷写失败", partitionName), Color.Red);
+                    Log(string.Format("[Spreadtrum] Partition {0} flash failed", partitionName), Color.Red);
                 }
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log(string.Format("[展讯] 刷写异常: {0}", ex.Message), Color.Red);
+                Log(string.Format("[Spreadtrum] Flash exception: {0}", ex.Message), Color.Red);
                 return false;
             }
         }
 
         /// <summary>
-        /// 读取分区
+        /// Read partition
         /// </summary>
         public async Task<bool> ReadPartitionAsync(string partitionName, string outputPath, uint size)
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪", Color.Orange);
+                Log("[Spreadtrum] Device not ready", Color.Orange);
                 return false;
             }
 
             try
             {
-                Log(string.Format("[展讯] 读取分区: {0}", partitionName), Color.White);
+                Log(string.Format("[Spreadtrum] Reading partition: {0}", partitionName), Color.White);
 
                 byte[] data = await _client.ReadPartitionAsync(partitionName, size);
                 
                 if (data != null)
                 {
                     File.WriteAllBytes(outputPath, data);
-                    Log(string.Format("[展讯] 分区 {0} 读取完成: {1}", partitionName, outputPath), Color.Green);
+                    Log(string.Format("[Spreadtrum] Partition {0} read complete: {1}", partitionName, outputPath), Color.Green);
                     return true;
                 }
 
-                Log(string.Format("[展讯] 分区 {0} 读取失败", partitionName), Color.Red);
+                Log(string.Format("[Spreadtrum] Partition {0} read failed", partitionName), Color.Red);
                 return false;
             }
             catch (Exception ex)
             {
-                Log(string.Format("[展讯] 读取异常: {0}", ex.Message), Color.Red);
+                Log(string.Format("[Spreadtrum] Read exception: {0}", ex.Message), Color.Red);
                 return false;
             }
         }
 
         /// <summary>
-        /// 擦除分区
+        /// Erase partition
         /// </summary>
         public async Task<bool> ErasePartitionAsync(string partitionName)
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪", Color.Orange);
+                Log("[Spreadtrum] Device not ready", Color.Orange);
                 return false;
             }
 
             try
             {
-                Log(string.Format("[展讯] 擦除分区: {0}", partitionName), Color.White);
+                Log(string.Format("[Spreadtrum] Erasing partition: {0}", partitionName), Color.White);
                 
                 bool success = await _client.ErasePartitionAsync(partitionName);
                 
                 if (success)
                 {
-                    Log(string.Format("[展讯] 分区 {0} 擦除成功", partitionName), Color.Green);
+                    Log(string.Format("[Spreadtrum] Partition {0} erase success", partitionName), Color.Green);
                 }
                 else
                 {
-                    Log(string.Format("[展讯] 分区 {0} 擦除失败", partitionName), Color.Red);
+                    Log(string.Format("[Spreadtrum] Partition {0} erase failed", partitionName), Color.Red);
                 }
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log(string.Format("[展讯] 擦除异常: {0}", ex.Message), Color.Red);
+                Log(string.Format("[Spreadtrum] Erase exception: {0}", ex.Message), Color.Red);
                 return false;
             }
         }
 
         #endregion
 
-        #region 设备控制
+        #region Device Control
 
         /// <summary>
-        /// 重启设备
+        /// Reboot device
         /// </summary>
         public async Task<bool> RebootAsync()
         {
             if (!IsConnected)
                 return false;
 
-            Log("[展讯] 重启设备...", Color.White);
+            Log("[Spreadtrum] Rebooting device...", Color.White);
             return await _client.ResetDeviceAsync();
         }
 
         /// <summary>
-        /// 关机
+        /// Power off
         /// </summary>
         public async Task<bool> PowerOffAsync()
         {
             if (!IsConnected)
                 return false;
 
-            Log("[展讯] 关闭设备...", Color.White);
+            Log("[Spreadtrum] Powering off device...", Color.White);
             return await _client.PowerOffAsync();
         }
 
         /// <summary>
-        /// 读取分区表
+        /// Read partition table
         /// </summary>
         public async Task<List<SprdPartitionInfo>> ReadPartitionTableAsync()
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪", Color.Orange);
+                Log("[Spreadtrum] Device not ready", Color.Orange);
                 return null;
             }
 
@@ -860,13 +865,13 @@ namespace LoveAlways.Spreadtrum.Services
             if (partitions != null && partitions.Count > 0)
             {
                 CachedPartitions = partitions;
-                Log($"[展讯] 分区表已缓存: {partitions.Count} 个分区", Color.Cyan);
+                Log($"[Spreadtrum] Partition table cached: {partitions.Count} partitions", Color.Cyan);
             }
             return partitions;
         }
 
         /// <summary>
-        /// 获取分区大小 (从缓存)
+        /// Get partition size (from cache)
         /// </summary>
         public uint GetPartitionSize(string partitionName)
         {
@@ -879,7 +884,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 读取芯片信息
+        /// Read chip information
         /// </summary>
         public async Task<uint> ReadChipTypeAsync()
         {
@@ -891,22 +896,22 @@ namespace LoveAlways.Spreadtrum.Services
 
         #endregion
 
-        #region 安全功能
+        #region Security Functions
 
         /// <summary>
-        /// 解锁设备
+        /// Unlock device
         /// </summary>
         public async Task<bool> UnlockAsync(byte[] unlockData = null)
         {
             if (!IsConnected)
                 return false;
 
-            Log("[展讯] 解锁设备...", Color.Yellow);
+            Log("[Spreadtrum] Unlocking device...", Color.Yellow);
             return await _client.UnlockAsync(unlockData);
         }
 
         /// <summary>
-        /// 读取公钥
+        /// Read public key
         /// </summary>
         public async Task<byte[]> ReadPublicKeyAsync()
         {
@@ -917,19 +922,19 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 发送签名
+        /// Send signature
         /// </summary>
         public async Task<bool> SendSignatureAsync(byte[] signature)
         {
             if (!IsConnected)
                 return false;
 
-            Log("[展讯] 发送签名验证...", Color.Yellow);
+            Log("[Spreadtrum] Sending signature verification...", Color.Yellow);
             return await _client.SendSignatureAsync(signature);
         }
 
         /// <summary>
-        /// 读取 eFuse
+        /// Read eFuse
         /// </summary>
         public async Task<byte[]> ReadEfuseAsync(uint blockId = 0)
         {
@@ -941,10 +946,10 @@ namespace LoveAlways.Spreadtrum.Services
 
         #endregion
 
-        #region NV 操作
+        #region NV Operations
 
         /// <summary>
-        /// 读取 NV 项
+        /// Read NV item
         /// </summary>
         public async Task<byte[]> ReadNvItemAsync(ushort itemId)
         {
@@ -955,7 +960,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 写入 NV 项
+        /// Write NV item
         /// </summary>
         public async Task<bool> WriteNvItemAsync(ushort itemId, byte[] data)
         {
@@ -966,7 +971,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 读取 IMEI
+        /// Read IMEI
         /// </summary>
         public async Task<string> ReadImeiAsync()
         {
@@ -977,51 +982,51 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 写入 IMEI
+        /// Write IMEI
         /// </summary>
         public async Task<bool> WriteImeiAsync(string newImei)
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪", Color.Orange);
+                Log("[Spreadtrum] Device not ready", Color.Orange);
                 return false;
             }
 
             if (string.IsNullOrEmpty(newImei) || newImei.Length != 15)
             {
-                Log("[展讯] IMEI 格式无效", Color.Red);
+                Log("[Spreadtrum] Invalid IMEI format", Color.Red);
                 return false;
             }
 
-            Log(string.Format("[展讯] 写入 IMEI: {0}", newImei), Color.Yellow);
+            Log(string.Format("[Spreadtrum] Writing IMEI: {0}", newImei), Color.Yellow);
 
-            // 将 IMEI 字符串转换为 NV 数据格式
+            // Convert IMEI string to NV data format
             byte[] imeiData = ConvertImeiToNvData(newImei);
             
-            // 写入 NV 项 0 (IMEI)
+            // Write NV item 0 (IMEI)
             bool result = await _client.WriteNvItemAsync(0, imeiData);
             
             if (result)
             {
-                Log("[展讯] IMEI 写入成功", Color.Green);
+                Log("[Spreadtrum] IMEI write success", Color.Green);
             }
             else
             {
-                Log("[展讯] IMEI 写入失败", Color.Red);
+                Log("[Spreadtrum] IMEI write failed", Color.Red);
             }
 
             return result;
         }
 
         /// <summary>
-        /// 将 IMEI 字符串转换为 NV 数据格式
+        /// Convert IMEI string to NV data format
         /// </summary>
         private byte[] ConvertImeiToNvData(string imei)
         {
-            // IMEI 存储格式: BCD 编码
-            // 15位 IMEI -> 8 bytes (首字节为长度或标志)
+            // IMEI storage format: BCD encoding
+            // 15-digit IMEI -> 8 bytes (first byte is length or flag)
             byte[] data = new byte[9];
-            data[0] = 0x08;  // 长度标志
+            data[0] = 0x08;  // Length flag
 
             for (int i = 0; i < 15; i += 2)
             {
@@ -1035,10 +1040,10 @@ namespace LoveAlways.Spreadtrum.Services
 
         #endregion
 
-        #region Flash 信息
+        #region Flash Information
 
         /// <summary>
-        /// 读取 Flash 信息
+        /// Read Flash information
         /// </summary>
         public async Task<SprdFlashInfo> ReadFlashInfoAsync()
         {
@@ -1049,26 +1054,26 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 重新分区
+        /// Repartition
         /// </summary>
         public async Task<bool> RepartitionAsync(byte[] partitionTableData)
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪", Color.Orange);
+                Log("[Spreadtrum] Device not ready", Color.Orange);
                 return false;
             }
 
-            Log("[展讯] 执行重新分区...", Color.Red);
+            Log("[Spreadtrum] Executing repartition...", Color.Red);
             return await _client.RepartitionAsync(partitionTableData);
         }
 
         #endregion
 
-        #region 波特率
+        #region Baud Rate
 
         /// <summary>
-        /// 设置波特率
+        /// Set baud rate
         /// </summary>
         public async Task<bool> SetBaudRateAsync(int baudRate)
         {
@@ -1080,10 +1085,10 @@ namespace LoveAlways.Spreadtrum.Services
 
         #endregion
 
-        #region 漏洞利用
+        #region Exploit
 
         /// <summary>
-        /// 检测设备漏洞
+        /// Check device vulnerability
         /// </summary>
         public SprdVulnerabilityCheckResult CheckVulnerability(string pkHash = null)
         {
@@ -1092,7 +1097,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 尝试自动漏洞利用
+        /// Attempt automatic exploit
         /// </summary>
         public async Task<SprdExploitResult> TryExploitAsync(
             SerialPort port = null,
@@ -1104,11 +1109,11 @@ namespace LoveAlways.Spreadtrum.Services
 
             if (targetPort == null)
             {
-                Log("[漏洞] 无可用串口", Color.Red);
+                Log("[Exploit] No available serial port", Color.Red);
                 return new SprdExploitResult
                 {
                     Success = false,
-                    Message = "无可用串口连接"
+                    Message = "No available serial port connection"
                 };
             }
 
@@ -1116,11 +1121,11 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 检查并尝试漏洞利用
+        /// Check and attempt exploit
         /// </summary>
         public async Task<SprdExploitResult> CheckAndExploitAsync(CancellationToken ct = default(CancellationToken))
         {
-            // 1. 先检测漏洞
+            // 1. Detect vulnerability first
             var vulnResult = CheckVulnerability();
 
             if (!vulnResult.HasVulnerability)
@@ -1128,16 +1133,16 @@ namespace LoveAlways.Spreadtrum.Services
                 return new SprdExploitResult
                 {
                     Success = false,
-                    Message = "未检测到可用漏洞"
+                    Message = "No available vulnerabilities detected"
                 };
             }
 
-            // 2. 尝试利用
+            // 2. Attempt exploitation
             return await TryExploitAsync(ct: ct);
         }
 
         /// <summary>
-        /// 获取漏洞利用服务
+        /// Get exploit service
         /// </summary>
         public SprdExploitService GetExploitService()
         {
@@ -1146,36 +1151,36 @@ namespace LoveAlways.Spreadtrum.Services
 
         #endregion
 
-        #region 分区单独刷写
+        #region Individual Partition Flashing
 
         /// <summary>
-        /// 刷写单个 IMG 文件到指定分区 (不依赖 PAC)
+        /// Flash single IMG file to specified partition (does not depend on PAC)
         /// </summary>
         public async Task<bool> FlashImageFileAsync(string partitionName, string imageFilePath, CancellationToken ct = default(CancellationToken))
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪 (需要加载 FDL2)", Color.Orange);
+                Log("[Spreadtrum] Device not ready (FDL2 needs to be loaded)", Color.Orange);
                 return false;
             }
 
             if (!File.Exists(imageFilePath))
             {
-                Log(string.Format("[展讯] 文件不存在: {0}", imageFilePath), Color.Red);
+                Log(string.Format("[Spreadtrum] File not found: {0}", imageFilePath), Color.Red);
                 return false;
             }
 
             try
             {
-                Log(string.Format("[展讯] 刷写分区: {0} <- {1}", partitionName, Path.GetFileName(imageFilePath)), Color.Cyan);
+                Log(string.Format("[Spreadtrum] Flashing partition: {0} <- {1}", partitionName, Path.GetFileName(imageFilePath)), Color.Cyan);
 
                 string dataFile = imageFilePath;
                 bool needCleanup = false;
 
-                // 检测并处理 Sparse Image
+                // Detect and handle Sparse Image
                 if (SparseHandler.IsSparseImage(imageFilePath))
                 {
-                    Log("[展讯] 检测到 Sparse Image, 解压中...", Color.Gray);
+                    Log("[Spreadtrum] Sparse Image detected, decompressing...", Color.Gray);
                     string rawFile = Path.Combine(Path.GetTempPath(), Path.GetFileName(imageFilePath) + ".raw");
                     var sparseHandler = new SparseHandler(msg => Log(msg, Color.Gray));
                     sparseHandler.Decompress(imageFilePath, rawFile, (c, t) => OnProgress?.Invoke((int)c, (int)t));
@@ -1183,14 +1188,14 @@ namespace LoveAlways.Spreadtrum.Services
                     needCleanup = true;
                 }
 
-                // 读取文件数据
+                // Read file data
                 byte[] data = File.ReadAllBytes(dataFile);
-                Log(string.Format("[展讯] 数据大小: {0}", FormatSize((ulong)data.Length)), Color.Gray);
+                Log(string.Format("[Spreadtrum] Data size: {0}", FormatSize((ulong)data.Length)), Color.Gray);
 
-                // 写入分区
+                // Write partition
                 bool success = await _client.WritePartitionAsync(partitionName, data, ct);
 
-                // 清理临时文件
+                // Cleanup temporary files
                 if (needCleanup && File.Exists(dataFile))
                 {
                     File.Delete(dataFile);
@@ -1198,30 +1203,30 @@ namespace LoveAlways.Spreadtrum.Services
 
                 if (success)
                 {
-                    Log(string.Format("[展讯] 分区 {0} 刷写成功", partitionName), Color.Green);
+                    Log(string.Format("[Spreadtrum] Partition {0} flash success", partitionName), Color.Green);
                 }
                 else
                 {
-                    Log(string.Format("[展讯] 分区 {0} 刷写失败", partitionName), Color.Red);
+                    Log(string.Format("[Spreadtrum] Partition {0} flash failed", partitionName), Color.Red);
                 }
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log(string.Format("[展讯] 刷写异常: {0}", ex.Message), Color.Red);
+                Log(string.Format("[Spreadtrum] Flash exception: {0}", ex.Message), Color.Red);
                 return false;
             }
         }
 
         /// <summary>
-        /// 批量刷写多个分区
+        /// Batch flash multiple partitions
         /// </summary>
         public async Task<bool> FlashMultipleImagesAsync(Dictionary<string, string> partitionFiles, CancellationToken ct = default(CancellationToken))
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪", Color.Orange);
+                Log("[Spreadtrum] Device not ready", Color.Orange);
                 return false;
             }
 
@@ -1234,7 +1239,7 @@ namespace LoveAlways.Spreadtrum.Services
                 ct.ThrowIfCancellationRequested();
                 
                 current++;
-                Log(string.Format("[展讯] 刷写进度 ({0}/{1}): {2}", current, total, kvp.Key), Color.White);
+                Log(string.Format("[Spreadtrum] Flash progress ({0}/{1}): {2}", current, total, kvp.Key), Color.White);
 
                 if (await FlashImageFileAsync(kvp.Key, kvp.Value, ct))
                 {
@@ -1242,7 +1247,7 @@ namespace LoveAlways.Spreadtrum.Services
                 }
             }
 
-            Log(string.Format("[展讯] 批量刷写完成: {0}/{1} 成功", success, total), 
+            Log(string.Format("[Spreadtrum] Batch flash complete: {0}/{1} success", success, total), 
                 success == total ? Color.Green : Color.Orange);
 
             return success == total;
@@ -1250,42 +1255,42 @@ namespace LoveAlways.Spreadtrum.Services
 
         #endregion
 
-        #region 校准数据备份/恢复
+        #region Calibration Data Backup/Restore
 
-        // 校准数据分区名称
+        // Calibration data partition names
         private static readonly string[] CalibrationPartitions = new[]
         {
-            "nvitem", "nv", "nvram",           // NV 数据
-            "wcnmodem", "wcn",                  // WiFi/BT 校准
-            "l_modem", "modem",                 // 射频校准
-            "l_fixnv1", "l_fixnv2",            // 固定 NV
-            "l_runtimenv1", "l_runtimenv2",    // 运行时 NV
-            "prodnv", "prodinfo",              // 生产信息
-            "miscdata",                         // 杂项数据
-            "factorydata"                       // 工厂数据
+            "nvitem", "nv", "nvram",           // NV data
+            "wcnmodem", "wcn",                  // WiFi/BT calibration
+            "l_modem", "modem",                 // RF calibration
+            "l_fixnv1", "l_fixnv2",            // Fixed NV
+            "l_runtimenv1", "l_runtimenv2",    // Runtime NV
+            "prodnv", "prodinfo",              // Product information
+            "miscdata",                         // Misc data
+            "factorydata"                       // Factory data
         };
 
         /// <summary>
-        /// 备份校准数据
+        /// Backup calibration data
         /// </summary>
         public async Task<bool> BackupCalibrationDataAsync(string outputDir, CancellationToken ct = default(CancellationToken))
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪", Color.Orange);
+                Log("[Spreadtrum] Device not ready", Color.Orange);
                 return false;
             }
 
             if (!Directory.Exists(outputDir))
                 Directory.CreateDirectory(outputDir);
 
-            Log("[展讯] 开始备份校准数据...", Color.Cyan);
+            Log("[Spreadtrum] Starting backup calibration data...", Color.Cyan);
 
-            // 获取设备分区表
+            // Get device partition table
             var partitions = await _client.ReadPartitionTableAsync();
             if (partitions == null || partitions.Count == 0)
             {
-                Log("[展讯] 无法读取分区表", Color.Red);
+                Log("[Spreadtrum] Unable to read partition table", Color.Red);
                 return false;
             }
 
@@ -1295,59 +1300,59 @@ namespace LoveAlways.Spreadtrum.Services
             {
                 ct.ThrowIfCancellationRequested();
 
-                // 检查是否为校准分区
+                // Check if calibration partition
                 bool isCalibration = CalibrationPartitions.Any(c => 
                     partition.Name.ToLower().Contains(c.ToLower()));
 
                 if (!isCalibration)
                     continue;
 
-                Log(string.Format("[展讯] 备份: {0}", partition.Name), Color.White);
+                Log(string.Format("[Spreadtrum] Backing up: {0}", partition.Name), Color.White);
 
                 string outputPath = Path.Combine(outputDir, partition.Name + ".bin");
                 
-                // 读取分区数据
+                // Read partition data
                 byte[] data = await _client.ReadPartitionAsync(partition.Name, partition.Size, ct);
                 
                 if (data != null && data.Length > 0)
                 {
                     File.WriteAllBytes(outputPath, data);
                     backed++;
-                    Log(string.Format("[展讯] {0} 备份成功 ({1})", partition.Name, FormatSize((ulong)data.Length)), Color.Gray);
+                    Log(string.Format("[Spreadtrum] {0} backup success ({1})", partition.Name, FormatSize((ulong)data.Length)), Color.Gray);
                 }
                 else
                 {
-                    Log(string.Format("[展讯] {0} 备份失败", partition.Name), Color.Orange);
+                    Log(string.Format("[Spreadtrum] {0} backup failed", partition.Name), Color.Orange);
                 }
             }
 
-            Log(string.Format("[展讯] 校准数据备份完成: {0} 个分区", backed), Color.Green);
+            Log(string.Format("[Spreadtrum] Calibration data backup complete: {0} partitions", backed), Color.Green);
             return backed > 0;
         }
 
         /// <summary>
-        /// 恢复校准数据
+        /// Restore calibration data
         /// </summary>
         public async Task<bool> RestoreCalibrationDataAsync(string inputDir, CancellationToken ct = default(CancellationToken))
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪", Color.Orange);
+                Log("[Spreadtrum] Device not ready", Color.Orange);
                 return false;
             }
 
             if (!Directory.Exists(inputDir))
             {
-                Log("[展讯] 备份目录不存在", Color.Red);
+                Log("[Spreadtrum] Backup directory does not exist", Color.Red);
                 return false;
             }
 
-            Log("[展讯] 开始恢复校准数据...", Color.Cyan);
+            Log("[Spreadtrum] Starting restore calibration data...", Color.Cyan);
 
             var backupFiles = Directory.GetFiles(inputDir, "*.bin");
             if (backupFiles.Length == 0)
             {
-                Log("[展讯] 未找到备份文件", Color.Orange);
+                Log("[Spreadtrum] No backup files found", Color.Orange);
                 return false;
             }
 
@@ -1359,17 +1364,17 @@ namespace LoveAlways.Spreadtrum.Services
 
                 string partitionName = Path.GetFileNameWithoutExtension(backupFile);
 
-                // 验证是否为校准分区
+                // Verify if calibration partition
                 bool isCalibration = CalibrationPartitions.Any(c => 
                     partitionName.ToLower().Contains(c.ToLower()));
 
                 if (!isCalibration)
                 {
-                    Log(string.Format("[展讯] 跳过非校准分区: {0}", partitionName), Color.Gray);
+                    Log(string.Format("[Spreadtrum] Skipping non-calibration partition: {0}", partitionName), Color.Gray);
                     continue;
                 }
 
-                Log(string.Format("[展讯] 恢复: {0}", partitionName), Color.White);
+                Log(string.Format("[Spreadtrum] Restoring: {0}", partitionName), Color.White);
 
                 bool success = await FlashImageFileAsync(partitionName, backupFile, ct);
 
@@ -1379,12 +1384,12 @@ namespace LoveAlways.Spreadtrum.Services
                 }
             }
 
-            Log(string.Format("[展讯] 校准数据恢复完成: {0} 个分区", restored), Color.Green);
+            Log(string.Format("[Spreadtrum] Calibration data restore complete: {0} partitions", restored), Color.Green);
             return restored > 0;
         }
 
         /// <summary>
-        /// 获取校准分区列表
+        /// Get calibration partition list
         /// </summary>
         public string[] GetCalibrationPartitionNames()
         {
@@ -1393,79 +1398,79 @@ namespace LoveAlways.Spreadtrum.Services
 
         #endregion
 
-        #region 强制下载模式
+        #region Force Download Mode
 
         /// <summary>
-        /// 进入强制下载模式 (Force Download)
+        /// Enter Force Download mode
         /// </summary>
         public async Task<bool> EnterForceDownloadModeAsync()
         {
-            Log("[展讯] 尝试进入强制下载模式...", Color.Yellow);
+            Log("[Spreadtrum] Attempting to enter force download mode...", Color.Yellow);
 
-            // 强制下载模式通常需要：
-            // 1. 发送特殊的复位命令
-            // 2. 或者在设备关机状态下按住特定按键
+            // Force download mode usually requires:
+            // 1. Sending a special reset command
+            // 2. Or holding a specific key while device is power off
 
             if (_client == null || !_client.IsConnected)
             {
-                Log("[展讯] 请确保设备已连接", Color.Orange);
+                Log("[Spreadtrum] Please ensure device is connected", Color.Orange);
                 return false;
             }
 
             try
             {
-                // 发送强制下载命令
+                // Send force download command
                 bool result = await _client.EnterForceDownloadAsync();
                 
                 if (result)
                 {
-                    Log("[展讯] 已进入强制下载模式", Color.Green);
+                    Log("[Spreadtrum] Entered force download mode", Color.Green);
                 }
                 else
                 {
-                    Log("[展讯] 进入强制下载模式失败", Color.Red);
+                    Log("[Spreadtrum] Failed to enter force download mode", Color.Red);
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                Log(string.Format("[展讯] 异常: {0}", ex.Message), Color.Red);
+                Log(string.Format("[Spreadtrum] Exception: {0}", ex.Message), Color.Red);
                 return false;
             }
         }
 
         #endregion
 
-        #region 工厂重置
+        #region Factory Reset
 
         /// <summary>
-        /// 恢复出厂设置
+        /// Factory reset
         /// </summary>
         public async Task<bool> FactoryResetAsync(bool eraseUserData = true, bool eraseCache = true, CancellationToken ct = default(CancellationToken))
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未就绪", Color.Orange);
+                Log("[Spreadtrum] Device not ready", Color.Orange);
                 return false;
             }
 
-            Log("[展讯] 执行恢复出厂设置...", Color.Yellow);
+            Log("[Spreadtrum] Performing factory reset...", Color.Yellow);
 
             try
             {
-                // 获取分区表
+                // Get partition table
                 var partitions = await _client.ReadPartitionTableAsync();
                 if (partitions == null)
                 {
-                    Log("[展讯] 无法读取分区表", Color.Red);
+                    Log("[Spreadtrum] Unable to read partition table", Color.Red);
                     return false;
                 }
 
-                // 需要擦除的分区
+                // Partitions that need to be erased
                 var partitionsToErase = new List<string>();
 
-                // 擦除 userdata
+                // Erase userdata
                 if (eraseUserData)
                 {
                     var userData = partitions.Find(p => 
@@ -1477,7 +1482,7 @@ namespace LoveAlways.Spreadtrum.Services
                     }
                 }
 
-                // 擦除 cache
+                // Erase cache
                 if (eraseCache)
                 {
                     var cache = partitions.Find(p => p.Name.ToLower().Contains("cache"));
@@ -1487,65 +1492,65 @@ namespace LoveAlways.Spreadtrum.Services
                     }
                 }
 
-                // 擦除 metadata (Android 10+)
+                // Erase metadata (Android 10+)
                 var metadata = partitions.Find(p => p.Name.ToLower() == "metadata");
                 if (metadata != null)
                 {
                     partitionsToErase.Add(metadata.Name);
                 }
 
-                // 执行擦除
+                // Execute erase
                 int erased = 0;
                 foreach (var partName in partitionsToErase)
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    Log(string.Format("[展讯] 擦除: {0}", partName), Color.White);
+                    Log(string.Format("[Spreadtrum] Erasing: {0}", partName), Color.White);
                     bool success = await _client.ErasePartitionAsync(partName);
                     
                     if (success)
                     {
                         erased++;
-                        Log(string.Format("[展讯] {0} 已擦除", partName), Color.Gray);
+                        Log(string.Format("[Spreadtrum] {0} erased", partName), Color.Gray);
                     }
                     else
                     {
-                        Log(string.Format("[展讯] {0} 擦除失败", partName), Color.Orange);
+                        Log(string.Format("[Spreadtrum] {0} erase failed", partName), Color.Orange);
                     }
                 }
 
-                Log(string.Format("[展讯] 出厂重置完成: 已擦除 {0} 个分区", erased), Color.Green);
+                Log(string.Format("[Spreadtrum] Factory reset complete: Erased {0} partitions", erased), Color.Green);
                 return erased > 0;
             }
             catch (Exception ex)
             {
-                Log(string.Format("[展讯] 出厂重置异常: {0}", ex.Message), Color.Red);
+                Log(string.Format("[Spreadtrum] Factory reset exception: {0}", ex.Message), Color.Red);
                 return false;
             }
         }
 
         #endregion
 
-        #region 安全信息
+        #region Security Info
 
         /// <summary>
-        /// 获取设备安全信息
+        /// Get device security information
         /// </summary>
         public async Task<SprdSecurityInfo> GetSecurityInfoAsync()
         {
             if (!IsConnected)
             {
-                Log("[展讯] 设备未连接", Color.Orange);
+                Log("[Spreadtrum] Device not connected", Color.Orange);
                 return null;
             }
 
-            Log("[展讯] 读取安全信息...", Color.Cyan);
+            Log("[Spreadtrum] Reading security info...", Color.Cyan);
 
             try
             {
                 var info = new SprdSecurityInfo();
 
-                // 读取 eFuse 数据
+                // Read eFuse data
                 var efuseData = await _client.ReadEfuseAsync(0);
                 if (efuseData != null)
                 {
@@ -1553,32 +1558,32 @@ namespace LoveAlways.Spreadtrum.Services
                     ParseEfuseData(efuseData, info);
                 }
 
-                // 读取公钥
+                // Read public key
                 var pubKey = await _client.ReadPublicKeyAsync();
                 if (pubKey != null && pubKey.Length > 0)
                 {
                     info.PublicKeyHash = ComputeHash(pubKey);
-                    Log(string.Format("[展讯] 公钥哈希: {0}...", info.PublicKeyHash.Substring(0, 16)), Color.Gray);
+                    Log(string.Format("[Spreadtrum] Public key hash: {0}...", info.PublicKeyHash.Substring(0, 16)), Color.Gray);
                 }
 
-                // 判断安全状态
+                // Determine security status
                 if (string.IsNullOrEmpty(info.PublicKeyHash) || 
                     info.PublicKeyHash.All(c => c == '0' || c == 'F' || c == 'f'))
                 {
                     info.IsSecureBootEnabled = false;
-                    Log("[展讯] 安全启动: 未启用 (Unfused)", Color.Yellow);
+                    Log("[Spreadtrum] Secure Boot: Not Enabled (Unfused)", Color.Yellow);
                 }
                 else
                 {
                     info.IsSecureBootEnabled = true;
-                    Log("[展讯] 安全启动: 已启用", Color.White);
+                    Log("[Spreadtrum] Secure Boot: Enabled", Color.White);
                 }
 
                 return info;
             }
             catch (Exception ex)
             {
-                Log(string.Format("[展讯] 读取安全信息失败: {0}", ex.Message), Color.Red);
+                Log(string.Format("[Spreadtrum] Read security info failed: {0}", ex.Message), Color.Red);
                 return null;
             }
         }
@@ -1588,7 +1593,7 @@ namespace LoveAlways.Spreadtrum.Services
             if (efuseData.Length < 4)
                 return;
 
-            // 解析 eFuse 标志位
+            // Parse eFuse flags
             uint flags = BitConverter.ToUInt32(efuseData, 0);
 
             info.IsEfuseLocked = (flags & 0x01) != 0;
@@ -1599,9 +1604,9 @@ namespace LoveAlways.Spreadtrum.Services
                 info.SecurityVersion = BitConverter.ToUInt32(efuseData, 4);
             }
 
-            Log(string.Format("[展讯] eFuse 锁定: {0}", info.IsEfuseLocked ? "是" : "否"), Color.Gray);
-            Log(string.Format("[展讯] 防回滚: {0}", info.IsAntiRollbackEnabled ? "是" : "否"), Color.Gray);
-            Log(string.Format("[展讯] 安全版本: {0}", info.SecurityVersion), Color.Gray);
+            Log(string.Format("[Spreadtrum] eFuse Locked: {0}", info.IsEfuseLocked ? "Yes" : "No"), Color.Gray);
+            Log(string.Format("[Spreadtrum] Anti-Rollback: {0}", info.IsAntiRollbackEnabled ? "Yes" : "No"), Color.Gray);
+            Log(string.Format("[Spreadtrum] Security Version: {0}", info.SecurityVersion), Color.Gray);
         }
 
         private string ComputeHash(byte[] data)
@@ -1614,7 +1619,7 @@ namespace LoveAlways.Spreadtrum.Services
         }
 
         /// <summary>
-        /// 获取 Flash 信息
+        /// Get Flash information
         /// </summary>
         public async Task<SprdFlashInfo> GetFlashInfoAsync()
         {
@@ -1628,10 +1633,10 @@ namespace LoveAlways.Spreadtrum.Services
 
         #endregion
 
-        #region Bootloader 解锁
+        #region Bootloader Unlock
 
         /// <summary>
-        /// 获取 Bootloader 状态
+        /// Get Bootloader status
         /// </summary>
         public async Task<SprdBootloaderStatus> GetBootloaderStatusAsync()
         {
@@ -1644,61 +1649,61 @@ namespace LoveAlways.Spreadtrum.Services
             {
                 var status = new SprdBootloaderStatus();
 
-                // 读取 eFuse 获取锁定状态
+                // Read eFuse for lock status
                 var efuseData = await _client.ReadEfuseAsync();
                 if (efuseData != null && efuseData.Length >= 4)
                 {
-                    // 检查 Secure Boot 和解锁标志
+                    // Check Secure Boot and unlock flags
                     uint efuseFlags = BitConverter.ToUInt32(efuseData, 0);
                     status.IsSecureBootEnabled = (efuseFlags & 0x01) != 0;
-                    status.IsUnlocked = (efuseFlags & 0x10) != 0;  // BL 解锁位
-                    status.IsUnfused = (efuseFlags & 0x01) == 0;   // 未熔丝
+                    status.IsUnlocked = (efuseFlags & 0x10) != 0;  // BL unlock bit
+                    status.IsUnfused = (efuseFlags & 0x01) == 0;   // Unfused
                 }
 
-                // 读取公钥哈希判断是否为 Unfused
+                // Read public key hash to determine if Unfused
                 var pubKey = await _client.ReadPublicKeyAsync();
                 if (pubKey != null)
                 {
                     string pkHash = ComputeHash(pubKey);
-                    // 检查是否为已知的 Unfused 哈希
+                    // Check if it's a known Unfused hash
                     if (SprdExploitDatabase.IsUnfusedDevice(pkHash))
                     {
                         status.IsUnfused = true;
                     }
                 }
 
-                // 读取安全版本
+                // Read security version
                 if (efuseData != null && efuseData.Length >= 8)
                 {
                     status.SecurityVersion = BitConverter.ToUInt32(efuseData, 4);
                 }
 
-                // 获取设备型号
+                // Get device model
                 var flashInfo = await _client.ReadFlashInfoAsync();
                 if (flashInfo != null)
                 {
                     status.DeviceModel = flashInfo.ChipModel ?? "Unknown";
                 }
 
-                Log($"[展讯] BL状态: {(status.IsUnlocked ? "已解锁" : "已锁定")}, Unfused: {(status.IsUnfused ? "是" : "否")}", Color.Cyan);
+                Log($"[Spreadtrum] BL Status: {(status.IsUnlocked ? "Unlocked" : "Locked")}, Unfused: {(status.IsUnfused ? "Yes" : "No")}", Color.Cyan);
 
                 return status;
             }
             catch (Exception ex)
             {
-                Log($"[展讯] 获取 BL 状态失败: {ex.Message}", Color.Red);
+                Log($"[Spreadtrum] Get BL status failed: {ex.Message}", Color.Red);
                 return null;
             }
         }
 
         /// <summary>
-        /// 解锁 Bootloader (利用漏洞或直接解锁)
+        /// Unlock Bootloader (via exploit or direct unlock)
         /// </summary>
         public async Task<bool> UnlockBootloaderAsync(bool useExploit = false)
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未连接或未进入 FDL2", Color.Red);
+                Log("[Spreadtrum] Device not connected or not in FDL2", Color.Red);
                 return false;
             }
 
@@ -1706,120 +1711,120 @@ namespace LoveAlways.Spreadtrum.Services
             {
                 if (useExploit)
                 {
-                    // 使用签名绕过漏洞解锁
-                    Log("[展讯] 尝试签名绕过解锁...", Color.Yellow);
+                    // Use signature bypass exploit to unlock
+                    Log("[Spreadtrum] Attempting signature bypass unlock...", Color.Yellow);
                     
-                    // 先检查设备漏洞
+                    // First check device vulnerability
                     var vulnCheck = _exploitService.CheckVulnerability(0, "");
                     if (vulnCheck.HasVulnerability)
                     {
                         var exploitResult = await _exploitService.TryExploitAsync(
                             _client.GetPort(),
-                            0);  // chipId=0 表示自动检测
+                            0);  // chipId=0 means auto-detection
                         
                         if (exploitResult.Success)
                         {
-                            // 发送解锁命令
+                            // Send unlock command
                             return await SendUnlockCommandAsync();
                         }
                         else
                         {
-                            Log($"[展讯] 漏洞利用失败: {exploitResult.Message}", Color.Red);
+                            Log($"[Spreadtrum] Exploit failed: {exploitResult.Message}", Color.Red);
                             return false;
                         }
                     }
                     else
                     {
-                        Log("[展讯] 未检测到可用漏洞", Color.Orange);
-                        // 尝试直接发送解锁命令
+                        Log("[Spreadtrum] No available exploit detected", Color.Orange);
+                        // Try sending unlock command directly
                         return await SendUnlockCommandAsync();
                     }
                 }
                 else
                 {
-                    // 直接尝试解锁 (需要设备本身支持)
+                    // Directly attempt to unlock (requires device support)
                     return await SendUnlockCommandAsync();
                 }
             }
             catch (Exception ex)
             {
-                Log($"[展讯] 解锁失败: {ex.Message}", Color.Red);
+                Log($"[Info] Unlock fail: {ex.Message}", Color.Red);
                 return false;
             }
         }
 
         /// <summary>
-        /// 使用解锁码解锁 Bootloader
+        /// Unlock Bootloader with code
         /// </summary>
         public async Task<bool> UnlockBootloaderWithCodeAsync(string unlockCode)
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未连接或未进入 FDL2", Color.Red);
+                Log("[Spreadtrum] Device not connected or not in FDL2", Color.Red);
                 return false;
             }
 
             try
             {
-                Log($"[展讯] 使用解锁码解锁...", Color.Yellow);
+                Log($"[Spreadtrum] Unlocking with code...", Color.Yellow);
 
-                // 将16进制字符串转换为字节数组
+                // Convert hex string to byte array
                 byte[] codeBytes = new byte[8];
                 for (int i = 0; i < 8; i++)
                 {
                     codeBytes[i] = Convert.ToByte(unlockCode.Substring(i * 2, 2), 16);
                 }
 
-                // 发送解锁命令
+                // Send unlock command
                 return await _client.UnlockAsync(codeBytes);
             }
             catch (Exception ex)
             {
-                Log($"[展讯] 解锁失败: {ex.Message}", Color.Red);
+                Log($"[Spreadtrum] Unlock failed: {ex.Message}", Color.Red);
                 return false;
             }
         }
 
         /// <summary>
-        /// 重新锁定 Bootloader
+        /// Relock Bootloader
         /// </summary>
         public async Task<bool> RelockBootloaderAsync()
         {
             if (!IsConnected || CurrentStage != FdlStage.FDL2)
             {
-                Log("[展讯] 设备未连接或未进入 FDL2", Color.Red);
+                Log("[Spreadtrum] Device not connected or not in FDL2", Color.Red);
                 return false;
             }
 
             try
             {
-                Log("[展讯] 重新锁定 Bootloader...", Color.Yellow);
+                Log("[Spreadtrum] Relocking Bootloader...", Color.Yellow);
 
-                // 发送锁定命令
-                // 使用全0作为锁定标识
+                // Send lock command
+                // Use all zeros as lock identifier
                 byte[] lockCode = new byte[8];
                 return await _client.UnlockAsync(lockCode, true);  // true = relock
             }
             catch (Exception ex)
             {
-                Log($"[展讯] 锁定失败: {ex.Message}", Color.Red);
+                Log($"[Spreadtrum] Lock failed: {ex.Message}", Color.Red);
                 return false;
             }
         }
 
         /// <summary>
-        /// 发送解锁命令
+        /// Send unlock command
         /// </summary>
         private async Task<bool> SendUnlockCommandAsync()
         {
             try
             {
-                // 写入解锁标志到特定分区或 eFuse
-                // Spreadtrum 设备通常将解锁状态存储在 misc 分区或专用分区
+                // Write unlock flag to specific partition or eFuse
+                // Spreadtrum devices usually store unlock status in misc or dedicated partition
 
-                // 方案1: 写入 misc 分区的解锁标志
+                // Option 1: Write unlock flag to misc partition
                 byte[] unlockFlag = new byte[16];
-                unlockFlag[0] = 0x55;  // 解锁魔数
+                unlockFlag[0] = 0x55;  // Unlock magic
                 unlockFlag[1] = 0x4E;  // 'U'
                 unlockFlag[2] = 0x4C;  // 'N'
                 unlockFlag[3] = 0x4B;  // 'L'
@@ -1829,33 +1834,33 @@ namespace LoveAlways.Spreadtrum.Services
                 unlockFlag[7] = 0x45;  // 'E'
                 unlockFlag[8] = 0x44;  // 'D'
 
-                // 写入 FRP (Factory Reset Protection) 分区
+                // Write to FRP (Factory Reset Protection) partition
                 bool frpResult = await _client.WritePartitionAsync("frp", unlockFlag);
                 
-                // 写入 misc 分区
+                // Write to misc partition
                 bool miscResult = await _client.WritePartitionAsync("misc", unlockFlag);
 
                 if (frpResult || miscResult)
                 {
-                    Log("[展讯] 解锁标志写入成功", Color.Green);
+                    Log("[Spreadtrum] Unlock flag write success", Color.Green);
                     return true;
                 }
                 else
                 {
-                    // 尝试直接发送 FDL 解锁命令
+                    // Attempt FDL direct unlock command
                     return await _client.UnlockAsync(unlockFlag);
                 }
             }
             catch (Exception ex)
             {
-                Log($"[展讯] 发送解锁命令失败: {ex.Message}", Color.Red);
+                Log($"[Spreadtrum] Failed to send unlock command: {ex.Message}", Color.Red);
                 return false;
             }
         }
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         private string FormatSize(ulong size)
         {
@@ -1878,32 +1883,32 @@ namespace LoveAlways.Spreadtrum.Services
             Disconnect();
             _portDetector?.Dispose();
             
-            // 释放 CancellationTokenSource (忽略异常，确保完整清理)
+            // Release CancellationTokenSource (ignore exceptions, ensure full cleanup)
             if (_cts != null)
             {
                 try { _cts.Cancel(); } 
-                catch (ObjectDisposedException) { /* 已释放，忽略 */ }
+                catch (ObjectDisposedException) { /* Already disposed, ignore */ }
                 try { _cts.Dispose(); } 
-                catch (ObjectDisposedException) { /* 已释放，忽略 */ }
+                catch (ObjectDisposedException) { /* Already disposed, ignore */ }
                 _cts = null;
             }
             
-            // 释放看门狗
+            // Release watchdog
             _watchdog?.Dispose();
         }
 
         /// <summary>
-        /// 安全重置 CancellationTokenSource
+        /// Safely reset CancellationTokenSource
         /// </summary>
         private void ResetCancellationToken()
         {
             if (_cts != null)
             {
                 try { _cts.Cancel(); } 
-                catch (ObjectDisposedException) { /* 已释放，忽略 */ }
-                catch (Exception ex) { Log($"[展讯] 取消令牌异常: {ex.Message}", Color.Gray); }
+                catch (ObjectDisposedException) { /* Already disposed, ignore */ }
+                catch (Exception ex) { Log($"[Spreadtrum] Cancel token exception: {ex.Message}", Color.Gray); }
                 try { _cts.Dispose(); } 
-                catch (Exception ex) { Log($"[展讯] 释放令牌异常: {ex.Message}", Color.Gray); }
+                catch (Exception ex) { Log($"[Spreadtrum] Dispose token exception: {ex.Message}", Color.Gray); }
             }
             _cts = new CancellationTokenSource();
         }

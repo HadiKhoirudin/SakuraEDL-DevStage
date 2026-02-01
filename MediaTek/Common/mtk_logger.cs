@@ -1,9 +1,14 @@
 // ============================================================================
-// LoveAlways - MediaTek 日志管理系统
+// LoveAlways - MediaTek Logging System
 // MediaTek Logging System with Formatting
 // ============================================================================
-// 统一的日志格式化输出，支持多种日志级别和样式
+// Unified logging format output, supports multiple log levels and styles
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -12,70 +17,70 @@ using System.Text;
 namespace LoveAlways.MediaTek.Common
 {
     /// <summary>
-    /// 日志级别
+    /// Log Level
     /// </summary>
     public enum LogLevel
     {
-        /// <summary>调试信息</summary>
+        /// <summary>Debug information</summary>
         Debug = 0,
         
-        /// <summary>详细信息</summary>
+        /// <summary>Detailed information</summary>
         Verbose = 1,
         
-        /// <summary>一般信息</summary>
+        /// <summary>General information</summary>
         Info = 2,
         
-        /// <summary>成功消息</summary>
+        /// <summary>Success message</summary>
         Success = 3,
         
-        /// <summary>警告消息</summary>
+        /// <summary>Warning message</summary>
         Warning = 4,
         
-        /// <summary>错误消息</summary>
+        /// <summary>Error message</summary>
         Error = 5,
         
-        /// <summary>严重错误</summary>
+        /// <summary>Critical error</summary>
         Critical = 6
     }
 
     /// <summary>
-    /// 日志类别
+    /// Log Category
     /// </summary>
     public enum LogCategory
     {
-        General,      // 通用
-        Brom,         // BROM协议
-        Da,           // DA协议
+        General,      // General
+        Brom,         // BROM Protocol
+        Da,           // DA Protocol
         XFlash,       // XFlash (V5)
         Xml,          // XML (V6)
-        Exploit,      // 漏洞利用
-        Security,     // 安全相关
-        Device,       // 设备操作
-        Network,      // 网络/串口
-        Protocol      // 协议层
+        Exploit,      // Exploit
+        Security,     // Security related
+        Device,       // Device operation
+        Network,      // Network/Serial
+        Protocol      // Protocol layer
     }
 
     /// <summary>
-    /// MTK 日志记录
+    /// MTK Log Entry
     /// </summary>
     public class MtkLogEntry
     {
-        /// <summary>时间戳</summary>
+        /// <summary>Timestamp</summary>
         public DateTime Timestamp { get; set; }
         
-        /// <summary>日志级别</summary>
+        /// <summary>Log level</summary>
         public LogLevel Level { get; set; }
         
-        /// <summary>日志类别</summary>
+        /// <summary>Log category</summary>
         public LogCategory Category { get; set; }
         
-        /// <summary>消息内容</summary>
+        /// <summary>Message content</summary>
         public string Message { get; set; }
         
-        /// <summary>附加数据</summary>
+        /// <summary>Attached data</summary>
         public object Data { get; set; }
         
-        /// <summary>异常信息</summary>
+        /// <summary>Exception information</summary>
         public Exception Exception { get; set; }
 
         public MtkLogEntry()
@@ -85,7 +90,7 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// MTK 日志管理器
+    /// MTK Logger
     /// </summary>
     public class MtkLogger
     {
@@ -97,7 +102,7 @@ namespace LoveAlways.MediaTek.Common
         private bool _showCategory;
         private bool _useColors;
 
-        #region 构造函数
+        #region Constructor
 
         public MtkLogger(string name = "MTK", Action<string> outputHandler = null)
         {
@@ -107,35 +112,35 @@ namespace LoveAlways.MediaTek.Common
             _minLevel = LogLevel.Info;
             _showTimestamp = true;
             _showCategory = true;
-            _useColors = false;  // 默认不使用颜色（兼容性）
+            _useColors = false;  // Do not use colors by default (compatibility)
         }
 
         #endregion
 
-        #region 配置方法
+        #region Configuration Methods
 
-        /// <summary>设置最小日志级别</summary>
+        /// <summary>Set minimum log level</summary>
         public MtkLogger SetMinLevel(LogLevel level)
         {
             _minLevel = level;
             return this;
         }
 
-        /// <summary>设置是否显示时间戳</summary>
+        /// <summary>Set whether to show timestamp</summary>
         public MtkLogger ShowTimestamp(bool show)
         {
             _showTimestamp = show;
             return this;
         }
 
-        /// <summary>设置是否显示类别</summary>
+        /// <summary>Set whether to show category</summary>
         public MtkLogger ShowCategory(bool show)
         {
             _showCategory = show;
             return this;
         }
 
-        /// <summary>设置是否使用颜色（需要终端支持）</summary>
+        /// <summary>Set whether to use colors (requires terminal support)</summary>
         public MtkLogger UseColors(bool use)
         {
             _useColors = use;
@@ -144,39 +149,39 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region 日志记录方法
+        #region Log Recording Methods
 
-        /// <summary>记录调试日志</summary>
+        /// <summary>Record debug log</summary>
         public void Debug(string message, LogCategory category = LogCategory.General)
         {
             Log(LogLevel.Debug, category, message);
         }
 
-        /// <summary>记录详细日志</summary>
+        /// <summary>Record verbose log</summary>
         public void Verbose(string message, LogCategory category = LogCategory.General)
         {
             Log(LogLevel.Verbose, category, message);
         }
 
-        /// <summary>记录信息日志</summary>
+        /// <summary>Record info log</summary>
         public void Info(string message, LogCategory category = LogCategory.General)
         {
             Log(LogLevel.Info, category, message);
         }
 
-        /// <summary>记录成功日志</summary>
+        /// <summary>Record success log</summary>
         public void Success(string message, LogCategory category = LogCategory.General)
         {
             Log(LogLevel.Success, category, message);
         }
 
-        /// <summary>记录警告日志</summary>
+        /// <summary>Record warning log</summary>
         public void Warning(string message, LogCategory category = LogCategory.General)
         {
             Log(LogLevel.Warning, category, message);
         }
 
-        /// <summary>记录错误日志</summary>
+        /// <summary>Record error log</summary>
         public void Error(string message, LogCategory category = LogCategory.General, Exception ex = null)
         {
             var entry = new MtkLogEntry
@@ -189,7 +194,7 @@ namespace LoveAlways.MediaTek.Common
             LogEntry(entry);
         }
 
-        /// <summary>记录严重错误日志</summary>
+        /// <summary>Record critical log</summary>
         public void Critical(string message, LogCategory category = LogCategory.General, Exception ex = null)
         {
             var entry = new MtkLogEntry
@@ -202,7 +207,7 @@ namespace LoveAlways.MediaTek.Common
             LogEntry(entry);
         }
 
-        /// <summary>记录基本日志</summary>
+        /// <summary>Record basic log</summary>
         public void Log(LogLevel level, LogCategory category, string message, object data = null)
         {
             var entry = new MtkLogEntry
@@ -217,9 +222,9 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region 特殊格式日志
+        #region Special Format Logs
 
-        /// <summary>记录十六进制数据</summary>
+        /// <summary>Record hexadecimal data</summary>
         public void LogHex(string label, byte[] data, int maxLength = 32, LogLevel level = LogLevel.Verbose)
         {
             if (data == null || level < _minLevel) return;
@@ -227,19 +232,19 @@ namespace LoveAlways.MediaTek.Common
             var hex = BytesToHex(data, maxLength);
             var msg = $"{label}: {hex}";
             if (data.Length > maxLength)
-                msg += $" ... ({data.Length} 字节)";
+                msg += $" ... ({data.Length} bytes)";
             
             Log(level, LogCategory.Protocol, msg);
         }
 
-        /// <summary>记录协议命令</summary>
+        /// <summary>Record protocol command</summary>
         public void LogCommand(string command, uint cmdCode, LogCategory category = LogCategory.Protocol)
         {
             var msg = $"→ {command} (0x{cmdCode:X8})";
             Log(LogLevel.Info, category, msg);
         }
 
-        /// <summary>记录协议响应</summary>
+        /// <summary>Record protocol response</summary>
         public void LogResponse(string response, uint statusCode, LogCategory category = LogCategory.Protocol)
         {
             var level = (statusCode == 0) ? LogLevel.Success : LogLevel.Warning;
@@ -247,7 +252,7 @@ namespace LoveAlways.MediaTek.Common
             Log(level, category, msg);
         }
 
-        /// <summary>记录错误码</summary>
+        /// <summary>Record error code</summary>
         public void LogErrorCode(uint errorCode, LogCategory category = LogCategory.General)
         {
             var formatted = MtkErrorCodes.FormatError(errorCode);
@@ -255,7 +260,7 @@ namespace LoveAlways.MediaTek.Common
             Log(level, category, formatted);
         }
 
-        /// <summary>记录进度</summary>
+        /// <summary>Record progress</summary>
         public void LogProgress(string operation, int current, int total, LogCategory category = LogCategory.General)
         {
             var percentage = total > 0 ? (current * 100 / total) : 0;
@@ -263,21 +268,21 @@ namespace LoveAlways.MediaTek.Common
             Log(LogLevel.Info, category, msg);
         }
 
-        /// <summary>记录设备信息</summary>
+        /// <summary>Record device info</summary>
         public void LogDeviceInfo(string key, object value, LogCategory category = LogCategory.Device)
         {
             var msg = $"  {key,-20}: {value}";
             Log(LogLevel.Info, category, msg);
         }
 
-        /// <summary>记录分隔线</summary>
+        /// <summary>Record separator line</summary>
         public void LogSeparator(char character = '=', int length = 60)
         {
             var line = new string(character, length);
             _outputHandler?.Invoke(line);
         }
 
-        /// <summary>记录标题</summary>
+        /// <summary>Record header</summary>
         public void LogHeader(string title, char borderChar = '=')
         {
             int totalWidth = 60;
@@ -292,20 +297,20 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region 格式化输出
+        #region Formatted Output
 
         private void LogEntry(MtkLogEntry entry)
         {
             if (entry.Level < _minLevel) return;
 
-            // 添加到历史记录
+            // Add to history
             _history.Add(entry);
 
-            // 格式化并输出
+            // Format and output
             var formatted = FormatEntry(entry);
             _outputHandler?.Invoke(formatted);
 
-            // 如果有异常，输出异常详情
+            // If there is an exception, output exception details
             if (entry.Exception != null && entry.Level >= LogLevel.Error)
             {
                 var exDetails = FormatException(entry.Exception);
@@ -317,23 +322,23 @@ namespace LoveAlways.MediaTek.Common
         {
             var sb = new StringBuilder();
 
-            // 时间戳
+            // Timestamp
             if (_showTimestamp)
             {
                 sb.Append($"[{entry.Timestamp:HH:mm:ss.fff}] ");
             }
 
-            // 日志级别
+            // Log level
             var levelStr = GetLevelString(entry.Level);
             sb.Append(levelStr);
 
-            // 类别
+            // Category
             if (_showCategory && entry.Category != LogCategory.General)
             {
                 sb.Append($" [{entry.Category}]");
             }
 
-            // 消息
+            // Message
             sb.Append(" ");
             sb.Append(entry.Message);
 
@@ -375,12 +380,12 @@ namespace LoveAlways.MediaTek.Common
         private string FormatException(Exception ex)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("  异常详情:");
-            sb.AppendLine($"    类型: {ex.GetType().Name}");
-            sb.AppendLine($"    消息: {ex.Message}");
+            sb.AppendLine("  Exception Details:");
+            sb.AppendLine($"    Type: {ex.GetType().Name}");
+            sb.AppendLine($"    Message: {ex.Message}");
             if (!string.IsNullOrEmpty(ex.StackTrace))
             {
-                sb.AppendLine("    堆栈跟踪:");
+                sb.AppendLine("    Stack Trace:");
                 var lines = ex.StackTrace.Split('\n');
                 foreach (var line in lines)
                 {
@@ -390,7 +395,7 @@ namespace LoveAlways.MediaTek.Common
             }
             if (ex.InnerException != null)
             {
-                sb.AppendLine("  内部异常:");
+                sb.AppendLine("  Inner Exception:");
                 sb.Append(FormatException(ex.InnerException));
             }
             return sb.ToString();
@@ -398,9 +403,9 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
-        /// <summary>字节数组转十六进制字符串</summary>
+        /// <summary>Convert byte array to hex string</summary>
         private string BytesToHex(byte[] data, int maxLength)
         {
             if (data == null || data.Length == 0)
@@ -419,19 +424,19 @@ namespace LoveAlways.MediaTek.Common
             return sb.ToString();
         }
 
-        /// <summary>获取历史记录</summary>
+        /// <summary>Get history</summary>
         public IReadOnlyList<MtkLogEntry> GetHistory()
         {
             return _history.AsReadOnly();
         }
 
-        /// <summary>清除历史记录</summary>
+        /// <summary>Clear history</summary>
         public void ClearHistory()
         {
             _history.Clear();
         }
 
-        /// <summary>导出日志到文件</summary>
+        /// <summary>Export log to file</summary>
         public void ExportToFile(string filePath)
         {
             var lines = new List<string>();
@@ -446,14 +451,14 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// 全局日志实例
+    /// Global Log Instance
     /// </summary>
     public static class MtkLog
     {
         private static MtkLogger _instance;
         private static readonly object _lock = new object();
 
-        /// <summary>获取全局日志实例</summary>
+        /// <summary>Get global log instance</summary>
         public static MtkLogger Instance
         {
             get
@@ -475,7 +480,7 @@ namespace LoveAlways.MediaTek.Common
             }
         }
 
-        /// <summary>设置自定义日志实例</summary>
+        /// <summary>Set custom log instance</summary>
         public static void SetInstance(MtkLogger logger)
         {
             lock (_lock)
@@ -484,7 +489,7 @@ namespace LoveAlways.MediaTek.Common
             }
         }
 
-        /// <summary>重置为默认实例</summary>
+        /// <summary>Reset to default instance</summary>
         public static void ResetInstance()
         {
             lock (_lock)
@@ -493,7 +498,7 @@ namespace LoveAlways.MediaTek.Common
             }
         }
 
-        // 便捷方法
+        // Convenient methods
         public static void Debug(string message) => Instance.Debug(message);
         public static void Verbose(string message) => Instance.Verbose(message);
         public static void Info(string message) => Instance.Info(message);
@@ -504,7 +509,7 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// 格式化的日志构建器（链式调用）
+    /// Formatted log builder (chained calls)
     /// </summary>
     public class MtkLogBuilder
     {

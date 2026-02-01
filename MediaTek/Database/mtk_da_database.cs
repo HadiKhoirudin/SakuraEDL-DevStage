@@ -1,9 +1,14 @@
 // ============================================================================
-// LoveAlways - MediaTek DA 数据库
+// LoveAlways - MediaTek Download Agent Database
 // MediaTek Download Agent Database
 // ============================================================================
-// DA 加载器数据库管理
+// DA Loader Database Management
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -15,46 +20,46 @@ using LoveAlways.MediaTek.Protocol;
 namespace LoveAlways.MediaTek.Database
 {
     /// <summary>
-    /// DA 记录
+    /// DA Record
     /// </summary>
     public class MtkDaRecord
     {
         /// <summary>HW Code</summary>
         public ushort HwCode { get; set; }
         
-        /// <summary>DA 名称</summary>
+        /// <summary>DA Name</summary>
         public string Name { get; set; }
         
-        /// <summary>DA 类型 (Legacy/XFlash/XML)</summary>
+        /// <summary>DA Type (Legacy/XFlash/XML)</summary>
         public int DaType { get; set; }
         
-        /// <summary>DA 版本</summary>
+        /// <summary>DA Version</summary>
         public int Version { get; set; }
         
-        /// <summary>DA1 加载地址</summary>
+        /// <summary>DA1 Load Address</summary>
         public uint Da1Address { get; set; }
         
-        /// <summary>DA2 加载地址</summary>
+        /// <summary>DA2 Load Address</summary>
         public uint Da2Address { get; set; }
         
-        /// <summary>DA1 签名长度</summary>
+        /// <summary>DA1 Signature Length</summary>
         public int Da1SigLen { get; set; }
         
-        /// <summary>DA2 签名长度</summary>
+        /// <summary>DA2 Signature Length</summary>
         public int Da2SigLen { get; set; }
         
-        /// <summary>嵌入式 DA1 数据 (如果有)</summary>
+        /// <summary>Embedded DA1 Data (if available)</summary>
         public byte[] EmbeddedDa1Data { get; set; }
         
-        /// <summary>嵌入式 DA2 数据 (如果有)</summary>
+        /// <summary>Embedded DA2 Data (if available)</summary>
         public byte[] EmbeddedDa2Data { get; set; }
         
-        /// <summary>是否支持 Exploit</summary>
+        /// <summary>Whether Exploit is supported</summary>
         public bool SupportsExploit { get; set; }
     }
 
     /// <summary>
-    /// MTK DA 数据库
+    /// MTK DA Database
     /// </summary>
     public static class MtkDaDatabase
     {
@@ -68,11 +73,11 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 初始化数据库
+        /// Initialize database
         /// </summary>
         private static void InitializeDatabase()
         {
-            // V6 (XML DA) 默认配置 (仅包含已验证的芯片)
+            // V6 (XML DA) Default configuration (verified chips only)
             var v6Chips = new ushort[]
             {
                 0x0551, 0x0562, 0x0588, 0x0600, 0x0690, 0x0699, 0x0707,
@@ -96,10 +101,10 @@ namespace LoveAlways.MediaTek.Database
                 });
             }
 
-            // TODO: 添加特殊配置芯片 (需验证)
-            // 某些高端芯片使用特殊的DA1地址 (如 0x1000000)
+            // TODO: Add special configuration chips (needs verification)
+            // Some high-end chips use special DA1 addresses (e.g., 0x1000000)
 
-            // XFlash DA 配置
+            // XFlash DA Configuration
             var xflashChips = new ushort[]
             {
                 0x0279, 0x0321, 0x0326, 0x0335, 0x0601, 0x0688
@@ -121,7 +126,7 @@ namespace LoveAlways.MediaTek.Database
                 });
             }
 
-            // Legacy DA 配置
+            // Legacy DA Configuration
             var legacyChips = new ushort[]
             {
                 0x6261, 0x6572, 0x6582, 0x6589, 0x6592, 0x6752, 0x6795
@@ -145,7 +150,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 添加 DA 记录
+        /// Add DA record
         /// </summary>
         private static void AddDaRecord(MtkDaRecord record)
         {
@@ -153,7 +158,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取 DA 记录
+        /// Get DA record
         /// </summary>
         public static MtkDaRecord GetDaRecord(ushort hwCode)
         {
@@ -161,7 +166,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取所有 DA 记录
+        /// Get all DA records
         /// </summary>
         public static IReadOnlyList<MtkDaRecord> GetAllDaRecords()
         {
@@ -169,19 +174,19 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 设置 AllInOne DA 文件路径
+        /// Set AllInOne DA file path
         /// </summary>
         public static void SetDaFilePath(string filePath)
         {
             if (File.Exists(filePath))
             {
                 _daFilePath = filePath;
-                _allInOneDaData = null;  // 清除缓存
+                _allInOneDaData = null;  // Clear cache
             }
         }
 
         /// <summary>
-        /// 加载 AllInOne DA 数据
+        /// Load AllInOne DA data
         /// </summary>
         public static bool LoadAllInOneDa()
         {
@@ -191,7 +196,7 @@ namespace LoveAlways.MediaTek.Database
                 return true;
             }
 
-            // 尝试默认路径
+            // Try default paths
             var defaultPaths = new[]
             {
                 "MtkResources/MTK_AllInOne_DA.bin",
@@ -213,7 +218,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取 AllInOne DA 数据
+        /// Get AllInOne DA data
         /// </summary>
         public static byte[] GetAllInOneDaData()
         {
@@ -225,7 +230,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取芯片的 DA1 加载地址
+        /// Get DA1 load address for chip
         /// </summary>
         public static uint GetDa1Address(ushort hwCode)
         {
@@ -233,16 +238,16 @@ namespace LoveAlways.MediaTek.Database
             if (record != null)
                 return record.Da1Address;
 
-            // 根据芯片类型返回默认值
+            // Return default value based on chip type
             var chip = MtkChipDatabase.GetChip(hwCode);
             if (chip != null)
                 return chip.DaPayloadAddr;
 
-            return 0x200000;  // 默认值
+            return 0x200000;  // Default value
         }
 
         /// <summary>
-        /// 获取芯片的 DA2 加载地址
+        /// Get DA2 load address for chip
         /// </summary>
         public static uint GetDa2Address(ushort hwCode)
         {
@@ -251,7 +256,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取芯片的 DA 类型
+        /// Get DA mode for chip
         /// </summary>
         public static Protocol.DaMode GetDaMode(ushort hwCode)
         {
@@ -263,11 +268,11 @@ namespace LoveAlways.MediaTek.Database
             if (chip != null)
                 return (Protocol.DaMode)chip.DaMode;
 
-            return Protocol.DaMode.Xml;  // 默认使用 XML DA
+            return Protocol.DaMode.Xml;  // Default to XML DA
         }
 
         /// <summary>
-        /// 获取芯片的签名长度
+        /// Get signature length for chip
         /// </summary>
         public static int GetSignatureLength(ushort hwCode, bool isDa2 = false)
         {
@@ -275,7 +280,7 @@ namespace LoveAlways.MediaTek.Database
             if (record != null)
                 return isDa2 ? record.Da2SigLen : record.Da1SigLen;
 
-            // 根据 DA 类型返回默认签名长度
+            // Return default signature length based on DA type
             var daMode = GetDaMode(hwCode);
             return daMode switch
             {
@@ -287,7 +292,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 检查芯片是否支持漏洞利用
+        /// Check if chip supports exploit
         /// </summary>
         public static bool SupportsExploit(ushort hwCode)
         {
@@ -296,7 +301,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 从 AllInOne DA 文件中提取指定芯片的 DA
+        /// Extract DA for specified chip from AllInOne DA file
         /// </summary>
         public static (DaEntry da1, DaEntry da2)? ExtractDaFromAllInOne(ushort hwCode, DaLoader loader)
         {
@@ -308,7 +313,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 注册自定义 DA 数据
+        /// Register custom DA data
         /// </summary>
         public static void RegisterCustomDa(ushort hwCode, byte[] da1Data, byte[] da2Data = null)
         {
@@ -334,7 +339,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取自定义 DA 数据
+        /// Get custom DA data
         /// </summary>
         public static (byte[] da1, byte[] da2) GetCustomDa(ushort hwCode)
         {
@@ -346,7 +351,7 @@ namespace LoveAlways.MediaTek.Database
         }
 
         /// <summary>
-        /// 获取统计信息
+        /// Get statistics
         /// </summary>
         public static (int total, int v6Count, int xflashCount, int legacyCount) GetStatistics()
         {

@@ -39,12 +39,12 @@ namespace OPFlashTool.Services
             {
                 int result = RtlGetVersion(ref osvi);
                 return result == 0
-                    ? $"{GetWindowsVersion(osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber)} {(Is64Bit() ? "64位" : "32位")}"
-                    : "检测失败";
+                    ? $"{GetWindowsVersion(osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber)} {(Is64Bit() ? "64-bit" : "32-bit")}"
+                    : "Detection Failed";
             }
             catch (Exception)
             {
-                return "检测失败";
+                return "Detection Failed";
             }
         }
 
@@ -63,7 +63,7 @@ namespace OPFlashTool.Services
                     else if (build >= 10240)
                         return "Windows 10";
                     else
-                        return "Windows 10 预览版";
+                        return "Windows 10 Preview";
                 case 6:
                     switch (minor)
                     {
@@ -76,7 +76,7 @@ namespace OPFlashTool.Services
                         case 3:
                             return "Windows 8.1";
                         default:
-                            return "未知NT系统";
+                            return "Unknown NT System";
                     }
                 case 5:
                     switch (minor)
@@ -91,7 +91,7 @@ namespace OPFlashTool.Services
                             return "Windows XP/Server 2003";
                     }
                 default:
-                    return "未知系统";
+                    return "Unknown System";
             }
         }
     }

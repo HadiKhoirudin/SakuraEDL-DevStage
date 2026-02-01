@@ -1,10 +1,15 @@
 // ============================================================================
-// LoveAlways - 高通刷写服务
-// Qualcomm Flash Service - 整合 Sahara 和 Firehose 的高层 API
+// LoveAlways - Qualcomm Flash Service
+// Qualcomm Flash Service - High-level API integrating Sahara and Firehose
 // ============================================================================
-// 模块: Qualcomm.Services
-// 功能: 设备连接、分区读写、刷写流程管理
+// Module: Qualcomm.Services
+// Function: Device Connection, Partition Read/Write, Flash Process Management
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -22,7 +27,7 @@ using LoveAlways.Qualcomm.Authentication;
 namespace LoveAlways.Qualcomm.Services
 {
     /// <summary>
-    /// 连接状态
+    /// Connection State
     /// </summary>
     public enum QualcommConnectionState
     {
@@ -35,7 +40,7 @@ namespace LoveAlways.Qualcomm.Services
     }
 
     /// <summary>
-    /// 高通刷写服务
+    /// Qualcomm Flash Service
     /// </summary>
     public class QualcommService : IDisposable
     {
@@ -43,16 +48,16 @@ namespace LoveAlways.Qualcomm.Services
         private SaharaClient _sahara;
         private FirehoseClient _firehose;
         private readonly Action<string> _log;
-        private readonly Action<string> _logDetail;  // 详细调试日志 (只写入文件)
+        private readonly Action<string> _logDetail;  // Detailed debug log (Write to file only)
         private readonly Action<long, long> _progress;
         private readonly OplusSuperFlashManager _oplusSuperManager;
         private readonly DeviceInfoService _deviceInfoService;
         private bool _disposed;
         
-        // 看门狗机制
+        // Watchdog Mechanism
         private Watchdog _watchdog;
 
-        // 状态
+        // State
         public QualcommConnectionState State { get; private set; }
         public QualcommChipInfo ChipInfo { get { return _sahara != null ? _sahara.ChipInfo : null; } }
         public bool IsVipDevice { get; private set; }
@@ -60,36 +65,36 @@ namespace LoveAlways.Qualcomm.Services
         public int SectorSize { get { return _firehose != null ? _firehose.SectorSize : 4096; } }
         public string CurrentSlot { get { return _firehose != null ? _firehose.CurrentSlot : "nonexistent"; } }
         
-        // 最后使用的连接参数 (用于状态显示)
+        // Last used connection parameters (For status display)
         public string LastPortName { get; private set; }
         public string LastStorageType { get; private set; }
 
-        // 分区缓存
+        // Partition Cache
         private Dictionary<int, List<PartitionInfo>> _partitionCache;
         
-        // 端口管理标志位 (用于操作完成后释放端口)
-        private bool _portClosed = false;          // 端口是否已关闭
-        private bool _keepPortOpen = false;        // 是否保持端口打开 (用于连续操作)
-        private QualcommChipInfo _cachedChipInfo;  // 缓存的芯片信息 (端口关闭后保留)
+        // Port management flags (Release port after operation completion)
+        private bool _portClosed = false;          // Is port closed
+        private bool _keepPortOpen = false;        // Keep port open (For continuous operation)
+        private QualcommChipInfo _cachedChipInfo;  // Cached chip info (Retained after port closed)
 
         /// <summary>
-        /// 状态变化事件
+        /// State changed event
         /// </summary>
         public event EventHandler<QualcommConnectionState> StateChanged;
         
         /// <summary>
-        /// 端口断开事件 (设备自己断开时触发)
+        /// Port disconnected event (Triggered when device disconnects itself)
         /// </summary>
         public event EventHandler PortDisconnected;
         
         /// <summary>
-        /// 小米授权令牌事件 (内置签名失败时触发，需要弹窗显示令牌)
-        /// Token 格式: VQ 开头的 Base64 字符串
+        /// Xiaomi Auth Token Event (Triggered when built-in signature fails, requires popup to show token)
+        /// Token Format: Base64 string starting with VQ
         /// </summary>
         public event Action<string> XiaomiAuthTokenRequired;
         
         /// <summary>
-        /// 检查是否真正连接 (会验证端口状态)
+        /// Check if truly connected (Validates port state)
         /// </summary>
         public bool IsConnected 
         { 
@@ -98,10 +103,10 @@ namespace LoveAlways.Qualcomm.Services
                 if (State != QualcommConnectionState.Ready)
                     return false;
                     
-                // 验证端口是否真正可用
+                // Validate if port is truly available
                 if (_portManager == null || !_portManager.ValidateConnection())
                 {
-                    // 端口已断开，更新状态
+                    // Port disconnected, update state
                     HandlePortDisconnected();
                     return false;
                 }
@@ -110,7 +115,7 @@ namespace LoveAlways.Qualcomm.Services
         }
         
         /// <summary>
-        /// 快速检查连接状态 (不验证端口，用于UI高频显示)
+        /// Quick check connection state (No port validation, for high-frequency UI display)
         /// </summary>
         public bool IsConnectedFast
         {
@@ -118,7 +123,7 @@ namespace LoveAlways.Qualcomm.Services
         }
         
         /// <summary>
-        /// 验证连接是否有效
+        /// Validate connection validity
         /// </summary>
         public bool ValidateConnection()
         {
@@ -128,18 +133,18 @@ namespace LoveAlways.Qualcomm.Services
             if (_portManager == null)
                 return false;
                 
-            // 检查端口是否在系统中
+            // Check if port exists in system
             if (!_portManager.IsPortAvailable())
             {
-                _logDetail("[高通] 端口已从系统中移除");
+                _logDetail("[Qualcomm] Port removed from system");
                 HandlePortDisconnected();
                 return false;
             }
             
-            // 验证端口连接
+            // Validate port connection
             if (!_portManager.ValidateConnection())
             {
-                _logDetail("[高通] 端口连接验证失败");
+                _logDetail("[Qualcomm] Port connection validation failed");
                 HandlePortDisconnected();
                 return false;
             }
@@ -148,33 +153,33 @@ namespace LoveAlways.Qualcomm.Services
         }
         
         /// <summary>
-        /// 处理端口断开 (设备自己断开)
+        /// Handle port disconnected (Device disconnected itself)
         /// </summary>
         private void HandlePortDisconnected()
         {
             if (State == QualcommConnectionState.Disconnected)
                 return;
                 
-            _log("[高通] 检测到设备断开");
+            _log("[Qualcomm] Device disconnection detected");
             
-            // 清理资源 (忽略释放异常，确保完整清理)
+            // Cleanup resources (Ignore dispose exceptions, ensure complete cleanup)
             if (_portManager != null)
             {
                 try { _portManager.Close(); } 
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] 关闭端口异常: {ex.Message}"); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] Close port exception: {ex.Message}"); }
                 try { _portManager.Dispose(); } 
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] 释放端口异常: {ex.Message}"); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] Dispose port exception: {ex.Message}"); }
                 _portManager = null;
             }
             
             if (_firehose != null)
             {
                 try { _firehose.Dispose(); } 
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] 释放 Firehose 异常: {ex.Message}"); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] Dispose Firehose exception: {ex.Message}"); }
                 _firehose = null;
             }
             
-            // 清空分区缓存 (设备断开后缓存无效)
+            // Clear partition cache (Cache invalid after device disconnect)
             _partitionCache.Clear();
             
             SetState(QualcommConnectionState.Disconnected);
@@ -191,31 +196,31 @@ namespace LoveAlways.Qualcomm.Services
             _partitionCache = new Dictionary<int, List<PartitionInfo>>();
             State = QualcommConnectionState.Disconnected;
             
-            // 初始化看门狗
+            // Initialize Watchdog
             _watchdog = new Watchdog("Qualcomm", WatchdogManager.DefaultTimeouts.Qualcomm, _logDetail);
             _watchdog.OnTimeout += OnWatchdogTimeout;
         }
         
         /// <summary>
-        /// 看门狗超时处理
+        /// Watchdog timeout handling
         /// </summary>
         private void OnWatchdogTimeout(object sender, WatchdogTimeoutEventArgs e)
         {
-            _log($"[高通] 看门狗超时: {e.OperationName} (等待 {e.ElapsedTime.TotalSeconds:F1}秒)");
+            _log($"[Qualcomm] Watchdog timeout: {e.OperationName} (Waited {e.ElapsedTime.TotalSeconds:F1}s)");
             
-            // 超时次数过多时尝试重置
+            // Try to reset if too many timeouts
             if (e.TimeoutCount >= 3)
             {
-                _log("[高通] 多次超时，尝试重置连接...");
-                e.ShouldReset = false; // 停止看门狗
+                _log("[Qualcomm] Multiple timeouts, attempting to reset connection...");
+                e.ShouldReset = false; // Stop Watchdog
                 
-                // 触发端口断开事件
+                // Trigger port disconnected event
                 HandlePortDisconnected();
             }
         }
         
         /// <summary>
-        /// 喂狗 - 在长时间操作中调用以重置看门狗计时器
+        /// Feed Watchdog - Call during long operations to reset watchdog timer
         /// </summary>
         public void FeedWatchdog()
         {
@@ -223,7 +228,7 @@ namespace LoveAlways.Qualcomm.Services
         }
         
         /// <summary>
-        /// 启动看门狗
+        /// Start Watchdog
         /// </summary>
         public void StartWatchdog(string operation)
         {
@@ -231,74 +236,74 @@ namespace LoveAlways.Qualcomm.Services
         }
         
         /// <summary>
-        /// 停止看门狗
+        /// Stop Watchdog
         /// </summary>
         public void StopWatchdog()
         {
             _watchdog?.Stop();
         }
 
-        #region 连接管理
+        #region Connection Management
 
         /// <summary>
-        /// 仅获取 Sahara 设备信息 (不上传 Loader)
-        /// 用于云端自动匹配
+        /// Get Sahara device info only (Do not upload Loader)
+        /// Used for cloud auto-matching
         /// </summary>
-        /// <param name="portName">COM 端口名</param>
-        /// <param name="ct">取消令牌</param>
-        /// <returns>设备信息，失败返回 null</returns>
+        /// <param name="portName">COM Port Name</param>
+        /// <param name="ct">Cancellation Token</param>
+        /// <returns>Device info, returns null on failure</returns>
         public async Task<QualcommChipInfo> GetSaharaDeviceInfoOnlyAsync(string portName, CancellationToken ct = default(CancellationToken))
         {
             try
             {
-                _log("[云端] 获取设备信息...");
+                _log("[Cloud] Getting device info...");
 
-                // 初始化串口
+                // Initialize Serial Port
                 _portManager = new SerialPortManager();
 
-                // Sahara 模式必须保留初始 Hello 包，不清空缓冲区
+                // Sahara mode must keep initial Hello packet, do not clear buffer
                 bool opened = await _portManager.OpenAsync(portName, 3, false, ct);
                 if (!opened)
                 {
-                    _log("[云端] 无法打开端口");
+                    _log("[Cloud] Cannot open port");
                     return null;
                 }
 
-                // 创建 Sahara 客户端
+                // Create Sahara Client
                 _sahara = new SaharaClient(_portManager, _log, _logDetail, null);
 
-                // 仅执行握手获取设备信息 (不上传 Loader)
+                // Only perform handshake to get device info (Do not upload Loader)
                 bool infoOk = await _sahara.GetDeviceInfoOnlyAsync(ct);
                 
                 if (!infoOk || _sahara.ChipInfo == null)
                 {
-                    _log("[云端] 无法获取设备信息");
+                    _log("[Cloud] Cannot get device info");
                     _portManager.Close();
                     return null;
                 }
 
-                _log("[云端] 设备信息获取成功");
+                _log("[Cloud] Device info retrieved successfully");
                 
-                // 保存芯片信息
+                // Save chip info
                 _cachedChipInfo = _sahara.ChipInfo;
                 
-                // 保持端口打开，后续会继续使用
+                // Keep port open, will be used later
                 return _sahara.ChipInfo;
             }
             catch (Exception ex)
             {
-                _log($"[云端] 获取设备信息异常: {ex.Message}");
+                _log($"[Cloud] Get device info exception: {ex.Message}");
                 return null;
             }
         }
         
         /// <summary>
-        /// 使用已获取的设备信息继续连接 (上传 Loader)
+        /// Continue connection with retrieved device info (Upload Loader)
         /// </summary>
-        /// <param name="loaderData">Loader 数据</param>
-        /// <param name="storageType">存储类型</param>
-        /// <param name="authMode">认证模式</param>
-        /// <param name="ct">取消令牌</param>
+        /// <param name="loaderData">Loader Data</param>
+        /// <param name="storageType">Storage Type</param>
+        /// <param name="authMode">Auth Mode</param>
+        /// <param name="ct">Cancellation Token</param>
         public async Task<bool> ContinueConnectWithLoaderAsync(byte[] loaderData, string storageType = "ufs", 
             string authMode = "none", CancellationToken ct = default(CancellationToken))
         {
@@ -306,29 +311,29 @@ namespace LoveAlways.Qualcomm.Services
             {
                 if (_sahara == null || _portManager == null)
                 {
-                    _log("[云端] 请先调用 GetSaharaDeviceInfoOnlyAsync");
+                    _log("[Cloud] Please call GetSaharaDeviceInfoOnlyAsync first");
                     return false;
                 }
 
                 SetState(QualcommConnectionState.SaharaMode);
                 
-                // 使用已有的 Sahara 客户端继续上传 Loader
+                // Use existing Sahara client to continue uploading Loader
                 bool uploadOk = await _sahara.UploadLoaderAsync(loaderData, ct);
                 if (!uploadOk)
                 {
-                    _log("[云端] Loader 上传失败");
+                    _log("[Cloud] Loader upload failed");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
 
-                // 根据用户选择的认证模式设置标志
+                // Set flag based on user selected auth mode
                 IsVipDevice = (authMode.ToLowerInvariant() == "vip" || authMode.ToLowerInvariant() == "oplus");
 
-                // 等待 Firehose 就绪
-                _log("正在发送 Firehose 引导文件 : 成功");
+                // Wait for Firehose ready
+                _log("Sending Firehose loader : Success");
                 await Task.Delay(1000, ct);
 
-                // 重新打开端口 (Firehose 模式)
+                // Reopen port (Firehose mode)
                 string portName = _portManager.PortName;
                 _portManager.Close();
                 await Task.Delay(500, ct);
@@ -336,16 +341,16 @@ namespace LoveAlways.Qualcomm.Services
                 bool opened = await _portManager.OpenAsync(portName, 5, true, ct);
                 if (!opened)
                 {
-                    _log("[云端] 无法重新打开端口");
+                    _log("[Cloud] Cannot reopen port");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
 
-                // Firehose 配置
+                // Firehose Configuration
                 SetState(QualcommConnectionState.FirehoseMode);
                 _firehose = new FirehoseClient(_portManager, _log, _progress, _logDetail);
 
-                // 传递芯片信息
+                // Pass chip info
                 if (ChipInfo != null)
                 {
                     _firehose.ChipSerial = ChipInfo.SerialHex;
@@ -353,60 +358,60 @@ namespace LoveAlways.Qualcomm.Services
                     _firehose.ChipPkHash = ChipInfo.PkHash;
                 }
 
-                // 执行认证 (如需要)
+                // Perform auth (If needed)
                 string authModeLower = authMode.ToLowerInvariant();
                 if (authModeLower == "xiaomi" || (authModeLower == "none" && IsXiaomiDevice()))
                 {
-                    _log("[云端] 执行小米认证...");
+                    _log("[Cloud] Executing Xiaomi Auth...");
                     var xiaomi = new XiaomiAuthStrategy(_log);
                     xiaomi.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
                     bool authOk = await xiaomi.AuthenticateAsync(_firehose, null, ct);
                     if (authOk)
-                        _log("[云端] 小米认证成功");
+                        _log("[Cloud] Xiaomi Auth success");
                     else
-                        _log("[云端] 小米认证失败");
+                        _log("[Cloud] Xiaomi Auth failed");
                 }
                 else if (authModeLower == "oneplus")
                 {
-                    _log("[云端] 执行 OnePlus 认证...");
+                    _log("[Cloud] Executing OnePlus Auth...");
                     var oneplus = new OnePlusAuthStrategy(_log);
                     bool authOk = await oneplus.AuthenticateAsync(_firehose, null, ct);
                     if (authOk)
-                        _log("[云端] OnePlus 认证成功");
+                        _log("[Cloud] OnePlus Auth success");
                     else
-                        _log("[云端] OnePlus 认证失败");
+                        _log("[Cloud] OnePlus Auth failed");
                 }
 
-                _log("正在配置 Firehose...");
+                _log("Configuring Firehose...");
                 bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);
                 if (!configOk)
                 {
-                    _log("配置 Firehose : 失败");
+                    _log("Configure Firehose : Failed");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
-                _log("配置 Firehose : 成功");
+                _log("Configure Firehose : Success");
 
                 SetState(QualcommConnectionState.Ready);
                 return true;
             }
             catch (Exception ex)
             {
-                _log($"[云端] 连接异常: {ex.Message}");
+                _log($"[Cloud] Connection exception: {ex.Message}");
                 SetState(QualcommConnectionState.Error);
                 return false;
             }
         }
 
         /// <summary>
-        /// 连接设备
+        /// Connect Device
         /// </summary>
         /// <param name="portName">COM 端口名</param>
-        /// <param name="programmerPath">Programmer 文件路径</param>
-        /// <param name="storageType">存储类型 (ufs/emmc)</param>
-        /// <param name="authMode">认证模式: none, vip, oneplus, xiaomi</param>
-        /// <param name="digestPath">VIP Digest 文件路径</param>
-        /// <param name="signaturePath">VIP Signature 文件路径</param>
+        /// <param name="programmerPath">Programmer File Path</param>
+        /// <param name="storageType">Storage Type (ufs/emmc)</param>
+        /// <param name="authMode">Auth Mode: none, vip, oneplus, xiaomi</param>
+        /// <param name="digestPath">VIP Digest File Path</param>
+        /// <param name="signaturePath">VIP Signature File Path</param>
         /// <param name="ct">取消令牌</param>
         public async Task<bool> ConnectAsync(string portName, string programmerPath, string storageType = "ufs", 
             string authMode = "none", string digestPath = "", string signaturePath = "",
@@ -415,34 +420,34 @@ namespace LoveAlways.Qualcomm.Services
             try
             {
                 SetState(QualcommConnectionState.Connecting);
-                _log("等待高通 EDL USB 设备 : 成功");
-                _log(string.Format("USB 端口 : {0}", portName));
-                _log("正在连接设备 : 成功");
+                _log("Waiting for Qualcomm EDL USB Device : Success");
+                _log(string.Format("USB Port : {0}", portName));
+                _log("Connecting to Device : Success");
 
-                // 验证 Programmer 文件
+                // Validate Programmer File
                 if (!File.Exists(programmerPath))
                 {
-                    _log("[高通] Programmer 文件不存在: " + programmerPath);
+                    _log("[Qualcomm] Programmer file not found: " + programmerPath);
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
 
-                // 初始化串口
+                // Initialize Serial Port
                 _portManager = new SerialPortManager();
 
-                // Sahara 模式必须保留初始 Hello 包，不清空缓冲区
+                // Sahara mode must keep initial Hello packet, do not clear buffer
                 bool opened = await _portManager.OpenAsync(portName, 3, false, ct);
                 if (!opened)
                 {
-                    _log("[高通] 无法打开端口");
+                    _log("[Qualcomm] Cannot open port");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
 
-                // Sahara 握手
+                // Sahara Handshake
                 SetState(QualcommConnectionState.SaharaMode);
                 
-                // 创建 Sahara 客户端并传递进度回调
+                // Create Sahara Client and pass progress callback
                 Action<double> saharaProgress = null;
                 if (_progress != null)
                 {
@@ -453,35 +458,35 @@ namespace LoveAlways.Qualcomm.Services
                 bool saharaOk = await _sahara.HandshakeAndUploadAsync(programmerPath, ct);
                 if (!saharaOk)
                 {
-                    _log("[高通] Sahara 握手失败");
+                    _log("[Qualcomm] Sahara Handshake failed");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
 
-                // 根据用户选择的认证模式设置标志 (不再自动检测)
+                // Set flag based on user selected auth mode (No auto-detection)
                 IsVipDevice = (authMode.ToLowerInvariant() == "vip" || authMode.ToLowerInvariant() == "oplus");
 
-                // 等待 Firehose 就绪
-                _log("正在发送 Firehose 引导文件 : 成功");
+                // Wait for Firehose ready
+                _log("Sending Firehose loader : Success");
                 await Task.Delay(1000, ct);
 
-                // 重新打开端口 (Firehose 模式)
+                // Reopen port (Firehose mode)
                 _portManager.Close();
                 await Task.Delay(500, ct);
 
                 opened = await _portManager.OpenAsync(portName, 5, true, ct);
                 if (!opened)
                 {
-                    _log("[高通] 无法重新打开端口");
+                    _log("[Qualcomm] Cannot reopen port");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
 
-                // Firehose 配置
+                // Firehose Configuration
                 SetState(QualcommConnectionState.FirehoseMode);
                 _firehose = new FirehoseClient(_portManager, _log, _progress, _logDetail);
 
-                // 传递芯片信息
+                // Pass chip info
                 if (ChipInfo != null)
                 {
                     _firehose.ChipSerial = ChipInfo.SerialHex;
@@ -489,39 +494,39 @@ namespace LoveAlways.Qualcomm.Services
                     _firehose.ChipPkHash = ChipInfo.PkHash;
                 }
 
-                // 根据用户选择执行认证 (配置前认证)
+                // Perform auth based on user selection (Pre-config auth)
                 string authModeLower = authMode.ToLowerInvariant();
                 bool preConfigAuth = (authModeLower == "vip" || authModeLower == "oplus" || authModeLower == "xiaomi");
                 
-                // 小米设备自动认证：即使用户选择 none，也自动执行小米认证
+                // Xiaomi device auto auth: Even if user selects none, auto perform Xiaomi auth
                 bool isXiaomi = IsXiaomiDevice();
                 if (authModeLower == "none" && isXiaomi)
                 {
-                    _log("[高通] 检测到小米设备 (SecBoot)，自动执行 MiAuth 认证...");
+                    _log("[Qualcomm] Xiaomi device detected (SecBoot), auto executing MiAuth...");
                     var xiaomi = new XiaomiAuthStrategy(_log);
                     xiaomi.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
                     bool authOk = await xiaomi.AuthenticateAsync(_firehose, programmerPath, ct);
                     if (authOk)
-                        _log("[高通] 小米认证成功");
+                        _log("[Qualcomm] Xiaomi Auth success");
                     else
-                        _log("[高通] 小米认证失败，设备可能需要官方授权");
+                        _log("[Qualcomm] Xiaomi Auth failed, device might need official authorization");
                 }
                 else if (preConfigAuth && authModeLower != "none")
                 {
-                    _log(string.Format("[高通] 执行 {0} 认证 (配置前)...", authMode.ToUpper()));
+                    _log(string.Format("[Qualcomm] Executing {0} Auth (Pre-config)...", authMode.ToUpper()));
                     bool authOk = false;
                     
                     if (authModeLower == "vip" || authModeLower == "oplus")
                     {
-                        // VIP 认证必须在配置前
+                        // VIP Auth must be before configuration
                         if (!string.IsNullOrEmpty(digestPath) && !string.IsNullOrEmpty(signaturePath))
                         {
                             authOk = await PerformVipAuthManualAsync(digestPath, signaturePath, ct);
                         }
                         else
                         {
-                            _log("[高通] VIP 认证需要 Digest 和 Signature 文件，将回退到普通模式");
-                            // 没有认证文件，回退到普通模式
+                            _log("[Qualcomm] VIP Auth requires Digest and Signature files, falling back to normal mode");
+                            // No auth files, fallback to normal mode
                             IsVipDevice = false;
                         }
                     }
@@ -534,30 +539,30 @@ namespace LoveAlways.Qualcomm.Services
                     
                     if (authOk)
                     {
-                        _log(string.Format("[高通] {0} 认证成功", authMode.ToUpper()));
+                        _log(string.Format("[Qualcomm] {0} Auth success", authMode.ToUpper()));
                     }
                     else if (IsVipDevice)
                     {
-                        // VIP 认证失败但有文件，回退到普通模式
-                        _log(string.Format("[高通] {0} 认证失败，回退到普通读取模式", authMode.ToUpper()));
+                        // VIP Auth failed but has files, fallback to normal mode
+                        _log(string.Format("[Qualcomm] {0} Auth failed, fallback to normal read mode", authMode.ToUpper()));
                         IsVipDevice = false;
                     }
                 }
 
-                _log("正在配置 Firehose...");
+                _log("Configuring Firehose...");
                 bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);
                 if (!configOk)
                 {
-                    _log("配置 Firehose : 失败");
+                    _log("Configure Firehose : Failed");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
-                _log("配置 Firehose : 成功");
+                _log("Configure Firehose : Success");
 
-                // 配置后认证 (OnePlus)
+                // Post-config Auth (OnePlus)
                 if (!preConfigAuth && authModeLower != "none")
                 {
-                    _log(string.Format("[高通] 执行 {0} 认证 (配置后)...", authMode.ToUpper()));
+                    _log(string.Format("[Qualcomm] Executing {0} Auth (Post-config)...", authMode.ToUpper()));
                     bool authOk = false;
                     
                     if (authModeLower == "oneplus")
@@ -567,42 +572,42 @@ namespace LoveAlways.Qualcomm.Services
                     }
                     
                     if (authOk)
-                        _log(string.Format("[高通] {0} 认证成功", authMode.ToUpper()));
+                        _log(string.Format("[Qualcomm] {0} Auth success", authMode.ToUpper()));
                     else
-                        _log(string.Format("[高通] {0} 认证失败", authMode.ToUpper()));
+                        _log(string.Format("[Qualcomm] {0} Auth failed", authMode.ToUpper()));
                 }
 
-                // 保存连接参数
+                // Save connection parameters
                 LastPortName = portName;
                 LastStorageType = storageType;
                 
-                // 注册端口断开事件
+                // Register port disconnected event
                 if (_portManager != null)
                 {
                     _portManager.PortDisconnected += (s, e) => HandlePortDisconnected();
                 }
                 
                 SetState(QualcommConnectionState.Ready);
-                _log("[高通] 连接成功");
+                _log("[Qualcomm] Connected successfully");
 
                 return true;
             }
             catch (OperationCanceledException)
             {
-                _log("[高通] 连接已取消");
+                _log("[Qualcomm] Connection canceled");
                 SetState(QualcommConnectionState.Disconnected);
                 return false;
             }
             catch (Exception ex)
             {
-                _log(string.Format("[高通] 连接错误 - {0}", ex.Message));
+                _log(string.Format("[Qualcomm] Connection error - {0}", ex.Message));
                 SetState(QualcommConnectionState.Error);
                 return false;
             }
         }
 
         /// <summary>
-        /// 使用内嵌 Loader 数据连接设备 (VIP 模式，不含认证)
+        /// Connect device using embedded Loader data (VIP mode, no auth)
         /// </summary>
         public async Task<bool> ConnectWithLoaderDataAsync(string portName, byte[] loaderData, string storageType = "ufs", CancellationToken ct = default(CancellationToken))
         {
@@ -610,13 +615,13 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 使用内嵌 Loader 数据连接并执行 VIP 认证 (使用文件路径方式)
-        /// 重要：VIP 认证在 Loader 上传后、Firehose 配置前执行
+        /// Connect using embedded Loader data and perform VIP Auth (Using file path)
+        /// Important: VIP Auth executed after Loader upload, before Firehose configuration
         /// </summary>
-        /// <param name="portName">端口名</param>
-        /// <param name="loaderData">Loader 二进制数据</param>
-        /// <param name="digestPath">VIP Digest 文件路径 (可选)</param>
-        /// <param name="signaturePath">VIP Signature 文件路径 (可选)</param>
+        /// <param name="portName">Port Name</param>
+        /// <param name="loaderData">Loader Binary Data</param>
+        /// <param name="digestPath">VIP Digest File Path (Optional)</param>
+        /// <param name="signaturePath">VIP Signature File Path (Optional)</param>
         /// <param name="storageType">存储类型</param>
         /// <param name="ct">取消令牌</param>
         public async Task<bool> ConnectWithVipAuthAsync(string portName, byte[] loaderData, string digestPath, string signaturePath, string storageType = "ufs", CancellationToken ct = default(CancellationToken))
@@ -624,27 +629,27 @@ namespace LoveAlways.Qualcomm.Services
             try
             {
                 SetState(QualcommConnectionState.Connecting);
-                _log("[高通] 使用内嵌 Loader 连接...");
-                _log(string.Format("USB 端口 : {0}", portName));
+                _log("[Qualcomm] Connecting using embedded Loader...");
+                _log(string.Format("USB Port : {0}", portName));
 
                 if (loaderData == null || loaderData.Length == 0)
                 {
-                    _log("[高通] Loader 数据为空");
+                    _log("[Qualcomm] Loader data is empty");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
 
-                // 初始化串口
+                // Initialize Serial Port
                 _portManager = new SerialPortManager();
                 bool opened = await _portManager.OpenAsync(portName, 3, false, ct);
                 if (!opened)
                 {
-                    _log("[高通] 无法打开端口");
+                    _log("[Qualcomm] Cannot open port");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
 
-                // Sahara 握手并上传内嵌 Loader
+                // Sahara Handshake and upload embedded Loader
                 SetState(QualcommConnectionState.SaharaMode);
                 Action<double> saharaProgress = null;
                 if (_progress != null)
@@ -656,122 +661,122 @@ namespace LoveAlways.Qualcomm.Services
                 bool saharaOk = await _sahara.HandshakeAndUploadAsync(loaderData, "VIP_Loader", ct);
                 if (!saharaOk)
                 {
-                    _log("[高通] Sahara 握手/Loader 上传失败");
+                    _log("[Qualcomm] Sahara Handshake/Loader upload failed");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
 
-                // 芯片信息已通过 _sahara.ChipInfo 保存，ChipInfo 属性会自动获取
-                // 注意：IsVipDevice 将在 VIP 认证成功后设置
+                // ChipInfo saved via _sahara.ChipInfo, automatically retrieved
+                // Note: IsVipDevice will be set after VIP Auth success
 
-                // 等待 Firehose 就绪
-                _log("正在发送 Firehose 引导文件 : 成功");
+                // Wait for Firehose ready
+                _log("Sending Firehose loader : Success");
                 await Task.Delay(1000, ct);
 
-                // 重新打开端口 (Firehose 模式)
+                // Reopen port (Firehose mode)
                 _portManager.Close();
                 await Task.Delay(500, ct);
 
                 opened = await _portManager.OpenAsync(portName, 5, true, ct);
                 if (!opened)
                 {
-                    _log("[高通] 无法重新打开端口");
+                    _log("[Qualcomm] Cannot reopen port");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
 
-                // 创建 Firehose 客户端
+                // Create Firehose Client
                 SetState(QualcommConnectionState.FirehoseMode);
                 _firehose = new FirehoseClient(_portManager, _log, _progress, _logDetail);
 
-                // ========== VIP 认证 (关键：必须在 Firehose 配置之前执行) ==========
-                // 使用文件路径方式发送二进制数据
+                // ========== VIP Auth (Critical: Must be executed before Firehose configuration) ==========
+                // Send binary data using file path
                 bool vipAuthOk = false;
                 if (!string.IsNullOrEmpty(digestPath) && !string.IsNullOrEmpty(signaturePath) &&
                     System.IO.File.Exists(digestPath) && System.IO.File.Exists(signaturePath))
                 {
                     var digestInfo = new System.IO.FileInfo(digestPath);
                     var sigInfo = new System.IO.FileInfo(signaturePath);
-                    _log(string.Format("[高通] 执行 VIP 认证 (Digest={0}B, Sign={1}B)...", digestInfo.Length, sigInfo.Length));
+                    _log(string.Format("[Qualcomm] Executing VIP Auth (Digest={0}B, Sign={1}B)...", digestInfo.Length, sigInfo.Length));
                     
-                    // 使用文件路径方式发送
+                    // Send using file path
                     vipAuthOk = await _firehose.PerformVipAuthAsync(digestPath, signaturePath, ct);
                     if (!vipAuthOk)
                     {
-                        _log("[高通] VIP 认证失败，回退到普通模式...");
-                        IsVipDevice = false;  // 重要：认证失败时使用普通读取模式
+                        _log("[Qualcomm] VIP Auth failed, falling back to normal mode...");
+                        IsVipDevice = false;  // Important: Use normal read mode on auth failure
                     }
                     else
                     {
-                        _log("[高通] VIP 认证成功，已激活高权限模式");
+                        _log("[Qualcomm] VIP Auth success, high privilege mode activated");
                         IsVipDevice = true;
                     }
                 }
                 else
                 {
-                    // 没有提供认证数据或文件不存在，使用普通模式
+                    // No auth data provided or file not found, use normal mode
                     if (!string.IsNullOrEmpty(digestPath) || !string.IsNullOrEmpty(signaturePath))
                     {
-                        _log("[高通] VIP 认证文件不存在，使用普通模式");
+                        _log("[Qualcomm] VIP Auth file not found, using normal mode");
                     }
                     IsVipDevice = false;
                 }
 
-                // Firehose 配置
-                _log("正在配置 Firehose...");
+                // Firehose Configuration
+                _log("Configuring Firehose...");
                 bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);
                 if (!configOk)
                 {
-                    _log("配置 Firehose : 失败");
+                    _log("Configure Firehose : Failed");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
-                _log("配置 Firehose : 成功");
+                _log("Configure Firehose : Success");
 
-                // 保存连接参数
+                // Save connection parameters
                 LastPortName = portName;
                 LastStorageType = storageType;
 
-                // 注册端口断开事件
+                // Register port disconnected event
                 if (_portManager != null)
                 {
                     _portManager.PortDisconnected += (s, e) => HandlePortDisconnected();
                 }
 
                 SetState(QualcommConnectionState.Ready);
-                _log("[高通] VIP Loader 连接成功");
+                _log("[Qualcomm] VIP Loader connected successfully");
 
                 return true;
             }
             catch (OperationCanceledException)
             {
-                _log("[高通] 连接已取消");
+                _log("[Qualcomm] Connection canceled");
                 SetState(QualcommConnectionState.Disconnected);
                 return false;
             }
             catch (Exception ex)
             {
-                _log(string.Format("[高通] 连接错误 - {0}", ex.Message));
+                _log(string.Format("[Qualcomm] Connection error - {0}", ex.Message));
                 SetState(QualcommConnectionState.Error);
                 return false;
             }
         }
 
         /// <summary>
-        /// 直接连接 Firehose (跳过 Sahara)
+        /// Connect Firehose Directly (Skip Sahara)
         /// </summary>
         public async Task<bool> ConnectFirehoseDirectAsync(string portName, string storageType = "ufs", CancellationToken ct = default(CancellationToken))
         {
             try
             {
                 SetState(QualcommConnectionState.Connecting);
-                _log(string.Format("[高通] 直接连接 Firehose: {0}...", portName));
+                _log(string.Format("[Qualcomm] Direct Connect Firehose: {0}...", portName));
 
                 _portManager = new SerialPortManager();
                 bool opened = await _portManager.OpenAsync(portName, 3, true, ct);
                 if (!opened)
                 {
-                    _log("[高通] 无法打开端口");
+                    _log("[Qualcomm] Cannot open port");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
@@ -779,15 +784,15 @@ namespace LoveAlways.Qualcomm.Services
                 SetState(QualcommConnectionState.FirehoseMode);
                 _firehose = new FirehoseClient(_portManager, _log, _progress, _logDetail);
 
-                _log("正在配置 Firehose...");
+                _log("Configuring Firehose...");
                 bool configOk = await _firehose.ConfigureAsync(storageType, 0, ct);
                 if (!configOk)
                 {
-                    _log("配置 Firehose : 失败");
+                    _log("Configure Firehose : Failed");
                     SetState(QualcommConnectionState.Error);
                     return false;
                 }
-                _log("配置 Firehose : 成功");
+                _log("Configure Firehose : Success");
 
                 // 保存连接参数
                 LastPortName = portName;
@@ -800,29 +805,29 @@ namespace LoveAlways.Qualcomm.Services
                 }
                 
                 SetState(QualcommConnectionState.Ready);
-                _log("[高通] Firehose 直连成功");
+                _log("[Qualcomm] Firehose direct connect success");
                 return true;
             }
             catch (OperationCanceledException)
             {
-                _log("[高通] 连接已取消");
+                _log("[Qualcomm] Connection canceled");
                 SetState(QualcommConnectionState.Disconnected);
                 return false;
             }
             catch (Exception ex)
             {
-                _log(string.Format("[高通] 连接错误 - {0}", ex.Message));
+                _log(string.Format("[Qualcomm] Connection error - {0}", ex.Message));
                 SetState(QualcommConnectionState.Error);
                 return false;
             }
         }
 
         /// <summary>
-        /// 断开连接
+        /// Disconnect
         /// </summary>
         public void Disconnect()
         {
-            _log("[高通] 断开连接");
+            _log("[Qualcomm] Disconnecting");
 
             if (_portManager != null)
             {
@@ -852,21 +857,21 @@ namespace LoveAlways.Qualcomm.Services
         }
         
         /// <summary>
-        /// 释放端口 (操作完成后调用，保留设备对象和状态信息)
+        /// Release Port (Call after operation, keep device object and state)
         /// </summary>
         /// <remarks>
-        /// 根据EDL工具最佳实践：操作完成后应释放端口，让其他程序可以连接设备。
-        /// 调用此方法后：
-        /// - 端口关闭，串口资源释放
-        /// - 设备对象保留 (ChipInfo, 分区缓存等)
-        /// - 下次操作前会自动重新打开端口
+        /// Best practice for EDL tools: Release port after operation, allow other programs to connect.
+        /// After calling this method:
+        /// - Port closed, serial resource released
+        /// - Device object retained (ChipInfo, partition cache etc)
+        /// - Port will be auto reopened before next operation
         /// </remarks>
         public void ReleasePort()
         {
-            // 如果设置了保持端口打开，则跳过释放
+            // If keep port open is set, skip release
             if (_keepPortOpen)
             {
-                _logDetail("[高通] 端口保持打开 (连续操作模式)");
+                _logDetail("[Qualcomm] Port kept open (Continuous operation mode)");
                 return;
             }
             
@@ -875,54 +880,54 @@ namespace LoveAlways.Qualcomm.Services
                 
             try
             {
-                // 缓存芯片信息 (端口关闭后仍可访问)
+                // Cache chip info (Accessible after port closed)
                 if (_sahara != null && _sahara.ChipInfo != null)
                 {
                     _cachedChipInfo = _sahara.ChipInfo;
                 }
                 
-                // 关闭端口但不销毁设备对象
+                // Close port but do not destroy device object
                 _portManager.Close();
                 _portClosed = true;
                 
-                _logDetail("[高通] 端口已释放 (设备信息保留)");
+                _logDetail("[Qualcomm] Port released (Device info retained)");
             }
             catch (Exception ex)
             {
-                _logDetail("[高通] 释放端口异常: " + ex.Message);
+                _logDetail("[Qualcomm] Release port exception: " + ex.Message);
             }
         }
         
         /// <summary>
-        /// 确保端口已打开 (操作前调用)
+        /// Ensure port is open (Call before operation)
         /// </summary>
-        /// <param name="ct">取消令牌</param>
-        /// <returns>端口是否可用</returns>
+        /// <param name="ct">Cancellation Token</param>
+        /// <returns>Is port available</returns>
         public async Task<bool> EnsurePortOpenAsync(CancellationToken ct = default(CancellationToken))
         {
-            // 如果端口已打开且可用，直接返回
+            // If port is open and available, return directly
             if (_portManager != null && _portManager.IsOpen && !_portClosed)
                 return true;
                 
-            // 如果没有记录端口名，无法重新打开
+            // If no port name recorded, cannot reopen
             if (string.IsNullOrEmpty(LastPortName))
             {
-                _log("[高通] 无法重新打开端口: 未记录端口名");
+                _log("[Qualcomm] Cannot reopen port: No port name recorded");
                 return false;
             }
             
-            // 检查端口是否在系统中可用
+            // Check if port is available in system
             if (_portManager != null && !_portManager.IsPortAvailable())
             {
-                _log("[高通] 端口已从系统中移除，设备可能已断开");
+                _log("[Qualcomm] Port removed from system, device might be disconnected");
                 HandlePortDisconnected();
                 return false;
             }
             
-            // 重新打开端口
+            // Reopen port
             try
             {
-                _logDetail(string.Format("[高通] 重新打开端口: {0}", LastPortName));
+                _logDetail(string.Format("[Qualcomm] Reopening port: {0}", LastPortName));
                 
                 if (_portManager == null)
                 {
@@ -932,45 +937,45 @@ namespace LoveAlways.Qualcomm.Services
                 bool opened = await _portManager.OpenAsync(LastPortName, 3, true, ct);
                 if (!opened)
                 {
-                    _log("[高通] 无法重新打开端口");
+                    _log("[Qualcomm] Cannot reopen port");
                     return false;
                 }
                 
                 _portClosed = false;
                 
-                // 注意: Firehose 客户端保留，不需要重新创建
-                // 如果 _firehose 为 null，说明连接本身有问题，需要重新完整连接
+                // Note: Firehose client retained, no need to recreate
+                // If _firehose is null, connection has issues, require full reconnection
                 if (_firehose == null)
                 {
-                    _log("[高通] Firehose 客户端丢失，需要重新完整连接");
+                    _log("[Qualcomm] Firehose client lost, require full reconnection");
                     return false;
                 }
                 
-                _logDetail("[高通] 端口重新打开成功");
+                _logDetail("[Qualcomm] Port reopened successfully");
                 return true;
             }
             catch (Exception ex)
             {
-                _log("[高通] 重新打开端口失败: " + ex.Message);
+                _log("[Qualcomm] Reopen port failed: " + ex.Message);
                 return false;
             }
         }
         
         /// <summary>
-        /// 设置是否保持端口打开 (用于连续操作，如批量刷写)
+        /// Set if keep port open (For continuous operation, e.g. batch flashing)
         /// </summary>
-        /// <param name="keepOpen">是否保持打开</param>
+        /// <param name="keepOpen">Keep Open</param>
         public void SetKeepPortOpen(bool keepOpen)
         {
             _keepPortOpen = keepOpen;
             if (keepOpen)
-                _logDetail("[高通] 设置: 保持端口打开");
+                _logDetail("[Qualcomm] Setting: Keep port open");
             else
-                _logDetail("[高通] 设置: 允许释放端口");
+                _logDetail("[Qualcomm] Setting: Allow release port");
         }
         
         /// <summary>
-        /// 获取芯片信息 (即使端口关闭也可访问缓存)
+        /// Get chip info (Accessible even if port closed)
         /// </summary>
         public QualcommChipInfo GetChipInfo()
         {
@@ -980,52 +985,52 @@ namespace LoveAlways.Qualcomm.Services
         }
         
         /// <summary>
-        /// 端口是否已释放
+        /// Is port released
         /// </summary>
         public bool IsPortReleased { get { return _portClosed; } }
         
         /// <summary>
-        /// 重置卡住的 Sahara 状态
-        /// 当设备因为其他软件或引导错误导致卡在 Sahara 模式时使用
+        /// Reset stuck Sahara state
+        /// Used when device is stuck in Sahara mode due to other software or boot errors
         /// </summary>
-        /// <param name="portName">端口名</param>
-        /// <param name="ct">取消令牌</param>
-        /// <returns>是否成功重置</returns>
+        /// <param name="portName">Port Name</param>
+        /// <param name="ct">Cancellation Token</param>
+        /// <returns>Is success</returns>
         public async Task<bool> ResetSaharaAsync(string portName, CancellationToken ct = default(CancellationToken))
         {
-            _log("[高通] 尝试重置卡住的 Sahara 状态...");
+            _log("[Qualcomm] Attempting to reset stuck Sahara state...");
             
             try
             {
-                // 确保之前的连接已关闭
+                // Ensure previous connection closed
                 Disconnect();
                 await Task.Delay(200, ct);
                 
-                // 打开端口
+                // Open port
                 _portManager = new SerialPortManager();
                 bool opened = await _portManager.OpenAsync(portName, 3, true, ct);
                 if (!opened)
                 {
-                    _log("[高通] 无法打开端口");
+                    _log("[Qualcomm] Cannot open port");
                     return false;
                 }
                 
-                // 创建临时 Sahara 客户端
+                // Create temporary Sahara Client
                 _sahara = new SaharaClient(_portManager, _log, _logDetail, null);
                 
-                // 尝试重置
+                // Attempt reset
                 bool success = await _sahara.TryResetSaharaAsync(ct);
                 
                 if (success)
                 {
-                    _log("[高通] ✓ Sahara 状态已重置");
-                    _log("[高通] 设备已准备好，请点击[连接]按钮重新连接");
+                    _log("[Qualcomm] ✓ Sahara state reset");
+                    _log("[Qualcomm] Device ready, please click [Connect] to reconnect");
                     
-                    // 重置成功后断开连接，让用户可以正常重新连接
-                    // 保留端口名以便后续连接
+                    // Disconnect after reset success, allow user to reconnect
+                    // Save port name for later connection
                     string savedPortName = portName;
                     
-                    // 关闭当前连接（释放端口资源）
+                    // Close current connection (Release port resources)
                     if (_portManager != null)
                     {
                         _portManager.Close();
@@ -1038,14 +1043,14 @@ namespace LoveAlways.Qualcomm.Services
                         _sahara = null;
                     }
                     
-                    // 设置为断开状态，等待用户重新连接
+                    // Set to disconnected state, wait for user reconnection
                     SetState(QualcommConnectionState.Disconnected);
-                    LastPortName = savedPortName;  // 保留端口名
+                    LastPortName = savedPortName;  // Save port name
                 }
                 else
                 {
-                    _log("[高通] ❌ 无法重置 Sahara，请尝试断电重启设备");
-                    // 关闭连接
+                    _log("[Qualcomm] ❌ Cannot reset Sahara, please try power cycle device");
+                    // Close connection
                     Disconnect();
                 }
                 
@@ -1053,24 +1058,24 @@ namespace LoveAlways.Qualcomm.Services
             }
             catch (Exception ex)
             {
-                _log("[高通] 重置 Sahara 异常: " + ex.Message);
+                _log("[Qualcomm] Reset Sahara exception: " + ex.Message);
                 Disconnect();
                 return false;
             }
         }
         
         /// <summary>
-        /// 硬重置设备 (完全重启)
+        /// Hard Reset Device (Full Reboot)
         /// </summary>
-        /// <param name="portName">端口名</param>
-        /// <param name="ct">取消令牌</param>
+        /// <param name="portName">Port Name</param>
+        /// <param name="ct">Cancellation Token</param>
         public async Task<bool> HardResetDeviceAsync(string portName, CancellationToken ct = default(CancellationToken))
         {
-            _log("[高通] 发送硬重置命令...");
+            _log("[Qualcomm] Sending Hard Reset command...");
             
             try
             {
-                // 如果已连接 Firehose，通过 Firehose 重置
+                // If Firehose connected, reset via Firehose
                 if (_firehose != null && State == QualcommConnectionState.Ready)
                 {
                     bool ok = await _firehose.ResetAsync("reset", ct);
@@ -1078,7 +1083,7 @@ namespace LoveAlways.Qualcomm.Services
                     return ok;
                 }
                 
-                // 否则尝试通过 Sahara 重置
+                // Otherwise try reset via Sahara
                 if (_portManager == null || !_portManager.IsOpen)
                 {
                     _portManager = new SerialPortManager();
@@ -1091,7 +1096,7 @@ namespace LoveAlways.Qualcomm.Services
                 }
                 
                 _sahara.SendHardReset();
-                _log("[高通] 硬重置命令已发送，设备将重启");
+                _log("[Qualcomm] Hard Reset command sent, device will reboot");
                 
                 await Task.Delay(500, ct);
                 Disconnect();
@@ -1099,19 +1104,19 @@ namespace LoveAlways.Qualcomm.Services
             }
             catch (Exception ex)
             {
-                _log("[高通] 硬重置异常: " + ex.Message);
+                _log("[Qualcomm] Hard Reset exception: " + ex.Message);
                 return false;
             }
         }
 
         /// <summary>
-        /// 执行认证
+        /// Perform Auth
         /// </summary>
         public async Task<bool> AuthenticateAsync(string authMode, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
             {
-                _log("[高通] 未连接 Firehose，无法执行认证");
+                _log("[Qualcomm] Firehose not connected, cannot perform auth");
                 return false;
             }
 
@@ -1120,22 +1125,22 @@ namespace LoveAlways.Qualcomm.Services
                 switch (authMode.ToLowerInvariant())
                 {
                     case "oneplus":
-                        _log("[高通] 执行 OnePlus 认证...");
+                        _log("[Qualcomm] Executing OnePlus Auth...");
                         var oneplusAuth = new Authentication.OnePlusAuthStrategy();
-                        // OnePlus 认证不需要外部文件，使用空字符串
+                        // OnePlus Auth does not need external file, use empty string
                         return await oneplusAuth.AuthenticateAsync(_firehose, "", ct);
 
                     case "vip":
                     case "oplus":
-                        _log("[高通] 执行 VIP/OPPO 认证...");
-                        // VIP 认证通常需要签名文件，这里使用默认路径
+                        _log("[Qualcomm] Executing VIP/OPPO Auth...");
+                        // VIP Auth usually needs signature file, using default path
                         string vipDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "vip");
                         string digestPath = System.IO.Path.Combine(vipDir, "digest.bin");
                         string signaturePath = System.IO.Path.Combine(vipDir, "signature.bin");
                         if (!System.IO.File.Exists(digestPath) || !System.IO.File.Exists(signaturePath))
                         {
-                            _log("[高通] VIP 认证文件不存在，尝试无签名认证...");
-                            // 如果没有签名文件，返回 true 继续（某些设备可能不需要认证）
+                            _log("[Qualcomm] VIP Auth file not found, attempting no-signature auth...");
+                            // If no signature file, return true to continue (Some devices may not need auth)
                             return true;
                         }
                         bool ok = await _firehose.PerformVipAuthAsync(digestPath, signaturePath, ct);
@@ -1143,78 +1148,78 @@ namespace LoveAlways.Qualcomm.Services
                         return ok;
 
                     case "xiaomi":
-                        _log("[高通] 执行小米认证...");
+                        _log("[Qualcomm] Executing Xiaomi Auth...");
                         var xiaomiAuth = new Authentication.XiaomiAuthStrategy(_log);
                         xiaomiAuth.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
                         return await xiaomiAuth.AuthenticateAsync(_firehose, "", ct);
 
                     default:
-                        _log(string.Format("[高通] 未知认证模式: {0}", authMode));
+                        _log(string.Format("[Qualcomm] Unknown Auth Mode: {0}", authMode));
                         return false;
                 }
             }
             catch (Exception ex)
             {
-                _log(string.Format("[高通] 认证失败: {0}", ex.Message));
+                _log(string.Format("[Qualcomm] Auth failed: {0}", ex.Message));
                 return false;
             }
         }
 
         /// <summary>
-        /// 执行 OnePlus 认证
+        /// Perform OnePlus Auth
         /// </summary>
         public async Task<bool> PerformOnePlusAuthAsync(CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
             {
-                _log("[高通] 未连接 Firehose，无法执行 OnePlus 认证");
+                _log("[Qualcomm] Firehose not connected, cannot perform OnePlus Auth");
                 return false;
             }
 
             try
             {
-                _log("[高通] 执行 OnePlus 认证...");
+                _log("[Qualcomm] Executing OnePlus Auth...");
                 var oneplusAuth = new Authentication.OnePlusAuthStrategy(_log);
                 bool ok = await oneplusAuth.AuthenticateAsync(_firehose, "", ct);
                 if (ok)
-                    _log("[高通] OnePlus 认证成功");
+                    _log("[Qualcomm] OnePlus Auth success");
                 else
-                    _log("[高通] OnePlus 认证失败");
+                    _log("[Qualcomm] OnePlus Auth failed");
                 return ok;
             }
             catch (Exception ex)
             {
-                _log(string.Format("[高通] OnePlus 认证异常: {0}", ex.Message));
+                _log(string.Format("[Qualcomm] OnePlus Auth exception: {0}", ex.Message));
                 return false;
             }
         }
 
         /// <summary>
-        /// 执行小米认证
+        /// Perform Xiaomi Auth
         /// </summary>
         public async Task<bool> PerformXiaomiAuthAsync(CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
             {
-                _log("[高通] 未连接 Firehose，无法执行小米认证");
+                _log("[Qualcomm] Firehose not connected, cannot perform Xiaomi Auth");
                 return false;
             }
 
             try
             {
-                _log("[高通] 执行小米认证...");
+                _log("[Qualcomm] Executing Xiaomi Auth...");
                 var xiaomiAuth = new Authentication.XiaomiAuthStrategy(_log);
                 xiaomiAuth.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
                 bool ok = await xiaomiAuth.AuthenticateAsync(_firehose, "", ct);
                 if (ok)
-                    _log("[高通] 小米认证成功");
+                    _log("[Qualcomm] Xiaomi Auth success");
                 else
-                    _log("[高通] 小米认证失败");
+                    _log("[Qualcomm] Xiaomi Auth failed");
                 return ok;
             }
             catch (Exception ex)
             {
-                _log(string.Format("[高通] 小米认证异常: {0}", ex.Message));
+                _log(string.Format("[Qualcomm] Xiaomi Auth exception: {0}", ex.Message));
                 return false;
             }
         }
@@ -1231,20 +1236,20 @@ namespace LoveAlways.Qualcomm.Services
 
         #endregion
 
-        #region 自动认证逻辑
+        #region Auto Auth Logic
 
         /// <summary>
-        /// 自动认证 - 仅对小米设备自动执行
-        /// 其他设备 (OnePlus/OPPO/Realme 等) 由用户手动选择认证方式
+        /// Auto Auth - Only executed for Xiaomi devices
+        /// Other devices (OnePlus/OPPO/Realme etc) selected by user manually
         /// </summary>
         private async Task<bool> AutoAuthenticateAsync(string programmerPath, CancellationToken ct)
         {
             if (_firehose == null) return true;
 
-            // 只有小米设备自动认证
+            // Only Xiaomi devices auto auth
             if (IsXiaomiDevice())
             {
-                _log("[高通] 检测到小米设备，自动执行 MiAuth 认证...");
+                _log("[Qualcomm] Xiaomi device detected, auto executing MiAuth...");
                 try
                 {
                     var xiaomi = new XiaomiAuthStrategy(_log);
@@ -1252,43 +1257,43 @@ namespace LoveAlways.Qualcomm.Services
                     bool result = await xiaomi.AuthenticateAsync(_firehose, programmerPath, ct);
                     if (result)
                     {
-                        _log("[高通] 小米认证成功");
+                        _log("[Qualcomm] Xiaomi Auth success");
                     }
                     else
                     {
-                        _log("[高通] 小米认证失败，设备可能需要官方授权");
+                        _log("[Qualcomm] Xiaomi Auth failed, device might need official authorization");
                     }
                     return result;
                 }
                 catch (Exception ex)
                 {
-                    _log(string.Format("[高通] 小米认证异常: {0}", ex.Message));
+                    _log(string.Format("[Qualcomm] Xiaomi Auth exception: {0}", ex.Message));
                     return false;
                 }
             }
 
-            // 其他设备不自动认证，由用户手动选择
+            // Other devices no auto auth, manual selection by user
             return true;
         }
 
         /// <summary>
-        /// 检测是否为小米设备 (通过 OEM ID 或其他特征)
+        /// Check if Xiaomi device (Via OEM ID or other features)
         /// </summary>
         public bool IsXiaomiDevice()
         {
             if (ChipInfo == null) return false;
 
-            // 通过 OEM ID 检测 (0x0072 = Xiaomi 官方)
+            // Check via OEM ID (0x0072 = Xiaomi official)
             if (ChipInfo.OemId == 0x0072) return true;
 
-            // 通过 PK Hash 前缀检测 (小米常见 PK Hash)
+            // Check via PK Hash prefix (Common Xiaomi PK Hash)
             if (!string.IsNullOrEmpty(ChipInfo.PkHash))
             {
                 string pkLower = ChipInfo.PkHash.ToLowerInvariant();
-                // 小米设备 PK Hash 前缀列表 (持续更新)
+                // Xiaomi device PK Hash prefix list (Continuously updated)
                 string[] xiaomiPkHashPrefixes = new[]
                 {
-                    "c924a35f",  // 常见小米设备
+                    "c924a35f",  // Common Xiaomi devices
                     "3373d5c8",
                     "e07be28b",
                     "6f5c4e17",
@@ -1314,77 +1319,77 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 手动执行 OPLUS VIP 认证 (基于 Digest 和 Signature)
+        /// Manually execute OPLUS VIP Auth (Based on Digest and Signature)
         /// </summary>
         public async Task<bool> PerformVipAuthManualAsync(string digestPath, string signaturePath, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
             {
-                _log("[高通] 未连接设备");
+                _log("[Qualcomm] Device not connected");
                 return false;
             }
 
-            _log("[高通] 启动 OPLUS VIP 认证 (Digest + Sign)...");
+            _log("[Qualcomm] Starting OPLUS VIP Auth (Digest + Sign)...");
             try
             {
                 bool result = await _firehose.PerformVipAuthAsync(digestPath, signaturePath, ct);
                 if (result)
                 {
-                    _log("[高通] VIP 认证成功，已进入高权限模式");
+                    _log("[Qualcomm] VIP Auth success, high privilege mode activated");
                     IsVipDevice = true; 
                 }
                 else
                 {
-                    _log("[高通] VIP 认证失败：校验未通过");
+                    _log("[Qualcomm] VIP Auth failed: Verification failed");
                 }
                 return result;
             }
             catch (Exception ex)
             {
-                _log(string.Format("[高通] VIP 认证异常: {0}", ex.Message));
+                _log(string.Format("[Qualcomm] VIP Auth exception: {0}", ex.Message));
                 return false;
             }
         }
 
         /// <summary>
-        /// 手动执行 OPLUS VIP 认证 (基于 byte[] 数据)
-        /// 支持在发送 Digest 后直接写入签名数据
+        /// Manually execute OPLUS VIP Auth (Based on byte[] data)
+        /// Supports writing signature data directly after sending Digest
         /// </summary>
-        /// <param name="digestData">Digest 数据 (Hash Segment, ~20-30KB)</param>
-        /// <param name="signatureData">签名数据 (256 字节 RSA-2048)</param>
+        /// <param name="digestData">Digest Data (Hash Segment, ~20-30KB)</param>
+        /// <param name="signatureData">Signature Data (256 Bytes RSA-2048)</param>
         public async Task<bool> PerformVipAuthAsync(byte[] digestData, byte[] signatureData, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
             {
-                _log("[高通] 未连接设备");
+                _log("[Qualcomm] Device not connected");
                 return false;
             }
 
-            _log(string.Format("[高通] 启动 VIP 认证 (Digest={0}B, Sign={1}B)...", 
+            _log(string.Format("[Qualcomm] Starting VIP Auth (Digest={0}B, Sign={1}B)...", 
                 digestData?.Length ?? 0, signatureData?.Length ?? 0));
             try
             {
                 bool result = await _firehose.PerformVipAuthAsync(digestData, signatureData, ct);
                 if (result)
                 {
-                    _log("[高通] VIP 认证成功，已进入高权限模式");
+                    _log("[Qualcomm] VIP Auth success, high privilege mode activated");
                     IsVipDevice = true;
                 }
                 else
                 {
-                    _log("[高通] VIP 认证失败：校验未通过");
+                    _log("[Qualcomm] VIP Auth failed: Verification failed");
                 }
                 return result;
             }
             catch (Exception ex)
             {
-                _log(string.Format("[高通] VIP 认证异常: {0}", ex.Message));
+                _log(string.Format("[Qualcomm] VIP Auth exception: {0}", ex.Message));
                 return false;
             }
         }
 
         /// <summary>
-        /// 分步执行 VIP 认证 - Step 1: 发送 Digest
+        /// Step-by-step VIP Auth - Step 1: Send Digest
         /// </summary>
         public async Task<bool> SendVipDigestAsync(byte[] digestData, CancellationToken ct = default(CancellationToken))
         {
@@ -1393,7 +1398,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 分步执行 VIP 认证 - Step 2-3: 准备 VIP 模式
+        /// Step-by-step VIP Auth - Step 2-3: Prepare VIP Mode
         /// </summary>
         public async Task<bool> PrepareVipModeAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -1402,8 +1407,8 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 分步执行 VIP 认证 - Step 4: 发送签名 (256 字节)
-        /// 这是核心方法：在发送 Digest 后写入签名
+        /// Step-by-step VIP Auth - Step 4: Send Signature (256 Bytes)
+        /// Core method: Write signature after sending Digest
         /// </summary>
         public async Task<bool> SendVipSignatureAsync(byte[] signatureData, CancellationToken ct = default(CancellationToken))
         {
@@ -1412,7 +1417,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 分步执行 VIP 认证 - Step 5: 完成认证
+        /// Step-by-step VIP Auth - Step 5: Finalize Auth
         /// </summary>
         public async Task<bool> FinalizeVipAuthAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -1421,52 +1426,52 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 使用嵌入的奇美拉签名数据进行 VIP 认证
+        /// Perform VIP Auth using embedded Chimera signature data
         /// </summary>
-        /// <param name="platform">平台代号 (如 SM8550, SM8650 等)</param>
+        /// <param name="platform">Platform Code (e.g. SM8550, SM8650 etc)</param>
         public async Task<bool> PerformChimeraAuthAsync(string platform, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
             {
-                _log("[高通] 未连接设备");
+                _log("[Qualcomm] Device not connected");
                 return false;
             }
 
-            // 从嵌入数据库获取签名数据
+            // Get signature data from embedded database
             var signData = ChimeraSignDatabase.Get(platform);
             if (signData == null)
             {
-                _log(string.Format("[高通] 不支持的平台: {0}", platform));
-                _log("[高通] 支持的平台: " + string.Join(", ", ChimeraSignDatabase.GetSupportedPlatforms()));
+                _log(string.Format("[Qualcomm] Unsupported platform: {0}", platform));
+                _log("[Qualcomm] Supported platforms: " + string.Join(", ", ChimeraSignDatabase.GetSupportedPlatforms()));
                 return false;
             }
 
-            _log(string.Format("[高通] 使用奇美拉签名: {0} ({1})", signData.Name, signData.Platform));
-            _log(string.Format("[高通] Digest: {0} 字节, Signature: {1} 字节", 
+            _log(string.Format("[Qualcomm] Using Chimera signature: {0} ({1})", signData.Name, signData.Platform));
+            _log(string.Format("[Qualcomm] Digest: {0} Bytes, Signature: {1} Bytes", 
                 signData.DigestSize, signData.SignatureSize));
 
             return await PerformVipAuthAsync(signData.Digest, signData.Signature, ct);
         }
 
         /// <summary>
-        /// 自动检测平台并使用奇美拉签名认证
+        /// Auto detect platform and use Chimera signature auth
         /// </summary>
         public async Task<bool> PerformChimeraAuthAutoAsync(CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
             {
-                _log("[高通] 未连接设备");
+                _log("[Qualcomm] Device not connected");
                 return false;
             }
 
-            // 尝试从 Sahara 获取的芯片信息
+            // Try to get chip info from Sahara
             string platform = null;
             if (_sahara != null && _sahara.ChipInfo != null)
             {
                 platform = _sahara.ChipInfo.ChipName;
                 if (string.IsNullOrEmpty(platform) || platform == "Unknown")
                 {
-                    // 尝试从 MSM ID 推断
+                    // Try to infer from MSM ID
                     uint msmId = _sahara.ChipInfo.MsmId;
                     platform = QualcommDatabase.GetChipName(msmId);
                 }
@@ -1474,17 +1479,17 @@ namespace LoveAlways.Qualcomm.Services
 
             if (string.IsNullOrEmpty(platform) || platform == "Unknown")
             {
-                _log("[高通] 无法自动检测平台，请手动指定");
-                _log("[高通] 支持的平台: " + string.Join(", ", ChimeraSignDatabase.GetSupportedPlatforms()));
+                _log("[Qualcomm] Cannot auto detect platform, please specify manually");
+                _log("[Qualcomm] Supported platforms: " + string.Join(", ", ChimeraSignDatabase.GetSupportedPlatforms()));
                 return false;
             }
 
-            _log(string.Format("[高通] 自动检测到平台: {0}", platform));
+            _log(string.Format("[Qualcomm] Auto detected platform: {0}", platform));
             return await PerformChimeraAuthAsync(platform, ct);
         }
 
         /// <summary>
-        /// 获取支持的奇美拉平台列表
+        /// Get supported Chimera platform list
         /// </summary>
         public string[] GetSupportedChimeraPlatforms()
         {
@@ -1492,7 +1497,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 检查平台是否支持奇美拉签名
+        /// Check if platform supports Chimera signature
         /// </summary>
         public bool IsChimeraSupported(string platform)
         {
@@ -1500,7 +1505,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 获取设备挑战码 (用于在线签名)
+        /// Get device challenge (For online signing)
         /// </summary>
         public async Task<string> GetVipChallengeAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -1510,10 +1515,10 @@ namespace LoveAlways.Qualcomm.Services
 
         #endregion
 
-        #region 分区操作
+        #region Partition Operations
 
         /// <summary>
-        /// 读取所有 LUN 的 GPT 分区表
+        /// Read GPT partition table of all LUNs
         /// </summary>
         public async Task<List<PartitionInfo>> ReadAllGptAsync(int maxLuns = 6, CancellationToken ct = default(CancellationToken))
         {
@@ -1521,12 +1526,12 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 读取所有 LUN 的 GPT 分区表（带进度回调）
+        /// Read GPT partition table of all LUNs (With progress callback)
         /// </summary>
-        /// <param name="maxLuns">最大 LUN 数量</param>
-        /// <param name="totalProgress">总进度回调 (当前LUN, 总LUN)</param>
-        /// <param name="subProgress">子进度回调 (0-100)</param>
-        /// <param name="ct">取消令牌</param>
+        /// <param name="maxLuns">Max LUN Count</param>
+        /// <param name="totalProgress">Total Progress Callback (Current LUN, Total LUN)</param>
+        /// <param name="subProgress">Sub Progress Callback (0-100)</param>
+        /// <param name="ct">Cancellation Token</param>
         public async Task<List<PartitionInfo>> ReadAllGptAsync(
             int maxLuns, 
             IProgress<Tuple<int, int>> totalProgress,
@@ -1538,13 +1543,13 @@ namespace LoveAlways.Qualcomm.Services
             if (_firehose == null)
                 return allPartitions;
 
-            _logDetail("正在读取 GUID 分区表...");
+            _logDetail("Reading GUID partition table...");
 
-            // 报告开始
+            // Report start
             if (totalProgress != null) totalProgress.Report(Tuple.Create(0, maxLuns));
             if (subProgress != null) subProgress.Report(0);
 
-            // LUN 进度回调 - 实时更新进度
+            // LUN progress callback - Realtime update progress
             var lunProgress = new Progress<int>(lun => {
                 if (totalProgress != null) totalProgress.Report(Tuple.Create(lun, maxLuns));
                 if (subProgress != null) subProgress.Report(100.0 * lun / maxLuns);
@@ -1552,15 +1557,15 @@ namespace LoveAlways.Qualcomm.Services
 
             var partitions = await _firehose.ReadGptPartitionsAsync(IsVipDevice, ct, lunProgress);
             
-            // 报告中间进度
+            // Report intermediate progress
             if (subProgress != null) subProgress.Report(80);
             
             if (partitions != null && partitions.Count > 0)
             {
                 allPartitions.AddRange(partitions);
-                _log(string.Format("读取 GUID 分区表 : 成功 [{0}]", partitions.Count));
+                _log(string.Format("Read GUID partition table : Success [{0}]", partitions.Count));
 
-                // 缓存分区
+                // Cache partitions
                 _partitionCache.Clear();
                 foreach (var p in partitions)
                 {
@@ -1570,16 +1575,16 @@ namespace LoveAlways.Qualcomm.Services
                 }
             }
 
-            // 报告完成
+            // Report completion
             if (subProgress != null) subProgress.Report(100);
             if (totalProgress != null) totalProgress.Report(Tuple.Create(maxLuns, maxLuns));
 
-            _log(string.Format("[高通] 共发现 {0} 个分区", allPartitions.Count));
+            _log(string.Format("[Qualcomm] Found {0} partitions in total", allPartitions.Count));
             return allPartitions;
         }
 
         /// <summary>
-        /// 获取指定 LUN 的分区列表
+        /// Get partition list of specified LUN
         /// </summary>
         public List<PartitionInfo> GetCachedPartitions(int lun = -1)
         {
@@ -1601,7 +1606,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 查找分区
+        /// Find Partition
         /// </summary>
         public PartitionInfo FindPartition(string name)
         {
@@ -1617,7 +1622,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 读取分区到文件
+        /// Read Partition to File
         /// </summary>
         public async Task<bool> ReadPartitionAsync(string partitionName, string outputPath, IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
         {
@@ -1627,11 +1632,11 @@ namespace LoveAlways.Qualcomm.Services
             var partition = FindPartition(partitionName);
             if (partition == null)
             {
-                _log("[高通] 未找到分区 " + partitionName);
+                _log("[Qualcomm] Partition not found " + partitionName);
                 return false;
             }
 
-            _log(string.Format("[高通] 读取分区 {0} ({1})", partitionName, partition.FormattedSize));
+            _log(string.Format("[Qualcomm] Reading partition {0} ({1})", partitionName, partition.FormattedSize));
 
             try
             {
@@ -1651,7 +1656,7 @@ namespace LoveAlways.Qualcomm.Services
 
                         if (data == null)
                         {
-                            _log("[高通] 读取失败");
+                            _log("[Qualcomm] Read failed");
                             return false;
                         }
 
@@ -1659,27 +1664,27 @@ namespace LoveAlways.Qualcomm.Services
                         readSectors += toRead;
                         readBytes += data.Length;
 
-                        // 调用字节级进度回调 (用于速度计算)
+                        // Call byte-level progress callback (For speed calculation)
                         _firehose.ReportProgress(readBytes, totalBytes);
 
-                        // 百分比进度 (使用 double)
+                        // Percentage progress (Use double)
                         if (progress != null)
                             progress.Report(100.0 * readBytes / totalBytes);
                     }
                 }
 
-                _log(string.Format("[高通] 分区 {0} 已保存到 {1}", partitionName, outputPath));
+                _log(string.Format("[Qualcomm] Partition {0} saved to {1}", partitionName, outputPath));
                 return true;
             }
             catch (Exception ex)
             {
-                _log(string.Format("[高通] 读取错误 - {0}", ex.Message));
+                _log(string.Format("[Qualcomm] Read error - {0}", ex.Message));
                 return false;
             }
         }
 
         /// <summary>
-        /// 写入分区
+        /// Write Partition
         /// </summary>
         public async Task<bool> WritePartitionAsync(string partitionName, string filePath, IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
         {
@@ -1689,15 +1694,15 @@ namespace LoveAlways.Qualcomm.Services
             var partition = FindPartition(partitionName);
             if (partition == null)
             {
-                _log("[高通] 未找到分区 " + partitionName);
+                _log("[Qualcomm] Partition not found " + partitionName);
                 return false;
             }
 
-            // OPLUS 某些分区需要 SHA256 校验环绕
+            // Some OPLUS partitions need SHA256 checksum wrapping
             bool useSha256 = IsOplusDevice && (partitionName.ToLower() == "xbl" || partitionName.ToLower() == "abl" || partitionName.ToLower() == "imagefv");
             if (useSha256) await _firehose.Sha256InitAsync(ct);
 
-            // VIP 设备使用伪装模式写入
+            // VIP device use masquerade mode for writing
             bool success = await _firehose.FlashPartitionFromFileAsync(
                 partitionName, filePath, partition.Lun, partition.StartSector, progress, ct, IsVipDevice);
 
@@ -1716,35 +1721,35 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 直接写入指定 LUN 和 StartSector (用于 PrimaryGPT/BackupGPT 等特殊分区)
-        /// 支持官方 NUM_DISK_SECTORS-N 负扇区格式
+        /// Direct write to specified LUN and StartSector (For special partitions like PrimaryGPT/BackupGPT)
+        /// Supports official NUM_DISK_SECTORS-N negative sector format
         /// </summary>
         public async Task<bool> WriteDirectAsync(string label, string filePath, int lun, long startSector, IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null)
                 return false;
 
-            // 负扇区使用官方格式直接发送给设备 (不依赖客户端 GPT 缓存)
+            // Negative sector uses official format directly sent to device (No dependency on client GPT cache)
             if (startSector < 0)
             {
-                _logDetail(string.Format("[高通] 写入: {0} -> LUN{1} @ NUM_DISK_SECTORS{2}", label, lun, startSector));
+                _logDetail(string.Format("[Qualcomm] Write: {0} -> LUN{1} @ NUM_DISK_SECTORS{2}", label, lun, startSector));
                 
-                // 使用官方 NUM_DISK_SECTORS-N 格式，让设备计算绝对地址
+                // Use official NUM_DISK_SECTORS-N format, let device calculate absolute address
                 return await _firehose.FlashPartitionWithNegativeSectorAsync(
                     label, filePath, lun, startSector, progress, ct);
             }
             else
             {
-                _logDetail(string.Format("[高通] 写入: {0} -> LUN{1} @ sector {2}", label, lun, startSector));
+                _logDetail(string.Format("[Qualcomm] Write: {0} -> LUN{1} @ sector {2}", label, lun, startSector));
 
-                // 正数扇区正常写入
+                // Positive sector normal write
                 return await _firehose.FlashPartitionFromFileAsync(
                     label, filePath, lun, startSector, progress, ct, IsVipDevice);
             }
         }
 
         /// <summary>
-        /// 擦除分区
+        /// Erase Partition
         /// </summary>
         public async Task<bool> ErasePartitionAsync(string partitionName, CancellationToken ct = default(CancellationToken))
         {
@@ -1754,22 +1759,22 @@ namespace LoveAlways.Qualcomm.Services
             var partition = FindPartition(partitionName);
             if (partition == null)
             {
-                _log("[高通] 未找到分区 " + partitionName);
+                _log("[Qualcomm] Partition not found " + partitionName);
                 return false;
             }
 
-            // VIP 设备使用伪装模式擦除
+            // VIP device use masquerade mode for erasing
             return await _firehose.ErasePartitionAsync(partition, ct, IsVipDevice);
         }
 
         /// <summary>
-        /// 读取分区指定偏移处的数据
+        /// Read partition data at specified offset
         /// </summary>
-        /// <param name="partitionName">分区名称</param>
-        /// <param name="offset">偏移 (字节)</param>
-        /// <param name="size">大小 (字节)</param>
-        /// <param name="ct">取消令牌</param>
-        /// <returns>读取的数据</returns>
+        /// <param name="partitionName">Partition Name</param>
+        /// <param name="offset">Offset (Bytes)</param>
+        /// <param name="size">Size (Bytes)</param>
+        /// <param name="ct">Cancellation Token</param>
+        /// <returns>Read Data</returns>
         public async Task<byte[]> ReadPartitionDataAsync(string partitionName, long offset, int size, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null) return null;
@@ -1777,25 +1782,25 @@ namespace LoveAlways.Qualcomm.Services
             var partition = FindPartition(partitionName);
             if (partition == null)
             {
-                _log("[高通] 未找到分区 " + partitionName);
+                _log("[Qualcomm] Partition not found " + partitionName);
                 return null;
             }
 
-            // 计算扇区位置
+            // Calculate sector position
             int sectorSize = SectorSize > 0 ? SectorSize : 4096;
             long startSector = partition.StartSector + (offset / sectorSize);
             int numSectors = (size + sectorSize - 1) / sectorSize;
 
-            // 只有 VIP 认证成功后才使用 VIP 模式读取
-            // IsVipDevice = true 表示 VIP 认证已成功
-            // IsOplusDevice 只用于判断是否需要 SHA256 校验，不用于读取模式
+            // Only use VIP mode for reading after VIP auth success
+            // IsVipDevice = true means VIP auth was successful
+            // IsOplusDevice only used for SHA256 checksum determination, not for read mode
             bool useVipMode = IsVipDevice;
 
-            // 读取数据
+            // Read data
             byte[] data = await _firehose.ReadSectorsAsync(partition.Lun, startSector, numSectors, ct, useVipMode, partitionName);
             if (data == null) return null;
 
-            // 如果有偏移对齐问题，截取正确的数据
+            // If offset alignment issue, extract correct data
             int offsetInSector = (int)(offset % sectorSize);
             if (offsetInSector > 0 || data.Length > size)
             {
@@ -1811,7 +1816,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 获取 Firehose 客户端 (供内部使用)
+        /// Get Firehose Client (For internal use)
         /// </summary>
         internal Protocol.FirehoseClient GetFirehoseClient()
         {
@@ -1820,10 +1825,10 @@ namespace LoveAlways.Qualcomm.Services
 
         #endregion
 
-        #region 设备控制
+        #region Device Control
 
         /// <summary>
-        /// 重启设备
+        /// Reboot Device
         /// </summary>
         public async Task<bool> RebootAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -1838,7 +1843,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 关机
+        /// Power Off
         /// </summary>
         public async Task<bool> PowerOffAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -1853,7 +1858,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 重启到 EDL 模式
+        /// Reboot to EDL Mode
         /// </summary>
         public async Task<bool> RebootToEdlAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -1868,7 +1873,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 设置活动 Slot
+        /// Set Active Slot
         /// </summary>
         public async Task<bool> SetActiveSlotAsync(string slot, CancellationToken ct = default(CancellationToken))
         {
@@ -1879,7 +1884,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 修复 GPT
+        /// Fix GPT
         /// </summary>
         public async Task<bool> FixGptAsync(int lun = -1, CancellationToken ct = default(CancellationToken))
         {
@@ -1890,7 +1895,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 设置启动 LUN
+        /// Set Boot LUN
         /// </summary>
         public async Task<bool> SetBootLunAsync(int lun, CancellationToken ct = default(CancellationToken))
         {
@@ -1901,7 +1906,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// Ping 测试连接
+        /// Ping Test Connection
         /// </summary>
         public async Task<bool> PingAsync(CancellationToken ct = default(CancellationToken))
         {
@@ -1912,7 +1917,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 应用 Patch XML 文件
+        /// Apply Patch XML File
         /// </summary>
         public async Task<int> ApplyPatchXmlAsync(string patchXmlPath, CancellationToken ct = default(CancellationToken))
         {
@@ -1923,7 +1928,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 应用多个 Patch XML 文件
+        /// Apply Multiple Patch XML Files
         /// </summary>
         public async Task<int> ApplyPatchFilesAsync(IEnumerable<string> patchFiles, CancellationToken ct = default(CancellationToken))
         {
@@ -1941,10 +1946,10 @@ namespace LoveAlways.Qualcomm.Services
 
         #endregion
 
-        #region 批量刷写
+        #region Batch Flashing
 
         /// <summary>
-        /// 批量刷写分区
+        /// Batch Flash Partitions
         /// </summary>
         public async Task<bool> FlashMultipleAsync(IEnumerable<FlashPartitionInfo> partitions, IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
         {
@@ -1961,13 +1966,13 @@ namespace LoveAlways.Qualcomm.Services
                 if (ct.IsCancellationRequested)
                     break;
 
-                _log(string.Format("[高通] 刷写 [{0}/{1}] {2}", current + 1, total, p.Name));
+                _log(string.Format("[Qualcomm] Flashing [{0}/{1}] {2}", current + 1, total, p.Name));
 
                 bool ok = await WritePartitionAsync(p.Name, p.Filename, null, ct);
                 if (!ok)
                 {
                     allSuccess = false;
-                    _log("[高通] 刷写失败 - " + p.Name);
+                    _log("[Qualcomm] Flash failed - " + p.Name);
                 }
 
                 current++;
@@ -2007,22 +2012,22 @@ namespace LoveAlways.Qualcomm.Services
 
         #endregion
         /// <summary>
-        /// 刷写 OPLUS 固件包中的 Super 逻辑分区 (拆解写入)
+        /// Flash OPLUS firmware Super logical partition (Decompose and write)
         /// </summary>
         public async Task<bool> FlashOplusSuperAsync(string firmwareRoot, string nvId = "", IProgress<double> progress = null, CancellationToken ct = default(CancellationToken))
         {
             if (_firehose == null) return false;
 
-            // 1. 查找 super 分区信息
+            // 1. Find super partition info
             var superPart = FindPartition("super");
             if (superPart == null)
             {
-                _log("[高通] 未在设备上找到 super 分区");
+                _log("[Qualcomm] Super partition not found on device");
                 return false;
             }
 
-            // 2. 准备任务
-            _log("[高通] 正在解析 OPLUS 固件 Super 布局...");
+            // 2. Prepare tasks
+            _log("[Qualcomm] Parsing OPLUS firmware Super layout...");
             string activeSlot = CurrentSlot;
             if (activeSlot == "nonexistent" || string.IsNullOrEmpty(activeSlot))
                 activeSlot = "a";
@@ -2031,23 +2036,23 @@ namespace LoveAlways.Qualcomm.Services
             
             if (tasks.Count == 0)
             {
-                _log("[高通] 未找到可用的 Super 逻辑分区镜像");
+                _log("[Qualcomm] No available Super logical partition images found");
                 return false;
             }
 
-            // 3. 执行任务
+            // 3. Execute tasks
             long totalBytes = tasks.Sum(t => t.SizeInBytes);
             long totalWritten = 0;
 
-            _log(string.Format("[高通] 开始拆解写入 {0} 个逻辑镜像 (总计展开大小: {1} MB)...", tasks.Count, totalBytes / 1024 / 1024));
+            _log(string.Format("[Qualcomm] Start decomposing and writing {0} logical images (Total expanded size: {1} MB)...", tasks.Count, totalBytes / 1024 / 1024));
 
             foreach (var task in tasks)
             {
                 if (ct.IsCancellationRequested) break;
 
-                _log(string.Format("[高通] 写入 {0} [{1}] 到物理扇区 {2}...", task.PartitionName, Path.GetFileName(task.FilePath), task.PhysicalSector));
+                _log(string.Format("[Qualcomm] Writing {0} [{1}] to physical sector {2}...", task.PartitionName, Path.GetFileName(task.FilePath), task.PhysicalSector));
                 
-                // 嵌套进度计算
+                // Nested progress calculation
                 var taskProgress = new Progress<double>(p => {
                     if (progress != null)
                     {
@@ -2068,14 +2073,14 @@ namespace LoveAlways.Qualcomm.Services
 
                 if (!success)
                 {
-                    _log(string.Format("[高通] 写入 {0} 失败，流程中止", task.PartitionName));
+                    _log(string.Format("[Qualcomm] Write {0} failed, process aborted", task.PartitionName));
                     return false;
                 }
 
                 totalWritten += task.SizeInBytes;
             }
 
-            _log("[高通] OPLUS Super 拆解写入完成");
+            _log("[Qualcomm] OPLUS Super decompose and write completed");
             return true;
         }
     }

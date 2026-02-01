@@ -1,3 +1,9 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -8,8 +14,8 @@ using LoveAlways.Fastboot.Protocol;
 namespace LoveAlways.Fastboot.Transport
 {
     /// <summary>
-    /// USB 传输层实现
-    /// 使用 WinUSB API 直接与 Fastboot 设备通信
+    /// USB Transport Layer Implementation
+    /// Communication with Fastboot devices using WinUSB API directly
     /// </summary>
     public class UsbTransport : IFastbootTransport
     {
@@ -36,7 +42,7 @@ namespace LoveAlways.Fastboot.Transport
             {
                 try
                 {
-                    // 打开设备
+                    // Open device
                     _deviceHandle = NativeMethods.CreateFile(
                         _descriptor.DevicePath,
                         NativeMethods.GENERIC_READ | NativeMethods.GENERIC_WRITE,
@@ -51,7 +57,7 @@ namespace LoveAlways.Fastboot.Transport
                         return false;
                     }
                     
-                    // 初始化 WinUSB
+                    // Initialize WinUSB
                     if (!NativeMethods.WinUsb_Initialize(_deviceHandle, out _winusbHandle))
                     {
                         NativeMethods.CloseHandle(_deviceHandle);
@@ -59,7 +65,7 @@ namespace LoveAlways.Fastboot.Transport
                         return false;
                     }
                     
-                    // 查找 Bulk 端点
+                    // Find Bulk Endpoints
                     if (!FindBulkEndpoints())
                     {
                         Disconnect();
@@ -124,7 +130,7 @@ namespace LoveAlways.Fastboot.Transport
         public async Task<int> SendAsync(byte[] data, int offset, int count, CancellationToken ct = default)
         {
             if (!IsConnected)
-                throw new InvalidOperationException("设备未连接");
+                throw new InvalidOperationException("Device not connected");
             
             return await Task.Run(() =>
             {
@@ -137,18 +143,18 @@ namespace LoveAlways.Fastboot.Transport
                     return (int)bytesWritten;
                 }
                 
-                throw new Exception($"USB 写入失败: {Marshal.GetLastWin32Error()}");
+                throw new Exception($"USB write failed: {Marshal.GetLastWin32Error()}");
             }, ct);
         }
         
         public async Task<int> ReceiveAsync(byte[] buffer, int offset, int count, int timeoutMs, CancellationToken ct = default)
         {
             if (!IsConnected)
-                throw new InvalidOperationException("设备未连接");
+                throw new InvalidOperationException("Device not connected");
             
             return await Task.Run(() =>
             {
-                // 设置超时
+                // Set timeout
                 uint timeout = (uint)timeoutMs;
                 NativeMethods.WinUsb_SetPipePolicy(_winusbHandle, _bulkInPipe, 
                     NativeMethods.PIPE_TRANSFER_TIMEOUT, 4, ref timeout);
@@ -165,19 +171,18 @@ namespace LoveAlways.Fastboot.Transport
                 int error = Marshal.GetLastWin32Error();
                 if (error == NativeMethods.ERROR_SEM_TIMEOUT)
                 {
-                    return 0; // 超时
+                    return 0; // Timeout
                 }
-                
-                throw new Exception($"USB 读取失败: {error}");
+                throw new Exception($"USB read failed: {error}");
             }, ct);
         }
         
         public async Task<byte[]> TransferAsync(byte[] command, int timeoutMs, CancellationToken ct = default)
         {
-            // 发送命令
+            // Send command
             await SendAsync(command, 0, command.Length, ct);
             
-            // 接收响应
+            // Receive response
             byte[] buffer = new byte[FastbootProtocol.MAX_RESPONSE_LENGTH];
             int received = await ReceiveAsync(buffer, 0, buffer.Length, timeoutMs, ct);
             
@@ -201,13 +206,13 @@ namespace LoveAlways.Fastboot.Transport
         }
         
         /// <summary>
-        /// 枚举所有 Fastboot 设备
+        /// Enumerate all Fastboot devices
         /// </summary>
         public static List<FastbootDeviceDescriptor> EnumerateDevices()
         {
             var devices = new List<FastbootDeviceDescriptor>();
             
-            // 使用 SetupAPI 枚举 USB 设备
+            // Enumerate USB devices using SetupAPI
             Guid winusbGuid = new Guid("dee824ef-729b-4a0e-9c14-b7117d33a817");
             
             IntPtr deviceInfoSet = NativeMethods.SetupDiGetClassDevs(
@@ -228,7 +233,7 @@ namespace LoveAlways.Fastboot.Transport
                 
                 for (uint i = 0; NativeMethods.SetupDiEnumDeviceInterfaces(deviceInfoSet, IntPtr.Zero, ref winusbGuid, i, ref interfaceData); i++)
                 {
-                    // 获取设备路径
+                    // Get device path
                     int requiredSize = 0;
                     NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, IntPtr.Zero, 0, ref requiredSize, IntPtr.Zero);
                     
@@ -241,7 +246,7 @@ namespace LoveAlways.Fastboot.Transport
                         {
                             string devicePath = Marshal.PtrToStringAuto(new IntPtr(detailDataBuffer.ToInt64() + 4));
                             
-                            // 检查是否是 Fastboot 设备
+                            // Check if it's a Fastboot device
                             if (devicePath.ToLower().Contains("vid_18d1") || // Google
                                 devicePath.ToLower().Contains("vid_2717") || // Xiaomi
                                 devicePath.ToLower().Contains("vid_22d9") || // OPPO
@@ -254,8 +259,7 @@ namespace LoveAlways.Fastboot.Transport
                                     Type = TransportType.Usb
                                 };
                                 
-                                // 解析 VID/PID
-                                ParseVidPid(devicePath, descriptor);
+                                // Parse VID/PID                                ParseVidPid(devicePath, descriptor);
                                 
                                 devices.Add(descriptor);
                             }
@@ -293,14 +297,14 @@ namespace LoveAlways.Fastboot.Transport
                     descriptor.ProductId = Convert.ToInt32(lower.Substring(pidIndex + 4, 4), 16);
                 }
                 
-                // 从设备路径提取序列号
-                // 设备路径格式: \\?\usb#vid_18d1&pid_d00d#SERIAL#{GUID}
+                // Extract serial number from device path
+                // Device path format: \\?\usb#vid_18d1&pid_d00d#SERIAL#{GUID}
                 string[] parts = devicePath.Split('#');
                 if (parts.Length >= 3)
                 {
-                    // 第三部分是序列号（在 VID&PID 之后，GUID 之前）
+                    // The third part is the serial number (after VID&PID, before GUID)
                     string serial = parts[2];
-                    // 确保不是 GUID（GUID 以 { 开头）
+                    // Ensure it's not a GUID (GUID starts with {)
                     if (!string.IsNullOrEmpty(serial) && !serial.StartsWith("{"))
                     {
                         descriptor.Serial = serial;

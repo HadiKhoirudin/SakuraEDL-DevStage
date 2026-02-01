@@ -37,7 +37,7 @@ namespace LoveAlways
             // 
             this.uiProcessBar1.BackColor = System.Drawing.Color.Transparent;
             this.uiProcessBar1.FillColor = System.Drawing.Color.White;
-            this.uiProcessBar1.Font = new System.Drawing.Font("微软雅黑", 10.5F);
+            this.uiProcessBar1.Font = new System.Drawing.Font("Segoe UI", 10.5F);
             this.uiProcessBar1.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
             this.uiProcessBar1.Location = new System.Drawing.Point(12, 268);
             this.uiProcessBar1.MinimumSize = new System.Drawing.Size(3, 3);
@@ -52,19 +52,19 @@ namespace LoveAlways
             // uiLabelStatus
             // 
             this.uiLabelStatus.BackColor = System.Drawing.Color.Transparent;
-            this.uiLabelStatus.Font = new System.Drawing.Font("微软雅黑", 10.5F);
+            this.uiLabelStatus.Font = new System.Drawing.Font("Segoe UI", 10.5F);
             this.uiLabelStatus.ForeColor = System.Drawing.Color.Gray;
             this.uiLabelStatus.Location = new System.Drawing.Point(12, 241);
             this.uiLabelStatus.Name = "uiLabelStatus";
             this.uiLabelStatus.Size = new System.Drawing.Size(235, 24);
             this.uiLabelStatus.TabIndex = 1;
-            this.uiLabelStatus.Text = "初始化...";
+            this.uiLabelStatus.Text = "Initializing...";
             this.uiLabelStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // uiLedLabel1
             // 
             this.uiLedLabel1.BackColor = System.Drawing.Color.Transparent;
-            this.uiLedLabel1.Font = new System.Drawing.Font("微软雅黑", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiLedLabel1.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.uiLedLabel1.Location = new System.Drawing.Point(-1, 12);
             this.uiLedLabel1.MinimumSize = new System.Drawing.Size(1, 1);
             this.uiLedLabel1.Name = "uiLedLabel1";
@@ -80,7 +80,7 @@ namespace LoveAlways
             this.Controls.Add(this.uiProcessBar1);
             this.Controls.Add(this.uiLabelStatus);
             this.Controls.Add(this.uiLedLabel1);
-            this.Font = new System.Drawing.Font("微软雅黑", 9F);
+            this.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "SplashForm";
             this.Opacity = 0.85D;

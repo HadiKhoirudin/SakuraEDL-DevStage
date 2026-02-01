@@ -1,7 +1,12 @@
 // ============================================================================
-// LoveAlways - 展讯 XML 配置解析器
+// LoveAlways - Spreadtrum XML Configuration Parser
 // Spreadtrum/Unisoc XML Configuration Parser
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -13,8 +18,8 @@ using System.Xml.Linq;
 namespace LoveAlways.Spreadtrum.Common
 {
     /// <summary>
-    /// 展讯 XML 配置解析器
-    /// 解析 PAC 包内的 XML 配置文件
+    /// Spreadtrum XML Configuration Parser
+    /// Parses XML configuration files within PAC packages
     /// </summary>
     public class XmlConfigParser
     {
@@ -25,10 +30,10 @@ namespace LoveAlways.Spreadtrum.Common
             _log = log ?? delegate { };
         }
 
-        #region 主解析方法
+        #region Main Parsing Methods
 
         /// <summary>
-        /// 解析 XML 配置数据
+        /// Parse XML configuration data
         /// </summary>
         public SprdXmlConfig Parse(byte[] xmlData)
         {
@@ -37,43 +42,43 @@ namespace LoveAlways.Spreadtrum.Common
 
             try
             {
-                // 移除 BOM 和空字符
+                // Remove BOM and null characters
                 string xmlContent = CleanXmlContent(xmlData);
                 
                 var doc = XDocument.Parse(xmlContent);
                 var config = new SprdXmlConfig();
 
-                // 获取根元素
+                // Get root element
                 var root = doc.Root;
                 if (root == null)
                     return null;
 
-                Log("[XML] 解析配置: {0}", root.Name.LocalName);
+                Log("[XML] Parsing configuration: {0}", root.Name.LocalName);
 
-                // 解析不同类型的 XML 配置
+                // Parse different types of XML configurations
                 if (root.Name.LocalName == "BMAConfig" || root.Name.LocalName == "BMFileWapper")
                 {
-                    // 标准刷机配置
+                    // Standard flashing configuration
                     ParseBmaConfig(root, config);
                 }
                 else if (root.Name.LocalName == "Partition")
                 {
-                    // 分区表配置
+                    // Partition table configuration
                     ParsePartitionConfig(root, config);
                 }
                 else if (root.Name.LocalName == "NVBackupRestore")
                 {
-                    // NV 备份恢复配置
+                    // NV backup/restore configuration
                     ParseNvConfig(root, config);
                 }
                 else if (root.Name.LocalName == "ProductionConfig" || root.Name.LocalName == "Production")
                 {
-                    // 生产配置
+                    // Production configuration
                     ParseProductionConfig(root, config);
                 }
                 else
                 {
-                    // 尝试通用解析
+                    // Attempt generic parsing
                     ParseGenericConfig(root, config);
                 }
 
@@ -81,13 +86,13 @@ namespace LoveAlways.Spreadtrum.Common
             }
             catch (Exception ex)
             {
-                Log("[XML] 解析错误: {0}", ex.Message);
+                Log("[XML] Parsing error: {0}", ex.Message);
                 return null;
             }
         }
 
         /// <summary>
-        /// 从文件解析
+        /// Parse from file
         /// </summary>
         public SprdXmlConfig ParseFile(string filePath)
         {
@@ -100,16 +105,16 @@ namespace LoveAlways.Spreadtrum.Common
 
         #endregion
 
-        #region BMA 配置解析
+        #region BMA Config Parsing
 
         /// <summary>
-        /// 解析 BMA 刷机配置
+        /// Parse BMA flashing configuration
         /// </summary>
         private void ParseBmaConfig(XElement root, SprdXmlConfig config)
         {
             config.ConfigType = SprdXmlConfigType.BmaConfig;
 
-            // 解析产品信息
+            // Parse product information
             var product = root.Element("Product") ?? root.Element("ProductInfo");
             if (product != null)
             {
@@ -117,39 +122,39 @@ namespace LoveAlways.Spreadtrum.Common
                                      GetAttributeOrElement(product, "Name");
                 config.Version = GetAttributeOrElement(product, "version") ?? 
                                 GetAttributeOrElement(product, "Version");
-                Log("[XML] 产品: {0}, 版本: {1}", config.ProductName, config.Version);
+                Log("[XML] Product: {0}, Version: {1}", config.ProductName, config.Version);
             }
 
-            // 解析刷机方案
+            // Parse flashing scheme
             var scheme = root.Element("Scheme") ?? root.Element("DownloadScheme");
             if (scheme != null)
             {
                 config.SchemeName = GetAttributeOrElement(scheme, "name");
-                Log("[XML] 方案: {0}", config.SchemeName);
+                Log("[XML] Scheme: {0}", config.SchemeName);
             }
 
-            // 解析文件列表
+            // Parse file list
             ParseFileList(root, config);
 
-            // 解析 FDL 配置
+            // Parse FDL configuration
             ParseFdlConfig(root, config);
 
-            // 解析分区操作
+            // Parse partition operations
             ParsePartitionOperations(root, config);
 
-            // 解析擦除配置
+            // Parse erase configuration
             ParseEraseConfig(root, config);
 
-            // 解析 NV 配置
+            // Parse NV configuration
             ParseNvOperations(root, config);
         }
 
         /// <summary>
-        /// 解析文件列表
+        /// Parse file list
         /// </summary>
         private void ParseFileList(XElement root, SprdXmlConfig config)
         {
-            // 查找文件列表节点
+            // Find file list node
             var fileNodes = root.Descendants("File")
                 .Concat(root.Descendants("BMFile"))
                 .Concat(root.Descendants("DownLoadFile"));
@@ -177,7 +182,7 @@ namespace LoveAlways.Spreadtrum.Common
                                           GetAttributeOrElement(fileNode, "Use"), true)
                 };
 
-                // 解析地址
+                // Parse address
                 string addrStr = GetAttributeOrElement(fileNode, "Base") ?? 
                                 GetAttributeOrElement(fileNode, "Address") ??
                                 GetAttributeOrElement(fileNode, "LoadAddr");
@@ -186,7 +191,7 @@ namespace LoveAlways.Spreadtrum.Common
                     fileInfo.Address = ParseHexOrDecimal(addrStr);
                 }
 
-                // 解析大小
+                // Parse size
                 string sizeStr = GetAttributeOrElement(fileNode, "Size") ?? 
                                 GetAttributeOrElement(fileNode, "Length");
                 if (!string.IsNullOrEmpty(sizeStr))
@@ -197,18 +202,18 @@ namespace LoveAlways.Spreadtrum.Common
                 if (!string.IsNullOrEmpty(fileInfo.Name) || !string.IsNullOrEmpty(fileInfo.FileName))
                 {
                     config.Files.Add(fileInfo);
-                    Log("[XML] 文件: {0} -> {1}, 地址: 0x{2:X}, 大小: {3}",
+                    Log("[XML] File: {0} -> {1}, Address: 0x{2:X}, Size: {3}",
                         fileInfo.Name, fileInfo.FileName, fileInfo.Address, FormatSize(fileInfo.Size));
                 }
             }
         }
 
         /// <summary>
-        /// 解析 FDL 配置
+        /// Parse FDL configuration
         /// </summary>
         private void ParseFdlConfig(XElement root, SprdXmlConfig config)
         {
-            // FDL1 配置
+            // FDL1 configuration
             var fdl1 = root.Descendants("FDL1")
                 .Concat(root.Descendants("FDL"))
                 .FirstOrDefault();
@@ -228,7 +233,7 @@ namespace LoveAlways.Spreadtrum.Common
                 Log("[XML] FDL1: {0} @ 0x{1:X}", config.Fdl1Config.FileName, config.Fdl1Config.Address);
             }
 
-            // FDL2 配置
+            // FDL2 configuration
             var fdl2 = root.Descendants("FDL2").FirstOrDefault();
             if (fdl2 != null)
             {
@@ -247,7 +252,7 @@ namespace LoveAlways.Spreadtrum.Common
         }
 
         /// <summary>
-        /// 解析分区操作
+        /// Parse partition operations
         /// </summary>
         private void ParsePartitionOperations(XElement root, SprdXmlConfig config)
         {
@@ -273,14 +278,14 @@ namespace LoveAlways.Spreadtrum.Common
                 }
             }
 
-            // 按优先级排序
+            // Sort by priority
             config.PartitionOperations = config.PartitionOperations
                 .OrderBy(p => p.Priority)
                 .ToList();
         }
 
         /// <summary>
-        /// 解析擦除配置
+        /// Parse erase configuration
         /// </summary>
         private void ParseEraseConfig(XElement root, SprdXmlConfig config)
         {
@@ -295,7 +300,7 @@ namespace LoveAlways.Spreadtrum.Common
                     FormatFlash = ParseBool(GetAttributeOrElement(eraseNode, "Format"), false)
                 };
 
-                // 解析排除分区
+                // Parse excluded partitions
                 var excludeNode = eraseNode.Element("Exclude");
                 if (excludeNode != null)
                 {
@@ -305,13 +310,13 @@ namespace LoveAlways.Spreadtrum.Common
                         .ToList() ?? new List<string>();
                 }
 
-                Log("[XML] 擦除配置: 全部={0}, 用户数据={1}, NV={2}",
+                Log("[XML] Erase config: All={0}, UserData={1}, NV={2}",
                     config.EraseConfig.EraseAll, config.EraseConfig.EraseUserData, config.EraseConfig.EraseNv);
             }
         }
 
         /// <summary>
-        /// 解析 NV 操作
+        /// Parse NV operation
         /// </summary>
         private void ParseNvOperations(XElement root, SprdXmlConfig config)
         {
@@ -338,10 +343,10 @@ namespace LoveAlways.Spreadtrum.Common
 
         #endregion
 
-        #region 分区配置解析
+        #region Partition Config Parsing
 
         /// <summary>
-        /// 解析分区表配置
+        /// Parse partition table configuration
         /// </summary>
         private void ParsePartitionConfig(XElement root, SprdXmlConfig config)
         {
@@ -372,7 +377,7 @@ namespace LoveAlways.Spreadtrum.Common
                 if (!string.IsNullOrEmpty(partInfo.Name))
                 {
                     config.PartitionTable.Add(partInfo);
-                    Log("[XML] 分区: {0}, 大小: {1}, 偏移: 0x{2:X}",
+                    Log("[XML] Partition: {0}, Size: {1}, Offset: 0x{2:X}",
                         partInfo.Name, FormatSize(partInfo.Size), partInfo.Offset);
                 }
             }
@@ -380,10 +385,10 @@ namespace LoveAlways.Spreadtrum.Common
 
         #endregion
 
-        #region NV 配置解析
+        #region NV Config Parsing
 
         /// <summary>
-        /// 解析 NV 备份恢复配置
+        /// Parse NV backup/restore configuration
         /// </summary>
         private void ParseNvConfig(XElement root, SprdXmlConfig config)
         {
@@ -411,16 +416,16 @@ namespace LoveAlways.Spreadtrum.Common
 
         #endregion
 
-        #region 生产配置解析
+        #region Production Config Parsing
 
         /// <summary>
-        /// 解析生产配置
+        /// Parse production configuration
         /// </summary>
         private void ParseProductionConfig(XElement root, SprdXmlConfig config)
         {
             config.ConfigType = SprdXmlConfigType.ProductionConfig;
 
-            // 解析生产参数
+            // Parse production parameters
             config.ProductionSettings = new Dictionary<string, string>();
 
             foreach (var elem in root.Elements())
@@ -433,37 +438,38 @@ namespace LoveAlways.Spreadtrum.Common
                 }
             }
 
-            // 也尝试解析文件列表
+            // Also attempt to parse file list
             ParseFileList(root, config);
         }
 
         #endregion
 
-        #region 通用配置解析
+        #region Generic Config Parsing
 
         /// <summary>
-        /// 通用配置解析
+        /// <summary>
+        /// Generic configuration parsing
         /// </summary>
         private void ParseGenericConfig(XElement root, SprdXmlConfig config)
         {
             config.ConfigType = SprdXmlConfigType.Generic;
 
-            // 尝试提取所有有用信息
+            // Attempt to extract all useful information
             ParseFileList(root, config);
             ParseFdlConfig(root, config);
             ParsePartitionOperations(root, config);
 
-            // 存储原始 XML 以便后续分析
+            // Store raw XML for later analysis
             config.RawXml = root.ToString();
         }
 
         #endregion
 
-        #region 辅助方法
+        #region Helper methods
 
         private string CleanXmlContent(byte[] data)
         {
-            // 跳过 BOM
+            // Skip BOM
             int start = 0;
             if (data.Length >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF)
             {
@@ -484,10 +490,10 @@ namespace LoveAlways.Spreadtrum.Common
 
             string content = System.Text.Encoding.UTF8.GetString(data, start, data.Length - start);
             
-            // 移除空字符
+            // Remove null characters
             content = content.Replace("\0", "");
             
-            // 移除无效 XML 字符
+            // Remove invalid XML characters
             content = RemoveInvalidXmlChars(content);
 
             return content;
@@ -509,17 +515,17 @@ namespace LoveAlways.Spreadtrum.Common
 
         private string GetAttributeOrElement(XElement element, string name)
         {
-            // 先查属性
+            // Check attribute first
             var attr = element.Attribute(name);
             if (attr != null)
                 return attr.Value;
 
-            // 再查子元素
+            // Then check child element
             var child = element.Element(name);
             if (child != null)
                 return child.Value;
 
-            // 不区分大小写再查一次
+            // Check again case-insensitively
             attr = element.Attributes()
                 .FirstOrDefault(a => a.Name.LocalName.Equals(name, StringComparison.OrdinalIgnoreCase));
             if (attr != null)
@@ -545,7 +551,7 @@ namespace LoveAlways.Spreadtrum.Common
                 }
                 else if (value.All(c => char.IsDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
                 {
-                    // 尝试解析为十进制，如果失败则尝试十六进制
+                    // Try to parse as decimal, if it fails then try hexadecimal
                     if (ulong.TryParse(value, out ulong dec))
                         return dec;
                     return Convert.ToUInt64(value, 16);
@@ -663,23 +669,23 @@ namespace LoveAlways.Spreadtrum.Common
         #endregion
     }
 
-    #region 数据模型
+    #region Data Models
 
     /// <summary>
-    /// XML 配置类型
+    /// XML configuration type
     /// </summary>
     public enum SprdXmlConfigType
     {
         Unknown,
-        BmaConfig,          // BMA 刷机配置
-        PartitionTable,     // 分区表配置
-        NvConfig,           // NV 配置
-        ProductionConfig,   // 生产配置
-        Generic             // 通用配置
+        BmaConfig,          // BMA flashing configuration
+        PartitionTable,     // Partition table configuration
+        NvConfig,           // NV configuration
+        ProductionConfig,   // Production configuration
+        Generic             // Generic configuration
     }
 
     /// <summary>
-    /// 文件类型
+    /// File type
     /// </summary>
     public enum SprdXmlFileType
     {
@@ -698,7 +704,7 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// 文件标志
+    /// File flags
     /// </summary>
     [Flags]
     public enum SprdXmlFileFlag
@@ -711,7 +717,7 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// 校验标志
+    /// Check flags
     /// </summary>
     [Flags]
     public enum SprdXmlCheckFlag
@@ -724,7 +730,7 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// 操作类型
+    /// Operation type
     /// </summary>
     public enum SprdOperationType
     {
@@ -736,7 +742,7 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// XML 配置信息
+    /// XML configuration information
     /// </summary>
     public class SprdXmlConfig
     {
@@ -746,45 +752,45 @@ namespace LoveAlways.Spreadtrum.Common
         public string SchemeName { get; set; }
         public string RawXml { get; set; }
 
-        // FDL 配置
+        // FDL configuration
         public SprdFdlConfig Fdl1Config { get; set; }
         public SprdFdlConfig Fdl2Config { get; set; }
 
-        // 文件列表
+        // File list
         public List<SprdXmlFileInfo> Files { get; set; } = new List<SprdXmlFileInfo>();
 
-        // 分区表
+        // Partition table
         public List<SprdXmlPartitionInfo> PartitionTable { get; set; } = new List<SprdXmlPartitionInfo>();
 
-        // 分区操作
+        // Partition operations
         public List<SprdPartitionOperation> PartitionOperations { get; set; } = new List<SprdPartitionOperation>();
 
-        // 擦除配置
+        // Erase configuration
         public SprdEraseConfig EraseConfig { get; set; }
 
-        // NV 操作
+        // NV operations
         public List<SprdNvOperation> NvOperations { get; set; } = new List<SprdNvOperation>();
 
-        // 生产设置
+        // Production settings
         public Dictionary<string, string> ProductionSettings { get; set; }
 
         /// <summary>
-        /// 获取按优先级排序的刷机顺序
+        /// Get flash order sorted by priority
         /// </summary>
         public List<SprdXmlFileInfo> GetFlashOrder()
         {
-            // FDL1 -> FDL2 -> 其他文件
+            // FDL1 -> FDL2 -> Other files
             var order = new List<SprdXmlFileInfo>();
 
-            // 添加 FDL1
+            // Add FDL1
             var fdl1 = Files.FirstOrDefault(f => f.Type == SprdXmlFileType.FDL1);
             if (fdl1 != null) order.Add(fdl1);
 
-            // 添加 FDL2
+            // Add FDL2
             var fdl2 = Files.FirstOrDefault(f => f.Type == SprdXmlFileType.FDL2);
             if (fdl2 != null) order.Add(fdl2);
 
-            // 添加其他选中的文件
+            // Add other selected files
             foreach (var file in Files)
             {
                 if (file.Type != SprdXmlFileType.FDL1 && 
@@ -800,7 +806,7 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// FDL 配置
+    /// FDL configuration
     /// </summary>
     public class SprdFdlConfig
     {
@@ -810,7 +816,7 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// XML 文件信息
+    /// XML file information
     /// </summary>
     public class SprdXmlFileInfo
     {
@@ -827,7 +833,7 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// XML 分区信息
+    /// XML partition information
     /// </summary>
     public class SprdXmlPartitionInfo
     {
@@ -840,7 +846,7 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// 分区操作
+    /// Partition operation
     /// </summary>
     public class SprdPartitionOperation
     {
@@ -851,7 +857,7 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// 擦除配置
+    /// Erase configuration
     /// </summary>
     public class SprdEraseConfig
     {
@@ -863,7 +869,7 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// NV 操作
+    /// NV operation
     /// </summary>
     public class SprdNvOperation
     {

@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -5,49 +10,49 @@ using System.Threading.Tasks;
 namespace LoveAlways.Fastboot.Transport
 {
     /// <summary>
-    /// Fastboot 传输层接口
-    /// 支持 USB 和 TCP 两种传输方式
+    /// Fastboot Transport Layer Interface
+    /// Supports both USB and TCP transport modes
     /// </summary>
     public interface IFastbootTransport : IDisposable
     {
         /// <summary>
-        /// 是否已连接
+        /// Whether connected
         /// </summary>
         bool IsConnected { get; }
         
         /// <summary>
-        /// 设备标识（序列号或地址）
+        /// Device identifier (serial number or address)
         /// </summary>
         string DeviceId { get; }
         
         /// <summary>
-        /// 连接设备
+        /// Connect to device
         /// </summary>
         Task<bool> ConnectAsync(CancellationToken ct = default);
         
         /// <summary>
-        /// 断开连接
+        /// Disconnect
         /// </summary>
         void Disconnect();
         
         /// <summary>
-        /// 发送数据
+        /// Send data
         /// </summary>
         Task<int> SendAsync(byte[] data, int offset, int count, CancellationToken ct = default);
         
         /// <summary>
-        /// 接收数据
+        /// Receive data
         /// </summary>
         Task<int> ReceiveAsync(byte[] buffer, int offset, int count, int timeoutMs, CancellationToken ct = default);
         
         /// <summary>
-        /// 发送并接收响应
+        /// Send and receive response
         /// </summary>
         Task<byte[]> TransferAsync(byte[] command, int timeoutMs, CancellationToken ct = default);
     }
     
     /// <summary>
-    /// Fastboot 设备信息
+    /// Fastboot Device Information
     /// </summary>
     public class FastbootDeviceDescriptor
     {
@@ -59,7 +64,7 @@ namespace LoveAlways.Fastboot.Transport
         public string Product { get; set; }
         public TransportType Type { get; set; }
         
-        // TCP 连接信息
+        // TCP connection info
         public string Host { get; set; }
         public int Port { get; set; }
         
@@ -72,7 +77,7 @@ namespace LoveAlways.Fastboot.Transport
     }
     
     /// <summary>
-    /// 传输类型
+    /// Transport Type
     /// </summary>
     public enum TransportType
     {

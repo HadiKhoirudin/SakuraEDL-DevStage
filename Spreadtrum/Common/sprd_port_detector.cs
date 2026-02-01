@@ -1,7 +1,11 @@
-// ============================================================================
-// LoveAlways - 展讯设备端口检测
+// LoveAlways - Spreadtrum Device Port Detection
 // Spreadtrum/Unisoc USB Port Detector
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -14,7 +18,7 @@ using LoveAlways.Spreadtrum.Protocol;
 namespace LoveAlways.Spreadtrum.Common
 {
     /// <summary>
-    /// 展讯设备端口检测器
+    /// Spreadtrum Device Port Detector
     /// </summary>
     public class SprdPortDetector : IDisposable
     {
@@ -22,21 +26,21 @@ namespace LoveAlways.Spreadtrum.Common
         private readonly object _lock = new object();
         private bool _isWatching = false;
         
-        // 防抖控制
+        // Debounce control
         private DateTime _lastEventTime = DateTime.MinValue;
-        private const int DebounceMs = 1000; // 1秒防抖
+        private const int DebounceMs = 1000; // 1 second debounce
         private bool _isProcessingEvent = false;
 
-        // 事件
+        // Events
         public event Action<SprdDeviceInfo> OnDeviceConnected;
         public event Action<SprdDeviceInfo> OnDeviceDisconnected;
         public event Action<string> OnLog;
 
-        // 已知设备列表
+        // Known device list
         private readonly List<SprdDeviceInfo> _connectedDevices = new List<SprdDeviceInfo>();
 
         /// <summary>
-        /// 已连接设备列表
+        /// List of connected devices
         /// </summary>
         public IReadOnlyList<SprdDeviceInfo> ConnectedDevices
         {
@@ -50,7 +54,7 @@ namespace LoveAlways.Spreadtrum.Common
         }
 
         /// <summary>
-        /// 开始监听设备插拔
+        /// Start watching for device insertion/removal
         /// </summary>
         public void StartWatching()
         {
@@ -59,11 +63,11 @@ namespace LoveAlways.Spreadtrum.Common
 
             try
             {
-                // 初始扫描并更新设备列表
+                // Initial scan and update device list
                 var devices = ScanDevices(silent: false);
                 UpdateDeviceList(devices);
 
-                // 监听设备变化
+                // Watch for device changes
                 var query = new WqlEventQuery(
                     "SELECT * FROM Win32_DeviceChangeEvent WHERE EventType = 2 OR EventType = 3");
                 
@@ -72,16 +76,16 @@ namespace LoveAlways.Spreadtrum.Common
                 _deviceWatcher.Start();
                 
                 _isWatching = true;
-                Log("[端口检测] 开始监听设备变化");
+                Log("[Port Detector] Started watching for device changes");
             }
             catch (Exception ex)
             {
-                Log("[端口检测] 启动监听失败: {0}", ex.Message);
+                Log("[Port Detector] Failed to start watching: {0}", ex.Message);
             }
         }
 
         /// <summary>
-        /// 停止监听
+        /// Stop watching
         /// </summary>
         public void StopWatching()
         {
@@ -94,13 +98,13 @@ namespace LoveAlways.Spreadtrum.Common
                 _deviceWatcher?.Dispose();
                 _deviceWatcher = null;
                 _isWatching = false;
-                Log("[端口检测] 停止监听");
+                Log("[Port Detector] Stopped watching");
             }
             catch { }
         }
 
         /// <summary>
-        /// 扫描当前连接的设备
+        /// Scan currently connected devices
         /// </summary>
         public List<SprdDeviceInfo> ScanDevices(bool silent = false)
         {
@@ -108,7 +112,7 @@ namespace LoveAlways.Spreadtrum.Common
 
             try
             {
-                // 搜索串口设备
+                // Search for COM devices
                 using (var searcher = new ManagementObjectSearcher(
                     "SELECT * FROM Win32_PnPEntity WHERE Status='OK'"))
                 {
@@ -120,7 +124,7 @@ namespace LoveAlways.Spreadtrum.Common
                             string deviceId = obj["DeviceID"]?.ToString() ?? "";
                             var hardwareIds = obj["HardwareID"] as string[];
 
-                            // 检查是否是展讯设备
+                            // Check if it's a Spreadtrum device
                             if (IsSprdDevice(name, deviceId, hardwareIds))
                             {
                                 string comPort = ExtractComPort(name);
@@ -132,7 +136,7 @@ namespace LoveAlways.Spreadtrum.Common
                                         devices.Add(info);
                                         if (!silent)
                                         {
-                                            Log("[端口检测] 发现设备: {0} ({1})", info.Name, info.ComPort);
+                                            Log("[Port Detector] Found device: {0} ({1})", info.Name, info.ComPort);
                                         }
                                     }
                                 }
@@ -144,14 +148,14 @@ namespace LoveAlways.Spreadtrum.Common
             }
             catch (Exception ex)
             {
-                Log("[端口检测] 扫描设备失败: {0}", ex.Message);
+                Log("[Port Detector] Failed to scan devices: {0}", ex.Message);
             }
 
             return devices;
         }
         
         /// <summary>
-        /// 扫描所有 COM 端口设备 (用于调试)
+        /// Scan all COM port devices (for debugging)
         /// </summary>
         public List<ComPortInfo> ScanAllComPorts()
         {
@@ -168,7 +172,7 @@ namespace LoveAlways.Spreadtrum.Common
                         {
                             string name = obj["Name"]?.ToString() ?? "";
                             
-                            // 只处理有 COM 端口的设备
+                            // Only handle devices with COM ports
                             string comPort = ExtractComPort(name);
                             if (string.IsNullOrEmpty(comPort))
                                 continue;
@@ -177,7 +181,7 @@ namespace LoveAlways.Spreadtrum.Common
                             var hardwareIds = obj["HardwareID"] as string[];
                             string hwIdStr = hardwareIds != null && hardwareIds.Length > 0 ? hardwareIds[0] : "";
                             
-                            // 解析 VID/PID
+                            // Parse VID/PID
                             int vid = 0, pid = 0;
                             var vidMatch = Regex.Match(hwIdStr, @"VID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase);
                             if (vidMatch.Success)
@@ -186,7 +190,7 @@ namespace LoveAlways.Spreadtrum.Common
                             if (pidMatch.Success)
                                 pid = Convert.ToInt32(pidMatch.Groups[1].Value, 16);
                             
-                            // 判断是否被识别为展讯
+                            // Determine if identified as Spreadtrum
                             bool isSprd = IsSprdDevice(name, deviceId, hardwareIds);
                             
                             ports.Add(new ComPortInfo
@@ -210,31 +214,31 @@ namespace LoveAlways.Spreadtrum.Common
         }
         
         /// <summary>
-        /// 打印所有 COM 端口设备信息 (调试用)
+        /// Print all COM port device info (for debugging)
         /// </summary>
         public void PrintAllComPorts()
         {
-            Log("[设备管理器] 扫描所有 COM 端口...");
+            Log("[Device Manager] Scanning all COM ports...");
             var ports = ScanAllComPorts();
             
             if (ports.Count == 0)
             {
-                Log("[设备管理器] 未发现任何 COM 端口");
+                Log("[Device Manager] No COM ports found");
                 return;
             }
             
-            Log("[设备管理器] 发现 {0} 个 COM 端口:", ports.Count);
+            Log("[Device Manager] Found {0} COM ports:", ports.Count);
             foreach (var port in ports)
             {
-                string sprdFlag = port.IsSprdDetected ? " [展讯]" : "";
+                string sprdFlag = port.IsSprdDetected ? " [Spreadtrum]" : "";
                 Log("  {0}: VID={1:X4} PID={2:X4}{3}", port.ComPort, port.Vid, port.Pid, sprdFlag);
-                Log("    名称: {0}", port.Name);
+                Log("    Name: {0}", port.Name);
                 Log("    HW ID: {0}", port.HardwareId);
             }
         }
         
         /// <summary>
-        /// 更新内部设备列表
+        /// Update internal device list
         /// </summary>
         private void UpdateDeviceList(List<SprdDeviceInfo> devices)
         {
@@ -246,16 +250,16 @@ namespace LoveAlways.Spreadtrum.Common
         }
 
         /// <summary>
-        /// 等待设备连接
+        /// Wait for device connection
         /// </summary>
         public async Task<SprdDeviceInfo> WaitForDeviceAsync(int timeoutMs = 30000, CancellationToken cancellationToken = default)
         {
-            Log("[端口检测] 等待设备连接...");
+            Log("[Port Detector] Waiting for device connection...");
 
             var startTime = DateTime.Now;
             var previousDevices = new HashSet<string>();
 
-            // 记录当前设备（静默模式）
+            // Record current devices (silent mode)
             var initialDevices = ScanDevices(silent: true);
             UpdateDeviceList(initialDevices);
             foreach (var dev in initialDevices)
@@ -267,7 +271,7 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 if ((DateTime.Now - startTime).TotalMilliseconds > timeoutMs)
                 {
-                    Log("[端口检测] 等待超时");
+                    Log("[Port Detector] Wait timed out");
                     return null;
                 }
 
@@ -280,7 +284,7 @@ namespace LoveAlways.Spreadtrum.Common
                 {
                     if (!previousDevices.Contains(dev.ComPort))
                     {
-                        Log("[端口检测] 新设备连接: {0}", dev.ComPort);
+                        Log("[Port Detector] New device connected: {0}", dev.ComPort);
                         return dev;
                     }
                 }
@@ -290,7 +294,7 @@ namespace LoveAlways.Spreadtrum.Common
         }
 
         /// <summary>
-        /// 检查是否为展讯设备 - 双重验证 (VID + 设备名称)
+        /// Check if it's a Spreadtrum device - dual verification (VID + Device Name)
         /// </summary>
         private bool IsSprdDevice(string name, string deviceId, string[] hardwareIds)
         {
@@ -298,13 +302,13 @@ namespace LoveAlways.Spreadtrum.Common
             string deviceIdUpper = deviceId.ToUpper();
             string hwIdStr = hardwareIds != null && hardwareIds.Length > 0 ? hardwareIds[0].ToUpper() : "";
 
-            // ========== 第一步: 硬排除其他平台 ==========
+            // ========== Step 1: Hard exclude other platforms ==========
             
-            // 排除 MTK 设备 (VID 0x0E8D)
+            // Exclude MTK devices (VID 0x0E8D)
             if (deviceIdUpper.Contains("VID_0E8D") || hwIdStr.Contains("VID_0E8D"))
                 return false;
             
-            // 排除 MTK 设备名称关键字
+            // Exclude MTK name keywords
             string[] mtkKeywords = { "MEDIATEK", "MTK", "PRELOADER", "DA USB" };
             foreach (var kw in mtkKeywords)
             {
@@ -312,11 +316,11 @@ namespace LoveAlways.Spreadtrum.Common
                     return false;
             }
             
-            // 排除高通设备 (VID 0x05C6)
+            // Exclude Qualcomm devices (VID 0x05C6)
             if (deviceIdUpper.Contains("VID_05C6") || hwIdStr.Contains("VID_05C6"))
                 return false;
             
-            // 排除高通设备名称关键字 (但保留可能的展讯 DIAG)
+            // Exclude Qualcomm name keywords (but keep possible Sprd DIAG)
             string[] qcKeywords = { "QUALCOMM", "QDL", "QHSUSB", "QDLOADER", "9008", "EDL" };
             foreach (var kw in qcKeywords)
             {
@@ -324,32 +328,32 @@ namespace LoveAlways.Spreadtrum.Common
                     return false;
             }
             
-            // 排除 ADB/Fastboot (但允许展讯的 ADB)
+            // Exclude ADB/Fastboot (but allow Sprd ADB)
             if ((nameUpper.Contains("ADB") || nameUpper.Contains("ANDROID DEBUG")) && 
                 !nameUpper.Contains("SPRD") && !nameUpper.Contains("UNISOC"))
                 return false;
 
-            // ========== 第二步: 展讯 VID 检测 ==========
+            // ========== Step 2: Spreadtrum VID detection ==========
             
-            // 展讯专属 VID (0x1782)
+            // Spreadtrum specific VID (0x1782)
             bool hasSprdVid = deviceIdUpper.Contains("VID_1782") || hwIdStr.Contains("VID_1782");
             
-            // VID_1782 = 确认是展讯
+            // VID_1782 = Confirmed Spreadtrum
             if (hasSprdVid)
                 return true;
             
-            // ========== 第三步: 设备名称关键字检测 ==========
+            // ========== Step 3: Device name keyword detection ==========
             
-            // 展讯专属设备名称关键字 (扩展列表)
+            // Sprd specific name keywords (extended list)
             string[] sprdKeywords = {
                 "SPRD", "SPREADTRUM", "UNISOC",
                 "U2S DIAG", "U2S_DIAG", "SCI USB2SERIAL",
                 "SPRD U2S", "UNISOC U2S",
                 "USB2SERIAL", "SPRD SERIAL",
-                "DOWNLOAD", "BROM",  // 下载模式关键字
-                "SC9", "SC8", "SC7",  // 芯片型号前缀
-                "UMS", "UDX", "UWS",  // 新平台前缀
-                "T606", "T610", "T616", "T618", "T700", "T760", "T770"  // 常见芯片
+                "DOWNLOAD", "BROM",  // Download mode keywords
+                "SC9", "SC8", "SC7",  // Chip model prefixes
+                "UMS", "UDX", "UWS",  // New platform prefixes
+                "T606", "T610", "T616", "T618", "T700", "T760", "T770"  // Common chips
             };
             
             foreach (var kw in sprdKeywords)
@@ -358,9 +362,9 @@ namespace LoveAlways.Spreadtrum.Common
                     return true;
             }
             
-            // ========== 第四步: 检查特定厂商组合 (VID + PID) ==========
+            // ========== Step 4: Check specific vendor combinations (VID + PID) ==========
             
-            // Samsung SPRD (VID_04E8 + 特定 PID)
+            // Samsung SPRD (VID_04E8 + specific PIDs)
             if (deviceIdUpper.Contains("VID_04E8"))
             {
                 string[] samsungSprdPids = { "PID_685D", "PID_6860", "PID_6862", "PID_685C" };
@@ -372,7 +376,7 @@ namespace LoveAlways.Spreadtrum.Common
                 return false;
             }
             
-            // ZTE SPRD (VID_19D2 + 特定 PID)
+            // ZTE SPRD (VID_19D2 + specific PIDs)
             if (deviceIdUpper.Contains("VID_19D2"))
             {
                 string[] zteSprdPids = { "PID_0016", "PID_0117", "PID_0076", "PID_0034", "PID_1403" };
@@ -384,7 +388,7 @@ namespace LoveAlways.Spreadtrum.Common
                 return false;
             }
             
-            // Alcatel/TCL SPRD (VID_1BBB + 特定 PID)
+            // Alcatel/TCL SPRD (VID_1BBB + specific PIDs)
             if (deviceIdUpper.Contains("VID_1BBB"))
             {
                 string[] alcatelSprdPids = { "PID_0536", "PID_0530", "PID_0510" };
@@ -396,7 +400,7 @@ namespace LoveAlways.Spreadtrum.Common
                 return false;
             }
             
-            // Huawei SPRD (VID_12D1 + 特定 PID)
+            // Huawei SPRD (VID_12D1 + specific PIDs)
             if (deviceIdUpper.Contains("VID_12D1"))
             {
                 string[] huaweiSprdPids = { "PID_1001", "PID_1035", "PID_1C05" };
@@ -435,25 +439,25 @@ namespace LoveAlways.Spreadtrum.Common
             // Infinix/Tecno/Itel (VID_2A47)
             if (deviceIdUpper.Contains("VID_2A47"))
             {
-                // Transsion 设备可能使用展讯芯片
+                // Transsion devices may use Spreadtrum chips
                 return true;
             }
             
-            // ========== 第五步: DIAG 模式宽松检测 ==========
-            // 如果设备名包含 DIAG 且不是已知的其他平台
+            // ========== Step 5: Relaxed DIAG mode detection ==========
+            // If device name contains DIAG and is not from other known platforms
             if (nameUpper.Contains("DIAG") && !nameUpper.Contains("QUALCOMM"))
             {
-                // 检查是否有 COM 端口
+                // Check if there's a COM port
                 if (nameUpper.Contains("(COM"))
                     return true;
             }
             
-            // 不符合任何展讯设备特征
+            // Does not match any Spreadtrum device characteristics
             return false;
         }
 
         /// <summary>
-        /// 从设备名称提取 COM 端口号
+        /// Extract COM port number from device name
         /// </summary>
         private string ExtractComPort(string name)
         {
@@ -466,7 +470,7 @@ namespace LoveAlways.Spreadtrum.Common
         }
 
         /// <summary>
-        /// 解析设备信息
+        /// Parse device information
         /// </summary>
         private SprdDeviceInfo ParseDeviceInfo(string name, string deviceId, string[] hardwareIds, string comPort)
         {
@@ -477,7 +481,7 @@ namespace LoveAlways.Spreadtrum.Common
                 ComPort = comPort
             };
 
-            // 解析 VID/PID
+            // Parse VID/PID
             string hwId = hardwareIds != null && hardwareIds.Length > 0 ? hardwareIds[0] : deviceId;
             
             var vidMatch = Regex.Match(hwId, @"VID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase);
@@ -492,29 +496,29 @@ namespace LoveAlways.Spreadtrum.Common
                 info.Pid = Convert.ToInt32(pidMatch.Groups[1].Value, 16);
             }
 
-            // 判断设备模式
+            // Determine device mode
             info.Mode = DetermineDeviceMode(info.Pid, name);
 
             return info;
         }
 
         /// <summary>
-        /// 判断设备模式
+        /// Determine device mode
         /// </summary>
         private SprdDeviceMode DetermineDeviceMode(int pid, string name)
         {
             string nameUpper = name.ToUpper();
 
-            // ========== 根据 PID 判断 ==========
-            // 下载模式 PID
+            // ========== Determine by PID ==========
+            // Download mode PID
             if (SprdUsbIds.IsDownloadPid(pid))
                 return SprdDeviceMode.Download;
                 
-            // 诊断模式 PID
+            // Diagnostic mode PID
             if (SprdUsbIds.IsDiagPid(pid))
                 return SprdDeviceMode.Diag;
             
-            // 其他已知 PID
+            // Other known PIDs
             switch (pid)
             {
                 case SprdUsbIds.PID_ADB:
@@ -527,8 +531,8 @@ namespace LoveAlways.Spreadtrum.Common
                     return SprdDeviceMode.Fastboot;
             }
 
-            // ========== 根据名称关键字判断 ==========
-            // 下载模式关键字
+            // ========== Determine by name keywords ==========
+            // Download mode keywords
             string[] downloadKeywords = {
                 "DOWNLOAD", "BOOT", "BROM", "U2S DIAG", "U2S_DIAG",
                 "SPRD U2S", "SCI USB2SERIAL", "UNISOC U2S"
@@ -539,7 +543,7 @@ namespace LoveAlways.Spreadtrum.Common
                     return SprdDeviceMode.Download;
             }
             
-            // 诊断模式关键字
+            // Diagnostic mode keywords
             string[] diagKeywords = { "DIAG", "DIAGNOSTIC", "CP" };
             foreach (var keyword in diagKeywords)
             {
@@ -547,15 +551,15 @@ namespace LoveAlways.Spreadtrum.Common
                     return SprdDeviceMode.Diag;
             }
             
-            // ADB 模式关键字
+            // ADB mode keywords
             if (nameUpper.Contains("ADB") || nameUpper.Contains("ANDROID DEBUG"))
                 return SprdDeviceMode.Adb;
             
-            // MTP 模式关键字
+            // MTP mode keywords
             if (nameUpper.Contains("MTP") || nameUpper.Contains("MEDIA TRANSFER"))
                 return SprdDeviceMode.Mtp;
             
-            // CDC/ACM 通常也是下载模式
+            // CDC/ACM is usually also Download mode
             if (nameUpper.Contains("CDC") || nameUpper.Contains("ACM") || nameUpper.Contains("SERIAL"))
                 return SprdDeviceMode.Download;
 
@@ -563,36 +567,36 @@ namespace LoveAlways.Spreadtrum.Common
         }
 
         /// <summary>
-        /// 设备变化事件
+        /// Device change event
         /// </summary>
         private void OnDeviceChanged(object sender, EventArrivedEventArgs e)
         {
-            // 防抖：忽略短时间内的重复事件
+            // Debounce: ignore repeated events in short time
             lock (_lock)
             {
                 var now = DateTime.Now;
                 if ((now - _lastEventTime).TotalMilliseconds < DebounceMs)
                 {
-                    return; // 忽略重复事件
+                    return; // Ignore duplicate events
                 }
                 
                 if (_isProcessingEvent)
                 {
-                    return; // 已有事件在处理中
+                    return; // Event already being processed
                 }
                 
                 _lastEventTime = now;
                 _isProcessingEvent = true;
             }
             
-            // 延迟扫描，等待设备稳定
+            // Delay scan, wait for device stabilization
             Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(800); // 增加延迟等待设备稳定
+                    await Task.Delay(800); // Increase delay to wait for device stabilization
 
-                    // 获取之前的设备列表
+                    // Get previous device list
                     var previousDevices = new HashSet<string>();
                     lock (_lock)
                     {
@@ -600,23 +604,23 @@ namespace LoveAlways.Spreadtrum.Common
                             previousDevices.Add(dev.ComPort);
                     }
 
-                    // 静默扫描，不打印日志
+                    // Silent scan, do not log
                     var currentDevices = ScanDevices(silent: true);
                     
-                    // 更新设备列表
+                    // Update device list
                     UpdateDeviceList(currentDevices);
 
-                    // 检测新连接
+                    // Detect new connections
                     foreach (var dev in currentDevices)
                     {
                         if (!previousDevices.Contains(dev.ComPort))
                         {
-                            Log("[端口检测] 新设备: {0} ({1})", dev.Name, dev.ComPort);
+                            Log("[Port Detector] New device: {0} ({1})", dev.Name, dev.ComPort);
                             OnDeviceConnected?.Invoke(dev);
                         }
                     }
 
-                    // 检测断开
+                    // Detect disconnections
                     var currentPorts = new HashSet<string>();
                     foreach (var dev in currentDevices)
                         currentPorts.Add(dev.ComPort);
@@ -625,15 +629,15 @@ namespace LoveAlways.Spreadtrum.Common
                     {
                         if (!currentPorts.Contains(port))
                         {
-                            Log("[端口检测] 设备断开: {0}", port);
+                            Log("[Port Detector] Device disconnected: {0}", port);
                             OnDeviceDisconnected?.Invoke(new SprdDeviceInfo { ComPort = port });
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    // 防止后台任务异常导致程序崩溃
-                    System.Diagnostics.Debug.WriteLine($"[端口检测] 设备变化处理异常: {ex.Message}");
+                    // Prevent background task exceptions from crashing the program
+                    System.Diagnostics.Debug.WriteLine($"[Port Detector] Device change processing exception: {ex.Message}");
                 }
                 finally
                 {
@@ -656,9 +660,9 @@ namespace LoveAlways.Spreadtrum.Common
         }
     }
 
-    /// <summary>
-    /// 展讯设备信息
-    /// </summary>
+        /// <summary>
+        /// Spreadtrum Device Information
+        /// </summary>
     public class SprdDeviceInfo
     {
         public string Name { get; set; }
@@ -669,7 +673,7 @@ namespace LoveAlways.Spreadtrum.Common
         public SprdDeviceMode Mode { get; set; }
 
         /// <summary>
-        /// COM 端口号 (数字)
+        /// COM port number (numeric)
         /// </summary>
         public int ComPortNumber
         {
@@ -692,21 +696,21 @@ namespace LoveAlways.Spreadtrum.Common
     }
 
     /// <summary>
-    /// 展讯设备模式
+    /// Spreadtrum Device Mode
     /// </summary>
     public enum SprdDeviceMode
     {
         Unknown,
-        Download,   // 下载模式 (可刷机)
-        Diag,       // 诊断模式
-        Adb,        // ADB 模式
-        Mtp,        // MTP 模式
-        Fastboot,   // Fastboot 模式
-        Normal      // 正常模式
+        Download,   // Download mode (flashable)
+        Diag,       // Diagnostic mode
+        Adb,        // ADB mode
+        Mtp,        // MTP mode
+        Fastboot,   // Fastboot mode
+        Normal      // Normal mode
     }
     
     /// <summary>
-    /// COM 端口信息 (调试用)
+    /// COM Port Information (for debugging)
     /// </summary>
     public class ComPortInfo
     {
@@ -721,7 +725,7 @@ namespace LoveAlways.Spreadtrum.Common
         public override string ToString()
         {
             return string.Format("{0}: {1} (VID={2:X4} PID={3:X4}) {4}",
-                ComPort, Name, Vid, Pid, IsSprdDetected ? "[展讯]" : "");
+                ComPort, Name, Vid, Pid, IsSprdDetected ? "[Spreadtrum]" : "");
         }
     }
 }

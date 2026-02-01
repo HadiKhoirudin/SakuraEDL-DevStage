@@ -1,7 +1,12 @@
 // ============================================================================
-// LoveAlways - 性能配置管理器
-// Performance Configuration - 用于优化低配电脑运行体验
+// LoveAlways - Performance Configuration Manager
+// Performance Configuration - Used to optimize the running experience on low-end computers
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Configuration;
@@ -9,7 +14,7 @@ using System.Configuration;
 namespace LoveAlways.Common
 {
     /// <summary>
-    /// 性能配置管理器 - 统一管理性能相关配置
+    /// Performance Configuration Manager - Unified performance configuration management
     /// </summary>
     public static class PerformanceConfig
     {
@@ -20,7 +25,7 @@ namespace LoveAlways.Common
         private static bool? _enableLazyLoading;
 
         /// <summary>
-        /// 低配模式 - 减少动画效果和刷新频率
+        /// Low Performance Mode - Reduce animation effects and refresh frequency
         /// </summary>
         public static bool LowPerformanceMode
         {
@@ -35,7 +40,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 最大日志条目数量
+        /// Maximum Log Entries
         /// </summary>
         public static int MaxLogEntries
         {
@@ -44,7 +49,7 @@ namespace LoveAlways.Common
                 if (!_maxLogEntries.HasValue)
                 {
                     _maxLogEntries = GetIntSetting("MaxLogEntries", 1000);
-                    // 低配模式下限制为更少的条目
+                    // Limit to fewer entries in low performance mode
                     if (LowPerformanceMode && _maxLogEntries > 500)
                     {
                         _maxLogEntries = 500;
@@ -55,7 +60,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// UI 刷新间隔 (毫秒)
+        /// UI Refresh Interval (ms)
         /// </summary>
         public static int UIRefreshInterval
         {
@@ -64,7 +69,7 @@ namespace LoveAlways.Common
                 if (!_uiRefreshInterval.HasValue)
                 {
                     _uiRefreshInterval = GetIntSetting("UIRefreshInterval", 50);
-                    // 低配模式下使用更长的刷新间隔
+                    // Use longer refresh interval in low performance mode
                     if (LowPerformanceMode && _uiRefreshInterval < 100)
                     {
                         _uiRefreshInterval = 100;
@@ -75,7 +80,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 启用双缓冲减少闪烁
+        /// Enable Double Buffering to reduce flickering
         /// </summary>
         public static bool EnableDoubleBuffering
         {
@@ -90,7 +95,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 启用懒加载
+        /// Enable Lazy Loading
         /// </summary>
         public static bool EnableLazyLoading
         {
@@ -105,22 +110,22 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 动画帧率 (低配模式下降低)
+        /// Animation FPS (Lower in low performance mode)
         /// </summary>
         public static int AnimationFPS => LowPerformanceMode ? 15 : 30;
 
         /// <summary>
-        /// 动画定时器间隔
+        /// Animation Timer Interval
         /// </summary>
         public static int AnimationInterval => 1000 / AnimationFPS;
 
         /// <summary>
-        /// 日志批量刷新阈值
+        /// Log Batch Size
         /// </summary>
         public static int LogBatchSize => LowPerformanceMode ? 20 : 10;
 
         /// <summary>
-        /// 获取布尔配置值
+        /// Get Boolean Setting Value
         /// </summary>
         private static bool GetBoolSetting(string key, bool defaultValue)
         {
@@ -138,7 +143,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 获取整数配置值
+        /// Get Integer Setting Value
         /// </summary>
         private static int GetIntSetting(string key, int defaultValue)
         {
@@ -158,7 +163,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 重置缓存 (用于配置更新后刷新)
+        /// Reset Cache (For refreshing after configuration update)
         /// </summary>
         public static void ResetCache()
         {

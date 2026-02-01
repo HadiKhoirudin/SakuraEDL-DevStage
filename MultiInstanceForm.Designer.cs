@@ -34,13 +34,13 @@ namespace LoveAlways
             // 
             // uiLabelMessage
             // 
-            this.uiLabelMessage.Font = new System.Drawing.Font("微软雅黑", 12F);
+            this.uiLabelMessage.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.uiLabelMessage.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(48)))), ((int)(((byte)(48)))), ((int)(((byte)(48)))));
             this.uiLabelMessage.Location = new System.Drawing.Point(15, 49);
             this.uiLabelMessage.Name = "uiLabelMessage";
             this.uiLabelMessage.Size = new System.Drawing.Size(352, 134);
             this.uiLabelMessage.TabIndex = 0;
-            this.uiLabelMessage.Text = "检测到已打开多个进程，请关闭其他程序";
+            this.uiLabelMessage.Text = "Multiple instances detected, please close other programs";
             this.uiLabelMessage.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // uiButtonClose
@@ -51,7 +51,7 @@ namespace LoveAlways
             this.uiButtonClose.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(115)))), ((int)(((byte)(115)))));
             this.uiButtonClose.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
             this.uiButtonClose.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
-            this.uiButtonClose.Font = new System.Drawing.Font("微软雅黑", 10F);
+            this.uiButtonClose.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.uiButtonClose.LightColor = System.Drawing.Color.FromArgb(((int)(((byte)(253)))), ((int)(((byte)(243)))), ((int)(((byte)(243)))));
             this.uiButtonClose.Location = new System.Drawing.Point(44, 200);
             this.uiButtonClose.MinimumSize = new System.Drawing.Size(1, 1);
@@ -64,7 +64,7 @@ namespace LoveAlways
             this.uiButtonClose.Size = new System.Drawing.Size(296, 40);
             this.uiButtonClose.Style = Sunny.UI.UIStyle.Custom;
             this.uiButtonClose.TabIndex = 1;
-            this.uiButtonClose.Text = "关闭";
+            this.uiButtonClose.Text = "Close";
             this.uiButtonClose.TipsColor = System.Drawing.Color.Salmon;
             this.uiButtonClose.TipsFont = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.uiButtonClose.Click += new System.EventHandler(this.uiButtonClose_Click);
@@ -76,7 +76,7 @@ namespace LoveAlways
             this.ControlBox = false;
             this.Controls.Add(this.uiLabelMessage);
             this.Controls.Add(this.uiButtonClose);
-            this.Font = new System.Drawing.Font("微软雅黑", 10F);
+            this.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "MultiInstanceForm";
@@ -84,9 +84,9 @@ namespace LoveAlways
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "提示";
+            this.Text = "Tip";
             this.TitleColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
-            this.TitleFont = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.TitleFont = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.TopMost = true;
             this.ZoomScaleRect = new System.Drawing.Rectangle(15, 15, 400, 300);
             this.ResumeLayout(false);

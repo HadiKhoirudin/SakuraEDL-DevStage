@@ -1,7 +1,12 @@
 // ============================================================================
-// LoveAlways - 全局日志管理器
-// Global Logger - 统一日志输出和管理
+// LoveAlways - Global Logger
+// Global Logger - Unified log output and management
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Drawing;
@@ -11,7 +16,7 @@ using System.Text;
 namespace LoveAlways.Common
 {
     /// <summary>
-    /// 日志级别
+    /// Log Level
     /// </summary>
     public enum LogLevel
     {
@@ -23,7 +28,7 @@ namespace LoveAlways.Common
     }
 
     /// <summary>
-    /// 全局日志管理器 - 统一日志输出
+    /// Global Logger - Unified log output
     /// </summary>
     public static class Logger
     {
@@ -34,7 +39,7 @@ namespace LoveAlways.Common
         private static bool _isInitialized;
 
         /// <summary>
-        /// 最小日志级别 (低于此级别的日志不会输出)
+        /// Minimum Log Level (Logs below this level will not be output)
         /// </summary>
         public static LogLevel MinLevel
         {
@@ -43,10 +48,10 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 初始化日志系统
+        /// Initialize Log System
         /// </summary>
-        /// <param name="logFilePath">日志文件路径</param>
-        /// <param name="uiLogger">UI 日志回调 (可选)</param>
+        /// <param name="logFilePath">Log File Path</param>
+        /// <param name="uiLogger">UI Log Callback (Optional)</param>
         public static void Initialize(string logFilePath, Action<string, Color?> uiLogger = null)
         {
             lock (_lock)
@@ -55,7 +60,7 @@ namespace LoveAlways.Common
                 _uiLogger = uiLogger;
                 _isInitialized = true;
 
-                // 确保日志目录存在
+                // Ensure log directory exists
                 try
                 {
                     string dir = Path.GetDirectoryName(logFilePath);
@@ -66,13 +71,13 @@ namespace LoveAlways.Common
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[Logger] 创建日志目录失败: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[Logger] Failed to create log directory: {ex.Message}");
                 }
             }
         }
 
         /// <summary>
-        /// 设置 UI 日志回调
+        /// Set UI Log Callback
         /// </summary>
         public static void SetUILogger(Action<string, Color?> uiLogger)
         {
@@ -83,7 +88,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 记录调试日志 (仅写入文件)
+        /// Record Debug Log (Write to file only)
         /// </summary>
         public static void Debug(string message, string category = null)
         {
@@ -91,7 +96,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 记录信息日志
+        /// Record Info Log
         /// </summary>
         public static void Info(string message, string category = null, bool showInUI = true)
         {
@@ -99,7 +104,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 记录警告日志
+        /// Record Warning Log
         /// </summary>
         public static void Warning(string message, string category = null, bool showInUI = true)
         {
@@ -107,7 +112,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 记录错误日志
+        /// Record Error Log
         /// </summary>
         public static void Error(string message, string category = null, bool showInUI = true)
         {
@@ -115,19 +120,19 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 记录错误日志 (带异常)
+        /// Record Error Log (With Exception)
         /// </summary>
         public static void Error(string message, Exception ex, string category = null, bool showInUI = true)
         {
             string fullMessage = $"{message}: {ex.Message}";
             Log(LogLevel.Error, fullMessage, category, Color.Red, showInUI);
             
-            // 写入详细堆栈到文件
-            WriteToFile(LogLevel.Error, $"异常详情: {ex}", category);
+            // Write detailed stack trace to file
+            WriteToFile(LogLevel.Error, $"Exception Details: {ex}", category);
         }
 
         /// <summary>
-        /// 记录致命错误日志
+        /// Record Fatal Error Log
         /// </summary>
         public static void Fatal(string message, Exception ex = null, string category = null)
         {
@@ -136,12 +141,12 @@ namespace LoveAlways.Common
             
             if (ex != null)
             {
-                WriteToFile(LogLevel.Fatal, $"致命异常详情: {ex}", category);
+                WriteToFile(LogLevel.Fatal, $"Fatal Exception Details: {ex}", category);
             }
         }
 
         /// <summary>
-        /// 核心日志方法
+        /// Core Log Method
         /// </summary>
         private static void Log(LogLevel level, string message, string category, Color? color, bool showInUI)
         {
@@ -150,13 +155,13 @@ namespace LoveAlways.Common
 
             string formattedMessage = FormatMessage(level, message, category);
 
-            // 写入文件
+            // Write to file
             WriteToFile(level, message, category);
 
-            // 输出到调试窗口
+            // Output to debug window
             System.Diagnostics.Debug.WriteLine(formattedMessage);
 
-            // 输出到 UI
+            // Output to UI
             if (showInUI && _uiLogger != null)
             {
                 try
@@ -166,13 +171,13 @@ namespace LoveAlways.Common
                 }
                 catch
                 {
-                    // UI 回调失败，忽略
+                    // UI CAllback Failed, Ignore
                 }
             }
         }
 
         /// <summary>
-        /// 格式化日志消息
+        /// Format Log Message
         /// </summary>
         private static string FormatMessage(LogLevel level, string message, string category)
         {
@@ -195,7 +200,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 写入日志文件
+        /// Write to log file
         /// </summary>
         private static void WriteToFile(LogLevel level, string message, string category)
         {
@@ -212,12 +217,12 @@ namespace LoveAlways.Common
             }
             catch
             {
-                // 文件写入失败，忽略
+                // File write failed, ignore
             }
         }
 
         /// <summary>
-        /// 创建带类别的日志记录器
+        /// Create Logger with Category
         /// </summary>
         public static CategoryLogger ForCategory(string category)
         {
@@ -226,7 +231,7 @@ namespace LoveAlways.Common
     }
 
     /// <summary>
-    /// 带类别的日志记录器
+    /// Logger with Category
     /// </summary>
     public class CategoryLogger
     {

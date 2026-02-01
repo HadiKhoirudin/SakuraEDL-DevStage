@@ -1,82 +1,87 @@
 // ============================================================================
-// LoveAlways - MediaTek 设备信息模型
+// LoveAlways - MediaTek Device Info Models
 // MediaTek Device Information Models
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 
 namespace LoveAlways.MediaTek.Models
 {
     /// <summary>
-    /// MTK 芯片信息
+    /// MTK Chip Info
     /// </summary>
     public class MtkChipInfo
     {
-        /// <summary>硬件代码 (HW Code)</summary>
+        /// <summary>Hardware Code (HW Code)</summary>
         public ushort HwCode { get; set; }
         
-        /// <summary>硬件版本</summary>
+        /// <summary>Hardware Version</summary>
         public ushort HwVer { get; set; }
         
-        /// <summary>硬件子代码</summary>
+        /// <summary>Hardware Subcode</summary>
         public ushort HwSubCode { get; set; }
         
-        /// <summary>软件版本</summary>
+        /// <summary>Software Version</summary>
         public ushort SwVer { get; set; }
         
-        /// <summary>芯片名称</summary>
+        /// <summary>Chip Name</summary>
         public string ChipName { get; set; }
         
-        /// <summary>芯片描述</summary>
+        /// <summary>Chip Description</summary>
         public string Description { get; set; }
         
-        /// <summary>看门狗地址</summary>
+        /// <summary>Watchdog Address</summary>
         public uint WatchdogAddr { get; set; }
         
-        /// <summary>UART 地址</summary>
+        /// <summary>UART Address</summary>
         public uint UartAddr { get; set; }
         
-        /// <summary>BROM Payload 地址</summary>
+        /// <summary>BROM Payload Address</summary>
         public uint BromPayloadAddr { get; set; }
         
-        /// <summary>DA Payload 地址</summary>
+        /// <summary>DA Payload Address</summary>
         public uint DaPayloadAddr { get; set; }
         
-        /// <summary>CQ_DMA 基地址</summary>
+        /// <summary>CQ_DMA Base Address</summary>
         public uint? CqDmaBase { get; set; }
         
-        /// <summary>DA 模式</summary>
-        public int DaMode { get; set; } = 6;  // 默认 XML 模式
+        /// <summary>DA Mode</summary>
+        public int DaMode { get; set; } = 6;  // Default XML mode
         
-        /// <summary>是否支持 XFlash</summary>
+        /// <summary>Supports XFlash</summary>
         public bool SupportsXFlash { get; set; }
         
-        /// <summary>是否需要签名</summary>
+        /// <summary>Requires Signature</summary>
         public bool RequiresSignature { get; set; }
         
-        /// <summary>是否支持 64 位</summary>
+        /// <summary>Supports 64-bit</summary>
         public bool Is64Bit { get; set; }
         
-        /// <summary>BROM 是否已被修补</summary>
+        /// <summary>BROM is patched</summary>
         public bool BromPatched { get; set; }
         
-        /// <summary>是否需要 V6 Loader</summary>
+        /// <summary>Requires V6 Loader</summary>
         public bool RequiresLoader { get; set; }
         
-        /// <summary>Loader 文件名</summary>
+        /// <summary>Loader Filename</summary>
         public string LoaderName { get; set; }
         
-        /// <summary>芯片代号</summary>
+        /// <summary>Codename</summary>
         public string Codename { get; set; }
         
-        /// <summary>漏洞类型</summary>
+        /// <summary>Exploit Type</summary>
         public string ExploitType { get; set; }
         
-        /// <summary>是否有可用漏洞</summary>
+        /// <summary>Has available exploit</summary>
         public bool HasExploit { get; set; }
         
         /// <summary>
-        /// 获取芯片名称 (根据 HW Code)
+        /// Get Chip Name (based on HW Code)
         /// </summary>
         public string GetChipName()
         {
@@ -105,7 +110,7 @@ namespace LoveAlways.MediaTek.Models
                 0x0717 => "MT6765",
                 0x0725 => "MT6765",
                 0x0766 => "MT6877",
-                0x0959 => "MT6877",  // Preloader 模式 HW Code
+                0x0959 => "MT6877",  // Preloader mode HW Code
                 0x0788 => "MT6873",
                 0x0813 => "MT6833",
                 0x0816 => "MT6893",
@@ -113,8 +118,8 @@ namespace LoveAlways.MediaTek.Models
                 0x0950 => "MT6833",
                 0x0989 => "MT6891",
                 0x0996 => "MT6895",
-                0x1172 => "MT6895",  // Dimensity 8200 (之前误标为 MT6983)
-                0x1186 => "MT6983",  // Dimensity 9000 (待确认)
+                0x1172 => "MT6895",  // Dimensity 8200 (Previously mislabeled as MT6983)
+                0x1186 => "MT6983",  // Dimensity 9000 (To be confirmed)
                 0x1208 => "MT6895",
                 0x1209 => "MT6985",
                 0x2502 => "MT2502",
@@ -155,7 +160,7 @@ namespace LoveAlways.MediaTek.Models
         }
 
         /// <summary>
-        /// 克隆
+        /// Clone
         /// </summary>
         public MtkChipInfo Clone()
         {
@@ -164,14 +169,14 @@ namespace LoveAlways.MediaTek.Models
     }
 
     /// <summary>
-    /// MTK 设备信息
+    /// MTK Device Info
     /// </summary>
     public class MtkDeviceInfo
     {
-        /// <summary>设备路径/端口名</summary>
+        /// <summary>Device Path/Port Name</summary>
         public string DevicePath { get; set; }
         
-        /// <summary>COM 端口</summary>
+        /// <summary>COM Port</summary>
         public string ComPort { get; set; }
         
         /// <summary>USB VID</summary>
@@ -180,13 +185,13 @@ namespace LoveAlways.MediaTek.Models
         /// <summary>USB PID</summary>
         public int Pid { get; set; }
         
-        /// <summary>设备描述</summary>
+        /// <summary>Device Description</summary>
         public string Description { get; set; }
         
-        /// <summary>是否为下载模式</summary>
+        /// <summary>Whether in download mode</summary>
         public bool IsDownloadMode { get; set; }
         
-        /// <summary>芯片信息</summary>
+        /// <summary>Chip Info</summary>
         public MtkChipInfo ChipInfo { get; set; }
         
         /// <summary>ME ID</summary>
@@ -196,79 +201,79 @@ namespace LoveAlways.MediaTek.Models
         public byte[] SocId { get; set; }
         
         /// <summary>
-        /// ME ID 十六进制字符串
+        /// ME ID Hex String
         /// </summary>
         public string MeIdHex => MeId != null ? BitConverter.ToString(MeId).Replace("-", "") : "";
         
         /// <summary>
-        /// SOC ID 十六进制字符串
+        /// SOC ID Hex String
         /// </summary>
         public string SocIdHex => SocId != null ? BitConverter.ToString(SocId).Replace("-", "") : "";
         
         /// <summary>
-        /// DA 模式 (5 = XFlash, 6 = XML)
+        /// DA Mode (5 = XFlash, 6 = XML)
         /// </summary>
         public int DaMode { get; set; }
     }
 
     /// <summary>
-    /// DA 条目信息
+    /// DA Entry Info
     /// </summary>
     public class DaEntry
     {
-        /// <summary>DA 名称</summary>
+        /// <summary>DA Name</summary>
         public string Name { get; set; }
         
-        /// <summary>加载地址</summary>
+        /// <summary>Load Address</summary>
         public uint LoadAddr { get; set; }
         
-        /// <summary>签名长度</summary>
+        /// <summary>Signature Length</summary>
         public int SignatureLen { get; set; }
         
-        /// <summary>DA 数据</summary>
+        /// <summary>DA Data</summary>
         public byte[] Data { get; set; }
         
-        /// <summary>是否为 64 位</summary>
+        /// <summary>Whether 64-bit</summary>
         public bool Is64Bit { get; set; }
         
-        /// <summary>DA 版本</summary>
+        /// <summary>DA Version</summary>
         public int Version { get; set; }
         
-        /// <summary>DA 类型 (Legacy/XFlash/XML)</summary>
+        /// <summary>DA Type (Legacy/XFlash/XML)</summary>
         public int DaType { get; set; }
     }
 
     /// <summary>
-    /// MTK 分区信息
+    /// MTK Partition Info
     /// </summary>
     public class MtkPartitionInfo
     {
-        /// <summary>分区名称</summary>
+        /// <summary>Partition Name</summary>
         public string Name { get; set; }
         
-        /// <summary>起始扇区</summary>
+        /// <summary>Start Sector</summary>
         public ulong StartSector { get; set; }
         
-        /// <summary>扇区数量</summary>
+        /// <summary>Sector Count</summary>
         public ulong SectorCount { get; set; }
         
-        /// <summary>分区大小 (字节)</summary>
+        /// <summary>Partition Size (Bytes)</summary>
         public ulong Size { get; set; }
         
-        /// <summary>分区类型</summary>
+        /// <summary>Partition Type</summary>
         public string Type { get; set; }
         
-        /// <summary>分区属性</summary>
+        /// <summary>Partition Attributes</summary>
         public ulong Attributes { get; set; }
         
-        /// <summary>是否只读</summary>
+        /// <summary>Whether Read-Only</summary>
         public bool IsReadOnly => (Attributes & 0x1) != 0;
         
-        /// <summary>是否为系统分区</summary>
+        /// <summary>Whether System Partition</summary>
         public bool IsSystem => (Attributes & 0x2) != 0;
         
         /// <summary>
-        /// 格式化大小显示
+        /// Formatted Size Display
         /// </summary>
         public string SizeDisplay
         {
@@ -286,66 +291,66 @@ namespace LoveAlways.MediaTek.Models
     }
 
     /// <summary>
-    /// MTK 目标配置
+    /// MTK Target Config
     /// </summary>
     public class MtkTargetConfig
     {
-        /// <summary>原始配置值</summary>
+        /// <summary>Raw Config Value</summary>
         public uint RawValue { get; set; }
         
-        /// <summary>是否启用 Secure Boot</summary>
+        /// <summary>SBC Enabled</summary>
         public bool SbcEnabled { get; set; }
         
-        /// <summary>是否启用 SLA</summary>
+        /// <summary>SLA Enabled</summary>
         public bool SlaEnabled { get; set; }
         
-        /// <summary>是否启用 DAA</summary>
+        /// <summary>DAA Enabled</summary>
         public bool DaaEnabled { get; set; }
         
-        /// <summary>是否启用 SW JTAG</summary>
+        /// <summary>SW JTAG Enabled</summary>
         public bool SwJtagEnabled { get; set; }
         
-        /// <summary>EPP 是否启用</summary>
+        /// <summary>EPP Enabled</summary>
         public bool EppEnabled { get; set; }
         
-        /// <summary>是否需要 Root 证书</summary>
+        /// <summary>Root Cert Required</summary>
         public bool CertRequired { get; set; }
         
-        /// <summary>内存读取是否需要认证</summary>
+        /// <summary>Memory Read Auth Required</summary>
         public bool MemReadAuth { get; set; }
         
-        /// <summary>内存写入是否需要认证</summary>
+        /// <summary>Memory Write Auth Required</summary>
         public bool MemWriteAuth { get; set; }
         
-        /// <summary>CMD C8 是否被阻止</summary>
+        /// <summary>CMD C8 Blocked</summary>
         public bool CmdC8Blocked { get; set; }
     }
 
     /// <summary>
-    /// MTK Flash 信息
+    /// MTK Flash Info
     /// </summary>
     public class MtkFlashInfo
     {
-        /// <summary>Flash 类型 (eMMC/UFS/NAND)</summary>
+        /// <summary>Flash Type (eMMC/UFS/NAND)</summary>
         public string FlashType { get; set; }
         
-        /// <summary>Flash 制造商 ID</summary>
+        /// <summary>Flash Manufacturer ID</summary>
         public ushort ManufacturerId { get; set; }
         
-        /// <summary>Flash 容量 (字节)</summary>
+        /// <summary>Flash Capacity (Bytes)</summary>
         public ulong Capacity { get; set; }
         
-        /// <summary>块大小</summary>
+        /// <summary>Block Size</summary>
         public uint BlockSize { get; set; }
         
-        /// <summary>页大小</summary>
+        /// <summary>Page Size</summary>
         public uint PageSize { get; set; }
         
-        /// <summary>Flash 型号</summary>
+        /// <summary>Flash Model</summary>
         public string Model { get; set; }
         
         /// <summary>
-        /// 格式化容量显示
+        /// Formatted Capacity Display
         /// </summary>
         public string CapacityDisplay
         {
@@ -363,20 +368,20 @@ namespace LoveAlways.MediaTek.Models
     }
 
     /// <summary>
-    /// MTK 安全信息
+    /// MTK Security Info
     /// </summary>
     public class MtkSecurityInfo
     {
-        /// <summary>是否启用 Secure Boot</summary>
+        /// <summary>Secure Boot Enabled</summary>
         public bool SecureBootEnabled { get; set; }
         
-        /// <summary>是否为 Unfused 设备</summary>
+        /// <summary>Whether Unfused Device</summary>
         public bool IsUnfused { get; set; }
         
-        /// <summary>SLA 是否启用</summary>
+        /// <summary>SLA Enabled</summary>
         public bool SlaEnabled { get; set; }
         
-        /// <summary>DAA 是否启用</summary>
+        /// <summary>DAA Enabled</summary>
         public bool DaaEnabled { get; set; }
         
         /// <summary>ME ID</summary>
@@ -385,89 +390,89 @@ namespace LoveAlways.MediaTek.Models
         /// <summary>SOC ID</summary>
         public string SocId { get; set; }
         
-        /// <summary>防回滚版本</summary>
+        /// <summary>Anti-rollback Version</summary>
         public uint AntiRollbackVersion { get; set; }
         
-        /// <summary>是否锁定</summary>
+        /// <summary>Locked Status</summary>
         public bool IsLocked { get; set; }
         
-        /// <summary>SBC 是否启用</summary>
+        /// <summary>SBC Enabled</summary>
         public bool SbcEnabled { get; set; }
     }
 
     /// <summary>
-    /// MTK Bootloader 状态
+    /// MTK Bootloader Status
     /// </summary>
     public class MtkBootloaderStatus
     {
-        /// <summary>是否已解锁</summary>
+        /// <summary>Unlocked</summary>
         public bool IsUnlocked { get; set; }
         
-        /// <summary>是否为 Unfused 设备</summary>
+        /// <summary>Unfused Device</summary>
         public bool IsUnfused { get; set; }
         
-        /// <summary>Secure Boot 是否启用</summary>
+        /// <summary>Secure Boot Enabled</summary>
         public bool SecureBootEnabled { get; set; }
         
-        /// <summary>安全版本</summary>
+        /// <summary>Security Version</summary>
         public uint SecurityVersion { get; set; }
         
-        /// <summary>设备型号</summary>
+        /// <summary>Device Model</summary>
         public string DeviceModel { get; set; }
         
-        /// <summary>状态消息</summary>
+        /// <summary>Status Message</summary>
         public string StatusMessage
         {
             get
             {
                 if (IsUnfused)
-                    return "Unfused (开发设备)";
+                    return "Unfused (Development Device)";
                 if (IsUnlocked)
-                    return "已解锁";
-                return "已锁定";
+                    return "Unlocked";
+                return "Locked";
             }
         }
     }
 
     /// <summary>
-    /// 漏洞利用信息
+    /// Exploit Information
     /// </summary>
     public class MtkExploitInfo
     {
-        /// <summary>是否已连接</summary>
+        /// <summary>Connected</summary>
         public bool IsConnected { get; set; }
         
-        /// <summary>芯片名称</summary>
+        /// <summary>Chip Name</summary>
         public string ChipName { get; set; }
         
-        /// <summary>硬件代码</summary>
+        /// <summary>Hardware Code</summary>
         public ushort HwCode { get; set; }
         
-        /// <summary>漏洞类型 (Carbonara, AllinoneSignature, None)</summary>
+        /// <summary>Exploit Type (Carbonara, AllinoneSignature, None)</summary>
         public string ExploitType { get; set; }
         
-        /// <summary>是否支持 ALLINONE-SIGNATURE 漏洞</summary>
+        /// <summary>Supports ALLINONE-SIGNATURE exploit</summary>
         public bool IsAllinoneSignatureSupported { get; set; }
         
-        /// <summary>是否支持 Carbonara 漏洞</summary>
+        /// <summary>Supports Carbonara exploit</summary>
         public bool IsCarbonaraSupported { get; set; }
         
-        /// <summary>支持 ALLINONE-SIGNATURE 的芯片列表</summary>
+        /// <summary>List of chips supporting ALLINONE-SIGNATURE</summary>
         public MtkChipExploitInfo[] AllinoneSignatureChips { get; set; }
     }
 
     /// <summary>
-    /// 芯片漏洞信息
+    /// Chip Exploit Info
     /// </summary>
     public class MtkChipExploitInfo
     {
-        /// <summary>芯片名称</summary>
+        /// <summary>Chip Name</summary>
         public string ChipName { get; set; }
         
-        /// <summary>硬件代码</summary>
+        /// <summary>Hardware Code</summary>
         public ushort HwCode { get; set; }
         
-        /// <summary>描述</summary>
+        /// <summary>Description</summary>
         public string Description { get; set; }
     }
 }

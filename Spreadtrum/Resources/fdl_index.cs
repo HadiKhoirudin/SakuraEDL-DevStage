@@ -1,7 +1,12 @@
 // ============================================================================
-// LoveAlways - FDL 索引管理器
-// 管理 FDL 文件与设备型号的对应关系
+// LoveAlways - FDL Index Manager
+// Manage relationship between FDL files and device models
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -13,62 +18,62 @@ using System.Web.Script.Serialization;
 namespace LoveAlways.Spreadtrum.Resources
 {
     /// <summary>
-    /// FDL 索引管理器 - 管理 FDL 与设备型号的对应关系
+    /// FDL Index Manager - Manages the mapping between FDL and device models
     /// </summary>
     public static class FdlIndex
     {
-        #region 数据结构
+        #region Data Structures
 
         /// <summary>
-        /// FDL 索引条目
+        /// FDL Index Entry
         /// </summary>
         public class FdlIndexEntry
         {
-            /// <summary>芯片名称 (如 SC8541E)</summary>
+            /// <summary>Chip name (e.g. SC8541E)</summary>
             public string ChipName { get; set; }
-
-            /// <summary>芯片 ID</summary>
+ 
+            /// <summary>Chip ID</summary>
             public uint ChipId { get; set; }
-
-            /// <summary>设备型号 (如 A23-Pro)</summary>
+ 
+            /// <summary>Device model (e.g. A23-Pro)</summary>
             public string DeviceModel { get; set; }
-
-            /// <summary>品牌 (如 Samsung)</summary>
+ 
+            /// <summary>Brand (e.g. Samsung)</summary>
             public string Brand { get; set; }
-
-            /// <summary>市场名称 (如 Galaxy A23)</summary>
+ 
+            /// <summary>Market name (e.g. Galaxy A23)</summary>
             public string MarketName { get; set; }
-
-            /// <summary>FDL1 文件名</summary>
+ 
+            /// <summary>FDL1 filename</summary>
             public string Fdl1File { get; set; }
-
-            /// <summary>FDL2 文件名</summary>
+ 
+            /// <summary>FDL2 filename</summary>
             public string Fdl2File { get; set; }
-
-            /// <summary>FDL1 加载地址</summary>
+ 
+            /// <summary>FDL1 load address</summary>
             public uint Fdl1Address { get; set; }
-
-            /// <summary>FDL2 加载地址</summary>
+ 
+            /// <summary>FDL2 load address</summary>
             public uint Fdl2Address { get; set; }
-
-            /// <summary>FDL1 文件哈希 (用于校验)</summary>
+ 
+            /// <summary>FDL1 file hash (for verification)</summary>
             public string Fdl1Hash { get; set; }
-
-            /// <summary>FDL2 文件哈希</summary>
+ 
+            /// <summary>FDL2 file hash</summary>
             public string Fdl2Hash { get; set; }
-
-            /// <summary>备注</summary>
+ 
+            /// <summary>Notes</summary>
             public string Notes { get; set; }
-
-            /// <summary>是否已验证可用</summary>
+ 
+            /// <summary>Whether verified and working</summary>
             public bool Verified { get; set; }
-
-            /// <summary>唯一键</summary>
+ 
+            /// <summary>Unique key</summary>
             public string Key => $"{ChipName}/{DeviceModel}".ToLower();
         }
 
         /// <summary>
-        /// FDL 索引文件
+        /// FDL Index File
         /// </summary>
         public class FdlIndexFile
         {
@@ -80,23 +85,23 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 状态
+        #region Status
 
         private static Dictionary<string, FdlIndexEntry> _index = new Dictionary<string, FdlIndexEntry>();
         private static readonly object _lock = new object();
         private static bool _initialized;
 
         /// <summary>
-        /// 索引条目数量
+        /// Number of index entries
         /// </summary>
         public static int Count => _index.Count;
 
         #endregion
 
-        #region 初始化
+        #region Initialization
 
         /// <summary>
-        /// 从 JSON 文件加载索引
+        /// Load index from JSON file
         /// </summary>
         public static bool LoadIndex(string jsonPath)
         {
@@ -128,7 +133,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 从数据库初始化索引
+        /// Initialize index from database
         /// </summary>
         public static void InitializeFromDatabase()
         {
@@ -139,7 +144,7 @@ namespace LoveAlways.Spreadtrum.Resources
 
                 _index.Clear();
 
-                // 从 SprdFdlDatabase 加载
+                // Load from SprdFdlDatabase
                 var chips = Database.SprdFdlDatabase.Chips;
                 var devices = Database.SprdFdlDatabase.DeviceFdls;
 
@@ -169,10 +174,10 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 查询
+        #region Query
 
         /// <summary>
-        /// 获取设备的 FDL 信息
+        /// Get FDL info for a device
         /// </summary>
         public static FdlIndexEntry GetEntry(string chipName, string deviceModel)
         {
@@ -185,7 +190,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取芯片的所有设备
+        /// Get all devices for a chip
         /// </summary>
         public static FdlIndexEntry[] GetDevicesForChip(string chipName)
         {
@@ -201,7 +206,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取品牌的所有设备
+        /// Get all devices for a brand
         /// </summary>
         public static FdlIndexEntry[] GetDevicesForBrand(string brand)
         {
@@ -217,7 +222,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取所有芯片名称
+        /// Get all chip names
         /// </summary>
         public static string[] GetAllChipNames()
         {
@@ -233,7 +238,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取所有品牌
+        /// Get all brands
         /// </summary>
         public static string[] GetAllBrands()
         {
@@ -249,7 +254,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 搜索设备
+        /// Search devices
         /// </summary>
         public static FdlIndexEntry[] Search(string keyword)
         {
@@ -273,7 +278,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取所有条目
+        /// Get all entries
         /// </summary>
         public static FdlIndexEntry[] GetAllEntries()
         {
@@ -288,7 +293,7 @@ namespace LoveAlways.Spreadtrum.Resources
         {
             if (!_initialized)
             {
-                // 尝试从默认位置加载
+                // Try to load from default location
                 var indexPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, 
                     "SprdResources", "fdl_index.json");
                 
@@ -301,10 +306,10 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 导出
+        #region Export
 
         /// <summary>
-        /// 导出索引到 JSON 文件
+        /// Export index to JSON file
         /// </summary>
         public static void ExportIndex(string outputPath)
         {
@@ -322,21 +327,21 @@ namespace LoveAlways.Spreadtrum.Resources
             serializer.MaxJsonLength = int.MaxValue;
             var json = serializer.Serialize(indexFile);
 
-            // 格式化 JSON
+            // Format JSON
             json = FormatJson(json);
 
             File.WriteAllText(outputPath, json, Encoding.UTF8);
         }
 
         /// <summary>
-        /// 导出为 CSV 格式
+        /// Export as CSV format
         /// </summary>
         public static void ExportCsv(string outputPath)
         {
             EnsureInitialized();
 
             var sb = new StringBuilder();
-            sb.AppendLine("芯片,芯片ID,设备型号,品牌,FDL1地址,FDL2地址,FDL1文件,FDL2文件,已验证");
+            sb.AppendLine("Chip,ChipID,DeviceModel,Brand,FDL1Address,FDL2Address,FDL1File,FDL2File,Verified");
 
             foreach (var entry in _index.Values.OrderBy(e => e.ChipName).ThenBy(e => e.DeviceModel))
             {
@@ -349,14 +354,14 @@ namespace LoveAlways.Spreadtrum.Resources
                     entry.Fdl2Address,
                     entry.Fdl1File,
                     entry.Fdl2File,
-                    entry.Verified ? "是" : "否"));
+                    entry.Verified ? "Yes" : "No"));
             }
 
             File.WriteAllText(outputPath, sb.ToString(), Encoding.UTF8);
         }
 
         /// <summary>
-        /// 格式化 JSON
+        /// Format JSON
         /// </summary>
         private static string FormatJson(string json)
         {
@@ -422,10 +427,10 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 统计
+        #region Statistics
 
         /// <summary>
-        /// 获取统计信息
+        /// Get statistics
         /// </summary>
         public static FdlStatistics GetStatistics()
         {
@@ -441,12 +446,12 @@ namespace LoveAlways.Spreadtrum.Resources
                     VerifiedCount = _index.Values.Count(e => e.Verified)
                 };
 
-                // 按芯片统计
+                // Statistics by chip
                 stats.DevicesByChip = _index.Values
                     .GroupBy(e => e.ChipName)
                     .ToDictionary(g => g.Key, g => g.Count());
 
-                // 按品牌统计
+                // Statistics by brand
                 stats.DevicesByBrand = _index.Values
                     .GroupBy(e => e.Brand)
                     .ToDictionary(g => g.Key, g => g.Count());
@@ -456,7 +461,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// FDL 统计信息
+        /// FDL Statistics
         /// </summary>
         public class FdlStatistics
         {
@@ -470,19 +475,19 @@ namespace LoveAlways.Spreadtrum.Resources
             public override string ToString()
             {
                 var sb = new StringBuilder();
-                sb.AppendLine("=== FDL 统计 ===");
-                sb.AppendLine($"设备总数: {TotalDevices}");
-                sb.AppendLine($"芯片类型: {TotalChips}");
-                sb.AppendLine($"品牌数量: {TotalBrands}");
-                sb.AppendLine($"已验证: {VerifiedCount}");
+                sb.AppendLine("=== FDL Statistics ===");
+                sb.AppendLine($"Total Devices: {TotalDevices}");
+                sb.AppendLine($"Chip Types: {TotalChips}");
+                sb.AppendLine($"Brand Count: {TotalBrands}");
+                sb.AppendLine($"Verified: {VerifiedCount}");
                 sb.AppendLine();
-                sb.AppendLine("按芯片:");
+                sb.AppendLine("By Chip:");
                 foreach (var kv in DevicesByChip.OrderByDescending(x => x.Value))
                 {
                     sb.AppendLine($"  {kv.Key}: {kv.Value}");
                 }
                 sb.AppendLine();
-                sb.AppendLine("按品牌:");
+                sb.AppendLine("By Brand:");
                 foreach (var kv in DevicesByBrand.OrderByDescending(x => x.Value))
                 {
                     sb.AppendLine($"  {kv.Key}: {kv.Value}");

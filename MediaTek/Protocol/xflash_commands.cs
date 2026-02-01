@@ -1,22 +1,27 @@
 // ============================================================================
-// LoveAlways - MediaTek XFlash 协议命令定义
-// 参考: mtkclient/Library/DA/xflash/xflash_param.py
+// LoveAlways - MediaTek XFlash Protocol Command Definitions
+// Reference: mtkclient/Library/DA/xflash/xflash_param.py
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 
 namespace LoveAlways.MediaTek.Protocol
 {
     /// <summary>
-    /// XFlash 协议命令码
+    /// XFlash Protocol Command Codes
     /// </summary>
     public static class XFlashCmd
     {
-        // 协议魔数
+        // Protocol Magic Number
         public const uint MAGIC = 0xFEEEEEEF;
         public const uint SYNC_SIGNAL = 0x434E5953;  // "SYNC"
 
-        // ===== 数据操作命令 (0x01xxxx) =====
+        // ===== Data Operation Commands (0x01xxxx) =====
         public const uint UNKNOWN = 0x010000;
         public const uint DOWNLOAD = 0x010001;
         public const uint UPLOAD = 0x010002;
@@ -37,7 +42,7 @@ namespace LoveAlways.MediaTek.Protocol
         public const uint SETUP_ENVIRONMENT = 0x010100;
         public const uint SETUP_HW_INIT_PARAMS = 0x010101;
 
-        // ===== 设置命令 (0x02xxxx) =====
+        // ===== Setting Commands (0x02xxxx) =====
         public const uint SET_BMT_PERCENTAGE = 0x020001;
         public const uint SET_BATTERY_OPT = 0x020002;
         public const uint SET_CHECKSUM_LEVEL = 0x020003;
@@ -54,7 +59,7 @@ namespace LoveAlways.MediaTek.Protocol
         public const uint SET_UPDATE_FW = 0x020010;
         public const uint SET_UFS_CONFIG = 0x020011;
 
-        // ===== 获取信息命令 (0x04xxxx) =====
+        // ===== Information Retrieval Commands (0x04xxxx) =====
         public const uint GET_EMMC_INFO = 0x040001;
         public const uint GET_NAND_INFO = 0x040002;
         public const uint GET_NOR_INFO = 0x040003;
@@ -78,7 +83,7 @@ namespace LoveAlways.MediaTek.Protocol
         public const uint GET_ERROR_DETAIL = 0x040015;
         public const uint SLA_ENABLED_STATUS = 0x040016;
 
-        // ===== 生命周期命令 (0x08xxxx) =====
+        // ===== Lifecycle Commands (0x08xxxx) =====
         public const uint START_DL_INFO = 0x080001;
         public const uint END_DL_INFO = 0x080002;
         public const uint ACT_LOCK_OTP_ZONE = 0x080003;
@@ -86,14 +91,14 @@ namespace LoveAlways.MediaTek.Protocol
         public const uint CC_OPTIONAL_DOWNLOAD_ACT = 0x080005;
         public const uint DA_STOR_LIFE_CYCLE_CHECK = 0x080007;
 
-        // ===== 控制命令 (0x0Exxxx) =====
+        // ===== Control Commands (0x0Exxxx) =====
         public const uint UNKNOWN_CTRL_CODE = 0x0E0000;
         public const uint CTRL_STORAGE_TEST = 0x0E0001;
         public const uint CTRL_RAM_TEST = 0x0E0002;
         public const uint DEVICE_CTRL_READ_REGISTER = 0x0E0003;
 
         /// <summary>
-        /// 获取命令名称
+        /// Get command name
         /// </summary>
         public static string GetCommandName(uint cmd)
         {
@@ -122,7 +127,7 @@ namespace LoveAlways.MediaTek.Protocol
     }
 
     /// <summary>
-    /// 校验和算法
+    /// Checksum Algorithms
     /// </summary>
     public enum ChecksumAlgorithm : uint
     {
@@ -132,7 +137,7 @@ namespace LoveAlways.MediaTek.Protocol
     }
 
     /// <summary>
-    /// 数据类型
+    /// Data Types
     /// </summary>
     public enum XFlashDataType : uint
     {
@@ -143,7 +148,7 @@ namespace LoveAlways.MediaTek.Protocol
     }
 
     /// <summary>
-    /// 存储类型
+    /// Storage Types
     /// </summary>
     public enum StorageType : uint
     {
@@ -155,7 +160,7 @@ namespace LoveAlways.MediaTek.Protocol
     }
 
     /// <summary>
-    /// EMMC 分区类型
+    /// EMMC Partition Types
     /// </summary>
     public enum EmmcPartitionType : uint
     {
@@ -170,7 +175,7 @@ namespace LoveAlways.MediaTek.Protocol
     }
 
     /// <summary>
-    /// XFlash 错误码
+    /// XFlash Error Codes
     /// </summary>
     public static class XFlashError
     {
@@ -188,16 +193,16 @@ namespace LoveAlways.MediaTek.Protocol
         {
             return error switch
             {
-                OK => "成功",
-                FAIL => "操作失败",
-                TIMEOUT => "超时",
-                CHECKSUM_ERROR => "校验和错误",
-                INVALID_PARAM => "参数无效",
-                STORAGE_ERROR => "存储错误",
-                DA_NOT_READY => "DA 未就绪",
-                PARTITION_NOT_FOUND => "分区未找到",
-                AUTH_FAILED => "认证失败",
-                _ => $"未知错误 ({error})"
+                OK => "Success",
+                FAIL => "Operation failed",
+                TIMEOUT => "Timeout",
+                CHECKSUM_ERROR => "Checksum error",
+                INVALID_PARAM => "Invalid parameter",
+                STORAGE_ERROR => "Storage error",
+                DA_NOT_READY => "DA not ready",
+                PARTITION_NOT_FOUND => "Partition not found",
+                AUTH_FAILED => "Authentication failed",
+                _ => $"Unknown error ({error})"
             };
         }
     }

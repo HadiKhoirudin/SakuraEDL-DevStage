@@ -31,14 +31,14 @@ namespace LoveAlways
         private string input8OriginalText = "";
         private bool isEnglish = false;
  
-        // 图片URL历史记录
+        // Image URL History
         private List<string> urlHistory = new List<string>();
 
-        // 图片预览缓存
+        // Image Preview Cache
         private List<Image> previewImages = new List<Image>();
-        private const int MAX_PREVIEW_IMAGES = 5; // 最多保存5个预览
+        private const int MAX_PREVIEW_IMAGES = 5; // Save at most 5 previews
 
-        // 原始控件位置和大小
+        // Original control positions and sizes
         private Point originalinput6Location;
         private Point originalbutton4Location;
         private Point originalcheckbox13Location;
@@ -49,22 +49,22 @@ namespace LoveAlways
         private Point originaluiGroupBox4Location;
         private Size originaluiGroupBox4Size;
 
-        // 高通 UI 控制器
+        // Qualcomm UI Controller
         private QualcommUIController _qualcommController;
         private System.Windows.Forms.Timer _portRefreshTimer;
         private string _lastPortList = "";
         private int _lastEdlCount = 0;
-        private bool _isOnFastbootTab = false;  // 当前是否在 Fastboot 标签页
-        private string _selectedXmlDirectory = "";  // 存储选择的 XML 文件所在目录
+        private bool _isOnFastbootTab = false;  // Current tab is Fastboot
+        private string _selectedXmlDirectory = "";  // Directory of selected XML file
 
-        // Fastboot UI 控制器
+        // Fastboot UI Controller
         private FastbootUIController _fastbootController;
 
         public Form1()
         {
             InitializeComponent();
             
-            // 启用双缓冲减少闪烁 (针对低配电脑优化)
+            // Enable double buffering to reduce flicker (optimized for low-end PCs)
             if (PerformanceConfig.EnableDoubleBuffering)
             {
                 SetStyle(ControlStyles.OptimizedDoubleBuffer | 
@@ -73,145 +73,145 @@ namespace LoveAlways
                 UpdateStyles();
             }
             
-            // 初始化日志系统
+            // Initialize Log System
             InitializeLogSystem();
             
             checkbox14.Checked = true;
             radio3.Checked = true;
-            // 加载系统信息（使用预加载数据）
+            // Load system info (use preload data)
             this.Load += (sender, e) =>
             {
                 try
                 {
-                    // 使用预加载的系统信息
-                    string sysInfo = PreloadManager.SystemInfo ?? "未知";
-                    uiLabel4.Text = $"计算机：{sysInfo}";
+                    // Use preload system info
+                    string sysInfo = PreloadManager.SystemInfo ?? "Unknown";
+                    uiLabel4.Text = $"Computer: {sysInfo}";
                     
-                    // 写入系统信息到日志头部
+                    // Write system info to log header
                     WriteLogHeader(sysInfo);
-                    AppendLog("加载中...OK", Color.Green);
+                    AppendLog("Loading...OK", Color.Green);
                 }
                 catch (Exception ex)
                 {
-                    uiLabel4.Text = $"系统信息错误: {ex.Message}";
-                    AppendLog($"初始化失败: {ex.Message}", Color.Red);
+                    uiLabel4.Text = $"System Info Error: {ex.Message}";
+                    AppendLog($"Initialization Failed: {ex.Message}", Color.Red);
                 }
             };
 
-            // 绑定按钮事件
+            // Bind Button Events
             button2.Click += Button2_Click;
             button3.Click += Button3_Click;
             slider1.ValueChanged += Slider1_ValueChanged;
             uiComboBox4.SelectedIndexChanged += UiComboBox4_SelectedIndexChanged;
             
-            // 添加 select3 事件绑定
+            // Bind select3 event
             select3.SelectedIndexChanged += Select3_SelectedIndexChanged;
             
-            // 保存原始控件位置和大小
+            // Save original control positions and sizes
             SaveOriginalPositions();
             
-            // 添加 checkbox17 和checkbox19 事件绑定
+            // Bind checkbox17 and checkbox19 events
             checkbox17.CheckedChanged += Checkbox17_CheckedChanged;
             checkbox19.CheckedChanged += Checkbox19_CheckedChanged;
 
-            // 初始化URL下拉框
+            // Initialize URL ComboBox
             InitializeUrlComboBox();
 
-            // 初始化图片预览控件
+            // Initialize Image Preview Control
             InitializeImagePreview();
 
-            // 默认调整控件布局
+            // Apply Default Layout
             ApplyCompactLayout();
 
-            // 初始化高通模块
+            // Initialize Qualcomm Module
             InitializeQualcommModule();
 
-            // 初始化 Fastboot 模块
+            // Initialize Fastboot Module
             InitializeFastbootModule();
             
-            // 初始化 EDL Loader 选择列表
+            // Initialize EDL Loader List
             InitializeEdlLoaderList();
 
-            // 初始化展讯模块
+            // Initialize Spreadtrum Module
             InitializeSpreadtrumModule();
 
-            // 初始化联发科模块
+            // Initialize MediaTek Module
             InitializeMediaTekModule();
         }
 
-        #region 高通模块
+        #region Qualcomm Module
 
         private void InitializeQualcommModule()
         {
             try
             {
-                // 创建高通 UI 控制器 (传入两个日志委托：UI日志 + 详细调试日志)
+                // Create Qualcomm UI Controller (pass two log delegates: UI log + detailed debug log)
                 _qualcommController = new QualcommUIController(
                     (msg, color) => AppendLog(msg, color),
                     msg => AppendLogDetail(msg));
                 
-                // 订阅小米授权令牌事件 (内置签名失败时弹窗显示令牌)
+                // Subscribe to Xiaomi Auth Token event (popup display token when built-in signature fails)
                 _qualcommController.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
 
-                // 设置 listView2 支持多选和复选框
+                // Set listView2 to support multi-select and checkboxes
                 listView2.MultiSelect = true;
                 listView2.CheckBoxes = true;
                 listView2.FullRowSelect = true;
 
-                // 绑定控件 - tabPage2 上的高通控件
-                // checkbox12 = 跳过引导, checkbox16 = 保护分区, input6 = 引导文件路径
+                // Bind controls - Qualcomm controls on tabPage2
+                // checkbox12 = Skip Loader, checkbox16 = Protect Partition, input6 = Loader Path
                 _qualcommController.BindControls(
-                    portComboBox: uiComboBox1,           // 全局端口选择
-                    partitionListView: listView2,        // 分区列表
-                    progressBar: uiProcessBar1,          // 总进度条 (长) - 显示整体操作进度
+                    portComboBox: uiComboBox1,           // Global port selection
+                    partitionListView: listView2,        // Partition list
+                    progressBar: uiProcessBar1,          // Total Progress Bar (Long) - Shows overall operation progress
                     statusLabel: null,
-                    skipSaharaCheckbox: checkbox12,      // 跳过引导
-                    protectPartitionsCheckbox: checkbox16, // 保护分区
-                    programmerPathTextbox: null,         // input6 是 AntdUI.Input 类型，需要特殊处理
+                    skipSaharaCheckbox: checkbox12,      // Skip Sahara
+                    protectPartitionsCheckbox: checkbox16, // Protect Partition
+                    programmerPathTextbox: null,         // input6 is AntdUI.Input type, needs special handling
                     outputPathTextbox: null,
-                    timeLabel: uiLabel6,                 // 时间标签
-                    speedLabel: uiLabel7,                // 速度标签
-                    operationLabel: uiLabel8,            // 当前操作标签
-                    subProgressBar: uiProcessBar2,       // 子进度条 (短) - 显示单个操作实时进度
-                    // 设备信息标签 (uiGroupBox3)
-                    brandLabel: uiLabel9,                // 品牌
-                    chipLabel: uiLabel11,                // 芯片
-                    modelLabel: uiLabel3,                // 设备型号
-                    serialLabel: uiLabel10,              // 序列号
-                    storageLabel: uiLabel13,             // 存储类型
-                    unlockLabel: uiLabel14,              // 设备型号2
-                    otaVersionLabel: uiLabel12           // OTA版本
+                    timeLabel: uiLabel6,                 // Time label
+                    speedLabel: uiLabel7,                // Speed label
+                    operationLabel: uiLabel8,            // Current operation label
+                    subProgressBar: uiProcessBar2,       // Sub Progress Bar (Short) - Shows real-time progress of single operation
+                    // Device Info Labels (uiGroupBox3)
+                    brandLabel: uiLabel9,                // Brand
+                    chipLabel: uiLabel11,                // Chip
+                    modelLabel: uiLabel3,                // Model
+                    serialLabel: uiLabel10,              // Serial
+                    storageLabel: uiLabel13,             // Storage
+                    unlockLabel: uiLabel14,              // Model 2
+                    otaVersionLabel: uiLabel12           // OTA Version
                 );
 
-                // ========== tabPage2 高通页面按钮事件 ==========
-                // uiButton6 = 读取分区表, uiButton7 = 读取分区
-                // uiButton8 = 写入分区, uiButton9 = 擦除分区
+                // ========== tabPage2 Qualcomm Page Button Events ==========
+                // uiButton6 = Read GPT, uiButton7 = Read Partition
+                // uiButton8 = Write Partition, uiButton9 = Erase Partition
                 uiButton6.Click += async (s, e) => await QualcommReadPartitionTableAsync();
                 uiButton7.Click += async (s, e) => await QualcommReadPartitionAsync();
                 uiButton8.Click += async (s, e) => await QualcommWritePartitionAsync();
                 uiButton9.Click += async (s, e) => await QualcommErasePartitionAsync();
 
-                // ========== 文件选择 ==========
-                // input8 = 双击选择引导文件 (Programmer/Firehose)
+                // ========== File Selection ==========
+                // input8 = Double click to select Loader (Programmer/Firehose)
                 input8.DoubleClick += (s, e) => QualcommSelectProgrammer();
                 
-                // input9 = 双击选择 Digest 文件 (VIP认证用)
+                // input9 = Double click to select Digest file (For VIP Auth)
                 input9.DoubleClick += (s, e) => QualcommSelectDigest();
                 
-                // input7 = 双击选择 Signature 文件 (VIP认证用)
+                // input7 = Double click to select Signature file (For VIP Auth)
                 input7.DoubleClick += (s, e) => QualcommSelectSignature();
                 
-                // input6 = 双击选择 rawprogram.xml
+                // input6 = Double click to select rawprogram.xml
                 input6.DoubleClick += (s, e) => QualcommSelectRawprogramXml();
                 
-                // button4 = input6 右边的浏览按钮 (选择 Raw XML)
+                // button4 = Browse button next to input6 (Select Raw XML)
                 button4.Click += (s, e) => QualcommSelectRawprogramXml();
 
-                // 分区搜索 (select4 = 查找分区)
+                // Partition Search (select4 = Find Partition)
                 select4.TextChanged += (s, e) => QualcommSearchPartition();
                 select4.SelectedIndexChanged += (s, e) => { _isSelectingFromDropdown = true; };
 
-                // 存储类型选择 (radio3 = UFS, radio4 = eMMC)
+                // Storage Type Selection (radio3 = UFS, radio4 = eMMC)
                 radio3.CheckedChanged += (s, e) => { if (radio3.Checked) _storageType = "ufs"; };
                 radio4.CheckedChanged += (s, e) => { if (radio4.Checked) _storageType = "emmc"; };
 
@@ -224,67 +224,67 @@ namespace LoveAlways
                 // ========== listView2 双击选择镜像文件 ==========
                 listView2.DoubleClick += (s, e) => QualcommPartitionDoubleClick();
 
-                // ========== checkbox11 生成XML 选项 ==========
+                // ========== checkbox11 Generate XML Option ==========
                 // 这只是一个开关，表示回读分区时是否同时生成 XML
                 // 实际生成在回读完成后执行
 
-                // ========== checkbox15 自动重启 (刷写完成后) ==========
+                // ========== checkbox15 Auto Reboot (After flash) ==========
                 // 状态读取已在 QualcommErasePartitionAsync 等操作中检查
 
-                // ========== EDL 操作菜单事件 ==========
+                // ========== EDL Operation Menu Events ==========
                 toolStripMenuItem4.Click += async (s, e) => await _qualcommController.RebootToEdlAsync();
                 toolStripMenuItem5.Click += async (s, e) => await _qualcommController.RebootToSystemAsync();
                 eDL切换槽位ToolStripMenuItem.Click += async (s, e) => await QualcommSwitchSlotAsync();
                 激活LUNToolStripMenuItem.Click += async (s, e) => await QualcommSetBootLunAsync();
                 
-                // ========== 快捷操作菜单事件 (设备管理器) ==========
-                // 重启系统 (ADB/Fastboot)
+                // ========== Quick Action Menu Events (Device Manager) ==========
+                // Reboot System (ADB/Fastboot)
                 toolStripMenuItem2.Click += async (s, e) => await QuickRebootSystemAsync();
-                // 重启到 Fastboot (ADB/Fastboot)
+                // Reboot to Fastboot (ADB/Fastboot)
                 toolStripMenuItem6.Click += async (s, e) => await QuickRebootBootloaderAsync();
-                // 重启到 Fastbootd (ADB/Fastboot)
+                // Reboot to Fastbootd (ADB/Fastboot)
                 toolStripMenuItem7.Click += async (s, e) => await QuickRebootFastbootdAsync();
-                // 重启到 Recovery (ADB/Fastboot)
+                // Reboot to Recovery (ADB/Fastboot)
                 重启恢复ToolStripMenuItem.Click += async (s, e) => await QuickRebootRecoveryAsync();
-                // MI踢EDL (Fastboot only)
+                // MI Reboot EDL (Fastboot only)
                 mIToolStripMenuItem.Click += async (s, e) => await QuickMiRebootEdlAsync();
-                // 联想或安卓踢EDL (ADB only)
+                // Lenovo or Android Reboot EDL (ADB only)
                 联想或安卓踢EDLToolStripMenuItem.Click += async (s, e) => await QuickAdbRebootEdlAsync();
-                // 擦除谷歌锁 (Fastboot only)
+                // Erase FRP (Fastboot only)
                 擦除谷歌锁ToolStripMenuItem.Click += async (s, e) => await QuickEraseFrpAsync();
-                // 切换槽位 (Fastboot only)
+                // Switch Slot (Fastboot only)
                 切换槽位ToolStripMenuItem.Click += async (s, e) => await QuickSwitchSlotAsync();
                 
-                // ========== 其他菜单事件 ==========
-                // 设备管理器
+                // ========== Other Menu Events ==========
+                // Device Manager
                 设备管理器ToolStripMenuItem.Click += (s, e) => OpenDeviceManager();
-                // CMD命令行
+                // CMD Command Line
                 cMD命令行ToolStripMenuItem.Click += (s, e) => OpenCommandPrompt();
-                // 安卓驱动
+                // Android Driver
                 安卓驱动ToolStripMenuItem.Click += (s, e) => OpenDriverInstaller("android");
-                // MTK驱动
+                // MTK Driver
                 mTK驱动ToolStripMenuItem.Click += (s, e) => OpenDriverInstaller("mtk");
-                // 高通驱动
+                // Qualcomm Driver
                 高通驱动ToolStripMenuItem.Click += (s, e) => OpenDriverInstaller("qualcomm");
 
                 // ========== 停止按钮 ==========
                 uiButton1.Click += (s, e) => StopCurrentOperation();
 
-                // ========== 刷新端口 ==========
-                // 初始化时刷新端口列表（静默模式）
-                _lastEdlCount = _qualcommController.RefreshPorts(silent: true);
+                // ========== Refresh Ports ==========
+                // Refresh port list on init (silent mode)
+                //_lastEdlCount = _qualcommController.RefreshPorts(silent: true);
                 
-                // 启动端口自动检测定时器 (每2秒检测一次，只在端口列表变化时才刷新)
-                _portRefreshTimer = new System.Windows.Forms.Timer();
-                _portRefreshTimer.Interval = 2000;
-                _portRefreshTimer.Tick += (s, e) => RefreshPortsIfIdle();
-                _portRefreshTimer.Start();
+                //// 启动端口自动检测定时器 (每2秒检测一次，只在端口列表变化时才刷新)
+                //_portRefreshTimer = new System.Windows.Forms.Timer();
+                //_portRefreshTimer.Interval = 2000;
+                //_portRefreshTimer.Tick += (s, e) => RefreshPortsIfIdle();
+                //_portRefreshTimer.Start();
 
-                AppendLog("高通模块初始化完成", Color.Green);
+                AppendLog("Qualcomm module initialized", Color.Green);
             }
             catch (Exception ex)
             {
-                AppendLog($"高通模块初始化失败: {ex.Message}", Color.Red);
+                AppendLog($"Qualcomm module initialization failed: {ex.Message}", Color.Red);
             }
         }
 
@@ -292,39 +292,39 @@ namespace LoveAlways
         private string _authMode = "none";
 
         /// <summary>
-        /// 空闲时刷新端口（检测设备连接/断开）
+        /// Refresh ports when idle (detect device connection/disconnection)
         /// </summary>
         private void RefreshPortsIfIdle()
         {
             try
             {
-                // 如果当前在 Fastboot 标签页，不刷新高通端口
+                // If currently on Fastboot tab, do not refresh Qualcomm ports
                 if (_isOnFastbootTab)
                     return;
                     
-                // 如果有正在进行的操作，不刷新
+                // If operation in progress, do not refresh
                 if (_qualcommController != null && _qualcommController.HasPendingOperation)
                     return;
 
-                // 获取当前端口列表用于变化检测
+                // Get current port list for change detection
                 var ports = LoveAlways.Qualcomm.Common.PortDetector.DetectAllPorts();
                 var edlPorts = LoveAlways.Qualcomm.Common.PortDetector.DetectEdlPorts();
                 string currentPortList = string.Join(",", ports.ConvertAll(p => p.PortName));
                 
-                // 只有端口列表变化时才刷新
+                // Refresh only if port list changed
                 if (currentPortList != _lastPortList)
                 {
                     bool hadEdl = _lastEdlCount > 0;
                     bool newEdlDetected = edlPorts.Count > 0 && !hadEdl;
                     _lastPortList = currentPortList;
                     
-                    // 静默刷新，返回EDL端口数量
+                    // Silent refresh, returns EDL port count
                     int edlCount = _qualcommController?.RefreshPorts(silent: true) ?? 0;
                     
-                    // 新检测到EDL设备时提示
+                    // Prompt when new EDL device detected
                     if (newEdlDetected && edlPorts.Count > 0)
                     {
-                        AppendLog($"检测到 EDL 设备: {edlPorts[0].PortName} - {edlPorts[0].Description}", Color.LimeGreen);
+                        AppendLog($"Detected EDL Device: {edlPorts[0].PortName} - {edlPorts[0].Description}", Color.LimeGreen);
                     }
                     
                     _lastEdlCount = edlCount;
@@ -340,7 +340,7 @@ namespace LoveAlways
         {
             if (checkbox17.Checked && checkbox19.Checked)
             {
-                checkbox19.Checked = false; // 互斥，优先 OnePlus
+                checkbox19.Checked = false; // Mutually exclusive, prioritize OnePlus
             }
             
             if (checkbox17.Checked)
@@ -355,12 +355,12 @@ namespace LoveAlways
         {
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = "选择引导文件 (Programmer/Firehose)";
-                ofd.Filter = "引导文件|*.mbn;*.elf|所有文件|*.*";
+                ofd.Title = "Select Loader (Programmer/Firehose)";
+                ofd.Filter = "Loader File|*.mbn;*.elf|All Files|*.*";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     input8.Text = ofd.FileName;
-                    AppendLog($"已选择引导文件: {Path.GetFileName(ofd.FileName)}", Color.Green);
+                    AppendLog($"Selected Loader: {Path.GetFileName(ofd.FileName)}", Color.Green);
                 }
             }
         }
@@ -369,14 +369,14 @@ namespace LoveAlways
         {
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = "选择 Digest 文件 (VIP认证)";
-                ofd.Filter = "Digest文件|*.elf;*.bin;*.mbn|所有文件|*.*";
+                ofd.Title = "Select Digest File (VIP Auth)";
+                ofd.Filter = "Digest File|*.elf;*.bin;*.mbn|All Files|*.*";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     input9.Text = ofd.FileName;
-                    AppendLog($"已选择 Digest: {Path.GetFileName(ofd.FileName)}", Color.Green);
+                    AppendLog($"Selected Digest: {Path.GetFileName(ofd.FileName)}", Color.Green);
 
-                    // 如果已连接设备且已选择 Signature，自动执行 VIP 认证
+                    // If device connected and Signature selected, auto execute VIP auth
                     if (_qualcommController != null && _qualcommController.IsConnected)
                     {
                         string signaturePath = input7.Text;
@@ -384,12 +384,12 @@ namespace LoveAlways
                         {
                             try
                             {
-                                AppendLog("已选择完整 VIP 认证文件，开始认证...", Color.Blue);
+                                AppendLog("Selected complete VIP auth files, starting auth...", Color.Blue);
                                 await QualcommPerformVipAuthAsync();
                             }
                             catch (Exception ex)
                             {
-                                AppendLog($"VIP 认证异常: {ex.Message}", Color.Red);
+                                AppendLog($"VIP Auth Exception: {ex.Message}", Color.Red);
                             }
                         }
                     }
@@ -401,14 +401,14 @@ namespace LoveAlways
         {
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = "选择 Signature 文件 (VIP认证)";
-                ofd.Filter = "Signature文件|*.bin;signature*|所有文件|*.*";
+                ofd.Title = "Select Signature File (VIP Auth)";
+                ofd.Filter = "Signature File|*.bin;signature*|All Files|*.*";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     input7.Text = ofd.FileName;
-                    AppendLog($"已选择 Signature: {Path.GetFileName(ofd.FileName)}", Color.Green);
+                    AppendLog($"Selected Signature: {Path.GetFileName(ofd.FileName)}", Color.Green);
                     
-                    // 如果已连接设备且已选择 Digest，自动执行 VIP 认证
+                    // If device connected and Digest selected, auto execute VIP auth
                     if (_qualcommController != null && _qualcommController.IsConnected)
                     {
                         string digestPath = input9.Text;
@@ -416,12 +416,12 @@ namespace LoveAlways
                         {
                             try
                             {
-                                AppendLog("已选择完整 VIP 认证文件，开始认证...", Color.Blue);
+                                AppendLog("Selected complete VIP auth files, starting auth...", Color.Blue);
                                 await QualcommPerformVipAuthAsync();
                             }
                             catch (Exception ex)
                             {
-                                AppendLog($"VIP 认证异常: {ex.Message}", Color.Red);
+                                AppendLog($"VIP Auth Exception: {ex.Message}", Color.Red);
                             }
                         }
                     }
@@ -430,13 +430,13 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 手动执行 VIP 认证 (OPPO/Realme)
+        /// Manually execute VIP Auth (OPPO/Realme)
         /// </summary>
         private async Task QualcommPerformVipAuthAsync()
         {
             if (_qualcommController == null || !_qualcommController.IsConnected)
             {
-                AppendLog("请先连接设备", Color.Orange);
+                AppendLog("Please connect device first", Color.Orange);
                 return;
             }
 
@@ -445,20 +445,20 @@ namespace LoveAlways
 
             if (string.IsNullOrEmpty(digestPath) || !File.Exists(digestPath))
             {
-                AppendLog("请先选择 Digest 文件 (双击输入框选择)", Color.Orange);
+                AppendLog("Please select Digest file (Double click input box)", Color.Orange);
                 return;
             }
 
             if (string.IsNullOrEmpty(signaturePath) || !File.Exists(signaturePath))
             {
-                AppendLog("请先选择 Signature 文件 (双击输入框选择)", Color.Orange);
+                AppendLog("Please select Signature file (Double click input box)", Color.Orange);
                 return;
             }
 
             bool success = await _qualcommController.PerformVipAuthAsync(digestPath, signaturePath);
             if (success)
             {
-                AppendLog("VIP 认证成功，现在可以操作敏感分区", Color.Green);
+                AppendLog("VIP Auth success, can now operate sensitive partitions", Color.Green);
             }
         }
 
@@ -466,30 +466,30 @@ namespace LoveAlways
         {
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = "选择 Rawprogram XML 文件 (可多选)";
-                ofd.Filter = "XML文件|rawprogram*.xml;*.xml|所有文件|*.*";
-                ofd.Multiselect = true;  // 支持多选
-                
+                ofd.Title = "Select Rawprogram XML File (Multi-select allowed)";
+                ofd.Filter = "XML File|rawprogram*.xml;*.xml|All Files|*.*";
+                ofd.Multiselect = true;  // Support Multi-select
+
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
-                    // 保存 XML 文件所在目录（用于后续搜索 patch 文件）
+                    // Save XML file directory (used for searching patch files later)
                     _selectedXmlDirectory = Path.GetDirectoryName(ofd.FileNames[0]) ?? "";
-                    
+
                     if (ofd.FileNames.Length == 1)
                     {
                         input6.Text = ofd.FileName;
-                        AppendLog($"已选择 XML: {Path.GetFileName(ofd.FileName)}", Color.Green);
+                        AppendLog($"Selected XML: {Path.GetFileName(ofd.FileName)}", Color.Green);
                     }
                     else
                     {
-                        input6.Text = $"已选择 {ofd.FileNames.Length} 个文件";
+                        input6.Text = $"Selected {ofd.FileNames.Length} files";
                         foreach (var file in ofd.FileNames)
                         {
-                            AppendLog($"已选择 XML: {Path.GetFileName(file)}", Color.Green);
+                            AppendLog($"Selected XML: {Path.GetFileName(file)}", Color.Green);
                         }
                     }
-                    
-                    // 解析所有选中的 XML 文件
+
+                    // Parse all selected XML files
                     LoadMultipleRawprogramXml(ofd.FileNames);
                 }
             }
@@ -501,23 +501,23 @@ namespace LoveAlways
             string programmerPath = "";
             string[] filesToLoad = xmlPaths;
 
-            // 如果用户只选择了一个文件，且文件名包含 rawprogram，则自动搜索同目录下的其他 LUN
+            // If user selected only one file, and filename contains rawprogram, automatically search for other LUNs in same directory
             if (xmlPaths.Length == 1 && Path.GetFileName(xmlPaths[0]).Contains("rawprogram"))
             {
                 string dir = Path.GetDirectoryName(xmlPaths[0]);
-                // 只匹配 rawprogram0.xml, rawprogram1.xml 等数字后缀的文件
-                // 排除 _BLANK_GPT, _WIPE_PARTITIONS, _ERASE 等特殊文件
+                // Match only rawprogram0.xml, rawprogram1.xml etc.
+                // Exclude _BLANK_GPT, _WIPE_PARTITIONS, _ERASE etc.
                 var siblingFiles = Directory.GetFiles(dir, "rawprogram*.xml")
                     .Where(f => {
                         string fileName = Path.GetFileNameWithoutExtension(f).ToLower();
-                        // 只接受 rawprogram + 数字 格式 (如 rawprogram0, rawprogram1, rawprogram_unsparse)
-                        // 排除包含 blank, wipe, erase 的文件
+                        // Only accept rawprogram + digit format (e.g. rawprogram0, rawprogram1, rawprogram_unsparse)
+                        // Exclude files containing blank, wipe, erase
                         if (fileName.Contains("blank") || fileName.Contains("wipe") || fileName.Contains("erase"))
                             return false;
                         return true;
                     })
                     .OrderBy(f => {
-                        // 按数字排序
+                        // Sort by digit
                         string name = Path.GetFileNameWithoutExtension(f);
                         var numStr = new string(name.Where(char.IsDigit).ToArray());
                         int num;
@@ -528,7 +528,7 @@ namespace LoveAlways
                 if (siblingFiles.Length > 1)
                 {
                     filesToLoad = siblingFiles;
-                    AppendLog($"检测到多个 LUN，已自动加载同目录下的 {siblingFiles.Length} 个 XML 文件", Color.Blue);
+                    AppendLog($"Detected multiple LUNs, automatically loaded {siblingFiles.Length} XML files", Color.Blue);
                 }
             }
             
@@ -537,12 +537,12 @@ namespace LoveAlways
                 try
                 {
                     string dir = Path.GetDirectoryName(xmlPath);
-                    var parser = new Qualcomm.Common.RawprogramParser(dir, msg => { /* 避免过多冗余日志 */ });
+                    var parser = new Qualcomm.Common.RawprogramParser(dir, msg => { /* Avoid excessive redundant logs */ });
                     
-                    // 解析当前 XML 文件
+                    // Parse current XML file
                     var tasks = parser.ParseRawprogramXml(xmlPath);
                     
-                    // 仅添加尚未存在的任务 (按 LUN + StartSector + Label 判定)
+                    // Add only non-existing tasks (Judge by LUN + StartSector + Label)
                     foreach (var task in tasks)
                     {
                         if (!allTasks.Any(t => t.Lun == task.Lun && t.StartSector == task.StartSector && t.Label == task.Label))
@@ -551,16 +551,16 @@ namespace LoveAlways
                         }
                     }
 
-                    AppendLog($"解析 {Path.GetFileName(xmlPath)}: {tasks.Count} 个任务 (当前累计: {allTasks.Count})", Color.Blue);
+                    AppendLog($"Parsing {Path.GetFileName(xmlPath)}: {tasks.Count} tasks (Total: {allTasks.Count})", Color.Blue);
                     
-                    // 自动识别对应的 patch 文件
+                    // Auto identify matching patch file
                     string patchPath = FindMatchingPatchFile(xmlPath);
                     if (!string.IsNullOrEmpty(patchPath))
                     {
-                        // 记录到全局变量或后续处理中
+                        // Record to global variable or post-processing
                     }
                     
-                    // 自动识别 programmer 文件（只识别一次）
+                    // Auto identify matching programmer file (only once)
                     if (string.IsNullOrEmpty(programmerPath))
                     {
                         programmerPath = parser.FindProgrammer();
@@ -568,21 +568,21 @@ namespace LoveAlways
                 }
                 catch (Exception ex)
                 {
-                    AppendLog($"解析 {Path.GetFileName(xmlPath)} 失败: {ex.Message}", Color.Red);
+                    AppendLog($"Parsing {Path.GetFileName(xmlPath)} Failed: {ex.Message}", Color.Red);
                 }
             }
             
             if (allTasks.Count > 0)
             {
-                AppendLog($"共加载 {allTasks.Count} 个刷机任务", Color.Green);
+                AppendLog($"Loaded {allTasks.Count} flash tasks", Color.Green);
                 
                 if (!string.IsNullOrEmpty(programmerPath))
                 {
                     input8.Text = programmerPath;
-                    AppendLog($"自动识别引导文件: {Path.GetFileName(programmerPath)}", Color.Green);
+                    AppendLog($"Auto-detected Loader: {Path.GetFileName(programmerPath)}", Color.Green);
                 }
                 
-                // 预先检查 patch 文件
+                // Pre-check patch files
                 if (!string.IsNullOrEmpty(_selectedXmlDirectory) && Directory.Exists(_selectedXmlDirectory))
                 {
                     var patchFiles = Directory.GetFiles(_selectedXmlDirectory, "patch*.xml", SearchOption.TopDirectoryOnly)
@@ -600,20 +600,20 @@ namespace LoveAlways
                     
                     if (patchFiles.Count > 0)
                     {
-                        AppendLog($"检测到 {patchFiles.Count} 个 Patch 文件: {string.Join(", ", patchFiles.Select(f => Path.GetFileName(f)))}", Color.Blue);
+                        AppendLog($"Detected {patchFiles.Count} Patch Files: {string.Join(", ", patchFiles.Select(f => Path.GetFileName(f)))}", Color.Blue);
                     }
                     else
                     {
-                        AppendLog("未检测到 Patch 文件", Color.Gray);
+                        AppendLog("No Patch files detected", Color.Gray);
                     }
                 }
                 
-                // 将所有任务填充到分区列表
+                // Fill all tasks into partition list
                 FillPartitionListFromTasks(allTasks);
             }
             else
             {
-                AppendLog("未在 XML 中找到有效的刷机任务", Color.Orange);
+                AppendLog("No valid flash tasks found in XML", Color.Orange);
             }
         }
 
@@ -631,7 +631,7 @@ namespace LoveAlways
                 if (File.Exists(patchPath))
                     return patchPath;
                 
-                // 尝试其他 patch 文件
+                // Try other patch files
                 var patchFiles = Directory.GetFiles(dir, "patch*.xml");
                 if (patchFiles.Length > 0)
                     return patchFiles[0];
@@ -653,7 +653,7 @@ namespace LoveAlways
             
             foreach (var task in tasks)
             {
-                // 转换为 PartitionInfo 用于统一处理
+                // Convert to PartitionInfo for unified processing
                 var partition = new PartitionInfo
                 {
                     Name = task.Label,
@@ -663,27 +663,27 @@ namespace LoveAlways
                     SectorSize = task.SectorSize
                 };
 
-                // 计算地址
+                // Calculate Address
                 long startAddress = task.StartSector * task.SectorSize;
                 long endSector = task.StartSector + task.NumSectors - 1;
                 long endAddress = (endSector + 1) * task.SectorSize;
 
-                // 列顺序: 分区, LUN, 大小, 起始扇区, 结束扇区, 扇区数, 起始地址, 结束地址, 文件路径
-                var item = new ListViewItem(task.Label);                           // 分区
+                // Column Order: Partition, LUN, Size, Start Sector, End Sector, Sector Count, Start Addr, End Addr, File Path
+                var item = new ListViewItem(task.Label);                           // Partition
                 item.SubItems.Add(task.Lun.ToString());                             // LUN
-                item.SubItems.Add(task.FormattedSize);                              // 大小
-                item.SubItems.Add(task.StartSector.ToString());                     // 起始扇区
-                item.SubItems.Add(endSector.ToString());                            // 结束扇区
-                item.SubItems.Add(task.NumSectors.ToString());                      // 扇区数
-                item.SubItems.Add($"0x{startAddress:X}");                           // 起始地址
-                item.SubItems.Add($"0x{endAddress:X}");                             // 结束地址
-                item.SubItems.Add(string.IsNullOrEmpty(task.FilePath) ? task.Filename : task.FilePath);  // 文件路径
+                item.SubItems.Add(task.FormattedSize);                              // Size
+                item.SubItems.Add(task.StartSector.ToString());                     // Start Sector
+                item.SubItems.Add(endSector.ToString());                            // End Sector
+                item.SubItems.Add(task.NumSectors.ToString());                      // Sector Count
+                item.SubItems.Add($"0x{startAddress:X}");                           // Start Address
+                item.SubItems.Add($"0x{endAddress:X}");                             // End Address
+                item.SubItems.Add(string.IsNullOrEmpty(task.FilePath) ? task.Filename : task.FilePath);  // File Path
                 item.Tag = partition;
 
-                // 检查镜像文件是否存在
+                // Check if image file exists
                 bool fileExists = !string.IsNullOrEmpty(task.FilePath) && File.Exists(task.FilePath);
                 
-                // 文件存在则自动勾选（排除敏感分区）
+                // Auto CHECK if file exists (exclude sensitive partitions)
                 if (fileExists && !Qualcomm.Common.RawprogramParser.IsSensitivePartition(task.Label))
                 {
                     item.Checked = true;
@@ -708,29 +708,29 @@ namespace LoveAlways
 
             if (!_qualcommController.IsConnected)
             {
-                // 检查是否可以快速重连（端口已释放但 Firehose 仍可用）
+                // Check if quick reconnect is possible (Port released but Firehose still available)
                 if (_qualcommController.CanQuickReconnect)
                 {
-                    AppendLog("尝试快速重连...", Color.Blue);
+                    AppendLog("Attempting quick reconnect...", Color.Blue);
                     bool reconnected = await _qualcommController.QuickReconnectAsync();
                     if (reconnected)
                     {
-                        AppendLog("快速重连成功", Color.Green);
+                        AppendLog("Quick reconnect success", Color.Green);
                         // 已有分区数据，不需要重新读取
                         if (_qualcommController.Partitions != null && _qualcommController.Partitions.Count > 0)
                         {
-                            AppendLog($"已有 {_qualcommController.Partitions.Count} 个分区数据", Color.Gray);
+                            AppendLog($"Already have {_qualcommController.Partitions.Count} partition data", Color.Gray);
                             return;
                         }
                     }
                     else
                     {
-                        AppendLog("快速重连失败，需要重新完整配置", Color.Orange);
-                        checkbox12.Checked = false; // 取消跳过引导
+                        AppendLog("Quick reconnect failed, full configuration needed", Color.Orange);
+                        checkbox12.Checked = false; // Cancel Skip Loader
                     }
                 }
                 
-                // 快速重连失败或不可用，尝试完整连接
+                // Quick reconnect failed or unavailable, try full connect
                 if (!_qualcommController.IsConnected)
                 {
                     bool connected = await QualcommConnectAsync();
@@ -746,13 +746,13 @@ namespace LoveAlways
             if (_qualcommController == null) return false;
 
             string selectedLoader = select3.Text;
-            bool isCloudMatch = selectedLoader.Contains("云端自动匹配");
+            bool isCloudMatch = selectedLoader.Contains("Cloud Auto Match");
             bool skipSahara = checkbox12.Checked;
 
-            // 跳过引导模式 - 直接连接 Firehose (设备已经在 Firehose 模式)
+            // Skip Loader Mode - Connect to Firehose directly (Device already in Firehose mode)
             if (skipSahara)
             {
-                AppendLog("[高通] 跳过 Sahara，直接连接 Firehose...", Color.Blue);
+                AppendLog("[Qualcomm] Skipping Sahara, connecting to Firehose directly...", Color.Blue);
                 return await _qualcommController.ConnectWithOptionsAsync(
                     "", _storageType, true, _authMode,
                     input9.Text?.Trim() ?? "",
@@ -760,23 +760,23 @@ namespace LoveAlways
                 );
             }
 
-            // ========== 云端自动匹配模式 ==========
+            // ========== Cloud Auto Match Mode ==========
             if (isCloudMatch)
             {
                 return await QualcommConnectWithCloudMatchAsync();
             }
 
-            // 普通模式 (自定义引导文件)
-            // input8 = 引导文件路径
+            // Normal Mode (Custom Loader)
+            // input8 = Loader Path
             string programmerPath = input8.Text?.Trim() ?? "";
 
             if (!skipSahara && string.IsNullOrEmpty(programmerPath))
             {
-                AppendLog("请选择引导文件或使用云端自动匹配", Color.Orange);
+                AppendLog("Please select loader or use cloud match", Color.Orange);
                 return false;
             }
 
-            // 使用自定义连接逻辑
+            // Use custom connection logic
             return await _qualcommController.ConnectWithOptionsAsync(
                 programmerPath, 
                 _storageType, 
@@ -788,28 +788,28 @@ namespace LoveAlways
         }
         
         /// <summary>
-        /// 云端自动匹配连接
+        /// Cloud Auto Match Connection
         /// </summary>
         private async Task<bool> QualcommConnectWithCloudMatchAsync()
         {
-            AppendLog("[云端] 正在获取设备信息...", Color.Cyan);
+            AppendLog("[Cloud] Getting device info...", Color.Cyan);
             
-            // 1. 执行 Sahara 握手获取设备信息 (不上传 Loader)
+            // 1. Execute Sahara Handshake to get device info (Do not upload Loader)
             var deviceInfo = await _qualcommController.GetSaharaDeviceInfoAsync();
             
             if (deviceInfo == null)
             {
-                AppendLog("[云端] 无法获取设备信息，请检查设备连接", Color.Red);
+                AppendLog("[Cloud] Cannot get device info, check connection", Color.Red);
                 return false;
             }
             
-            AppendLog($"[云端] 设备: MSM={deviceInfo.MsmId}, OEM={deviceInfo.OemId}", Color.Blue);
+            AppendLog($"[Cloud] Device: MSM={deviceInfo.MsmId}, OEM={deviceInfo.OemId}", Color.Blue);
             if (!string.IsNullOrEmpty(deviceInfo.PkHash) && deviceInfo.PkHash.Length >= 16)
             {
-                AppendLog($"[云端] PK Hash: {deviceInfo.PkHash.Substring(0, 16)}...", Color.Gray);
+                AppendLog($"[Cloud] PK Hash: {deviceInfo.PkHash.Substring(0, 16)}...", Color.Gray);
             }
             
-            // 2. 调用云端 API 匹配
+            // 2. Call Cloud API Match
             var cloudService = LoveAlways.Qualcomm.Services.CloudLoaderService.Instance;
             var result = await cloudService.MatchLoaderAsync(
                 deviceInfo.MsmId,
@@ -820,10 +820,10 @@ namespace LoveAlways
             
             if (result == null || result.Data == null)
             {
-                AppendLog("[云端] 未找到匹配的 Loader", Color.Orange);
-                AppendLog("[云端] 请尝试手动选择引导文件", Color.Yellow);
+                AppendLog("[Cloud] No matching Loader found", Color.Orange);
+                AppendLog("[Cloud] Please try selecting loader manually", Color.Yellow);
                 
-                // 上报未匹配
+                // Report no match
                 cloudService.ReportDeviceLog(
                     deviceInfo.MsmId,
                     deviceInfo.PkHash,
@@ -835,12 +835,12 @@ namespace LoveAlways
                 return false;
             }
             
-            // 3. 匹配成功
-            AppendLog($"[云端] 匹配成功: {result.Filename}", Color.Green);
-            AppendLog($"[云端] 厂商: {result.Vendor}, 芯片: {result.Chip}", Color.Blue);
-            AppendLog($"[云端] 置信度: {result.Confidence}%, 匹配类型: {result.MatchType}", Color.Gray);
+            // 3. Match Success
+            AppendLog($"[Cloud] Match Success: {result.Filename}", Color.Green);
+            AppendLog($"[Cloud] Vendor: {result.Vendor}, Chip: {result.Chip}", Color.Blue);
+            AppendLog($"[Cloud] Confidence: {result.Confidence}%, Match Type: {result.MatchType}", Color.Gray);
             
-            // 4. 根据认证类型选择连接方式
+            // 4. Select connection method based on auth type
             string authMode = result.AuthType?.ToLower() switch
             {
                 "miauth" => "xiaomi",
@@ -851,11 +851,11 @@ namespace LoveAlways
             
             if (authMode != "none")
             {
-                AppendLog($"[云端] 认证类型: {result.AuthType}", Color.Cyan);
+                AppendLog($"[Cloud] Auth Type: {result.AuthType}", Color.Cyan);
             }
             
-            // 5. 继续连接 - 上传云端匹配的 Loader
-            AppendLog($"[云端] 发送 Loader ({result.Data.Length / 1024} KB)...", Color.Cyan);
+            // 5. Continue connect - Upload cloud matched Loader
+            AppendLog($"[Cloud] Sending Loader ({result.Data.Length / 1024} KB)...", Color.Cyan);
             
             bool success = await _qualcommController.ContinueConnectWithCloudLoaderAsync(
                 result.Data,
@@ -863,7 +863,7 @@ namespace LoveAlways
                 authMode
             );
             
-            // 6. 上报设备日志
+            // 6. Report device log
             cloudService.ReportDeviceLog(
                 deviceInfo.MsmId,
                 deviceInfo.PkHash,
@@ -874,11 +874,11 @@ namespace LoveAlways
             
             if (success)
             {
-                AppendLog("[云端] 设备连接成功", Color.Green);
+                AppendLog("[Cloud] Device connected successfully", Color.Green);
             }
             else
             {
-                AppendLog("[云端] 设备连接失败", Color.Red);
+                AppendLog("[Cloud] Device connection failed", Color.Red);
             }
             
             return success;
@@ -890,14 +890,14 @@ namespace LoveAlways
             {
                 if (_qualcommController.Partitions == null || _qualcommController.Partitions.Count == 0)
                 {
-                    AppendLog("请先读取分区表", Color.Orange);
+                    AppendLog("Please read partition table first", Color.Orange);
                     return;
                 }
 
-                // 选择保存目录，因为我们要生成多个文件 (rawprogram0.xml, patch0.xml 等)
+                // Select save directory (generates multiple files... rawprogram0.xml, patch0.xml etc.)
                 using (var fbd = new FolderBrowserDialog())
                 {
-                    fbd.Description = "选择 XML 保存目录 (将根据 LUN 生成多个 rawprogram 和 patch 文件)";
+                    fbd.Description = "Select XML Save Directory (Will generate multiple rawprogram and patch files based on LUN)";
                     
                     if (fbd.ShowDialog() == DialogResult.OK)
                     {
@@ -907,48 +907,48 @@ namespace LoveAlways
                             ? _qualcommController.Partitions[0].SectorSize 
                             : 4096;
 
-                        // 1. 生成 rawprogramX.xml
+                        // 1. Generate rawprogramX.xml
                         var rawprogramDict = parser.GenerateRawprogramXmls(_qualcommController.Partitions, sectorSize);
                         foreach (var kv in rawprogramDict)
                         {
                             string fileName = Path.Combine(saveDir, $"rawprogram{kv.Key}.xml");
                             File.WriteAllText(fileName, kv.Value);
-                            AppendLog($"已生成: {Path.GetFileName(fileName)}", Color.Blue);
+                            AppendLog($"Generated: {Path.GetFileName(fileName)}", Color.Blue);
                         }
 
-                        // 2. 生成 patchX.xml
+                        // 2. Generate patchX.xml
                         var patchDict = parser.GeneratePatchXmls(_qualcommController.Partitions, sectorSize);
                         foreach (var kv in patchDict)
                         {
                             string fileName = Path.Combine(saveDir, $"patch{kv.Key}.xml");
                             File.WriteAllText(fileName, kv.Value);
-                            AppendLog($"已生成: {Path.GetFileName(fileName)}", Color.Blue);
+                            AppendLog($"Generated: {Path.GetFileName(fileName)}", Color.Blue);
                         }
 
-                        // 3. 生成单个合并的 partition.xml (可选)
+                        // 3. Generate single merged partition.xml (Optional)
                         string partitionXml = parser.GeneratePartitionXml(_qualcommController.Partitions, sectorSize);
                         string pFileName = Path.Combine(saveDir, "partition.xml");
                         File.WriteAllText(pFileName, partitionXml);
                         
-                        AppendLog($"XML 集合已成功保存到: {saveDir}", Color.Green);
+                        AppendLog($"XML collection saved to: {saveDir}", Color.Green);
                         
-                        // 显示槽位信息
+                        // Display Slot Info
                         string currentSlot = _qualcommController.GetCurrentSlot();
                         if (currentSlot != "nonexistent")
                         {
-                            AppendLog($"当前槽位: {currentSlot}", Color.Blue);
+                            AppendLog($"Current Slot: {currentSlot}", Color.Blue);
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"生成 XML 失败: {ex.Message}", Color.Red);
+                AppendLog($"Generate XML Failed: {ex.Message}", Color.Red);
             }
         }
 
         /// <summary>
-        /// 为指定分区生成 XML 文件到指定目录 (回读时调用)
+        /// Generate XML for specific partitions (called during readback)
         /// </summary>
         private void GenerateXmlForPartitions(List<PartitionInfo> partitions, string saveDir)
         {
@@ -962,7 +962,7 @@ namespace LoveAlways
                 var parser = new LoveAlways.Qualcomm.Common.GptParser();
                 int sectorSize = partitions[0].SectorSize > 0 ? partitions[0].SectorSize : 4096;
 
-                // 按 LUN 分组生成 rawprogram XML
+                // Group by LUN to generate rawprogram XML
                 var byLun = partitions.GroupBy(p => p.Lun).ToDictionary(g => g.Key, g => g.ToList());
                 
                 foreach (var kv in byLun)
@@ -970,15 +970,15 @@ namespace LoveAlways
                     int lun = kv.Key;
                     var lunPartitions = kv.Value;
                     
-                    // 生成该 LUN 的 rawprogram XML
+                    // Generate rawprogram XML for this LUN
                     var sb = new System.Text.StringBuilder();
                     sb.AppendLine("<?xml version=\"1.0\" ?>");
                     sb.AppendLine("<data>");
-                    sb.AppendLine("  <!-- 由 MultiFlash TOOL 生成 - 回读分区 -->");
+                    sb.AppendLine("  <!-- Generated by MultiFlash TOOL - Readback Partitions -->");
                     
                     foreach (var p in lunPartitions)
                     {
-                        // 生成 program 条目 (用于刷写回读的分区)
+                        // Generate program entry (for flashing readback partition)
                         sb.AppendFormat("  <program SECTOR_SIZE_IN_BYTES=\"{0}\" file_sector_offset=\"0\" " +
                             "filename=\"{1}.img\" label=\"{1}\" num_partition_sectors=\"{2}\" " +
                             "physical_partition_number=\"{3}\" start_sector=\"{4}\" />\n",
@@ -989,14 +989,14 @@ namespace LoveAlways
                     
                     string fileName = Path.Combine(saveDir, $"rawprogram{lun}.xml");
                     File.WriteAllText(fileName, sb.ToString());
-                    AppendLog($"已生成回读分区 XML: {Path.GetFileName(fileName)}", Color.Blue);
+                    AppendLog($"Generated readback partition XML: {Path.GetFileName(fileName)}", Color.Blue);
                 }
                 
-                AppendLog($"回读分区 XML 已保存到: {saveDir}", Color.Green);
+                AppendLog($"Readback partition XML saved to: {saveDir}", Color.Green);
             }
             catch (Exception ex)
             {
-                AppendLog($"生成回读 XML 失败: {ex.Message}", Color.Orange);
+                AppendLog($"Generate Readback XML Failed: {ex.Message}", Color.Orange);
             }
         }
 
@@ -1004,22 +1004,22 @@ namespace LoveAlways
         {
             if (_qualcommController == null || !_qualcommController.IsConnected)
             {
-                AppendLog("请先连接设备并读取分区表", Color.Orange);
+                AppendLog("Please connect device and read partition table first", Color.Orange);
                 return;
             }
 
-            // 获取勾选的分区或选中的分区
+            // Get checked or selected partitions
             var checkedItems = GetCheckedOrSelectedPartitions();
             if (checkedItems.Count == 0)
             {
-                AppendLog("请选择或勾选要读取的分区", Color.Orange);
+                AppendLog("Please select or check partitions to read", Color.Orange);
                 return;
             }
 
-            // 选择保存目录
+            // Select Save Directory
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = checkedItems.Count == 1 ? "选择保存位置" : $"选择保存目录 (将读取 {checkedItems.Count} 个分区)";
+                fbd.Description = checkedItems.Count == 1 ? "Select Save Location" : $"Select Save Directory (Reading {checkedItems.Count} partitions)";
                 
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
@@ -1027,14 +1027,14 @@ namespace LoveAlways
                     
                     if (checkedItems.Count == 1)
                     {
-                        // 单个分区
+                        // Single Partition
                         var partition = checkedItems[0];
                         string savePath = Path.Combine(saveDir, partition.Name + ".img");
                         await _qualcommController.ReadPartitionAsync(partition.Name, savePath);
                     }
                     else
                     {
-                        // 批量读取
+                        // Batch Read
                         var partitionsToRead = new List<Tuple<string, string>>();
                         foreach (var p in checkedItems)
                         {
@@ -1044,7 +1044,7 @@ namespace LoveAlways
                         await _qualcommController.ReadPartitionsBatchAsync(partitionsToRead);
                     }
                     
-                    // 回读完成后，如果勾选了生成XML，则为回读的分区生成 XML
+                    // After readback, if Generate XML checked, generate XML for readback partitions
                     if (checkbox11.Checked && checkedItems.Count > 0)
                     {
                         GenerateXmlForPartitions(checkedItems, saveDir);
@@ -1057,14 +1057,14 @@ namespace LoveAlways
         {
             var result = new List<PartitionInfo>();
             
-            // 优先使用勾选的项
+            // Prioritize checked items
             foreach (ListViewItem item in listView2.CheckedItems)
             {
                 var p = item.Tag as PartitionInfo;
                 if (p != null) result.Add(p);
             }
             
-            // 如果没有勾选，使用选中的项
+            // If no checks, use selected items
             if (result.Count == 0)
             {
                 foreach (ListViewItem item in listView2.SelectedItems)
@@ -1081,25 +1081,25 @@ namespace LoveAlways
         {
             if (_qualcommController == null || !_qualcommController.IsConnected)
             {
-                AppendLog("请先连接设备并读取分区表", Color.Orange);
+                AppendLog("Please connect device and read partition table first", Color.Orange);
                 return;
             }
 
-            // 获取勾选的分区或选中的分区
+            // Get checked or selected partitions
             var checkedItems = GetCheckedOrSelectedPartitions();
             if (checkedItems.Count == 0)
             {
-                AppendLog("请选择或勾选要写入的分区", Color.Orange);
+                AppendLog("Please select or check partitions to write", Color.Orange);
                 return;
             }
 
             if (checkedItems.Count == 1)
             {
-                // 单个分区写入
+                // Single Partition Write
                 var partition = checkedItems[0];
                 string filePath = "";
 
-                // 先检查是否已有文件路径（双击选择的或从XML解析的）
+                // Check if file path exists (double clicked or parsed from XML)
                 foreach (ListViewItem item in listView2.Items)
                 {
                     var p = item.Tag as PartitionInfo;
@@ -1110,15 +1110,15 @@ namespace LoveAlways
                     }
                 }
 
-                // 如果没有文件路径或文件不存在，弹出选择对话框
+                // If no file path or file not exists, pop selection dialog
                 if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
                 {
-                    // 如果勾选了 MetaSuper 且是 super 分区，引导用户选择固件目录
+                    // If MetaSuper checked and is super partition, guide user to select firmware dir
                     if (checkbox18.Checked && partition.Name.Equals("super", StringComparison.OrdinalIgnoreCase))
                     {
                         using (var fbd = new FolderBrowserDialog())
                         {
-                            fbd.Description = "已开启 MetaSuper！请选择 OPLUS 固件根目录 (包含 IMAGES 和 META)";
+                            fbd.Description = "MetaSuper Enabled! Select OPLUS Firmware Root (contains IMAGES and META)";
                             if (fbd.ShowDialog() == DialogResult.OK)
                             {
                                 await _qualcommController.FlashOplusSuperAsync(fbd.SelectedPath);
@@ -1129,8 +1129,8 @@ namespace LoveAlways
 
                     using (var ofd = new OpenFileDialog())
                     {
-                        ofd.Title = $"选择要写入 {partition.Name} 的镜像文件";
-                        ofd.Filter = "镜像文件|*.img;*.bin|所有文件|*.*";
+                        ofd.Title = $"Select image file to write to {partition.Name}";
+                        ofd.Filter = "Image File|*.img;*.bin|All Files|*.*";
 
                         if (ofd.ShowDialog() != DialogResult.OK)
                             return;
@@ -1140,10 +1140,10 @@ namespace LoveAlways
                 }
                 else
                 {
-                    // 即使路径存在，如果开启了 MetaSuper 且是 super 分区，也执行拆解逻辑
+                    // Even if path exists, if MetaSuper enabled and is super partition, execute unpack logic
                     if (checkbox18.Checked && partition.Name.Equals("super", StringComparison.OrdinalIgnoreCase))
                     {
-                        // 尝试从文件路径推断固件根目录 (通常镜像在 IMAGES 文件夹下)
+                        // Try inferring firmware root from file path (usually image under IMAGES folder)
                         string firmwareRoot = Path.GetDirectoryName(Path.GetDirectoryName(filePath));
                         if (Directory.Exists(Path.Combine(firmwareRoot, "META")))
                         {
@@ -1152,10 +1152,10 @@ namespace LoveAlways
                         }
                         else
                         {
-                            // 如果推断失败，手动选择
+                            // If inference fails, select manually
                             using (var fbd = new FolderBrowserDialog())
                             {
-                                fbd.Description = "已开启 MetaSuper！请选择 OPLUS 固件根目录 (包含 IMAGES 和 META)";
+                                fbd.Description = "MetaSuper Enabled! Select OPLUS Firmware Root (contains IMAGES and META)";
                                 if (fbd.ShowDialog() == DialogResult.OK)
                                 {
                                     await _qualcommController.FlashOplusSuperAsync(fbd.SelectedPath);
@@ -1166,20 +1166,20 @@ namespace LoveAlways
                     }
                 }
 
-                // 执行写入
-                AppendLog($"开始写入 {Path.GetFileName(filePath)} -> {partition.Name}", Color.Blue);
+                // Execute Write
+                AppendLog($"Start writing {Path.GetFileName(filePath)} -> {partition.Name}", Color.Blue);
                 bool success = await _qualcommController.WritePartitionAsync(partition.Name, filePath);
                 
                 if (success && checkbox15.Checked)
                 {
-                    AppendLog("写入完成，自动重启设备...", Color.Blue);
+                    AppendLog("Write complete, auto rebooting...", Color.Blue);
                     await _qualcommController.RebootToSystemAsync();
                 }
             }
             else
             {
-                // 批量写入 - 从 XML 解析的任务中获取文件路径
-                // 使用包含 LUN 和 StartSector 的元组，便于处理 PrimaryGPT/BackupGPT
+                // Batch Write - Get file paths from XML tasks
+                // Use tuple with LUN and StartSector to handle PrimaryGPT/BackupGPT
                 var partitionsToWrite = new List<Tuple<string, string, int, long>>();
                 var missingFiles = new List<string>();
 
@@ -1188,13 +1188,13 @@ namespace LoveAlways
                     var partition = item.Tag as PartitionInfo;
                     if (partition == null) continue;
 
-                    // 获取文件路径（从 SubItems 中）
+                    // Get file path (from SubItems)
                     string filePath = item.SubItems.Count > 8 ? item.SubItems[8].Text : "";
                     
-                    // 尝试从当前目录或 XML 目录查找文件
+                    // Try finding file in current or XML dir
                     if (!string.IsNullOrEmpty(filePath) && !File.Exists(filePath))
                     {
-                        // 尝试从 input6 (XML路径) 的目录查找
+                        // Try finding in input6 (XML Path) dir
                         try
                         {
                             string xmlPath = input6.Text?.Trim() ?? "";
@@ -1217,7 +1217,7 @@ namespace LoveAlways
 
                     if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
                     {
-                        // 传递 (分区名, 文件路径, LUN, StartSector)
+                        // Pass (Name, Path, LUN, StartSector)
                         partitionsToWrite.Add(Tuple.Create(partition.Name, filePath, partition.Lun, partition.StartSector));
                     }
                     else
@@ -1228,15 +1228,15 @@ namespace LoveAlways
 
                 if (missingFiles.Count > 0)
                 {
-                    AppendLog($"以下分区缺少镜像文件: {string.Join(", ", missingFiles)}", Color.Orange);
+                    AppendLog($"Missing image files for partitions: {string.Join(", ", missingFiles)}", Color.Orange);
                 }
 
                 if (partitionsToWrite.Count > 0)
                 {
-                    // 收集 Patch 文件
+                    // Collect Patch Files
                     List<string> patchFiles = new List<string>();
                     
-                    // 优先使用存储的 XML 目录，如果为空则尝试从 input6.Text 解析
+                    // Prioritize stored XML dir...
                     string xmlDir = _selectedXmlDirectory;
                     if (string.IsNullOrEmpty(xmlDir))
                     {
@@ -1256,9 +1256,9 @@ namespace LoveAlways
                     
                     if (!string.IsNullOrEmpty(xmlDir) && Directory.Exists(xmlDir))
                     {
-                        AppendLog($"正在目录中搜索 Patch 文件: {xmlDir}", Color.Gray);
+                        AppendLog($"Searching for Patch files in dir: {xmlDir}", Color.Gray);
                         
-                        // 1. 先搜索当前目录（同级目录）
+                        // 1. Search current dir (sibling dir)
                         try
                         {
                             var sameDir = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.TopDirectoryOnly)
@@ -1271,10 +1271,10 @@ namespace LoveAlways
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"搜索 Patch 文件异常: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Patch file search exception: {ex.Message}");
                         }
                         
-                        // 2. 如果当前目录没找到，搜索子目录（如 images 文件夹）
+                        // 2. If not found in current, search subdirs
                         if (patchFiles.Count == 0)
                         {
                             try
@@ -1289,11 +1289,11 @@ namespace LoveAlways
                             }
                             catch (Exception ex)
                             {
-                                AppendLog($"搜索子目录 Patch 文件时出错: {ex.Message}", Color.Orange);
+                                AppendLog($"Error searching subdirs for Patch files: {ex.Message}", Color.Orange);
                             }
                         }
 
-                        // 3. 如果都没找到，尝试在父目录搜索
+                        // 3. If still not found, search parent dir
                         if (patchFiles.Count == 0)
                         {
                             try
@@ -1301,7 +1301,7 @@ namespace LoveAlways
                                 string parentDir = Path.GetDirectoryName(xmlDir);
                                 if (!string.IsNullOrEmpty(parentDir) && Directory.Exists(parentDir))
                                 {
-                                    AppendLog($"当前目录未找到，搜索父目录: {parentDir}", Color.Gray);
+                                    AppendLog($"Current dir not found, searching parent: {parentDir}", Color.Gray);
                                     var parentPatches = Directory.GetFiles(parentDir, "patch*.xml", SearchOption.AllDirectories)
                                         .Where(f => {
                                             string fn = Path.GetFileName(f).ToLower();
@@ -1313,11 +1313,11 @@ namespace LoveAlways
                             }
                             catch (Exception ex)
                             {
-                                System.Diagnostics.Debug.WriteLine($"搜索父目录 Patch 文件异常: {ex.Message}");
+                                System.Diagnostics.Debug.WriteLine($"Parent dir Patch search exception: {ex.Message}");
                             }
                         }
                         
-                        // 排序 patch 文件
+                        // Sort patch files
                         patchFiles = patchFiles.Distinct().OrderBy(f => {
                             string name = Path.GetFileNameWithoutExtension(f);
                             var numStr = new string(name.Where(char.IsDigit).ToArray());
@@ -1327,7 +1327,7 @@ namespace LoveAlways
 
                         if (patchFiles.Count > 0)
                         {
-                            AppendLog($"检测到 {patchFiles.Count} 个 Patch 文件:", Color.Blue);
+                            AppendLog($"Detected {patchFiles.Count} Patch files:", Color.Blue);
                             foreach (var pf in patchFiles)
                             {
                                 AppendLog($"  - {Path.GetFileName(pf)}", Color.Gray);
@@ -1335,36 +1335,36 @@ namespace LoveAlways
                         }
                         else
                         {
-                            AppendLog("未检测到 Patch 文件，跳过补丁步骤", Color.Gray);
+                            AppendLog("No Patch files detected, skipping patch step", Color.Gray);
                         }
                     }
                     else
                     {
-                        AppendLog($"无法获取 XML 目录路径 (xmlDir={xmlDir ?? "null"})", Color.Orange);
+                        AppendLog($"Cannot get XML dir path (xmlDir={xmlDir ?? "null"})", Color.Orange);
                     }
 
-                    // UFS 设备需要激活启动 LUN，eMMC 只有 LUN0 不需要
+                    // UFS needs active boot LUN...
                     bool activateBootLun = _storageType == "ufs";
                     if (activateBootLun)
                     {
-                        AppendLog("UFS 设备: 写入完成后将回读 GPT 并激活对应启动 LUN", Color.Blue);
+                        AppendLog("UFS: Readback GPT and activate boot LUN after write", Color.Blue);
                     }
                     else
                     {
-                        AppendLog("eMMC 设备: 仅 LUN0，无需激活启动分区", Color.Gray);
+                        AppendLog("eMMC: Only LUN0, no boot activation needed", Color.Gray);
                     }
 
                     int success = await _qualcommController.WritePartitionsBatchAsync(partitionsToWrite, patchFiles, activateBootLun);
                     
                     if (success > 0 && checkbox15.Checked)
                     {
-                        AppendLog("批量写入完成，自动重启设备...", Color.Blue);
+                        AppendLog("Batch write complete, auto rebooting...", Color.Blue);
                         await _qualcommController.RebootToSystemAsync();
                     }
                 }
                 else
                 {
-                    AppendLog("没有找到有效的镜像文件，请确保 XML 解析正确或手动选择文件", Color.Orange);
+                    AppendLog("No valid images found, ensure XML parsed correctly or select manually", Color.Orange);
                 }
             }
         }
@@ -1373,26 +1373,26 @@ namespace LoveAlways
         {
             if (_qualcommController == null || !_qualcommController.IsConnected)
             {
-                AppendLog("请先连接设备并读取分区表", Color.Orange);
+                AppendLog("Please connect device and read partition table first", Color.Orange);
                 return;
             }
 
-            // 获取勾选的分区或选中的分区
+            // Get checked or selected partitions
             var checkedItems = GetCheckedOrSelectedPartitions();
             if (checkedItems.Count == 0)
             {
-                AppendLog("请选择或勾选要擦除的分区", Color.Orange);
+                AppendLog("Please select or check partitions to erase", Color.Orange);
                 return;
             }
 
-            // 擦除确认
+            // Erase Confirmation
             string message = checkedItems.Count == 1
-                ? $"确定要擦除分区 {checkedItems[0].Name} 吗？\n\n此操作不可逆！"
-                : $"确定要擦除 {checkedItems.Count} 个分区吗？\n\n分区: {string.Join(", ", checkedItems.ConvertAll(p => p.Name))}\n\n此操作不可逆！";
+                ? $"Confirm erase partition {checkedItems[0].Name}?\n\nIrreversible!"
+                : $"Confirm erase {checkedItems.Count} partitions?\n\nPartitions: {string.Join(", ", checkedItems.ConvertAll(p => p.Name))}\n\nIrreversible!";
 
             var result = MessageBox.Show(
                 message,
-                "确认擦除",
+                "Confirm Erase",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
 
@@ -1400,24 +1400,24 @@ namespace LoveAlways
             {
                 if (checkedItems.Count == 1)
                 {
-                    // 单个擦除
+                    // Single Erase
                     bool success = await _qualcommController.ErasePartitionAsync(checkedItems[0].Name);
                     
                     if (success && checkbox15.Checked)
                     {
-                        AppendLog("擦除完成，自动重启设备...", Color.Blue);
+                        AppendLog("Erase complete, auto rebooting...", Color.Blue);
                         await _qualcommController.RebootToSystemAsync();
                     }
                 }
                 else
                 {
-                    // 批量擦除
+                    // Batch Erase
                     var partitionNames = checkedItems.ConvertAll(p => p.Name);
                     int success = await _qualcommController.ErasePartitionsBatchAsync(partitionNames);
                     
                     if (success > 0 && checkbox15.Checked)
                     {
-                        AppendLog("批量擦除完成，自动重启设备...", Color.Blue);
+                        AppendLog("Batch erase complete, auto rebooting...", Color.Blue);
                         await _qualcommController.RebootToSystemAsync();
                     }
                 }
@@ -1428,13 +1428,13 @@ namespace LoveAlways
         {
             if (_qualcommController == null || !_qualcommController.IsConnected)
             {
-                AppendLog("请先连接设备", Color.Orange);
+                AppendLog("Please connect device", Color.Orange);
                 return;
             }
 
-            // 询问槽位
-            var result = MessageBox.Show("切换到槽位 A？\n\n选择 是 切换到 A\n选择 否 切换到 B",
-                "切换槽位", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            // Ask for Slot
+            var result = MessageBox.Show("Switch to Slot A?\n\nYes for A\nNo for B",
+                "Switch Slot", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
 
             if (result == DialogResult.Yes)
                 await _qualcommController.SwitchSlotAsync("a");
@@ -1446,15 +1446,15 @@ namespace LoveAlways
         {
             if (_qualcommController == null || !_qualcommController.IsConnected)
             {
-                AppendLog("请先连接设备", Color.Orange);
+                AppendLog("Please connect device", Color.Orange);
                 return;
             }
 
             // UFS: 0, 1, 2, 4(Boot A), 5(Boot B)
             // eMMC: 0
             string input = Microsoft.VisualBasic.Interaction.InputBox(
-                "输入 LUN 编号:\n\nUFS 支持: 0, 1, 2, 4(Boot A), 5(Boot B)\neMMC 仅支持: 0",
-                "激活 LUN", "0");
+                "Enter LUN:\n\nUFS: 0, 1, 2, 4(Boot A), 5(Boot B)\neMMC: 0",
+                "Activate LUN", "0");
 
             int lun;
             if (int.TryParse(input, out lun))
@@ -1467,22 +1467,19 @@ namespace LoveAlways
         {
             bool hasCancelled = false;
             
-            // 获取当前标签页
+            // Get current tab
             int currentTab = tabs1.SelectedIndex;
             
-            // tabPage2 (index 1) = 高通
-            // tabPage4 (index 3) = MTK
-            // tabPage5 (index 4) = 展讯
-            // tabPage1 (index 0) / tabPage3 (index 2) = Fastboot
+            // tabPage2 (index 1) = Qualcomm
             
-            // 根据当前标签页取消对应操作
+            // Cancel operation based on current tab
             switch (currentTab)
             {
-                case 1: // 高通
+                case 1: // Qualcomm
                     if (_qualcommController != null && _qualcommController.HasPendingOperation)
                     {
                         _qualcommController.CancelOperation();
-                        AppendLog("[高通] 操作已取消", Color.Orange);
+                        AppendLog("[Qualcomm] Operation Cancelled", Color.Orange);
                         hasCancelled = true;
                     }
                     break;
@@ -1495,7 +1492,7 @@ namespace LoveAlways
                     }
                     break;
                     
-                case 4: // 展讯
+                case 4: // Spreadtrum
                     if (_spreadtrumController != null)
                     {
                         _spreadtrumController.CancelOperation();
@@ -1510,12 +1507,12 @@ namespace LoveAlways
                         try
                         {
                             _fastbootController.CancelOperation();
-                            AppendLog("[Fastboot] 操作已取消", Color.Orange);
+                            AppendLog("[Fastboot] Operation Cancelled", Color.Orange);
                             hasCancelled = true;
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"取消 Fastboot 操作异常: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Cancel Fastboot op exception: {ex.Message}");
                         }
                     }
                     break;
@@ -1523,7 +1520,7 @@ namespace LoveAlways
 
             if (hasCancelled)
             {
-                // 重置进度条
+                // Reset Progress Bar
                 uiProcessBar1.Value = 0;
                 uiProcessBar2.Value = 0;
                 progress1.Value = 0;
@@ -1531,7 +1528,7 @@ namespace LoveAlways
             }
             else
             {
-                AppendLog("当前没有进行中的操作", Color.Gray);
+                AppendLog("No operations in progress", Color.Gray);
             }
         }
 
@@ -1546,11 +1543,11 @@ namespace LoveAlways
             }
             listView2.EndUpdate();
 
-            AppendLog(selectAll ? "已全选分区" : "已取消全选", Color.Blue);
+            AppendLog(selectAll ? "All partitions selected" : "Unchecked all", Color.Blue);
         }
 
         /// <summary>
-        /// 双击分区列表项，选择对应的镜像文件
+        /// Double click partition item to select image
         /// </summary>
         private void QualcommPartitionDoubleClick()
         {
@@ -1560,45 +1557,45 @@ namespace LoveAlways
             var partition = item.Tag as PartitionInfo;
             if (partition == null)
             {
-                // 如果没有 Tag，尝试从名称获取
+                // If no Tag, try getting from name
                 string partitionName = item.Text;
                 if (string.IsNullOrEmpty(partitionName)) return;
 
                 using (var ofd = new OpenFileDialog())
                 {
-                    ofd.Title = $"选择 {partitionName} 分区的镜像文件";
-                    ofd.Filter = $"镜像文件|{partitionName}.img;{partitionName}.bin;*.img;*.bin|所有文件|*.*";
+                    ofd.Title = $"Select image file for partition {partitionName}";
+                    ofd.Filter = $"Image File|{partitionName}.img;{partitionName}.bin;*.img;*.bin|All Files|*.*";
 
                     if (ofd.ShowDialog() == DialogResult.OK)
                     {
-                        // 更新文件路径列 (最后一列)
+                        // Update file path column (last col)
                         int lastCol = item.SubItems.Count - 1;
                         if (lastCol >= 0)
                         {
                             item.SubItems[lastCol].Text = ofd.FileName;
-                            item.Checked = true; // 自动勾选
-                            AppendLog($"已为分区 {partitionName} 选择文件: {Path.GetFileName(ofd.FileName)}", Color.Blue);
+                            item.Checked = true; // Auto check
+                            AppendLog($"Selected file for partition {partitionName}: {Path.GetFileName(ofd.FileName)}", Color.Blue);
                         }
                     }
                 }
                 return;
             }
 
-            // 有 PartitionInfo 的情况
+            // Case with PartitionInfo
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = $"选择 {partition.Name} 分区的镜像文件";
-                ofd.Filter = $"镜像文件|{partition.Name}.img;{partition.Name}.bin;*.img;*.bin|所有文件|*.*";
+                ofd.Title = $"Select image file for partition {partition.Name}";
+                ofd.Filter = $"Image File|{partition.Name}.img;{partition.Name}.bin;*.img;*.bin|All Files|*.*";
 
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
-                    // 更新文件路径列 (最后一列)
+                    // Update file path column (last col)
                     int lastCol = item.SubItems.Count - 1;
                     if (lastCol >= 0)
                     {
                         item.SubItems[lastCol].Text = ofd.FileName;
-                        item.Checked = true; // 自动勾选
-                        AppendLog($"已为分区 {partition.Name} 选择文件: {Path.GetFileName(ofd.FileName)}", Color.Blue);
+                        item.Checked = true; // Auto-check
+                        AppendLog($"Selected file for partition {partition.Name}: {Path.GetFileName(ofd.FileName)}", Color.Blue);
                     }
                 }
             }
@@ -1611,7 +1608,7 @@ namespace LoveAlways
 
         private void QualcommSearchPartition()
         {
-            // 如果是从下拉选择触发的，直接定位不更新下拉
+            // If triggered from dropdown selection, locate directly without updating dropdown
             if (_isSelectingFromDropdown)
             {
                 _isSelectingFromDropdown = false;
@@ -1625,7 +1622,7 @@ namespace LoveAlways
 
             string keyword = select4.Text?.Trim()?.ToLower();
             
-            // 如果搜索框为空，重置所有高亮
+            // If search box is empty, reset all highlights
             if (string.IsNullOrEmpty(keyword))
             {
                 ResetPartitionHighlights();
@@ -1635,7 +1632,7 @@ namespace LoveAlways
                 return;
             }
             
-            // 如果关键词相同，跳转到下一个匹配项
+            // If keyword is same, jump to next match
             if (keyword == _lastSearchKeyword && _searchMatches.Count > 1)
             {
                 JumpToNextMatch();
@@ -1646,7 +1643,7 @@ namespace LoveAlways
             _searchMatches.Clear();
             _currentMatchIndex = 0;
             
-            // 收集匹配的分区名称用于下拉建议
+            // Collect matching partition names for dropdown suggestions
             var suggestions = new List<string>();
             
             listView2.BeginUpdate();
@@ -1659,11 +1656,11 @@ namespace LoveAlways
                 
                 if (isMatch)
                 {
-                    // 精确匹配用深色，模糊匹配用浅色
+                    // Exact match use dark color, partial match use light color
                     item.BackColor = (partitionName == keyword) ? Color.Gold : Color.LightYellow;
                     _searchMatches.Add(item);
                     
-                    // 添加到下拉建议（最多显示10个）
+                    // Add to dropdown suggestions (Max 10)
                     if (suggestions.Count < 10)
                     {
                         suggestions.Add(originalName);
@@ -1677,25 +1674,25 @@ namespace LoveAlways
             
             listView2.EndUpdate();
             
-            // 更新下拉建议列表
+            // Update dropdown suggestions list
             UpdateSearchSuggestions(suggestions);
             
-            // 滚动到第一个匹配项
+            // Scroll to first match
             if (_searchMatches.Count > 0)
             {
                 _searchMatches[0].Selected = true;
                 _searchMatches[0].EnsureVisible();
                 
-                // 显示匹配数量（不重复打日志）
+                // Show match count (avoid redundant logs)
                 if (_searchMatches.Count > 1)
                 {
-                    // 在状态栏或其他地方显示，避免刷屏
+                    // Show in status bar or elsewhere to avoid screen flooding
                 }
             }
             else if (keyword.Length >= 2)
             {
-                // 只有输入2个以上字符才提示未找到
-                AppendLog($"未找到分区: {keyword}", Color.Orange);
+                // Only prompt not found if input is 2+ chars
+                AppendLog($"Partition not found: {keyword}", Color.Orange);
             }
         }
 
@@ -1703,13 +1700,13 @@ namespace LoveAlways
         {
             if (_searchMatches.Count == 0) return;
             
-            // 取消当前选中
+            // Cancel current selection
             if (_currentMatchIndex < _searchMatches.Count)
             {
                 _searchMatches[_currentMatchIndex].Selected = false;
             }
             
-            // 跳转到下一个
+            // Jump to next
             _currentMatchIndex = (_currentMatchIndex + 1) % _searchMatches.Count;
             _searchMatches[_currentMatchIndex].Selected = true;
             _searchMatches[_currentMatchIndex].EnsureVisible();
@@ -1727,17 +1724,17 @@ namespace LoveAlways
 
         private void UpdateSearchSuggestions(List<string> suggestions)
         {
-            // 保存当前输入的文本
+            // Save current input text
             string currentText = select4.Text;
             
-            // 更新下拉项
+            // Update dropdown items
             select4.Items.Clear();
             foreach (var name in suggestions)
             {
                 select4.Items.Add(name);
             }
             
-            // 恢复输入的文本（防止被清空）
+            // Restore input text (prevent clearing)
             select4.Text = currentText;
         }
 
@@ -1759,12 +1756,12 @@ namespace LoveAlways
         }
 
         #endregion
-        // 窗体关闭时清理资源
+        // Clean up resources on form closing
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             base.OnFormClosing(e);
 
-            // 停止端口刷新定时器
+            // Stop port refresh timer
             if (_portRefreshTimer != null)
             {
                 _portRefreshTimer.Stop();
@@ -1772,83 +1769,74 @@ namespace LoveAlways
                 _portRefreshTimer = null;
             }
 
-            // 释放高通控制器
+            // Dispose Qualcomm Controller
             if (_qualcommController != null)
             {
                 try { _qualcommController.Dispose(); }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] 释放高通控制器异常: {ex.Message}"); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] Dispose Qualcomm Controller Exception: {ex.Message}"); }
                 _qualcommController = null;
             }
 
-            // 释放展讯控制器
+            // Dispose Spreadtrum Controller
             if (_spreadtrumController != null)
             {
                 try { _spreadtrumController.Dispose(); }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] 释放展讯控制器异常: {ex.Message}"); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] Dispose Spreadtrum Controller Exception: {ex.Message}"); }
                 _spreadtrumController = null;
             }
             
-            // 释放 Fastboot 控制器
+            // Dispose Fastboot Controller
             if (_fastbootController != null)
             {
                 try { _fastbootController.Dispose(); }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] 释放 Fastboot 控制器异常: {ex.Message}"); }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] Dispose Fastboot Controller Exception: {ex.Message}"); }
                 _fastbootController = null;
             }
 
-            // 释放联发科模块
+            // Dispose MediaTek Module
             CleanupMediaTekModule();
 
-            // 释放背景图片
+            // Dispose Background Image
             if (this.BackgroundImage != null)
             {
                 this.BackgroundImage.Dispose();
                 this.BackgroundImage = null;
             }
 
-            // 清空预览
+            // Clear Preview
             ClearImagePreview();
 
-            // 释放看门狗管理器
+            // Dispose Watchdog Manager
             LoveAlways.Common.WatchdogManager.DisposeAll();
 
-            // 优化的垃圾回收
+            // Optimized GC
             GC.Collect(0, GCCollectionMode.Optimized);
         }
         
         /// <summary>
-        /// 小米授权令牌事件处理 - 弹窗显示令牌供用户复制
+        /// Xiaomi Auth Token Event Handler - Pop up to show token for user to copy
         /// </summary>
         private void OnXiaomiAuthTokenRequired(string token)
         {
-            // 确保在 UI 线程上执行
+            // Ensure execution on UI thread
             if (this.InvokeRequired)
             {
                 this.BeginInvoke(new Action<string>(OnXiaomiAuthTokenRequired), token);
                 return;
             }
             
-            // 创建弹窗
+            // Create popup
             using (var form = new Form())
             {
-                form.Text = "小米授权令牌";
+                form.Text = "Xiaomi Auth Token";
                 form.Size = new Size(500, 220);
                 form.StartPosition = FormStartPosition.CenterParent;
                 form.FormBorderStyle = FormBorderStyle.FixedDialog;
                 form.MaximizeBox = false;
                 form.MinimizeBox = false;
                 
-                // 说明文字
-                var label = new Label
-                {
-                    Text = "内置签名验证失败，请复制以下令牌到小米授权服务获取签名：",
-                    Location = new Point(15, 15),
-                    Size = new Size(460, 20),
-                    Font = new Font("Microsoft YaHei UI", 9F)
-                };
-                form.Controls.Add(label);
                 
-                // 令牌文本框
+                // Token TextBox
                 var textBox = new TextBox
                 {
                     Text = token,
@@ -1861,10 +1849,10 @@ namespace LoveAlways
                 };
                 form.Controls.Add(textBox);
                 
-                // 复制按钮
+                // Copy Button
                 var copyButton = new Button
                 {
-                    Text = "复制令牌",
+                    Text = "Copy Token",
                     Location = new Point(150, 115),
                     Size = new Size(90, 30),
                     Font = new Font("Microsoft YaHei UI", 9F)
@@ -1874,19 +1862,19 @@ namespace LoveAlways
                     try
                     {
                         Clipboard.SetText(token);
-                        MessageBox.Show("令牌已复制到剪贴板", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Token copied to clipboard", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"复制失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"Copy failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 };
                 form.Controls.Add(copyButton);
                 
-                // 关闭按钮
+                // Close Button
                 var closeButton = new Button
                 {
-                    Text = "关闭",
+                    Text = "Close",
                     Location = new Point(260, 115),
                     Size = new Size(90, 30),
                     Font = new Font("Microsoft YaHei UI", 9F),
@@ -1894,10 +1882,10 @@ namespace LoveAlways
                 };
                 form.Controls.Add(closeButton);
                 
-                // 提示信息
+                // Tip Info
                 var tipLabel = new Label
                 {
-                    Text = "提示: 令牌格式为 VQ 开头的 Base64 字符串",
+                    Text = "Tip: Token format is Base64 string starting with VQ",
                     Location = new Point(15, 155),
                     Size = new Size(460, 20),
                     ForeColor = Color.Gray,
@@ -1911,7 +1899,7 @@ namespace LoveAlways
 
         private void InitializeUrlComboBox()
         {
-            // 只保留已验证可用的API
+            // Only keep verified available APIs
             string[] defaultUrls = new[]
             {
                 "https://img.xjh.me/random_img.php?return=302",
@@ -1934,10 +1922,10 @@ namespace LoveAlways
 
         private void InitializeImagePreview()
         {
-            // 清空预览控件
+            // Clear preview control
             ClearImagePreview();
 
-            // 设置预览控件属性
+            // Set preview control properties
             pictureBox1.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox1.BorderStyle = BorderStyle.FixedSingle;
             pictureBox1.BackColor = Color.Black;
@@ -1948,7 +1936,7 @@ namespace LoveAlways
         {
             try
             {
-                // 保存原始位置和大小
+                // Save original positions and sizes
                 originalinput6Location = input6.Location;
                 originalbutton4Location = button4.Location;
                 originalcheckbox13Location = checkbox13.Location;
@@ -1962,11 +1950,11 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                AppendLog($"保存原始位置失败: {ex.Message}", Color.Red);
+                AppendLog($"Save original positions failed: {ex.Message}", Color.Red);
             }
         }
 
-        // 日志计数器，用于限制条目数量
+        // Log counter, used to limit number of entries
         private int _logEntryCount = 0;
         private readonly object _logLock = new object();
 
@@ -1978,27 +1966,27 @@ namespace LoveAlways
                 return;
             }
 
-            // 白色背景下的颜色映射 (使颜色更清晰)
+            // Color mapping for white background (Make colors clearer)
             Color logColor = MapLogColor(color ?? Color.Black);
 
-            // 写入文件
+            // Write to file
             try
             {
                 File.AppendAllText(logFilePath, $"[{DateTime.Now:HH:mm:ss}] {message}" + Environment.NewLine);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"日志写入失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Log write failed: {ex.Message}");
             }
 
-            // 检查并限制日志条目数量 (减少内存占用)
+            // Check and limit log entry count (Reduce memory usage)
             int maxEntries = Common.PerformanceConfig.MaxLogEntries;
             lock (_logLock)
             {
                 _logEntryCount++;
                 if (_logEntryCount > maxEntries)
                 {
-                    // 清理前半部分日志
+                    // Clean up first half of logs
                     try
                     {
                         string[] lines = uiRichTextBox1.Text.Split('\n');
@@ -2011,12 +1999,12 @@ namespace LoveAlways
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"日志清理异常: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Log cleanup exception: {ex.Message}");
                     }
                 }
             }
 
-            // 显示到 UI (减少重绘)
+            // Show to UI (Reduce redraw)
             uiRichTextBox1.SuspendLayout();
             try
             {
@@ -2032,28 +2020,28 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 将颜色映射为适合白色背景的版本 (更深更清晰)
+        /// Map color to version suitable for white background (darker and clearer)
         /// </summary>
         private Color MapLogColor(Color originalColor)
         {
-            // 白色背景配色方案 - 使用更深的颜色
+            // White background color scheme - Use darker colors
             if (originalColor == Color.White) return Color.Black;
-            if (originalColor == Color.Blue) return Color.FromArgb(0, 80, 180);      // 深蓝
-            if (originalColor == Color.Gray) return Color.FromArgb(100, 100, 100);   // 深灰
-            if (originalColor == Color.Green) return Color.FromArgb(0, 140, 0);      // 深绿
-            if (originalColor == Color.Red) return Color.FromArgb(200, 0, 0);        // 深红
-            if (originalColor == Color.Orange) return Color.FromArgb(200, 120, 0);   // 深橙
-            if (originalColor == Color.LimeGreen) return Color.FromArgb(0, 160, 0);  // 深黄绿
-            if (originalColor == Color.Cyan) return Color.FromArgb(0, 140, 160);     // 深青
-            if (originalColor == Color.Yellow) return Color.FromArgb(180, 140, 0);   // 深黄
-            if (originalColor == Color.Magenta) return Color.FromArgb(160, 0, 160);  // 深紫
+            if (originalColor == Color.Blue) return Color.FromArgb(0, 80, 180);      // Dark Blue
+            if (originalColor == Color.Gray) return Color.FromArgb(100, 100, 100);   // Dark Gray
+            if (originalColor == Color.Green) return Color.FromArgb(0, 140, 0);      // Dark Green
+            if (originalColor == Color.Red) return Color.FromArgb(200, 0, 0);        // Dark Red
+            if (originalColor == Color.Orange) return Color.FromArgb(200, 120, 0);   // Dark Orange
+            if (originalColor == Color.LimeGreen) return Color.FromArgb(0, 160, 0);  // Dark Yellow Green
+            if (originalColor == Color.Cyan) return Color.FromArgb(0, 140, 160);     // Dark Cyan
+            if (originalColor == Color.Yellow) return Color.FromArgb(180, 140, 0);   // Dark Yellow
+            if (originalColor == Color.Magenta) return Color.FromArgb(160, 0, 160);  // Dark Purple
             
-            // 其他颜色保持不变
+            // Others remain unchanged
             return originalColor;
         }
 
         /// <summary>
-        /// 详细调试日志 - 只写入文件，不显示在 UI
+        /// Detailed Debug Log - Write to file only, not shown in UI
         /// </summary>
         private void AppendLogDetail(string message)
         {
@@ -2061,24 +2049,24 @@ namespace LoveAlways
             {
                 File.AppendAllText(logFilePath, $"[{DateTime.Now:HH:mm:ss}] [DEBUG] {message}" + Environment.NewLine);
             }
-            catch { /* 调试日志写入失败可忽略 */ }
+            catch { /* Ignore debug log write failure */ }
         }
 
         /// <summary>
-        /// 初始化日志系统
+        /// Initialize Log System
         /// </summary>
         private void InitializeLogSystem()
         {
             try
             {
-                // 使用应用程序目录下的 Logs 文件夹
+                // Use Logs folder under application directory
                 string logFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
                 if (!Directory.Exists(logFolderPath))
                 {
                     Directory.CreateDirectory(logFolderPath);
                 }
 
-                // 清理 7 天前的旧日志
+                // Clean old logs from 7 days ago
                 CleanOldLogs(logFolderPath, 7);
 
                 string logFileName = $"{DateTime.Now:yyyy-MM-dd_HH.mm.ss}_log.txt";
@@ -2086,14 +2074,14 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"日志初始化失败: {ex.Message}");
-                // 日志初始化失败时使用临时目录
+                System.Diagnostics.Debug.WriteLine($"Log init failed: {ex.Message}");
+                // Use temp directory if log init failed
                 logFilePath = Path.Combine(Path.GetTempPath(), $"MultiFlash_{DateTime.Now:yyyyMMdd_HHmmss}.log");
             }
         }
 
         /// <summary>
-        /// 清理指定天数之前的旧日志
+        /// Clean old logs before specified days
         /// </summary>
         private void CleanOldLogs(string logFolder, int daysToKeep)
         {
@@ -2106,37 +2094,37 @@ namespace LoveAlways
 
                 foreach (var file in oldFiles)
                 {
-                    try { File.Delete(file); } catch { /* 删除旧日志失败可忽略 */ }
+                    try { File.Delete(file); } catch { /* Ignore delete failed */ }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"清理旧日志异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Clean old logs exception: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 写入日志文件头部信息
+        /// Write log file header info
         /// </summary>
         private void WriteLogHeader(string sysInfo)
         {
             try
             {
                 var header = new StringBuilder();
-                header.AppendLine($"启动时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                header.AppendLine($"系统: {sysInfo}");
-                header.AppendLine($"版本: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+                header.AppendLine($"Start Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                header.AppendLine($"System: {sysInfo}");
+                header.AppendLine($"Version: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
                 header.AppendLine();
 
                 File.WriteAllText(logFilePath, header.ToString());
             }
-            catch { /* 日志头写入失败可忽略 */ }
+            catch { /* Ignore log header write failure */ }
         }
 
         /// <summary>
-        /// 查看日志菜单点击事件 - 打开日志文件夹并选中当前日志
+        /// View Log Menu Click Event - Open log folder and select current log
         /// </summary>
-        private void 查看日志ToolStripMenuItem_Click(object sender, EventArgs e)
+        private void ViewLogToolStripMenuItem_Click(object sender, EventArgs e)
         {
             try
             {
@@ -2147,41 +2135,41 @@ namespace LoveAlways
                     Directory.CreateDirectory(logFolder);
                 }
 
-                // 如果当前日志文件存在，使用 Explorer 打开并选中它
+                // If current log file exists, open with Explorer and select it
                 if (File.Exists(logFilePath))
                 {
-                    // 使用 /select 参数打开资源管理器并选中文件
+                    // Use /select to open explorer and select file
                     System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{logFilePath}\"");
-                    AppendLog($"已打开日志文件夹: {logFolder}", Color.Blue);
+                    AppendLog($"Opened log folder: {logFolder}", Color.Blue);
                 }
                 else
                 {
-                    // 文件不存在，直接打开文件夹
+                    // File not exists, open folder directly
                     System.Diagnostics.Process.Start("explorer.exe", logFolder);
-                    AppendLog($"已打开日志文件夹: {logFolder}", Color.Blue);
+                    AppendLog($"Opened log folder: {logFolder}", Color.Blue);
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"打开日志失败: {ex.Message}", Color.Red);
-                MessageBox.Show($"无法打开日志文件夹: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                AppendLog($"Open log failed: {ex.Message}", Color.Red);
+                MessageBox.Show($"Cannot open log folder: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void Button2_Click(object sender, EventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Title = "选择本地图片";
-            openFileDialog.Filter = "图片文件|*.jpg;*.jpeg;*.png;*.bmp|所有文件|*.*";
+            openFileDialog.Title = "Select Local Image";
+            openFileDialog.Filter = "Image File|*.jpg;*.jpeg;*.png;*.bmp|All Files|*.*";
             openFileDialog.FilterIndex = 1;
             openFileDialog.RestoreDirectory = true;
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 selectedLocalImagePath = openFileDialog.FileName;
-                AppendLog($"已选择本地文件：{selectedLocalImagePath}", Color.Green);
+                AppendLog($"Selected local file: {selectedLocalImagePath}", Color.Green);
 
-                // 使用异步加载避免UI卡死
+                // Use async load to avoid UI freeze
                 Task.Run(() => LoadLocalImage(selectedLocalImagePath));
             }
         }
@@ -2192,24 +2180,24 @@ namespace LoveAlways
             {
                 if (!File.Exists(filePath))
                 {
-                    SafeInvoke(() => AppendLog("文件不存在", Color.Red));
+                    SafeInvoke(() => AppendLog("File not exists", Color.Red));
                     return;
                 }
 
-                // 检查文件大小
+                // Check file size
                 FileInfo fi = new FileInfo(filePath);
-                if (fi.Length > 50 * 1024 * 1024) // 50MB限制
+                if (fi.Length > 50 * 1024 * 1024) // 50MB Limit
                 {
-                    SafeInvoke(() => AppendLog($"文件过大（{fi.Length / 1024 / 1024}MB），请选择小于50MB的图片", Color.Red));
+                    SafeInvoke(() => AppendLog($"File too large（{fi.Length / 1024 / 1024}MB），please select image < 50MB", Color.Red));
                     return;
                 }
 
-                // 方法1：使用超低质量加载
+                // Method 1: Use ultra low quality load
                 using (Bitmap original = LoadImageWithLowQuality(filePath))
                 {
                     if (original != null)
                     {
-                        // 创建适合窗体大小的缩略图
+                        // Create thumbnail fitting form size
                         Size targetSize = Size.Empty;
                         SafeInvoke(() => targetSize = this.ClientSize);
                         if (targetSize.IsEmpty) return;
@@ -2220,28 +2208,28 @@ namespace LoveAlways
                             {
                                 SafeInvoke(() =>
                                 {
-                                    // 释放旧图片
+                                    // Release old image
                                     if (this.BackgroundImage != null)
                                     {
                                         this.BackgroundImage.Dispose();
                                         this.BackgroundImage = null;
                                     }
 
-                                    // 设置新图片
+                                    // Set new image
                                     this.BackgroundImage = resized.Clone() as Bitmap;
                                     this.BackgroundImageLayout = ImageLayout.Stretch;
 
-                                    // 添加到预览
+                                    // Add to preview
                                     AddImageToPreview(resized.Clone() as Image, Path.GetFileName(filePath));
 
-                                    AppendLog($"本地图片设置成功（{resized.Width}x{resized.Height}）", Color.Green);
+                                    AppendLog($"Local image set success ({resized.Width}x{resized.Height})", Color.Green);
                                 });
                             }
                         }
                     }
                     else
                     {
-                        SafeInvoke(() => AppendLog("无法加载图片，文件可能已损坏", Color.Red));
+                        SafeInvoke(() => AppendLog("Cannot load image, file may be corrupted", Color.Red));
                     }
                 }
             }
@@ -2249,13 +2237,13 @@ namespace LoveAlways
             {
                 SafeInvoke(() =>
                 {
-                    AppendLog("内存严重不足，请尝试重启应用", Color.Red);
-                    AppendLog("建议：关闭其他程序，释放内存", Color.Yellow);
+                    AppendLog("Out of memory, please try restart app", Color.Red);
+                    AppendLog("Suggest: Close other apps to release memory", Color.Yellow);
                 });
             }
             catch (Exception ex)
             {
-                SafeInvoke(() => AppendLog($"图片加载失败：{ex.Message}", Color.Red));
+                SafeInvoke(() => AppendLog($"Load image failed: {ex.Message}", Color.Red));
             }
         }
 
@@ -2263,13 +2251,13 @@ namespace LoveAlways
         {
             try
             {
-                // 使用最小内存的方式加载图片
+                // Load image using minimum memory
                 using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
-                    // 读取图片信息但不加载全部数据
+                    // Read image info but don't load all data
                     using (Image img = Image.FromStream(fs, false, false))
                     {
-                        // 如果图片很大，先创建缩略图
+                        // If image is large, create thumbnail first
                         if (img.Width > 2000 || img.Height > 2000)
                         {
                             int newWidth = Math.Min(img.Width / 4, 800);
@@ -2287,7 +2275,7 @@ namespace LoveAlways
                         }
                         else
                         {
-                            // 直接返回新Bitmap
+                            // Return new Bitmap directly
                             return new Bitmap(img);
                         }
                     }
@@ -2295,7 +2283,7 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                AppendLog($"加载图片失败：{ex.Message}", Color.Red);
+                AppendLog($"Load image failed: {ex.Message}", Color.Red);
                 return null;
             }
         }
@@ -2304,13 +2292,13 @@ namespace LoveAlways
         {
             try
             {
-                // 限制预览图片尺寸
+                // Limit preview image size
                 int maxWidth = Math.Min(800, targetSize.Width);
                 int maxHeight = Math.Min(600, targetSize.Height);
 
                 int newWidth, newHeight;
 
-                // 计算新尺寸
+                // Calculate new size
                 double ratioX = (double)maxWidth / original.Width;
                 double ratioY = (double)maxHeight / original.Height;
                 double ratio = Math.Min(ratioX, ratioY);
@@ -2318,16 +2306,16 @@ namespace LoveAlways
                 newWidth = (int)(original.Width * ratio);
                 newHeight = (int)(original.Height * ratio);
 
-                // 确保最小尺寸
+                // Ensure min size
                 newWidth = Math.Max(100, newWidth);
                 newHeight = Math.Max(100, newHeight);
 
-                // 创建新Bitmap
+                // Create new Bitmap
                 Bitmap result = new Bitmap(newWidth, newHeight, PixelFormat.Format24bppRgb);
 
                 using (Graphics g = Graphics.FromImage(result))
                 {
-                    // 使用最低质量设置节省内存
+                    // Use lowest quality settings to save memory
                     g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
                     g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
                     g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
@@ -2340,7 +2328,7 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                AppendLog($"调整图片大小失败：{ex.Message}", Color.Red);
+                AppendLog($"Resize image failed: {ex.Message}", Color.Red);
                 return null;
             }
         }
@@ -2350,110 +2338,110 @@ namespace LoveAlways
             string url = uiComboBox3.Text.Trim();
             if (string.IsNullOrEmpty(url))
             {
-                AppendLog("请输入或选择壁纸URL", Color.Red);
+                AppendLog("Please input or select wallpaper URL", Color.Red);
                 return;
             }
 
-            // 清理URL
+            // Clean URL
             url = url.Trim('`', '\'');
-            AppendLog($"正在从URL获取壁纸：{url}", Color.Blue);
+            AppendLog($"Getting wallpaper from URL: {url}", Color.Blue);
 
             try
             {
-                // 使用最简单的方式
+                // Use simplest way
                 using (HttpClient client = new HttpClient())
                 {
-                    client.Timeout = TimeSpan.FromSeconds(15); // 增加超时时间
+                    client.Timeout = TimeSpan.FromSeconds(15); // Increase timeout
                     client.DefaultRequestHeaders.UserAgent.TryParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
                     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("image/*"));
                     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
                     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/html"));
 
-                    // 显示加载提示
-                    AppendLog("正在下载图片...", Color.Blue);
+                    // Show loading hint
+                    AppendLog("Downloading image...", Color.Blue);
 
                     byte[] imageData = null;
 
-                    // 特殊处理某些API
+                    // Handle some APIs specially
                     if (url.Contains("picsum.photos"))
                     {
-                        // 添加随机参数避免缓存
+                        // Add random param to avoid cache
                         url += $"?random={DateTime.Now.Ticks}";
                     }
                     else if (url.Contains("loliapi.com"))
             {
-                // 特殊处理loliapi.com API响应...
-                AppendLog("正在处理loliapi.com API响应...", Color.Blue);
-                // 注意：loliapi.com 直接返回图片二进制数据，不需要JSON参数
+                // Handle loliapi.com API response specially...
+                AppendLog("Processing loliapi.com API response...", Color.Blue);
+                // Note: loliapi.com returns binary data directly, no JSON param needed
             }
 
-                    // 发送请求并获取响应
+                    // Send request and get response
                     using (HttpResponseMessage response = await client.GetAsync(url))
                     {
                         response.EnsureSuccessStatusCode();
                         
-                        // 检查响应内容类型
+                        // Check response content type
                         string contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-                        AppendLog($"响应内容类型: {contentType}", Color.Blue);
+                        AppendLog($"Response Content Type: {contentType}", Color.Blue);
                         
-                        // 检查是否是图片
+                        // Check if it is image
                         if (contentType.StartsWith("image/"))
                         {
                             imageData = await response.Content.ReadAsByteArrayAsync();
-                            AppendLog($"下载的图片大小: {imageData.Length} 字节", Color.Blue);
+                            AppendLog($"Downloaded image size: {imageData.Length} bytes", Color.Blue);
                         }
                         else if (contentType.Contains("json"))
                         {
-                            // 处理JSON响应
+                            // Handle JSON response
                             string jsonContent = await response.Content.ReadAsStringAsync();
-                            AppendLog($"JSON响应长度: {jsonContent.Length}", Color.Blue);
+                            AppendLog($"JSON response length: {jsonContent.Length}", Color.Blue);
                             
-                            // 尝试从JSON中提取图片URL
+                            // Try to extract image URL from JSON
                             string imageUrl = ExtractImageUrlFromJson(jsonContent);
                             if (!string.IsNullOrEmpty(imageUrl))
                             {
-                                AppendLog($"从JSON中提取到图片URL: {imageUrl}", Color.Blue);
-                                // 下载提取到的图片
+                                AppendLog($"Extracted image URL from JSON: {imageUrl}", Color.Blue);
+                                // Download extracted image
                                 using (HttpResponseMessage imageResponse = await client.GetAsync(imageUrl))
                                 {
                                     imageResponse.EnsureSuccessStatusCode();
                                     imageData = await imageResponse.Content.ReadAsByteArrayAsync();
-                                    AppendLog($"下载的图片大小: {imageData.Length} 字节", Color.Blue);
+                                    AppendLog($"Downloaded image size: {imageData.Length} bytes", Color.Blue);
                                 }
                             }
                             else
                             {
-                                AppendLog("无法从JSON响应中提取图片URL", Color.Red);
-                                AppendLog($"JSON内容: {jsonContent.Substring(0, Math.Min(500, jsonContent.Length))}...", Color.Yellow);
+                                AppendLog("Cannot extract image URL from JSON response", Color.Red);
+                                AppendLog($"JSON Content: {jsonContent.Substring(0, Math.Min(500, jsonContent.Length))}...", Color.Yellow);
                                 return;
                             }
                         }
                         else
                         {
-                            // 可能是重定向或HTML响应
+                            // Maybe redirect or HTML response
                             string content = await response.Content.ReadAsStringAsync();
-                            AppendLog($"响应不是图片，内容长度: {content.Length}", Color.Yellow);
+                            AppendLog($"Response is not image, length: {content.Length}", Color.Yellow);
                             
-                            // 尝试从HTML中提取图片URL
+                            // Try to extract image URL from HTML
                             string imageUrl = ExtractImageUrlFromHtml(content);
                             if (!string.IsNullOrEmpty(imageUrl))
                             {
-                                AppendLog($"从HTML中提取到图片URL: {imageUrl}", Color.Blue);
-                                // 下载提取到的图片
+                                AppendLog($"Extracted image URL from HTML: {imageUrl}", Color.Blue);
+                                // Download extracted image
                                 using (HttpResponseMessage imageResponse = await client.GetAsync(imageUrl))
                                 {
                                     imageResponse.EnsureSuccessStatusCode();
                                     imageData = await imageResponse.Content.ReadAsByteArrayAsync();
-                                    AppendLog($"下载的图片大小: {imageData.Length} 字节", Color.Blue);
+                                    AppendLog($"Downloaded image size: {imageData.Length} bytes", Color.Blue);
                                 }
                             }
                             else
                             {
-                                AppendLog("无法从响应中提取图片URL", Color.Red);
-                                // 显示部分响应内容用于调试
+                                AppendLog("Cannot extract image URL from response", Color.Red);
+                                // Show partial response for debug
                                 if (content.Length > 0)
                                 {
-                                    AppendLog($"响应内容预览: {content.Substring(0, Math.Min(500, content.Length))}...", Color.Yellow);
+                                    AppendLog($"Response preview: {content.Substring(0, Math.Min(500, content.Length))}...", Color.Yellow);
                                 }
                                 return;
                             }
@@ -2462,30 +2450,30 @@ namespace LoveAlways
 
                     if (imageData == null || imageData.Length < 1000)
                     {
-                        AppendLog("下载的数据无效", Color.Red);
+                        AppendLog("Downloaded data invalid", Color.Red);
                         return;
                     }
 
-                    // 直接从内存加载图片，避免文件扩展名问题
+                    // Load image directly from memory, avoid extension issues
                     LoadAndSetBackgroundFromMemory(imageData, url);
                 }
             }
             catch (HttpRequestException ex)
             {
-                AppendLog($"网络请求失败：{ex.Message}", Color.Red);
-                AppendLog("请检查网络连接或尝试其他网址", Color.Yellow);
+                AppendLog($"Network request failed: {ex.Message}", Color.Red);
+                AppendLog("Please check network or try other URL", Color.Yellow);
             }
             catch (Exception ex)
             {
                 if (ex.Message.Contains("参数无效") || ex.Message.Contains("Invalid parameter"))
                 {
-                    AppendLog("图片格式可能不受完全支持，尝试使用其他图片URL", Color.Yellow);
-                   // AppendLog($"错误详情：{ex.Message}", Color.Red);
+                    AppendLog("Image format might not be supported, try other URL", Color.Yellow);
+                   // AppendLog($"Error Detail: {ex.Message}", Color.Red);
                 }
                 else
                 {
-                    AppendLog($"壁纸获取失败：{ex.Message}", Color.Red);
-                //    AppendLog($"错误详情：{ex.ToString()}", Color.Yellow);
+                    AppendLog($"Get wallpaper failed: {ex.Message}", Color.Red);
+                //    AppendLog($"Error details: {ex.ToString()}", Color.Yellow);
                 }
             }
         }
@@ -2494,13 +2482,13 @@ namespace LoveAlways
         {
             try
             {
-                // 尝试简单的JSON解析
+                // Try simple JSON parsing
                 jsonContent = jsonContent.Trim();
                 
-                // 处理常见的JSON格式
+                // Handle common JSON format
                 if (jsonContent.StartsWith("{") && jsonContent.EndsWith("}"))
                 {
-                    // 尝试提取url字段
+                    // Try extract url field
                     int urlIndex = jsonContent.IndexOf("\"url\"", StringComparison.OrdinalIgnoreCase);
                     if (urlIndex >= 0)
                     {
@@ -2516,7 +2504,7 @@ namespace LoveAlways
                         }
                     }
                     
-                    // 尝试提取data字段
+                    // Try extract data field
                     int dataIndex = jsonContent.IndexOf("\"data\"", StringComparison.OrdinalIgnoreCase);
                     if (dataIndex >= 0)
                     {
@@ -2534,7 +2522,7 @@ namespace LoveAlways
                 }
                 else if (jsonContent.StartsWith("[") && jsonContent.EndsWith("]"))
                 {
-                    // 处理数组格式
+                    // Handle array format
                     int urlIndex = jsonContent.IndexOf("\"url\"", StringComparison.OrdinalIgnoreCase);
                     if (urlIndex >= 0)
                     {
@@ -2551,7 +2539,7 @@ namespace LoveAlways
                     }
                 }
                 
-                // 尝试使用正则表达式提取URL
+                // Try regex extraction
                 System.Text.RegularExpressions.Regex urlRegex = new System.Text.RegularExpressions.Regex(
                     @"https?://[^\s""'<>]+?\.(?:jpg|jpeg|png|gif|webp)",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase
@@ -2567,7 +2555,7 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                AppendLog($"解析JSON失败：{ex.Message}", Color.Red);
+                AppendLog($"Parse JSON failed: {ex.Message}", Color.Red);
                 return null;
             }
         }
@@ -2576,7 +2564,7 @@ namespace LoveAlways
         {
             try
             {
-                // 简单的正则表达式提取图片URL
+                // Simple Regex to extract image URL
                 System.Text.RegularExpressions.Regex regex = new System.Text.RegularExpressions.Regex(
                     @"https?://[^\s""'<>]+?\.(?:jpg|jpeg|png|gif|webp)", 
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase
@@ -2588,7 +2576,7 @@ namespace LoveAlways
                     return match.Value;
                 }
                 
-                // 尝试提取所有可能的URL
+                // Try extract all possible URLs
                 System.Text.RegularExpressions.Regex urlRegex = new System.Text.RegularExpressions.Regex(
                     @"https?://[^\s""'<>]+", 
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase
@@ -2609,7 +2597,7 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                AppendLog($"提取图片URL失败：{ex.Message}", Color.Red);
+                AppendLog($"Extract Image URL failed: {ex.Message}", Color.Red);
                 return null;
             }
         }
@@ -2618,18 +2606,18 @@ namespace LoveAlways
         {
             try
             {
-                // 检查数据是否有效
+                // Check if data is valid
                 if (imageData == null || imageData.Length < 100)
                 {
-                    AppendLog("图片数据无效或过小", Color.Red);
+                    AppendLog("Image data invalid or too small", Color.Red);
                     return;
                 }
 
-                // 检查是否是有效的图片数据（通过文件头）
+                // Check if valid image data (header)
                 string fileHeader = BitConverter.ToString(imageData, 0, Math.Min(8, imageData.Length)).ToLower();
                 bool isImage = false;
                 
-                // 检查常见图片格式的文件头
+                // Check common image headers
                 if (fileHeader.StartsWith("89-50-4e-47") || // PNG
                     fileHeader.StartsWith("ff-d8") || // JPEG
                     fileHeader.StartsWith("42-4d") || // BMP
@@ -2643,22 +2631,22 @@ namespace LoveAlways
 
                 if (!isImage)
                 {
-                    AppendLog("文件不是有效的图片格式", Color.Red);
-                    AppendLog($"文件头: {fileHeader}", Color.Yellow);
+                    AppendLog("File is not a valid image format", Color.Red);
+                    AppendLog($"File Header: {fileHeader}", Color.Yellow);
                     return;
                 }
 
-                // 特殊处理WebP格式
+                // Special handling for WebP
                 bool isWebP = fileHeader.StartsWith("52-49-46-46");
                 if (isWebP)
                 {
-                    AppendLog("检测到WebP格式图片，使用特殊处理...", Color.Blue);
+                    AppendLog("WebP format detected, using special handling...", Color.Blue);
                 }
 
-                // 创建内存流
+                // Create Memory Stream
                 using (MemoryStream ms = new MemoryStream(imageData))
                 {
-                    ms.Position = 0; // 确保流位置在开始
+                    ms.Position = 0; // Ensure at start
                     
                     try
                     {
@@ -2666,7 +2654,7 @@ namespace LoveAlways
                         {
                             if (original != null)
                             {
-                                AppendLog($"成功加载图片，尺寸: {original.Width}x{original.Height}", Color.Blue);
+                                AppendLog($"Image loaded successfully, size: {original.Width}x{original.Height}", Color.Blue);
                                 
                                 Size targetSize = this.ClientSize;
                                 using (Bitmap resized = ResizeImageToFitWithLowMemory(original, targetSize))
@@ -2702,57 +2690,57 @@ namespace LoveAlways
                             }
                             else
                             {
-                                AppendLog("下载的文件不是有效图片", Color.Red);
+                                AppendLog("Downloaded file is not a valid image", Color.Red);
                             }
                         }
                     }
                     catch (Exception ex) when (ex.Message.Contains("参数无效") || ex.Message.Contains("Invalid parameter"))
                     {
-                        // 处理"参数无效"错误，这通常发生在WebP格式不被完全支持时
-                        AppendLog("图片格式可能不受完全支持，尝试转换...", Color.Yellow);
+                        // Handle "Invalid Parameter", mostly WebP support issue
+                        AppendLog("Image format might not be supported, trying conversion...", Color.Yellow);
                         
-                        // 尝试保存为临时文件然后重新加载
+                        // Save as temp file and reload
                         string tempFile = Path.GetTempFileName() + (isWebP ? ".webp" : ".jpg");
                         try
                         {
                             File.WriteAllBytes(tempFile, imageData);
-                         //   AppendLog($"已保存临时文件: {tempFile}", Color.Blue);
+                         //   AppendLog($"Temp file saved: {tempFile}", Color.Blue);
                             
-                            // 尝试使用不同的方式加载
+                            // Try loading with different method
                             using (Image original = Image.FromFile(tempFile))
                             {
                                 if (original != null)
                                 {
-                                  //  AppendLog($"成功从文件加载图片，尺寸: {original.Width}x{original.Height}", Color.Blue);
+                                  //  AppendLog($"Successfully loaded image from file, size: {original.Width}x{original.Height}", Color.Blue);
                                     
                                     Size targetSize = this.ClientSize;
                                     using (Bitmap resized = ResizeImageToFitWithLowMemory(original, targetSize))
                                     {
                                         if (resized != null)
                                         {
-                                            // 释放旧图片
+                                            // Release old image
                                             if (this.BackgroundImage != null)
                                             {
                                                 this.BackgroundImage.Dispose();
                                                 this.BackgroundImage = null;
                                             }
 
-                                            // 设置新图片
+                                            // Set new image
                                             this.BackgroundImage = resized.Clone() as Bitmap;
                                             this.BackgroundImageLayout = ImageLayout.Stretch;
 
-                                            // 添加到预览
-                                            AddImageToPreview(resized.Clone() as Image, "网络图片");
+                                            // Add to preview
+                                            AddImageToPreview(resized.Clone() as Image, "Online Image");
 
-                                         //   AppendLog($"网络图片设置成功（{resized.Width}x{resized.Height}）", Color.Green);
+                                         //   AppendLog($"Online image set success ({resized.Width}x{resized.Height})", Color.Green);
 
-                                            // 添加到历史记录
+                                            // Add to history
                                             if (!urlHistory.Contains(sourceUrl))
                                             {
                                                 urlHistory.Add(sourceUrl);
                                             }
 
-                                            // 更新下拉框
+                                            // Update ComboBox
                                             UpdateUrlComboBox(sourceUrl);
                                         }
                                     }
@@ -2761,47 +2749,47 @@ namespace LoveAlways
                         }
                         catch (Exception)
                         {
-                            // 尝试使用GDI+的其他方法
+                            // Try GDI+ other methods
                             try
                             {
-                            //    AppendLog("尝试使用GDI+直接绘制...", Color.Yellow);
+                            //    AppendLog("Trying GDI+ direct draw...", Color.Yellow);
                                 
-                                // 创建一个新的Bitmap并手动绘制
+                                // Create new Bitmap and draw manually
                                 using (Bitmap tempBmp = new Bitmap(800, 600))
                                 using (Graphics g = Graphics.FromImage(tempBmp))
                                 {
                                     g.Clear(Color.White);
                                     
-                                    // 尝试使用WebClient下载并绘制
-                                    AppendLog("图片加载失败", Color.Yellow);
-                                    AppendLog("请尝试使用其他图片URL", Color.Yellow);
+                                    // Try WebClient download and draw
+                                    AppendLog("Image Load Failed", Color.Yellow);
+                                    AppendLog("Please try other URL", Color.Yellow);
                                 }
                             }
                             catch (Exception)
                             {
-                                AppendLog("无法处理此图片格式", Color.Red);
+                                AppendLog("Cannot process this image format", Color.Red);
                             }
                         }
                         finally
                         {
-                            // 清理临时文件
-                            try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { /* 临时文件删除失败可忽略 */ }
+                            // Clean temp file
+                            try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { /* Ignore delete failed */ }
                         }
                     }
                 }
 
-                // 垃圾回收
+                // GC
                 GC.Collect();
             }
             catch (OutOfMemoryException)
             {
-                AppendLog("内存不足，无法处理图片", Color.Red);
+                AppendLog("Out of memory, cannot process image", Color.Red);
             }
             catch (Exception ex)
             {
-                AppendLog($"图片处理失败：{ex.Message}", Color.Red);
-                // 输出更详细的错误信息
-             //   AppendLog($"错误详情：{ex.ToString()}", Color.Yellow);
+                AppendLog($"Process image failed: {ex.Message}", Color.Red);
+                // Print detailed error
+             //   AppendLog($"Error Detail: {ex.ToString()}", Color.Yellow);
             }
         }
 
@@ -2811,26 +2799,26 @@ namespace LoveAlways
 
             try
             {
-                // 限制预览图片数量
+                // Limit preview images
                 if (previewImages.Count >= MAX_PREVIEW_IMAGES)
                 {
-                    // 移除最旧的预览
+                    // Remove oldest
                     Image oldImage = previewImages[0];
                     previewImages.RemoveAt(0);
                     oldImage.Dispose();
                 }
 
-                // 添加新预览
+                // Add new preview
                 previewImages.Add(image);
 
-                // 更新预览控件
+                // Update preview control
                 UpdateImagePreview();
 
-          //      AppendLog($"已添加到预览：{description}", Color.Green);
+          //      AppendLog($"Added to preview: {description}", Color.Green);
             }
             catch (Exception ex)
             {
-                AppendLog($"更新预览失败：{ex.Message}", Color.Red);
+                AppendLog($"Update preview failed: {ex.Message}", Color.Red);
             }
         }
 
@@ -2838,7 +2826,7 @@ namespace LoveAlways
         {
             if (previewImages.Count == 0)
             {
-                // 显示默认图片或清空
+                // Show default image or clear
                 pictureBox1.Image = null;
                 pictureBox1.Invalidate();
                 return;
@@ -2846,16 +2834,16 @@ namespace LoveAlways
 
             try
             {
-                // 显示最新的预览图片
+                // Show latest preview image
                 Image latestImage = previewImages[previewImages.Count - 1];
                 pictureBox1.Image = latestImage;
 
-                // 更新预览标签
+                // Update preview label
                 UpdatePreviewLabel();
             }
             catch (Exception ex)
             {
-                AppendLog($"显示预览失败：{ex.Message}", Color.Red);
+                AppendLog($"Show preview failed: {ex.Message}", Color.Red);
             }
         }
 
@@ -2866,7 +2854,7 @@ namespace LoveAlways
                 Image currentImage = pictureBox1.Image;
                 if (currentImage != null)
                 {
-                    string language = uiComboBox4.SelectedItem?.ToString() ?? "中文";
+                    string language = uiComboBox4.SelectedItem?.ToString() ?? "Chinese";
                     bool isEnglish = language.Equals("English", StringComparison.OrdinalIgnoreCase);
 
                     if (isEnglish)
@@ -2875,7 +2863,7 @@ namespace LoveAlways
                     }
                     else
                     {
-                        label3.Text = $"预览: {currentImage.Width}×{currentImage.Height} ({previewImages.Count}张图片)";
+                        label3.Text = $"Preview: {currentImage.Width}×{currentImage.Height} ({previewImages.Count} images)";
                     }
                 }
             }
@@ -2885,22 +2873,22 @@ namespace LoveAlways
         {
             try
             {
-                // 清空预览控件
+                // Clear preview control
                 pictureBox1.Image = null;
 
-                // 释放所有预览图片
+                // Release all preview images
                 foreach (Image img in previewImages)
                 {
                     img?.Dispose();
                 }
                 previewImages.Clear();
 
-                // 重置标签
-                label3.Text = "预览";
+                // Reset label
+                label3.Text = "Preview";
             }
             catch (Exception ex)
             {
-                AppendLog($"清空预览失败：{ex.Message}", Color.Red);
+                AppendLog($"Clear preview failed: {ex.Message}", Color.Red);
             }
         }
 
@@ -2921,7 +2909,7 @@ namespace LoveAlways
 
         private void UiComboBox4_SelectedIndexChanged(object sender, EventArgs e)
         {
-            string selectedLanguage = uiComboBox4.SelectedItem?.ToString() ?? "中文";
+            string selectedLanguage = uiComboBox4.SelectedItem?.ToString() ?? "Chinese";
             SwitchLanguage(selectedLanguage);
         }
 
@@ -2931,7 +2919,7 @@ namespace LoveAlways
 
             if (isEnglish)
             {
-                // 英文界面
+                // English Interface
                 tabPage6.Text = "Settings";
                 label1.Text = "Background Blur";
                 label2.Text = "Wallpaper";
@@ -2941,78 +2929,78 @@ namespace LoveAlways
                 button3.Text = "Apply";
                 uiComboBox3.Watermark = "URL";
                 
-                // 更新其他标签页
+                // Update other tabs
                 tabPage2.Text = "Home";
                 tabPage2.Text = "Qualcomm";
                 tabPage4.Text = "MTK";
                 tabPage5.Text = "Spreadtrum";
                 
-                // 更新菜单
+                // Update menu
                 快捷重启ToolStripMenuItem.Text = "Quick Restart";
                 toolStripMenuItem1.Text = "EDL Operations";
                 其他ToolStripMenuItem.Text = "Others";
                 
-                // 更新按钮
+                // Update buttons
                 uiButton2.Text = "Erase Partition";
                 uiButton3.Text = "Write Partition";
                 uiButton4.Text = "Read Partition";
-                uiButton5.Text = "Read Partition Table";
+                uiButton5.Text = "Read GPT";
                 select4.PlaceholderText = "Find Partition";
             }
             else
             {
-                // 中文界面
-                tabPage6.Text = "设置";
-                label1.Text = "背景模糊度";
-                label2.Text = "壁纸";
-                label3.Text = "预览";
-                label4.Text = "语言";
-                button2.Text = "本地壁纸";
-                button3.Text = "应用";
-                uiComboBox3.Watermark = "Url";
+                // Chinese Interface
+                tabPage6.Text = "Settings";
+                label1.Text = "Background Blur";
+                label2.Text = "Wallpaper";
+                label3.Text = "Preview";
+                label4.Text = "Language";
+                button2.Text = "Local Wallpaper";
+                button3.Text = "Apply";
+                uiComboBox3.Watermark = "URL";
                 
-                // 更新其他标签页
-                tabPage2.Text = "主页";
-                tabPage2.Text = "高通平台";
-                tabPage4.Text = "MTK平台";
-                tabPage5.Text = "展讯平台";
+                // Update other tabs
+                tabPage2.Text = "Home";
+                tabPage2.Text = "Qualcomm";
+                tabPage4.Text = "MTK";
+                tabPage5.Text = "Spreadtrum";
                 
-                // 更新菜单
-                快捷重启ToolStripMenuItem.Text = "快捷重启";
-                toolStripMenuItem1.Text = "EDL操作";
-                其他ToolStripMenuItem.Text = "其他";
+                // Update menu
+                快捷重启ToolStripMenuItem.Text = "Quick Restart";
+                toolStripMenuItem1.Text = "EDL Operations";
+                其他ToolStripMenuItem.Text = "Others";
                 
-                // 更新按钮
-                uiButton2.Text = "擦除分区";
-                uiButton3.Text = "写入分区";
-                uiButton4.Text = "读取分区";
-                uiButton5.Text = "读取分区表";
-                select4.PlaceholderText = "查找分区";
+                // Update buttons
+                uiButton2.Text = "Erase Partition";
+                uiButton3.Text = "Write Partition";
+                uiButton4.Text = "Read Partition";
+                uiButton5.Text = "Read GPT";
+                select4.PlaceholderText = "Find Partition";
             }
 
             // 更新预览标签
             UpdatePreviewLabel();
 
-            AppendLog($"界面语言已切换为：{language}", Color.Green);
+            AppendLog($"Interface language switched to: {language}", Color.Green);
         }
 
         private void Checkbox17_CheckedChanged(object sender, EventArgs e)
         {
             if (checkbox17.Checked)
             {
-                // 自动取消勾选checkbox19
+                // Auto uncheck checkbox19
                checkbox19.Checked = false;
                 
-                // 检查当前是否已经是紧凑布局（通过 input7 的可见性判断）
+                // Check if already compact layout (by check input7 visibility)
                 if (input7.Visible)
                 {
-                    // 如果 input7 可见，说明当前是默认布局，需要改为紧凑布局
+                    // If input7 visible, means default layout, need apply compact layout
                     ApplyCompactLayout();
                 }
-                // 如果 input7 不可见，说明已经是紧凑布局，不做改变
+                // If input7 invisible, means already compact
             }
             
-            // 更新认证模式
+            // Update Auth mode
             UpdateAuthMode();
         }
 
@@ -3020,7 +3008,7 @@ namespace LoveAlways
         {
             if (checkbox19.Checked)
             {
-                // 自动取消勾选 checkbox17
+                // Auto uncheck checkbox17
                 checkbox17.Checked = false;
                 
                 RestoreOriginalLayout();
@@ -3030,7 +3018,7 @@ namespace LoveAlways
                 ApplyCompactLayout();
             }
             
-            // 更新认证模式
+            // Update Auth mode
             UpdateAuthMode();
         }
 
@@ -3038,29 +3026,29 @@ namespace LoveAlways
         {
             try
             {
-                // 挂起布局更新，减少闪烁
+                // Suspend layout update, reduce flickering
                 this.SuspendLayout();
                uiGroupBox4.SuspendLayout();
                 listView2.SuspendLayout();
 
-                // 移除 input9, input7
+                // Hide input9, input7
                 input9.Visible = false;
                 input7.Visible = false;
 
-                // 上移 input6, button4 到 input7 和 input9 的位置
+                // Move up input6, button4 to position of input7 and input9
                 input6.Location = new Point(input6.Location.X, input7.Location.Y);
                 button4.Location = new Point(button4.Location.X, input9.Location.Y);
 
-                // 上移 checkbox13 到固定位置
+                // Move up checkbox13 to fixed pos
                 checkbox13.Location = new Point(6, 25);
 
-                // 向上调整uiGroupBox4 和 listView2 的位置并变长
-                const int VERTICAL_ADJUSTMENT = 38; // 使用固定数值调整
+                // Move up and resize uiGroupBox4 and listView2
+                const int VERTICAL_ADJUSTMENT = 38; // Constant adjustment
                uiGroupBox4.Location = new Point(uiGroupBox4.Location.X,uiGroupBox4.Location.Y - VERTICAL_ADJUSTMENT);
                uiGroupBox4.Size = new Size(uiGroupBox4.Size.Width,uiGroupBox4.Size.Height + VERTICAL_ADJUSTMENT);
                 listView2.Size = new Size(listView2.Size.Width, listView2.Size.Height + VERTICAL_ADJUSTMENT);
 
-                // 恢复布局更新
+                // Resume layout
                 listView2.ResumeLayout(false);
                uiGroupBox4.ResumeLayout(false);
                 this.ResumeLayout(false);
@@ -3069,7 +3057,7 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                AppendLog($"应用布局失败: {ex.Message}", Color.Red);
+                AppendLog($"Apply layout failed: {ex.Message}", Color.Red);
             }
         }
 
@@ -3077,27 +3065,27 @@ namespace LoveAlways
         {
             try
             {
-                // 挂起布局更新，减少闪烁
+                // Suspend layout
                 this.SuspendLayout();
                uiGroupBox4.SuspendLayout();
                 listView2.SuspendLayout();
 
-                // 恢复 input9, input7 的显示
+                // Restore input9, input7 visibility
                 input9.Visible = true;
                 input7.Visible = true;
 
-                // 恢复原始位置
+                // Restore original location
                 input6.Location = originalinput6Location;
                 button4.Location = originalbutton4Location;
-                // 恢复 checkbox13 到固定位置 (6, 25)
+                // Restore checkbox13 to fixed pos (6, 25)
                 checkbox13.Location = new Point(6, 25);
 
-                // 恢复原始大小和位置
+                // Restore original size and location
                uiGroupBox4.Location = originaluiGroupBox4Location;
                uiGroupBox4.Size = originaluiGroupBox4Size;
                 listView2.Size = originallistView2Size;
 
-                // 恢复布局更新
+                // Resume layout
                 listView2.ResumeLayout(false);
                uiGroupBox4.ResumeLayout(false);
                 this.ResumeLayout(false);
@@ -3106,7 +3094,7 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                AppendLog($"恢复布局失败: {ex.Message}", Color.Red);
+                AppendLog($"Restore layout failed: {ex.Message}", Color.Red);
             }
         }
 
@@ -3128,41 +3116,41 @@ namespace LoveAlways
         private void Select3_SelectedIndexChanged(object sender, EventArgs e)
         {
             string selectedItem = select3.Text;
-            bool isCloudMatch = selectedItem.Contains("云端自动匹配");
-            bool isLocalSelect = selectedItem.Contains("本地选择");
+            bool isCloudMatch = selectedItem.Contains("Cloud Auto Match");
+            bool isLocalSelect = selectedItem.Contains("Local Select");
             
-            // 处理云端自动匹配模式
+            // Handle Cloud Auto Match
             if (isCloudMatch)
             {
-                // 禁用自定义引导文件输入
+                // Disable custom loader input
                 input9.Enabled = false;
                 input8.Enabled = false;
                 input7.Enabled = false;
                 
-                // 显示云端匹配提示
-                input8.Text = "[云端] 自动匹配 Loader";
+                // Show Cloud Match Hint
+                input8.Text = "[Cloud] Auto Match Loader";
                 input9.Text = "";
                 input7.Text = "";
                 
-                // 重置认证模式 (云端会自动检测)
+                // Reset Auth Mode (Cloud detects auto)
                 checkbox17.Checked = false;
                 checkbox19.Checked = false;
                 _authMode = "none";
             }
-            // 处理本地选择模式
+            // Handle Local Select
             else if (isLocalSelect)
             {
-                // 启用自定义引导文件输入
+                // Enable custom loader input
                 input9.Enabled = true;
                 input8.Enabled = true;
                 input7.Enabled = true;
                 
-                // 清空输入框 (显示占位符)
+                // Clear inputs (Show placeholder)
                 input8.Text = "";
                 input9.Text = "";
                 input7.Text = "";
                 
-                // 重置认证模式
+                // Reset Auth Mode
                 checkbox17.Checked = false;
                 checkbox19.Checked = false;
                 _authMode = "none";
@@ -3170,32 +3158,32 @@ namespace LoveAlways
         }
         
         /// <summary>
-        /// 从 EDL 选择项中提取 Loader ID
+        /// Extract Loader ID from EDL selection
         /// </summary>
         private string ExtractEdlLoaderIdFromSelection(string selection)
         {
-            // "[Huawei] 888 (通用)" -> "Huawei_888"
+            // "[Huawei] 888 (Generic)" -> "Huawei_888"
             // "[Meizu] Meizu21Pro" -> "Meizu_Meizu21Pro"
             if (string.IsNullOrEmpty(selection)) return "";
             
-            // 提取品牌和名称
+            // Extract brand and name
             int bracketEnd = selection.IndexOf(']');
             if (bracketEnd < 0) return "";
             
             string brand = selection.Substring(1, bracketEnd - 1);
             string rest = selection.Substring(bracketEnd + 1).Trim();
             
-            // 处理通用 loader
-            if (rest.EndsWith("(通用)"))
+            // Handle Generic loader
+            if (rest.EndsWith("(Generic)") || rest.EndsWith("(通用)"))
             {
-                string chip = rest.Replace("(通用)", "").Trim();
+                string chip = rest.Replace("(Generic)", "").Replace("(通用)", "").Trim();
                 return $"{brand}_{chip}";
             }
             
-            // 处理专用 loader
-            // 从 rest 中提取型号名
+            // Handle Specific loader
+            // Extract model from rest
             string model = rest.Replace($"{brand} ", "").Trim();
-            // 移除芯片信息 (括号部分)
+            // Remove Chip info (Parenthesis)
             int parenIndex = model.IndexOf('(');
             if (parenIndex > 0)
             {
@@ -3206,17 +3194,17 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 从 VIP 选择项中提取平台名称
+        /// Extract Platform Name from VIP Selection
         /// </summary>
         private string ExtractPlatformFromVipSelection(string selection)
         {
             // "[VIP] SM8550 - Snapdragon 8Gen2/8+Gen2" -> "SM8550"
             if (string.IsNullOrEmpty(selection)) return "";
             
-            // 移除 "[VIP] " 前缀
+            // Remove "[VIP] " prefix
             string trimmed = selection.Replace("[VIP] ", "");
             
-            // 取 " - " 之前的部分
+            // Get part before " - "
             int dashIndex = trimmed.IndexOf(" - ");
             if (dashIndex > 0)
             {
@@ -3226,39 +3214,39 @@ namespace LoveAlways
             return trimmed.Trim();
         }
 
-        #region EDL Loader 初始化
+        #region EDL Loader Initialization
         
-        // 缓存 EDL Loader 列表项
+        // Cache EDL Loader items
         private List<string> _edlLoaderItems = null;
         
         /// <summary>
-        /// 初始化 EDL Loader 选择列表 - 云端自动匹配 + 本地选择
+        /// Initialize EDL Loader List - Cloud Auto Match + Local Select
         /// </summary>
         private void InitializeEdlLoaderList()
         {
             try
             {
-                // 清空 Designer 中的默认项
+                // Clear default items in Designer
                 select3.Items.Clear();
                 
-                // 添加选项
-                select3.Items.Add("☁️ 云端自动匹配");
-                select3.Items.Add("📁 本地选择");
+                // Add options
+                select3.Items.Add("☁️ Cloud Auto Match");
+                select3.Items.Add("📁 Local Select");
                 
-                // 设置默认选中云端自动匹配
+                // Set default to Cloud Auto Match
                 select3.SelectedIndex = 0;
                 
-                // 初始化云端服务
+                // Initialize Cloud Service
                 InitializeCloudLoaderService();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(string.Format("加载 Loader 列表异常: {0}", ex.Message));
+                System.Diagnostics.Debug.WriteLine(string.Format("Load Loader List Exception: {0}", ex.Message));
             }
         }
         
         /// <summary>
-        /// 初始化云端 Loader 服务
+        /// Initialize Cloud Loader Service
         /// </summary>
         private void InitializeCloudLoaderService()
         {
@@ -3267,43 +3255,43 @@ namespace LoveAlways
                 msg => AppendLog(msg, Color.Cyan),
                 msg => AppendLog(msg, Color.Gray)
             );
-            // 配置 API 地址 (生产环境)
+            // Config API Address (Production)
             // cloudService.ApiBase = "https://api.xiriacg.top/api";
         }
         
         /// <summary>
-        /// 构建 EDL Loader 列表项 (已废弃 - 使用云端匹配)
+        /// Build EDL Loader Items (Deprecated - Use Cloud Match)
         /// </summary>
-        [Obsolete("使用云端自动匹配替代本地 PAK 资源")]
+        [Obsolete("Use Cloud Auto Match instead of Local PAK")]
         private List<string> BuildEdlLoaderItems()
         {
-            // 不再构建本地 PAK 列表，完全使用云端匹配
+            // No longer build local PAK list, fully use cloud match
             return new List<string>();
         }
         
         /// <summary>
-        /// 获取品牌中文显示名
+        /// Get Brand Display Name
         /// </summary>
         private string GetBrandDisplayName(string brand)
         {
             switch (brand.ToLower())
             {
-                case "huawei": return "华为/荣耀";
-                case "zte": return "中兴/努比亚/红魔";
-                case "xiaomi": return "小米/Redmi";
-                case "blackshark": return "黑鲨";
+                case "huawei": return "Huawei/Honor";
+                case "zte": return "ZTE/Nubia/RedMagic";
+                case "xiaomi": return "Xiaomi/Redmi";
+                case "blackshark": return "BlackShark";
                 case "vivo": return "vivo/iQOO";
-                case "meizu": return "魅族";
-                case "lenovo": return "联想/摩托罗拉";
-                case "samsung": return "三星";
+                case "meizu": return "Meizu";
+                case "lenovo": return "Lenovo/Motorola";
+                case "samsung": return "Samsung";
                 case "nothing": return "Nothing";
-                case "rog": return "华硕ROG";
+                case "rog": return "Asus ROG";
                 case "lg": return "LG";
-                case "smartisan": return "锤子";
-                case "xtc": return "小天才";
+                case "smartisan": return "Smartisan";
+                case "xtc": return "XTC";
                 case "360": return "360";
                 case "bbk": return "BBK";
-                case "royole": return "柔宇";
+                case "royole": return "Royole";
                 case "oplus": return "OPPO/OnePlus/Realme";
                 default: return brand;
             }
@@ -3311,86 +3299,86 @@ namespace LoveAlways
         
         #endregion
 
-        #region Fastboot 模块
+        #region Fastboot Module
 
         private void InitializeFastbootModule()
         {
             try
             {
-                // 设置 fastboot.exe 路径
+                // Set fastboot.exe path
                 string fastbootPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fastboot.exe");
                 FastbootCommand.SetFastbootPath(fastbootPath);
 
-                // 创建 Fastboot UI 控制器
+                // Create Fastboot UI Controller
                 _fastbootController = new FastbootUIController(
                     (msg, color) => AppendLog(msg, color),
                     msg => AppendLogDetail(msg));
 
-                // 设置 listView5 支持复选框
+                // Set listView5 checkable
                 listView5.MultiSelect = true;
                 listView5.CheckBoxes = true;
                 listView5.FullRowSelect = true;
 
-                // 绑定控件 - tabPage3 上的 Fastboot 控件
-                // 注意: 设备信息标签(uiGroupBox3内)与高通模块共用，通过标签页切换来更新
+                // Bind Controls - Fastboot Controls on tabPage3
+                // Note: Device Info Labels (in uiGroupBox3) shared with Qualcomm module, updated by tab switch
                 _fastbootController.BindControls(
-                    deviceComboBox: uiComboBox1,          // 使用全局端口选择下拉框 (共用)
-                    partitionListView: listView5,         // 分区列表
-                    progressBar: uiProcessBar1,           // 总进度条 (共用)
-                    subProgressBar: uiProcessBar2,        // 子进度条 (共用)
-                    commandComboBox: uiComboBox2,         // 快捷命令下拉框 (device, unlock 等)
-                    payloadTextBox: uiTextBox1,           // Payload 路径
-                    outputPathTextBox: input1,            // 输出路径
-                    // 设备信息标签 (uiGroupBox3 - 共用)
-                    brandLabel: uiLabel9,                 // 品牌
-                    chipLabel: uiLabel11,                 // 芯片
-                    modelLabel: uiLabel3,                 // 型号
-                    serialLabel: uiLabel10,               // 序列号
-                    storageLabel: uiLabel13,              // 存储
-                    unlockLabel: uiLabel14,               // 解锁状态
-                    slotLabel: uiLabel12,                 // 槽位 (复用OTA版本标签)
-                    // 时间/速度/操作标签 (共用)
-                    timeLabel: uiLabel6,                  // 时间
-                    speedLabel: uiLabel7,                 // 速度
-                    operationLabel: uiLabel8,             // 当前操作
-                    deviceCountLabel: uiLabel4,           // 设备数量 (复用)
-                    // Checkbox 控件
-                    autoRebootCheckbox: checkbox44,       // 自动重启
-                    switchSlotCheckbox: checkbox41,       // 切换A槽
-                    eraseGoogleLockCheckbox: checkbox43,  // 擦除谷歌锁
-                    keepDataCheckbox: checkbox50,         // 保留数据
-                    fbdFlashCheckbox: checkbox45,         // FBD刷写
-                    unlockBlCheckbox: checkbox22,         // 解锁BL
-                    lockBlCheckbox: checkbox21            // 锁定BL
+                    deviceComboBox: uiComboBox1,          // Use global port combo box (Shared)
+                    partitionListView: listView5,         // Partition List
+                    progressBar: uiProcessBar1,           // Total Progress Bar (Shared)
+                    subProgressBar: uiProcessBar2,        // Sub Progress Bar (Shared)
+                    commandComboBox: uiComboBox2,         // Fast Command Combo (device, unlock, etc)
+                    payloadTextBox: uiTextBox1,           // Payload Path
+                    outputPathTextBox: input1,            // Output Path
+                    // Device Info Labels (uiGroupBox3 - Shared)
+                    brandLabel: uiLabel9,                 // Brand
+                    chipLabel: uiLabel11,                 // Chip
+                    modelLabel: uiLabel3,                 // Model
+                    serialLabel: uiLabel10,               // Serial
+                    storageLabel: uiLabel13,              // Storage
+                    unlockLabel: uiLabel14,               // Unlock State
+                    slotLabel: uiLabel12,                 // Slot (Reuse OTA Version Label)
+                    // Time/Speed/Operation Labels (Shared)
+                    timeLabel: uiLabel6,                  // Time
+                    speedLabel: uiLabel7,                 // Speed
+                    operationLabel: uiLabel8,             // Current Operation
+                    deviceCountLabel: uiLabel4,           // Device Count (Reuse)
+                    // Checkbox Controls
+                    autoRebootCheckbox: checkbox44,       // Auto Reboot
+                    switchSlotCheckbox: checkbox41,       // Switch Slot A
+                    eraseGoogleLockCheckbox: checkbox43,  // Erase FRP
+                    keepDataCheckbox: checkbox50,         // Keep Data
+                    fbdFlashCheckbox: checkbox45,         // FBD Flash
+                    unlockBlCheckbox: checkbox22,         // Unlock BL
+                    lockBlCheckbox: checkbox21            // Lock BL
                 );
 
-                // ========== tabPage3 Fastboot 页面按钮事件 ==========
+                // ========== tabPage3 Fastboot Page Button Events ==========
                 
-                // uiButton11 = 解析Payload (本地文件或云端URL)
+                // uiButton11 = Parse Payload (Local File or Cloud URL)
                 uiButton11.Click += (s, e) => FastbootOpenPayloadDialog();
 
-                // uiButton18 = 读取分区表 (同时读取设备信息)
+                // uiButton18 = Read GPT (Also Read Device Info)
                 uiButton18.Click += async (s, e) => await FastbootReadPartitionTableWithInfoAsync();
 
-                // uiButton19 = 提取镜像 (支持从 Payload 提取，自定义或全部)
+                // uiButton19 = Extract Image (Support Extract from Payload, Custom or All)
                 uiButton19.Click += async (s, e) => await FastbootExtractPartitionsWithOptionsAsync();
 
-                // uiButton20 = 写入分区
+                // uiButton20 = Write Partition
                 uiButton20.Click += async (s, e) => await FastbootFlashPartitionsAsync();
 
-                // uiButton21 = 擦除分区
+                // uiButton21 = Erase Partition
                 uiButton21.Click += async (s, e) => await FastbootErasePartitionsAsync();
 
-                // uiButton22 = 修复FBD (后续实现)
-                uiButton22.Click += (s, e) => AppendLog("FBD 修复功能开发中...", Color.Orange);
+                // uiButton22 = Repair FBD (To be implemented)
+                uiButton22.Click += (s, e) => AppendLog("FBD Repair Feature WIP...", Color.Orange);
 
-                // uiButton10 = 执行 (执行刷机脚本或快捷命令)
+                // uiButton10 = Execute (Execute Flash Script or Quick Command)
                 uiButton10.Click += async (s, e) => await FastbootExecuteAsync();
 
-                // button8 = 浏览 (选择刷机脚本)
+                // button8 = Browse (Select Flash Script)
                 button8.Click += (s, e) => FastbootSelectScript();
 
-                // button9 = 浏览 (左键选择文件，右键选择文件夹)
+                // button9 = Browse (Left Click Select File, Right Click Select Folder)
                 button9.Click += (s, e) => FastbootSelectPayloadFile();
                 button9.MouseUp += (s, e) =>
                 {
@@ -3398,8 +3386,8 @@ namespace LoveAlways
                         FastbootSelectPayloadFolder();
                 };
 
-                // uiTextBox1 = Payload/URL 输入框，支持回车键触发解析
-                uiTextBox1.Watermark = "选择Payload/文件夹 或 输入云端链接 (右键浏览=选择文件夹)";
+                // uiTextBox1 = Payload/URL Input, Support Enter Key to Parse
+                uiTextBox1.Watermark = "Select Payload/Folder or Input Cloud Link (Right Click Browse = Select Folder)";
                 uiTextBox1.KeyDown += (s, e) =>
                 {
                     if (e.KeyCode == Keys.Enter)
@@ -3409,10 +3397,10 @@ namespace LoveAlways
                     }
                 };
 
-                // 修改按钮文字
-                uiButton11.Text = "云端解析";
-                uiButton18.Text = "读取分区表";
-                uiButton19.Text = "提取分区";
+                // Modify Button Text
+                uiButton11.Text = "Cloud Parse";
+                uiButton18.Text = "Read GPT";
+                uiButton19.Text = "Extract";
 
                 // checkbox22 = 解锁BL (手动操作时执行，脚本执行时作为标志)
                 // checkbox21 = 锁定BL (手动操作时执行，脚本执行时作为标志)
@@ -3425,141 +3413,141 @@ namespace LoveAlways
                 // checkbox42 = 分区全选
                 checkbox42.CheckedChanged += (s, e) => FastbootSelectAllPartitions(checkbox42.Checked);
 
-                // listView5 双击选择镜像文件
+                // listView5 Double click to select image file
                 listView5.DoubleClick += (s, e) => FastbootPartitionDoubleClick();
 
-                // select5 = 分区搜索
+                // select5 = Partition Search
                 select5.TextChanged += (s, e) => FastbootSearchPartition();
                 select5.SelectedIndexChanged += (s, e) => { _fbIsSelectingFromDropdown = true; };
 
-                // 注意：不在初始化时启动 Fastboot 设备监控
-                // 只有当用户切换到 Fastboot 标签页时才启动监控
-                // 避免覆盖高通端口列表
+                // Note: Do not start Fastboot Device Monitoring at initialization
+                // Only start when user swtich to Fastboot tab
+                // Avoid overwriting Qualcomm port list
                 // _fastbootController.StartDeviceMonitoring();
 
-                // 绑定标签页切换事件 - 更新右侧设备信息显示
+                // Bind Tab Change Event - Update Right Device Info
                 tabs1.SelectedIndexChanged += OnTabPageChanged;
 
-                AppendLog("Fastboot 模块初始化完成", Color.Gray);
+                AppendLog("Fastboot Module Initialized", Color.Gray);
             }
             catch (Exception ex)
             {
-                AppendLog($"Fastboot 模块初始化失败: {ex.Message}", Color.Red);
+                AppendLog($"Fastboot Module Init Failed: {ex.Message}", Color.Red);
             }
         }
 
         /// <summary>
-        /// 标签页切换事件 - 切换设备信息显示和设备列表
+        /// Tab Changed Event - Switch Device Info and Device List
         /// </summary>
         private void OnTabPageChanged(object sender, EventArgs e)
         {
             try
             {
-                // 获取当前选中的标签页
+                // Get selected tab
                 int selectedIndex = tabs1.SelectedIndex;
                 var selectedTab = tabs1.Pages[selectedIndex];
 
-                // tabPage3 是引导模式 (Fastboot)
+                // tabPage3 is Fastboot
                 if (selectedTab == tabPage3)
                 {
-                    // 切换到 Fastboot 标签页
+                    // Switch to Fastboot Tab
                     _isOnFastbootTab = true;
                     
-                    // 停止其他模块监控
+                    // Stop other monitors
                     _portRefreshTimer?.Stop();
                     _mtkController?.StopPortMonitoring();
                     _spreadtrumController?.StopDeviceMonitor();
                     
-                    // 更新 Fastboot 设备信息
+                    // Update Fastboot Device Info
                     if (_fastbootController != null)
                     {
-                        // 启动 Fastboot 设备监控
+                        // Start Fastboot Monitor
                         _fastbootController.StartDeviceMonitoring();
                         _fastbootController.UpdateDeviceInfoLabels();
                         
-                        // 更新设备计数标签
+                        // Update Device Count
                         int deviceCount = _fastbootController.DeviceCount;
                         if (deviceCount == 0)
-                            uiLabel4.Text = "FB设备：0";
+                            uiLabel4.Text = "FB Dev: 0";
                         else if (deviceCount == 1)
-                            uiLabel4.Text = $"FB设备：已连接";
+                            uiLabel4.Text = $"FB Dev: Connected";
                         else
-                            uiLabel4.Text = $"FB设备：{deviceCount}个";
+                            uiLabel4.Text = $"FB Dev: {deviceCount}";
                     }
                 }
-                // tabPage2 是高通平台 (EDL)
+                // tabPage2 is Qualcomm (EDL)
                 else if (selectedTab == tabPage2)
                 {
-                    // 切换到高通标签页
+                    // Switch to Qualcomm Tab
                     _isOnFastbootTab = false;
                     
-                    // 停止其他模块监控
+                    // Stop other monitors
                     _fastbootController?.StopDeviceMonitoring();
                     _mtkController?.StopPortMonitoring();
                     _spreadtrumController?.StopDeviceMonitor();
                     
-                    // 启动高通端口刷新定时器
+                    // Start Qualcomm Port Refresh
                     _portRefreshTimer?.Start();
                     
-                    // 刷新高通端口列表到下拉框
+                    // Refresh Qualcomm Ports to ComboBox
                     _qualcommController?.RefreshPorts(silent: true);
                     
-                    // 恢复高通设备信息
+                    // Restore Qualcomm Device Info
                     if (_qualcommController != null && _qualcommController.IsConnected)
                     {
-                        // 高通控制器会自动更新，这里不需要额外操作
+                        // Qualcomm controller auto updates, no extra action needed
                     }
                     else
                     {
-                        // 重置为等待连接状态
-                        uiLabel9.Text = "品牌：等待连接";
-                        uiLabel11.Text = "芯片：等待连接";
-                        uiLabel3.Text = "型号：等待连接";
-                        uiLabel10.Text = "序列号：等待连接";
-                        uiLabel13.Text = "存储：等待连接";
-                        uiLabel14.Text = "型号：等待连接";
-                        uiLabel12.Text = "OTA：等待连接";
+                        // Reset to Wait Connection
+                        uiLabel9.Text = "Brand: Waiting";
+                        uiLabel11.Text = "Chip: Waiting";
+                        uiLabel3.Text = "Model: Waiting";
+                        uiLabel10.Text = "Serial: Waiting";
+                        uiLabel13.Text = "Storage: Waiting";
+                        uiLabel14.Text = "State: Waiting";
+                        uiLabel12.Text = "OTA: Waiting";
                     }
                 }
-                // tabPage4 是联发科平台 (MTK)
+                // tabPage4 is MTK
                 else if (selectedTab == tabPage4)
                 {
-                    // 切换到 MTK 标签页
+                    // Switch to MTK Tab
                     _isOnFastbootTab = false;
                     
-                    // 停止其他模块监控
+                    // Stop other monitors
                     _fastbootController?.StopDeviceMonitoring();
                     _portRefreshTimer?.Stop();
                     _spreadtrumController?.StopDeviceMonitor();
                     
-                    // 启动 MTK 端口监控
+                    // Start MTK Port Monitor
                     _mtkController?.StartPortMonitoring();
                     
-                    // 更新右侧信息面板为 MTK 专用
+                    // Update Right Info Panel for MTK
                     UpdateMtkInfoPanel();
                 }
-                // tabPage5 是展讯平台 (Spreadtrum)
+                // tabPage5 is Spreadtrum
                 else if (selectedTab == tabPage5)
                 {
-                    // 切换到展讯标签页
+                    // Switch to Spreadtrum Tab
                     _isOnFastbootTab = false;
                     
-                    // 停止其他模块监控
+                    // Stop other monitors
                     _fastbootController?.StopDeviceMonitoring();
                     _portRefreshTimer?.Stop();
                     _mtkController?.StopPortMonitoring();
                     
-                    // 启动展讯设备监控并刷新设备列表
+                    // Start SPD Device Monitor and Refresh
                     _spreadtrumController?.RefreshDevices();
                     
-                    // 更新右侧信息面板为展讯专用
+                    // Update Right Info Panel for SPD
                     UpdateSprdInfoPanel();
                 }
                 else
                 {
-                    // 其他标签页
+                    // Other Tabs
                     _isOnFastbootTab = false;
-                    // 停止所有模块监控
+                    // Stop All Monitors
                     _fastbootController?.StopDeviceMonitoring();
                     _mtkController?.StopPortMonitoring();
                     _spreadtrumController?.StopDeviceMonitor();
@@ -3567,26 +3555,26 @@ namespace LoveAlways
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"标签页切换异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Tab Switch Exception: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Fastboot 云端链接解析
+        /// Fastboot Cloud Link Parse
         /// </summary>
         private void FastbootOpenPayloadDialog()
         {
-            // 如果文本框中已有内容，直接解析
+            // If textbox has content, parse it directly
             if (!string.IsNullOrWhiteSpace(uiTextBox1.Text))
             {
                 FastbootParsePayloadInput(uiTextBox1.Text.Trim());
                 return;
             }
 
-            // 文本框为空时，弹出输入框
+            // Textbox empty, show input box
             string url = Microsoft.VisualBasic.Interaction.InputBox(
-                "请输入 OTA 下载链接:\n\n支持 OPPO/OnePlus/Realme 官方链接\n或直接的 ZIP/Payload 链接",
-                "云端链接解析",
+                "Please Enter OTA Download Link:\n\nSupport OnePlus/OPPO/Realme Official Link\nor direct ZIP/Payload Link",
+                "Cloud Link Parse",
                 "");
 
             if (!string.IsNullOrWhiteSpace(url))
@@ -3597,7 +3585,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 读取分区表 (同时读取设备信息)
+        /// Fastboot Read GPT (Also Read Device Info)
         /// </summary>
         private async Task FastbootReadPartitionTableWithInfoAsync()
         {
@@ -3605,42 +3593,42 @@ namespace LoveAlways
 
             if (!_fastbootController.IsConnected)
             {
-                AppendLog("正在连接 Fastboot 设备...", Color.Blue);
+                AppendLog("Connecting Fastboot device...", Color.Blue);
                 bool connected = await _fastbootController.ConnectAsync();
                 if (!connected)
                 {
-                    AppendLog("连接失败，请检查设备是否处于 Fastboot 模式", Color.Red);
+                    AppendLog("Connection failed, please check if device is in Fastboot mode", Color.Red);
                     return;
                 }
             }
 
-            // 读取分区表和设备信息
+            // Read GPT and Device Info
             await _fastbootController.ReadPartitionTableAsync();
         }
 
         /// <summary>
-        /// Fastboot 提取分区 (提取已勾选的分区)
+        /// Fastboot Extract Partitions (Extract Checked Partitions)
         /// </summary>
         private async Task FastbootExtractPartitionsWithOptionsAsync()
         {
             if (_fastbootController == null) return;
 
-            // 检查是否已加载 Payload (本地或云端)
+            // Check if Payload loaded (Local or Cloud)
             bool hasLocalPayload = _fastbootController.PayloadSummary != null;
             bool hasRemotePayload = _fastbootController.IsRemotePayloadLoaded;
 
             if (!hasLocalPayload && !hasRemotePayload)
             {
-                AppendLog("请先解析 Payload (本地文件或云端链接)", Color.Orange);
+                AppendLog("Please parse Payload first (Local file or Cloud Link)", Color.Orange);
                 return;
             }
 
-            // 让用户选择保存目录
+            // Let user select save directory
             string outputDir;
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = "选择分区提取保存目录";
-                // 如果之前有选过目录，作为默认路径
+                fbd.Description = "Select Partition Extraction Directory";
+                // Use default path if selected before
                 if (!string.IsNullOrEmpty(input1.Text) && Directory.Exists(input1.Text))
                 {
                     fbd.SelectedPath = input1.Text;
@@ -3657,7 +3645,7 @@ namespace LoveAlways
                 }
             }
 
-            // 根据加载的类型选择提取方法
+            // Select extract method based on loaded type
             if (hasRemotePayload)
             {
                 await _fastbootController.ExtractSelectedRemotePartitionsAsync(outputDir);
@@ -3669,7 +3657,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 读取设备信息 (保留兼容)
+        /// Fastboot Read Device Info (Keep Compatibility)
         /// </summary>
         private async Task FastbootReadInfoAsync()
         {
@@ -3677,7 +3665,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 读取分区表 (保留兼容)
+        /// Fastboot Read GPT (Keep Compatibility)
         /// </summary>
         private async Task FastbootReadPartitionTableAsync()
         {
@@ -3685,9 +3673,9 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 刷写分区
-        /// 支持: Payload.bin / URL 解析 / 已提取文件夹 / 普通镜像
-        /// 刷写模式: 欧加刷写 / 纯 FBD / AB 通刷 / 普通刷写
+        /// Fastboot Flash Partition
+        /// Support: Payload.bin / URL Parse / Extracted Folder / Common Image
+        /// Flash Mode: OnePlus/OPPO Flash / Pure FBD / AB Flash / Normal Flash
         /// </summary>
         private async Task FastbootFlashPartitionsAsync()
         {
@@ -3695,44 +3683,44 @@ namespace LoveAlways
 
             if (!_fastbootController.IsConnected)
             {
-                AppendLog("请先连接 Fastboot 设备", Color.Orange);
+                AppendLog("Please connect Fastboot device first", Color.Orange);
                 return;
             }
 
-            // 检查刷写模式选项
-            bool useOugaMode = checkbox7.Checked;      // 欧加刷写 = OnePlus/OPPO 主流程
-            bool usePureFbdMode = checkbox45.Checked;  // FBD刷写 = 纯 FBD 模式
-            bool switchSlotA = checkbox41.Checked;     // 切换A槽 = 刷写完成后执行 set_active a
-            bool clearData = !checkbox50.Checked;      // 保留数据的反义
-            bool eraseFrp = checkbox43.Checked;        // 擦除谷歌锁
-            bool autoReboot = checkbox44.Checked;      // 自动重启
+            // Check Flash Mode Options
+            bool useOugaMode = checkbox7.Checked;      // Ouga Flash = OnePlus/OPPO Main Flow
+            bool usePureFbdMode = checkbox45.Checked;  // FBD Flash = Pure FBD Mode
+            bool switchSlotA = checkbox41.Checked;     // Switch Slot A = set_active a after flash
+            bool clearData = !checkbox50.Checked;      // Opposite of Keep Data
+            bool eraseFrp = checkbox43.Checked;        // Erase FRP
+            bool autoReboot = checkbox44.Checked;      // Auto Reboot
 
-            // 只有勾选"欧加刷写"或"FBD刷写"时，才使用 OnePlus 刷写流程
-            // "切换A槽"不再触发 OnePlus 流程，而是在普通刷写完成后执行 set_active
+            // Only use OnePlus flow when "Ouga Flash" or "FBD Flash" is checked
+            // "Switch Slot A" no longer triggers OnePlus flow, executes set_active after normal flash
             if (useOugaMode || usePureFbdMode)
             {
-                // OnePlus/OPPO 刷写模式 (支持 Payload/文件夹/镜像)
-                string modeDesc = usePureFbdMode ? "纯 FBD" : "欧加刷写";
-                AppendLog($"使用 OnePlus/OPPO {modeDesc}模式", Color.Blue);
+                // OnePlus/OPPO Flash Mode (Support Payload/Folder/Image)
+                string modeDesc = usePureFbdMode ? "Pure FBD" : "OnePlus/OPPO";
+                AppendLog($"Using OnePlus/OPPO {modeDesc} Mode", Color.Blue);
                 
-                // 构建刷写分区列表 (支持 Payload 分区、解包文件夹、脚本任务、普通镜像)
+                // Build Flash Partition List (Support Payload Partitions, Unpacked Folder, Script Tasks, Normal Images)
                 var partitions = _fastbootController.BuildOnePlusFlashPartitions();
                 if (partitions.Count == 0)
                 {
-                    AppendLog("没有可刷写的分区（请解析 Payload 或选择镜像文件）", Color.Orange);
+                    AppendLog("No flashable partitions (Please Parse Payload or Select Image Files)", Color.Orange);
                     return;
                 }
 
-                // 显示分区来源统计
+                // Show Partition Source Stats
                 int payloadCount = partitions.Count(p => p.IsPayloadPartition);
                 int fileCount = partitions.Count - payloadCount;
                 if (payloadCount > 0)
-                    AppendLog($"已选择 {partitions.Count} 个分区 (Payload: {payloadCount}, 文件: {fileCount})", Color.Blue);
+                    AppendLog($"Selected {partitions.Count} Partitions (Payload: {payloadCount}, File: {fileCount})", Color.Blue);
 
-                // 构建刷写选项 (欧加模式默认使用 A 槽位)
+                // Build Flash Options (Ouga Mode defaults to Slot A)
                 var options = new LoveAlways.Fastboot.UI.FastbootUIController.OnePlusFlashOptions
                 {
-                    ABFlashMode = false,  // 不再使用 AB 通刷模式
+                    ABFlashMode = false,  // Deprecated AB Flash Mode
                     PureFBDMode = usePureFbdMode,
                     PowerFlashMode = false,
                     ClearData = clearData,
@@ -3741,37 +3729,37 @@ namespace LoveAlways
                     TargetSlot = "a"
                 };
 
-                // 执行 OnePlus 刷写流程 (自动提取 Payload 分区)
+                // Execute OnePlus Flash Flow (Auto Extract Payload Partitions)
                 await _fastbootController.ExecuteOnePlusFlashAsync(partitions, options);
             }
             else
             {
-                // 未勾选欧加/FBD 模式时，使用普通刷写流程
+                // Use Normal Flash Flow when Ouga/FBD Mode not checked
                 bool hasLocalPayload = _fastbootController.PayloadSummary != null;
                 bool hasRemotePayload = _fastbootController.IsRemotePayloadLoaded;
 
                 if (hasRemotePayload)
                 {
-                    // 云端 Payload 刷写 (边下载边刷写)
-                    AppendLog("使用云端 Payload 普通刷写模式", Color.Blue);
+                    // Cloud Payload Flash (Download and Flash)
+                    AppendLog("Using Cloud Payload Normal Flash Mode", Color.Blue);
                     await _fastbootController.FlashFromRemotePayloadAsync();
                 }
                 else if (hasLocalPayload)
                 {
-                    // 本地 Payload 刷写
-                    AppendLog("使用本地 Payload 普通刷写模式", Color.Blue);
+                    // Local Payload Flash
+                    AppendLog("Using Local Payload Normal Flash Mode", Color.Blue);
                     await _fastbootController.FlashFromPayloadAsync();
                 }
                 else
                 {
-                    // 普通刷写 (需要选择镜像文件)
+                    // Normal Flash (Need select image files)
                     await _fastbootController.FlashSelectedPartitionsAsync();
                 }
             }
         }
 
         /// <summary>
-        /// Fastboot 擦除分区
+        /// Fastboot Erase Partition
         /// </summary>
         private async Task FastbootErasePartitionsAsync()
         {
@@ -3779,7 +3767,7 @@ namespace LoveAlways
 
             if (!_fastbootController.IsConnected)
             {
-                AppendLog("请先连接 Fastboot 设备", Color.Orange);
+                AppendLog("Please connect Fastboot device first", Color.Orange);
                 return;
             }
 
@@ -3787,7 +3775,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 执行刷机脚本或快捷命令
+        /// Fastboot Execute Flash Script or Quick Command
         /// </summary>
         private async Task FastbootExecuteAsync()
         {
@@ -3799,39 +3787,39 @@ namespace LoveAlways
                 if (!connected) return;
             }
 
-            // 优先级 1: 如果选中了快捷命令，直接执行命令
+            // Priority 1: If quick command selected, execute command
             if (_fastbootController.HasSelectedCommand())
             {
                 await _fastbootController.ExecuteSelectedCommandAsync();
             }
-            // 优先级 2: 如果有加载的刷机脚本任务，执行刷机脚本 (优先于 Payload)
+            // Priority 2: If flash script task loaded, execute flash script (Higher priority than Payload)
             else if (_fastbootController.FlashTasks != null && _fastbootController.FlashTasks.Count > 0)
             {
-                // 读取用户选项
-                bool keepData = checkbox50.Checked;   // 保留数据
-                bool lockBl = checkbox21.Checked;     // 锁定BL
+                // Read user options
+                bool keepData = checkbox50.Checked;   // Keep Data
+                bool lockBl = checkbox21.Checked;     // Lock BL
 
                 await _fastbootController.ExecuteFlashScriptAsync(keepData, lockBl);
             }
-            // 优先级 3: 如果有加载的 Payload，执行 Payload 刷写
+            // Priority 3: If Payload loaded, execute Payload Flash
             else if (_fastbootController.IsPayloadLoaded)
             {
                 await _fastbootController.FlashFromPayloadAsync();
             }
-            // 优先级 4: 如果勾选了分区且有镜像文件，直接写入分区
+            // Priority 4: If partitions checked and have images, execute flash selected partitions
             else if (_fastbootController.HasSelectedPartitionsWithFiles())
             {
                 await _fastbootController.FlashSelectedPartitionsAsync();
             }
             else
             {
-                // 什么都没选，提示用户
-                AppendLog("请选择快捷命令、加载刷机脚本或勾选分区后再执行", Color.Orange);
+                // Nothing selected, prompt user
+                AppendLog("Please select Quick Command, Load Flash Script, or Check Partitions before Execute", Color.Orange);
             }
         }
 
         /// <summary>
-        /// Fastboot 执行快捷命令
+        /// Fastboot Execute Quick Command
         /// </summary>
         private async Task FastbootExecuteCommandAsync()
         {
@@ -3847,26 +3835,26 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 提取分区 (从 Payload 提取，支持本地和云端)
+        /// Fastboot Extract Partitions (From Payload, Support Local and Cloud)
         /// </summary>
         private async Task FastbootExtractPartitionsAsync()
         {
-            // 直接调用带选项的方法
+            // Call method with options directly
             await FastbootExtractPartitionsWithOptionsAsync();
         }
 
         /// <summary>
-        /// Fastboot 选择输出路径
+        /// Fastboot Select Output Path
         /// </summary>
         private void FastbootSelectOutputPath()
         {
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = "选择输出目录";
+                fbd.Description = "Select Output Directory";
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     input1.Text = fbd.SelectedPath;
-                    AppendLog($"输出路径: {fbd.SelectedPath}", Color.Blue);
+                    AppendLog($"Output Path: {fbd.SelectedPath}", Color.Blue);
                 }
             }
         }
@@ -3877,11 +3865,12 @@ namespace LoveAlways
         private void FastbootSelectPayloadFile()
         {
             // 弹出选择对话框
+            // 弹出choose对话框
             var result = MessageBox.Show(
-                "请选择加载类型：\n\n" +
-                "「是」选择 Payload/脚本 文件\n" +
-                "「否」选择已提取的文件夹",
-                "选择类型",
+                "Please Select load type：\n\n" +
+                "「yes」choose Payload/use file\n" +
+                "「no」Choose the extracted folder",
+                "choose type",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
 
@@ -3890,8 +3879,8 @@ namespace LoveAlways
                 // 选择文件
                 using (var ofd = new OpenFileDialog())
                 {
-                    ofd.Title = "选择 Payload 或刷机脚本";
-                    ofd.Filter = "Payload|*.bin;*.zip|刷机脚本|*.bat;*.sh;*.cmd|所有文件|*.*";
+                    ofd.Title = "Select Payload or Flash Script";
+                    ofd.Filter = "Payload|*.bin;*.zip|Flash Script|*.bat;*.sh;*.cmd|All Files|*.*";
                     if (ofd.ShowDialog() == DialogResult.OK)
                     {
                         uiTextBox1.Text = ofd.FileName;
@@ -3907,13 +3896,13 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 选择已提取的文件夹
+        /// Fastboot Select Extracted Folder
         /// </summary>
         private void FastbootSelectPayloadFolder()
         {
             using (var fbd = new FolderBrowserDialog())
             {
-                fbd.Description = "选择已提取的固件文件夹 (包含 .img 文件)";
+                fbd.Description = "Select Extracted Firmware Folder (Contains .img files)";
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     uiTextBox1.Text = fbd.SelectedPath;
@@ -3923,7 +3912,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 解析 Payload 输入 (支持本地文件、文件夹和 URL)
+        /// Parse Payload Input (Support Local File, Folder and URL)
         /// </summary>
         private void FastbootParsePayloadInput(string input)
         {
@@ -3931,47 +3920,47 @@ namespace LoveAlways
 
             input = input.Trim();
 
-            // 判断是 URL、文件还是文件夹
+            // Check if URL, File or Folder
             if (input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                 input.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                // URL - 云端解析
-                AppendLog($"检测到云端 URL，开始解析...", Color.Blue);
+                // URL - Cloud Parse
+                AppendLog($"Cloud URL detected, starting parse...", Color.Blue);
                 _ = FastbootLoadPayloadFromUrlAsync(input);
             }
             else if (Directory.Exists(input))
             {
-                // 已提取的文件夹
-                AppendLog($"已选择文件夹: {input}", Color.Blue);
+                // Extracted Folder
+                AppendLog($"Folder Selected: {input}", Color.Blue);
                 _fastbootController?.LoadExtractedFolder(input);
             }
             else if (File.Exists(input))
             {
-                // 本地文件
-                AppendLog($"已选择: {Path.GetFileName(input)}", Color.Blue);
+                // Local File
+                AppendLog($"Selected: {Path.GetFileName(input)}", Color.Blue);
 
                 string ext = Path.GetExtension(input).ToLowerInvariant();
                 string fileName = Path.GetFileName(input).ToLowerInvariant();
 
                 if (ext == ".bat" || ext == ".sh" || ext == ".cmd")
                 {
-                    // 刷机脚本
+                    // Flash Script
                     FastbootLoadScript(input);
                 }
                 else if (ext == ".bin" || ext == ".zip" || fileName == "payload.bin")
                 {
-                    // Payload 文件
+                    // Payload File
                     _ = FastbootLoadPayloadAsync(input);
                 }
             }
             else
             {
-                AppendLog($"无效的输入: 文件/文件夹不存在或 URL 格式错误", Color.Red);
+                AppendLog($"Invalid Input: File/Folder not exist or URL Invalid", Color.Red);
             }
         }
 
         /// <summary>
-        /// Fastboot 加载 Payload 文件
+        /// Fastboot Load Payload File
         /// </summary>
         private async Task FastbootLoadPayloadAsync(string payloadPath)
         {
@@ -3981,20 +3970,20 @@ namespace LoveAlways
             
             if (success)
             {
-                // 更新输出路径为 Payload 所在目录
+                // Update output path to Payload directory
                 input1.Text = Path.GetDirectoryName(payloadPath);
                 
-                // 显示 Payload 摘要信息
+                // Show Payload Summary
                 var summary = _fastbootController.PayloadSummary;
                 if (summary != null)
                 {
-                    AppendLog($"[Payload] 分区数: {summary.PartitionCount}, 总大小: {summary.TotalSizeFormatted}", Color.Blue);
+                    AppendLog($"[Payload] Partitions: {summary.PartitionCount}, Total Size: {summary.TotalSizeFormatted}", Color.Blue);
                 }
             }
         }
 
         /// <summary>
-        /// Fastboot 从 URL 加载云端 Payload
+        /// Fastboot Load Cloud Payload From URL
         /// </summary>
         private async Task FastbootLoadPayloadFromUrlAsync(string url)
         {
@@ -4004,38 +3993,38 @@ namespace LoveAlways
             
             if (success)
             {
-                // 显示远程 Payload 摘要信息
+                // Show Remote Payload Summary
                 var summary = _fastbootController.RemotePayloadSummary;
                 if (summary != null)
                 {
-                    AppendLog($"[云端Payload] 分区数: {summary.PartitionCount}, 文件大小: {summary.TotalSizeFormatted}", Color.Blue);
+                    AppendLog($"[Cloud Payload] Partitions: {summary.PartitionCount}, File Size: {summary.TotalSizeFormatted}", Color.Blue);
                 }
             }
         }
 
         /// <summary>
-        /// Fastboot 选择刷机脚本文件
+        /// Fastboot Select Flash Script File
         /// </summary>
         private void FastbootSelectScript()
         {
             using (var ofd = new OpenFileDialog())
             {
-                ofd.Title = "选择刷机脚本 (flash_all.bat)";
-                ofd.Filter = "刷机脚本|*.bat;*.sh;*.cmd|所有文件|*.*";
+                ofd.Title = "Select Flash Script (flash_all.bat)";
+                ofd.Filter = "Flash Script|*.bat;*.sh;*.cmd|All Files|*.*";
                 
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     input1.Text = ofd.FileName;
-                    AppendLog($"已选择脚本: {Path.GetFileName(ofd.FileName)}", Color.Blue);
+                    AppendLog($"Script Selected: {Path.GetFileName(ofd.FileName)}", Color.Blue);
                     
-                    // 加载脚本
+                    // Load Script
                     FastbootLoadScript(ofd.FileName);
                 }
             }
         }
 
         /// <summary>
-        /// Fastboot 加载刷机脚本
+        /// Fastboot Load Flash Script
         /// </summary>
         private void FastbootLoadScript(string scriptPath)
         {
@@ -4045,49 +4034,49 @@ namespace LoveAlways
             
             if (success)
             {
-                // 更新输出路径为脚本所在目录
+                // Update output path to script directory
                 input1.Text = Path.GetDirectoryName(scriptPath);
 
-                // 根据脚本类型自动勾选对应选项
+                // Auto Select Options based on script
                 AutoSelectOptionsFromScript(scriptPath);
             }
         }
 
         /// <summary>
-        /// 根据脚本类型自动勾选 UI 选项
+        /// Auto Check UI Options based on Script Type
         /// </summary>
         private void AutoSelectOptionsFromScript(string scriptPath)
         {
             string fileName = Path.GetFileName(scriptPath).ToLowerInvariant();
 
-            // 重置所有相关选项
-            checkbox50.Checked = false;  // 保留数据
-            checkbox21.Checked = false;  // 锁定BL
+            // Reset Options
+            checkbox50.Checked = false;  // Keep Data
+            checkbox21.Checked = false;  // Lock BL
 
-            // 根据脚本名称判断类型
+            // Check script name for type
             if (fileName.Contains("except_storage") || fileName.Contains("except-storage") || 
                 fileName.Contains("keep_data") || fileName.Contains("keepdata"))
             {
-                // 保留数据刷机脚本
+                // Keep Data Script
                 checkbox50.Checked = true;
-                AppendLog("检测到保留数据脚本，已勾选「保留数据」", Color.Blue);
+                AppendLog("Keep Data Script detected, checked 'Keep Data'", Color.Blue);
             }
             else if (fileName.Contains("_lock") || fileName.Contains("-lock") || 
                      fileName.EndsWith("lock.bat") || fileName.EndsWith("lock.sh"))
             {
-                // 锁定BL刷机脚本
+                // Lock BL Script
                 checkbox21.Checked = true;
-                AppendLog("检测到锁定BL脚本，已勾选「锁定BL」", Color.Blue);
+                AppendLog("Lock BL Script detected, checked 'Lock BL'", Color.Blue);
             }
             else
             {
-                // 普通刷机脚本 (flash_all.bat)
-                AppendLog("普通刷机脚本，将清除所有数据", Color.Orange);
+                // Normal Flash Script
+                AppendLog("Normal Flash Script, will wipe all data", Color.Orange);
             }
         }
 
         /// <summary>
-        /// Fastboot 分区全选/取消全选
+        /// Fastboot Select All/None Partitions
         /// </summary>
         private void FastbootSelectAllPartitions(bool selectAll)
         {
@@ -4098,7 +4087,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Fastboot 分区双击选择镜像
+        /// Fastboot Partition Double Click Select Image
         /// </summary>
         private void FastbootPartitionDoubleClick()
         {
@@ -4108,18 +4097,18 @@ namespace LoveAlways
             _fastbootController?.SelectImageForPartition(selectedItem);
         }
 
-        // Fastboot 分区搜索相关变量
+        // Fastboot Partition Search Variables
         private string _fbLastSearchKeyword = "";
         private List<ListViewItem> _fbSearchMatches = new List<ListViewItem>();
         private int _fbCurrentMatchIndex = 0;
         private bool _fbIsSelectingFromDropdown = false;
 
         /// <summary>
-        /// Fastboot 分区搜索
+        /// Fastboot Partition Search
         /// </summary>
         private void FastbootSearchPartition()
         {
-            // 如果是从下拉选择触发的，直接定位
+            // If triggered from dropdown selection, locate directly
             if (_fbIsSelectingFromDropdown)
             {
                 _fbIsSelectingFromDropdown = false;
@@ -4133,7 +4122,7 @@ namespace LoveAlways
 
             string keyword = select5.Text?.Trim()?.ToLower() ?? "";
             
-            // 如果搜索框为空，重置所有高亮
+            // If search box empty, reset highlights
             if (string.IsNullOrEmpty(keyword))
             {
                 FastbootResetPartitionHighlights();
@@ -4143,7 +4132,7 @@ namespace LoveAlways
                 return;
             }
             
-            // 如果关键词相同，跳转到下一个匹配项
+            // If keyword same, jump to next match
             if (keyword == _fbLastSearchKeyword && _fbSearchMatches.Count > 1)
             {
                 FastbootJumpToNextMatch();
@@ -4154,7 +4143,7 @@ namespace LoveAlways
             _fbSearchMatches.Clear();
             _fbCurrentMatchIndex = 0;
             
-            // 收集匹配的分区名称用于下拉建议
+            // Collect matching partition names for suggestions
             var suggestions = new List<string>();
             
             listView5.BeginUpdate();
@@ -4165,11 +4154,11 @@ namespace LoveAlways
                 
                 if (partName.Contains(keyword))
                 {
-                    // 高亮匹配的项
+                    // Highlight matched item
                     item.BackColor = Color.LightYellow;
                     _fbSearchMatches.Add(item);
                     
-                    // 添加到建议列表
+                    // Add to suggestion list
                     if (!suggestions.Contains(item.SubItems[0].Text))
                     {
                         suggestions.Add(item.SubItems[0].Text);
@@ -4183,10 +4172,10 @@ namespace LoveAlways
             
             listView5.EndUpdate();
             
-            // 更新下拉建议列表
+            // Update suggestion list
             FastbootUpdateSearchSuggestions(suggestions);
             
-            // 滚动到第一个匹配项
+            // Scroll to first match
             if (_fbSearchMatches.Count > 0)
             {
                 _fbSearchMatches[0].Selected = true;
@@ -4199,16 +4188,16 @@ namespace LoveAlways
         {
             if (_fbSearchMatches.Count == 0) return;
             
-            // 取消当前选中项的选中状态
+            // Deselect current item
             if (_fbCurrentMatchIndex < _fbSearchMatches.Count)
             {
                 _fbSearchMatches[_fbCurrentMatchIndex].Selected = false;
             }
             
-            // 移动到下一个
+            // Move to next
             _fbCurrentMatchIndex = (_fbCurrentMatchIndex + 1) % _fbSearchMatches.Count;
             
-            // 选中并滚动到新的匹配项
+            // Select and scroll to new match
             _fbSearchMatches[_fbCurrentMatchIndex].Selected = true;
             _fbSearchMatches[_fbCurrentMatchIndex].EnsureVisible();
         }
@@ -4254,220 +4243,220 @@ namespace LoveAlways
 
         #endregion
 
-        #region 快捷操作 (设备管理器)
+        #region Quick Operations (Device Manager)
         
         /// <summary>
-        /// 快捷重启系统 (优先 Fastboot，备选 ADB)
+        /// Quick Reboot System (Priority Fastboot, fallback ADB)
         /// </summary>
         private async Task QuickRebootSystemAsync()
         {
-            AppendLog("执行: 重启系统...", Color.Cyan);
+            AppendLog("Executing: Reboot System...", Color.Cyan);
             
-            // 优先尝试 Fastboot
+            // Priority Fastboot
             if (_fastbootController != null && _fastbootController.IsConnected)
             {
                 bool ok = await _fastbootController.RebootAsync();
                 if (ok)
                 {
-                    AppendLog("Fastboot: 重启成功", Color.Green);
+                    AppendLog("Fastboot: Reboot Success", Color.Green);
                     return;
                 }
             }
             
-            // 备选 ADB
+            // Fallback ADB
             var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootAsync();
             if (result.Success)
-                AppendLog("ADB: 重启成功", Color.Green);
+                AppendLog("ADB: Reboot Success", Color.Green);
             else
-                AppendLog($"重启失败: {result.Error}", Color.Red);
+                AppendLog($"Reboot Failed: {result.Error}", Color.Red);
         }
         
         /// <summary>
-        /// 快捷重启到 Bootloader (优先 Fastboot，备选 ADB)
+        /// Quick Reboot to Bootloader (Priority Fastboot, fallback ADB)
         /// </summary>
         private async Task QuickRebootBootloaderAsync()
         {
-            AppendLog("执行: 重启到 Fastboot...", Color.Cyan);
+            AppendLog("Executing: Reboot to Fastboot...", Color.Cyan);
             
-            // 优先尝试 Fastboot
+            // Priority Fastboot
             if (_fastbootController != null && _fastbootController.IsConnected)
             {
                 bool ok = await _fastbootController.RebootBootloaderAsync();
                 if (ok)
                 {
-                    AppendLog("Fastboot: 重启到 Bootloader 成功", Color.Green);
+                    AppendLog("Fastboot: Reboot to Bootloader Success", Color.Green);
                     return;
                 }
             }
             
-            // 备选 ADB
+            // Fallback ADB
             var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootBootloaderAsync();
             if (result.Success)
-                AppendLog("ADB: 重启到 Bootloader 成功", Color.Green);
+                AppendLog("ADB: Reboot to Bootloader Success", Color.Green);
             else
-                AppendLog($"重启失败: {result.Error}", Color.Red);
+                AppendLog($"Reboot Failed: {result.Error}", Color.Red);
         }
         
         /// <summary>
-        /// 快捷重启到 Fastbootd (优先 Fastboot，备选 ADB)
+        /// Quick Reboot to Fastbootd (Priority Fastboot, fallback ADB)
         /// </summary>
         private async Task QuickRebootFastbootdAsync()
         {
-            AppendLog("执行: 重启到 Fastbootd...", Color.Cyan);
+            AppendLog("Executing: Reboot to Fastbootd...", Color.Cyan);
             
-            // 优先尝试 Fastboot
+            // Priority Fastboot
             if (_fastbootController != null && _fastbootController.IsConnected)
             {
                 bool ok = await _fastbootController.RebootFastbootdAsync();
                 if (ok)
                 {
-                    AppendLog("Fastboot: 重启到 Fastbootd 成功", Color.Green);
+                    AppendLog("Fastboot: Reboot to Fastbootd Success", Color.Green);
                     return;
                 }
             }
             
-            // 备选 ADB
+            // Fallback ADB
             var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootFastbootAsync();
             if (result.Success)
-                AppendLog("ADB: 重启到 Fastbootd 成功", Color.Green);
+                AppendLog("ADB: Reboot to Fastbootd Success", Color.Green);
             else
-                AppendLog($"重启失败: {result.Error}", Color.Red);
+                AppendLog($"Reboot Failed: {result.Error}", Color.Red);
         }
         
         /// <summary>
-        /// 快捷重启到 Recovery (优先 Fastboot，备选 ADB)
+        /// Quick Reboot to Recovery (Priority Fastboot, fallback ADB)
         /// </summary>
         private async Task QuickRebootRecoveryAsync()
         {
-            AppendLog("执行: 重启到 Recovery...", Color.Cyan);
+            AppendLog("Executing: Reboot to Recovery...", Color.Cyan);
             
-            // 优先尝试 Fastboot
+            // Priority Fastboot
             if (_fastbootController != null && _fastbootController.IsConnected)
             {
                 bool ok = await _fastbootController.RebootRecoveryAsync();
                 if (ok)
                 {
-                    AppendLog("Fastboot: 重启到 Recovery 成功", Color.Green);
+                    AppendLog("Fastboot: Reboot to Recovery Success", Color.Green);
                     return;
                 }
             }
             
-            // 备选 ADB
+            // Fallback ADB
             var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootRecoveryAsync();
             if (result.Success)
-                AppendLog("ADB: 重启到 Recovery 成功", Color.Green);
+                AppendLog("ADB: Reboot to Recovery Success", Color.Green);
             else
-                AppendLog($"重启失败: {result.Error}", Color.Red);
+                AppendLog($"Reboot Failed: {result.Error}", Color.Red);
         }
         
         /// <summary>
-        /// MI踢EDL - Fastboot OEM EDL (仅限小米设备)
+        /// MI Reboot EDL - Fastboot OEM EDL (Xiaomi Only)
         /// </summary>
         private async Task QuickMiRebootEdlAsync()
         {
-            AppendLog("执行: MI踢EDL (fastboot oem edl)...", Color.Cyan);
+            AppendLog("Executing: MI Reboot EDL (fastboot oem edl)...", Color.Cyan);
             
             if (_fastbootController == null || !_fastbootController.IsConnected)
             {
-                AppendLog("请先连接 Fastboot 设备", Color.Orange);
+                AppendLog("Please connect Fastboot device first", Color.Orange);
                 return;
             }
             
             bool ok = await _fastbootController.OemEdlAsync();
             if (ok)
-                AppendLog("MI踢EDL: 成功，设备将进入 EDL 模式", Color.Green);
+                AppendLog("MI Reboot EDL: Success, device entering EDL mode", Color.Green);
             else
-                AppendLog("MI踢EDL: 失败，设备可能不支持此命令", Color.Red);
+                AppendLog("MI Reboot EDL: Failed, device may not support this command", Color.Red);
         }
         
         /// <summary>
-        /// 联想或安卓踢EDL - ADB reboot edl
+        /// Lenovo/Android Reboot EDL - ADB reboot edl
         /// </summary>
         private async Task QuickAdbRebootEdlAsync()
         {
-            AppendLog("执行: 联想/安卓踢EDL (adb reboot edl)...", Color.Cyan);
+            AppendLog("Executing: Android Reboot EDL (adb reboot edl)...", Color.Cyan);
             
             var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootEdlAsync();
             if (result.Success)
-                AppendLog("ADB: 踢EDL成功，设备将进入 EDL 模式", Color.Green);
+                AppendLog("ADB: Reboot EDL Success, device entering EDL mode", Color.Green);
             else
-                AppendLog($"踢EDL失败: {result.Error}", Color.Red);
+                AppendLog($"Reboot EDL Failed: {result.Error}", Color.Red);
         }
         
         /// <summary>
-        /// 擦除谷歌锁 (Fastboot erase frp)
+        /// Erase FRP (Fastboot erase frp)
         /// </summary>
         private async Task QuickEraseFrpAsync()
         {
-            AppendLog("执行: 擦除谷歌锁 (fastboot erase frp)...", Color.Cyan);
+            AppendLog("Executing: Erase FRP (fastboot erase frp)...", Color.Cyan);
             
             if (_fastbootController == null || !_fastbootController.IsConnected)
             {
-                AppendLog("请先连接 Fastboot 设备", Color.Orange);
+                AppendLog("Please connect Fastboot device first", Color.Orange);
                 return;
             }
             
             bool ok = await _fastbootController.EraseFrpAsync();
             if (ok)
-                AppendLog("擦除谷歌锁: 成功", Color.Green);
+                AppendLog("Erase FRP: Success", Color.Green);
             else
-                AppendLog("擦除谷歌锁: 失败，设备可能已锁定 Bootloader", Color.Red);
+                AppendLog("Erase FRP: Failed, device may include locked Bootloader", Color.Red);
         }
         
         /// <summary>
-        /// 切换槽位 (Fastboot set_active)
+        /// Switch Slot (Fastboot set_active)
         /// </summary>
         private async Task QuickSwitchSlotAsync()
         {
-            AppendLog("执行: 切换槽位...", Color.Cyan);
+            AppendLog("Executing: Switch Slot...", Color.Cyan);
             
             if (_fastbootController == null || !_fastbootController.IsConnected)
             {
-                AppendLog("请先连接 Fastboot 设备", Color.Orange);
+                AppendLog("Please connect Fastboot device first", Color.Orange);
                 return;
             }
             
-            // 获取当前槽位
+            // Get current slot
             string currentSlot = await _fastbootController.GetCurrentSlotAsync();
             if (string.IsNullOrEmpty(currentSlot))
             {
-                AppendLog("无法获取当前槽位，设备可能不支持 A/B 分区", Color.Orange);
+                AppendLog("Failed to get current slot, device may not support A/B partitions", Color.Orange);
                 return;
             }
             
-            // 切换到另一个槽位
+            // Switch to another slot
             string targetSlot = currentSlot == "a" ? "b" : "a";
-            AppendLog($"当前槽位: {currentSlot}，切换到: {targetSlot}", Color.White);
+            AppendLog($"Current Slot: {currentSlot}, Switching to: {targetSlot}", Color.White);
             
             bool ok = await _fastbootController.SetActiveSlotAsync(targetSlot);
             if (ok)
-                AppendLog($"切换槽位成功: {currentSlot} -> {targetSlot}", Color.Green);
+                AppendLog($"Switch Slot Success: {currentSlot} -> {targetSlot}", Color.Green);
             else
-                AppendLog("切换槽位失败", Color.Red);
+                AppendLog("Switch Slot Failed", Color.Red);
         }
         
         #endregion
         
-        #region 其他功能菜单
+        #region Other Function Menu
         
         /// <summary>
-        /// 打开设备管理器
+        /// Open Device Manager
         /// </summary>
         private void OpenDeviceManager()
         {
             try
             {
                 System.Diagnostics.Process.Start("devmgmt.msc");
-                AppendLog("已打开设备管理器", Color.Blue);
+                AppendLog("Device Manager Opened", Color.Blue);
             }
             catch (Exception ex)
             {
-                AppendLog($"打开设备管理器失败: {ex.Message}", Color.Red);
+                AppendLog($"Open Device Manager Failed: {ex.Message}", Color.Red);
             }
         }
         
         /// <summary>
-        /// 打开 CMD 命令行 (在程序目录下，管理员权限)
+        /// Open CMD Command Prompt (In App Dir, Admin)
         /// </summary>
         private void OpenCommandPrompt()
         {
@@ -4478,25 +4467,25 @@ namespace LoveAlways
                     FileName = "cmd.exe",
                     WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory,
                     UseShellExecute = true,
-                    Verb = "runas"  // 以管理员权限运行
+                    Verb = "runas"  // Run as Admin
                 };
                 System.Diagnostics.Process.Start(psi);
-                AppendLog($"已打开管理员命令行: {psi.WorkingDirectory}", Color.Blue);
+                AppendLog($"CMD Opened (Admin): {psi.WorkingDirectory}", Color.Blue);
             }
             catch (Exception ex)
             {
-                // 用户可能取消了 UAC 提示
+                // User may cancelled UAC
                 if (ex.Message.Contains("canceled") || ex.Message.Contains("取消"))
-                    AppendLog("用户取消了管理员权限请求", Color.Orange);
+                    AppendLog("User cancelled Admin permission request", Color.Orange);
                 else
-                    AppendLog($"打开命令行失败: {ex.Message}", Color.Red);
+                    AppendLog($"Open CMD Failed: {ex.Message}", Color.Red);
             }
         }
         
         /// <summary>
-        /// 打开驱动安装程序
+        /// Open Driver Installer
         /// </summary>
-        /// <param name="driverType">驱动类型: android, mtk, qualcomm</param>
+        /// <param name="driverType">Driver Type: android, mtk, qualcomm</param>
         private void OpenDriverInstaller(string driverType)
         {
             try
@@ -4508,8 +4497,8 @@ namespace LoveAlways
                 switch (driverType.ToLower())
                 {
                     case "android":
-                        driverName = "安卓驱动";
-                        // 尝试多个可能的路径
+                        driverName = "Android Driver";
+                        // Try multiple possible paths
                         string[] androidPaths = {
                             Path.Combine(appDir, "drivers", "android_usb_driver.exe"),
                             Path.Combine(appDir, "drivers", "adb_driver.exe"),
@@ -4519,7 +4508,7 @@ namespace LoveAlways
                         break;
                         
                     case "mtk":
-                        driverName = "MTK驱动";
+                        driverName = "MTK Driver";
                         string[] mtkPaths = {
                             Path.Combine(appDir, "drivers", "mtk_usb_driver.exe"),
                             Path.Combine(appDir, "drivers", "MediaTek_USB_VCOM_Driver.exe"),
@@ -4529,7 +4518,7 @@ namespace LoveAlways
                         break;
                         
                     case "qualcomm":
-                        driverName = "高通驱动";
+                        driverName = "Qualcomm Driver";
                         string[] qcPaths = {
                             Path.Combine(appDir, "drivers", "qualcomm_usb_driver.exe"),
                             Path.Combine(appDir, "drivers", "Qualcomm_USB_Driver.exe"),
@@ -4541,18 +4530,18 @@ namespace LoveAlways
                 
                 if (string.IsNullOrEmpty(driverPath))
                 {
-                    AppendLog($"{driverName}安装程序未找到，请手动安装", Color.Orange);
-                    MessageBox.Show($"{driverName}安装程序未找到。\n\n请前往官方网站下载对应驱动。", 
-                        "驱动未找到", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    AppendLog($"{driverName} Installer not found, please install manually", Color.Orange);
+                    MessageBox.Show($"{driverName} Installer not found.\n\nPlease download driver from official website.", 
+                        "Driver Not Found", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 
                 System.Diagnostics.Process.Start(driverPath);
-                AppendLog($"已启动{driverName}安装程序", Color.Blue);
+                AppendLog($"Started {driverName} Installer", Color.Blue);
             }
             catch (Exception ex)
             {
-                AppendLog($"启动驱动安装程序失败: {ex.Message}", Color.Red);
+                AppendLog($"Start Driver Installer Failed: {ex.Message}", Color.Red);
             }
         }
 

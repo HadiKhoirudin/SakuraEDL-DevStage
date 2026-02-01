@@ -1,9 +1,14 @@
 // ============================================================================
 // LoveAlways - UFS/eMMC Provisioning Service
-// 高通设备存储配置服务 - 解析和生成 provision.xml
+// Qualcomm Storage Provisioning Service - Parse and generate provision.xml
 // ============================================================================
-// 警告: Provisioning 操作不可逆，会永久改变设备存储布局！
+// WARNING: Provisioning operations are irreversible and will permanently change device storage layout!
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -14,154 +19,154 @@ using System.Xml.Linq;
 
 namespace LoveAlways.Qualcomm.Services
 {
-    #region 数据模型
+    #region Data Models
 
     /// <summary>
-    /// UFS 全局配置
+    /// UFS Global Config
     /// </summary>
     public class UfsGlobalConfig
     {
         /// <summary>
-        /// 启动启用 (bBootEnable)
+        /// Boot Enable (bBootEnable)
         /// </summary>
         public bool BootEnable { get; set; } = true;
 
         /// <summary>
-        /// 写保护类型
+        /// Write Protect Type
         /// 0 = None, 1 = Power On Write Protect, 2 = Permanent Write Protect
         /// </summary>
         public int WriteProtect { get; set; } = 0;
 
         /// <summary>
-        /// 启动 LUN (bDescrAccessEn)
+        /// Boot LUN (bDescrAccessEn)
         /// </summary>
         public int BootLun { get; set; } = 1;
 
         /// <summary>
-        /// 扩展配置 (qWriteBoosterBufferPreserveUserSpaceEn)
+        /// Extended Config (qWriteBoosterBufferPreserveUserSpaceEn)
         /// </summary>
         public bool WriteBoosterPreserveUserSpace { get; set; } = true;
 
         /// <summary>
-        /// Write Booster 缓冲区大小 (dNumSharedWriteBoosterBufferAllocUnits)
+        /// Write Booster Buffer Size (dNumSharedWriteBoosterBufferAllocUnits)
         /// </summary>
         public long WriteBoosterBufferSize { get; set; } = 0;
     }
 
     /// <summary>
-    /// UFS LUN 配置
+    /// UFS LUN Config
     /// </summary>
     public class UfsLunConfig
     {
         /// <summary>
-        /// LUN 编号
+        /// LUN Number
         /// </summary>
         public int LunNumber { get; set; }
 
         /// <summary>
-        /// 是否可启动 (bBootLunID)
+        /// Is Bootable (bBootLunID)
         /// </summary>
         public bool Bootable { get; set; } = false;
 
         /// <summary>
-        /// 大小 (以扇区为单位)
+        /// Size (in sectors)
         /// </summary>
         public long SizeInSectors { get; set; }
 
         /// <summary>
-        /// 大小 (以 KB 为单位)
+        /// Size (in KB)
         /// </summary>
         public long SizeInKB { get; set; }
 
         /// <summary>
-        /// 扇区大小 (默认 4096)
+        /// Sector Size (Default 4096)
         /// </summary>
         public int SectorSize { get; set; } = 4096;
 
         /// <summary>
-        /// 内存类型 (0=Normal, 1=System Code, 2=Non-Persistent, 3=Enhanced1)
+        /// Memory Type (0=Normal, 1=System Code, 2=Non-Persistent, 3=Enhanced1)
         /// </summary>
         public int MemoryType { get; set; } = 0;
 
         /// <summary>
-        /// 写保护组数
+        /// Write Protect Group Count
         /// </summary>
         public int WriteProtectGroupNum { get; set; } = 0;
 
         /// <summary>
-        /// 数据可靠性 (bDataReliability)
+        /// Data Reliability (bDataReliability)
         /// </summary>
         public int DataReliability { get; set; } = 0;
 
         /// <summary>
-        /// 逻辑块大小
+        /// Logical Block Size
         /// </summary>
         public int LogicalBlockSize { get; set; } = 4096;
 
         /// <summary>
-        /// 配置模式
+        /// Provisioning Type
         /// </summary>
         public int ProvisioningType { get; set; } = 0;
     }
 
     /// <summary>
-    /// eMMC 配置
+    /// eMMC Config
     /// </summary>
     public class EmmcConfig
     {
         /// <summary>
-        /// 启动分区 1 大小 (以 128KB 为单位)
+        /// Boot Partition 1 Size (in 128KB units)
         /// </summary>
         public int BootPartition1Size { get; set; } = 0;
 
         /// <summary>
-        /// 启动分区 2 大小 (以 128KB 为单位)
+        /// Boot Partition 2 Size (in 128KB units)
         /// </summary>
         public int BootPartition2Size { get; set; } = 0;
 
         /// <summary>
-        /// RPMB 分区大小 (以 128KB 为单位)
+        /// RPMB Partition Size (in 128KB units)
         /// </summary>
         public int RpmbSize { get; set; } = 0;
 
         /// <summary>
-        /// GP 分区大小 (以扇区为单位)
+        /// GP Partition Sizes (in sectors)
         /// </summary>
         public long[] GpPartitionSizes { get; set; } = new long[4];
 
         /// <summary>
-        /// 增强型 User Area 大小 (以扇区为单位)
+        /// Enhanced User Area Size (in sectors)
         /// </summary>
         public long EnhancedUserAreaSize { get; set; } = 0;
 
         /// <summary>
-        /// 增强型 User Area 起始地址 (以扇区为单位)
+        /// Enhanced User Area Start Address (in sectors)
         /// </summary>
         public long EnhancedUserAreaStart { get; set; } = 0;
     }
 
     /// <summary>
-    /// 完整 Provision 配置
+    /// Full Provision Config
     /// </summary>
     public class ProvisionConfig
     {
         /// <summary>
-        /// 存储类型 (UFS 或 eMMC)
+        /// Storage Type (UFS or eMMC)
         /// </summary>
         public string StorageType { get; set; } = "UFS";
 
         /// <summary>
-        /// UFS 全局配置
+        /// UFS Global Config
         /// </summary>
         public UfsGlobalConfig UfsGlobal { get; set; } = new UfsGlobalConfig();
 
         /// <summary>
-        /// UFS LUN 配置列表
+        /// UFS LUN Config List
         /// </summary>
         public List<UfsLunConfig> UfsLuns { get; set; } = new List<UfsLunConfig>();
 
         /// <summary>
-        /// eMMC 配置
+        /// eMMC Config
         /// </summary>
         public EmmcConfig Emmc { get; set; } = new EmmcConfig();
     }
@@ -169,8 +174,8 @@ namespace LoveAlways.Qualcomm.Services
     #endregion
 
     /// <summary>
-    /// UFS/eMMC Provisioning 服务
-    /// 解析和生成 provision.xml 配置文件
+    /// UFS/eMMC Provisioning Service
+    /// Parse and generate provision.xml config files
     /// </summary>
     public class ProvisionService
     {
@@ -181,22 +186,22 @@ namespace LoveAlways.Qualcomm.Services
             _log = log ?? (_ => { });
         }
 
-        #region 解析 provision.xml
+        #region Parse provision.xml
 
         /// <summary>
-        /// 解析 provision.xml 文件
+        /// Parse provision.xml file
         /// </summary>
         public ProvisionConfig ParseProvisionXml(string xmlPath)
         {
             if (!File.Exists(xmlPath))
-                throw new FileNotFoundException("Provision XML 文件不存在", xmlPath);
+                throw new FileNotFoundException("Provision XML file not found", xmlPath);
 
             string xmlContent = File.ReadAllText(xmlPath);
             return ParseProvisionXmlContent(xmlContent);
         }
 
         /// <summary>
-        /// 解析 provision.xml 内容
+        /// Parse provision.xml content
         /// </summary>
         public ProvisionConfig ParseProvisionXmlContent(string xmlContent)
         {
@@ -209,11 +214,11 @@ namespace LoveAlways.Qualcomm.Services
 
                 if (root == null || root.Name.LocalName != "data")
                 {
-                    _log("[Provision] XML 格式错误: 缺少 data 根元素");
+                    _log("[Provision] XML format error: Missing data root element");
                     return config;
                 }
 
-                // 解析 UFS 配置
+                // Parse UFS config
                 var ufsConfig = root.Element("ufs");
                 if (ufsConfig != null)
                 {
@@ -221,7 +226,7 @@ namespace LoveAlways.Qualcomm.Services
                     ParseUfsConfig(ufsConfig, config);
                 }
 
-                // 解析 eMMC 配置
+                // Parse eMMC config
                 var emmcConfig = root.Element("emmc");
                 if (emmcConfig != null)
                 {
@@ -229,12 +234,12 @@ namespace LoveAlways.Qualcomm.Services
                     ParseEmmcConfig(emmcConfig, config);
                 }
 
-                _log(string.Format("[Provision] 解析完成: {0}, {1} 个 LUN", 
+                _log(string.Format("[Provision] Parse complete: {0}, {1} LUNs", 
                     config.StorageType, config.UfsLuns.Count));
             }
             catch (Exception ex)
             {
-                _log(string.Format("[Provision] 解析失败: {0}", ex.Message));
+                _log(string.Format("[Provision] Parse failed: {0}", ex.Message));
             }
 
             return config;
@@ -242,7 +247,7 @@ namespace LoveAlways.Qualcomm.Services
 
         private void ParseUfsConfig(XElement ufsElement, ProvisionConfig config)
         {
-            // 解析全局配置
+            // Parse global config
             var global = ufsElement.Element("global");
             if (global != null)
             {
@@ -253,7 +258,7 @@ namespace LoveAlways.Qualcomm.Services
                 config.UfsGlobal.WriteBoosterBufferSize = GetLongAttribute(global, "dNumSharedWriteBoosterBufferAllocUnits", 0);
             }
 
-            // 解析 LUN 配置
+            // Parse LUN config
             foreach (var lunElement in ufsElement.Elements("lun"))
             {
                 var lun = new UfsLunConfig
@@ -281,7 +286,7 @@ namespace LoveAlways.Qualcomm.Services
             config.Emmc.EnhancedUserAreaSize = GetLongAttribute(emmcElement, "ENH_SIZE_MULT", 0);
             config.Emmc.EnhancedUserAreaStart = GetLongAttribute(emmcElement, "ENH_START_ADDR", 0);
 
-            // 解析 GP 分区
+            // Parse GP partitions
             for (int i = 0; i < 4; i++)
             {
                 config.Emmc.GpPartitionSizes[i] = GetLongAttribute(emmcElement, $"GP_SIZE_MULT{i + 1}", 0);
@@ -290,10 +295,10 @@ namespace LoveAlways.Qualcomm.Services
 
         #endregion
 
-        #region 生成 provision.xml
+        #region Generate provision.xml
 
         /// <summary>
-        /// 生成 UFS provision.xml 内容
+        /// Generate UFS provision.xml content
         /// </summary>
         public string GenerateUfsProvisionXml(ProvisionConfig config)
         {
@@ -305,7 +310,7 @@ namespace LoveAlways.Qualcomm.Services
             sb.AppendLine();
             sb.AppendLine("  <ufs>");
 
-            // 全局配置
+            // Global config
             sb.AppendFormat("    <global bBootEnable=\"{0}\" bDescrAccessEn=\"{1}\" " +
                 "bInitPowerMode=\"1\" bInitActiveICCLevel=\"0\" " +
                 "bSecureRemovalType=\"0\" bConfigDescrLock=\"0\" " +
@@ -319,7 +324,7 @@ namespace LoveAlways.Qualcomm.Services
                 config.UfsGlobal.WriteBoosterBufferSize);
             sb.AppendLine();
 
-            // LUN 配置
+            // LUN config
             foreach (var lun in config.UfsLuns)
             {
                 sb.AppendFormat("    <lun physical_partition_number=\"{0}\" " +
@@ -349,7 +354,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 生成 eMMC provision.xml 内容
+        /// Generate eMMC provision.xml content
         /// </summary>
         public string GenerateEmmcProvisionXml(ProvisionConfig config)
         {
@@ -378,7 +383,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 保存 provision.xml 到文件
+        /// Save provision.xml to file
         /// </summary>
         public void SaveProvisionXml(ProvisionConfig config, string outputPath)
         {
@@ -389,15 +394,15 @@ namespace LoveAlways.Qualcomm.Services
                 content = GenerateEmmcProvisionXml(config);
 
             File.WriteAllText(outputPath, content, Encoding.UTF8);
-            _log(string.Format("[Provision] 已保存: {0}", outputPath));
+            _log(string.Format("[Provision] Saved: {0}", outputPath));
         }
 
         #endregion
 
-        #region 默认配置
+        #region Default Configs
 
         /// <summary>
-        /// 创建默认 UFS 配置 (典型 8 LUN 布局)
+        /// Create default UFS config (Typical 8 LUN layout)
         /// </summary>
         public static ProvisionConfig CreateDefaultUfsConfig(long totalSizeGB = 256)
         {
@@ -414,18 +419,18 @@ namespace LoveAlways.Qualcomm.Services
                 }
             };
 
-            // 典型 LUN 布局
-            // LUN 0: 主启动 (xbl, xbl_config)
+            // Typical LUN layout
+            // LUN 0: Main boot (xbl, xbl_config)
             config.UfsLuns.Add(new UfsLunConfig { LunNumber = 0, Bootable = true, SizeInKB = 8192, MemoryType = 3 });
-            // LUN 1: 备份启动
+            // LUN 1: Backup boot
             config.UfsLuns.Add(new UfsLunConfig { LunNumber = 1, Bootable = true, SizeInKB = 8192, MemoryType = 3 });
-            // LUN 2: 系统相关
+            // LUN 2: System related
             config.UfsLuns.Add(new UfsLunConfig { LunNumber = 2, Bootable = false, SizeInKB = 4096, MemoryType = 0 });
-            // LUN 3: 持久化数据
+            // LUN 3: Persistent data
             config.UfsLuns.Add(new UfsLunConfig { LunNumber = 3, Bootable = false, SizeInKB = 512, MemoryType = 0 });
-            // LUN 4: 主系统分区 (super, userdata 等)
+            // LUN 4: Main system partitions (super, userdata, etc.)
             config.UfsLuns.Add(new UfsLunConfig { LunNumber = 4, Bootable = false, SizeInKB = totalSizeGB * 1024 * 1024 - 30000, MemoryType = 0 });
-            // LUN 5-7: 保留
+            // LUN 5-7: Reserved
             for (int i = 5; i <= 7; i++)
                 config.UfsLuns.Add(new UfsLunConfig { LunNumber = i, Bootable = false, SizeInKB = 0, MemoryType = 0 });
 
@@ -433,7 +438,7 @@ namespace LoveAlways.Qualcomm.Services
         }
 
         /// <summary>
-        /// 创建默认 eMMC 配置
+        /// Create default eMMC config
         /// </summary>
         public static ProvisionConfig CreateDefaultEmmcConfig()
         {
@@ -452,7 +457,7 @@ namespace LoveAlways.Qualcomm.Services
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         private static int GetIntAttribute(XElement element, string name, int defaultValue)
         {
@@ -461,7 +466,7 @@ namespace LoveAlways.Qualcomm.Services
             
             string value = attr.Value;
             
-            // 支持 16 进制
+            // Support hex
             if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
                 if (int.TryParse(value.Substring(2), System.Globalization.NumberStyles.HexNumber, null, out int hexResult))
@@ -511,36 +516,36 @@ namespace LoveAlways.Qualcomm.Services
 
         #endregion
 
-        #region 分析报告
+        #region Analysis Report
 
         /// <summary>
-        /// 生成配置分析报告
+        /// Generate config analysis report
         /// </summary>
         public string GenerateAnalysisReport(ProvisionConfig config)
         {
             var sb = new StringBuilder();
             sb.AppendLine("========================================");
-            sb.AppendLine("       Provision 配置分析报告");
+            sb.AppendLine("       Provision Config Analysis Report");
             sb.AppendLine("========================================");
             sb.AppendLine();
 
-            sb.AppendLine(string.Format("存储类型: {0}", config.StorageType));
+            sb.AppendLine(string.Format("Storage Type: {0}", config.StorageType));
             sb.AppendLine();
 
             if (config.StorageType == "UFS")
             {
-                sb.AppendLine("【全局配置】");
-                sb.AppendLine(string.Format("  启动使能: {0}", config.UfsGlobal.BootEnable ? "是" : "否"));
-                sb.AppendLine(string.Format("  启动 LUN: {0}", config.UfsGlobal.BootLun));
-                sb.AppendLine(string.Format("  写保护: {0}", GetWriteProtectDescription(config.UfsGlobal.WriteProtect)));
+                sb.AppendLine("[Global Config]");
+                sb.AppendLine(string.Format("  Boot Enable: {0}", config.UfsGlobal.BootEnable ? "Yes" : "No"));
+                sb.AppendLine(string.Format("  Boot LUN: {0}", config.UfsGlobal.BootLun));
+                sb.AppendLine(string.Format("  Write Protect: {0}", GetWriteProtectDescription(config.UfsGlobal.WriteProtect)));
                 sb.AppendLine(string.Format("  Write Booster: {0}", 
                     config.UfsGlobal.WriteBoosterBufferSize > 0 
                         ? string.Format("{0:F2} GB", config.UfsGlobal.WriteBoosterBufferSize * 4096.0 / 1024 / 1024 / 1024) 
-                        : "未配置"));
+                        : "Not configured"));
                 sb.AppendLine();
 
-                sb.AppendLine("【LUN 配置】");
-                sb.AppendLine(string.Format("  共 {0} 个 LUN", config.UfsLuns.Count));
+                sb.AppendLine("[LUN Config]");
+                sb.AppendLine(string.Format("  Total {0} LUNs", config.UfsLuns.Count));
                 sb.AppendLine();
 
                 long totalSize = 0;
@@ -557,18 +562,18 @@ namespace LoveAlways.Qualcomm.Services
                     sb.AppendLine(string.Format("  LUN {0}: {1,-12} {2} {3}",
                         lun.LunNumber,
                         sizeStr,
-                        lun.Bootable ? "[启动]" : "      ",
+                        lun.Bootable ? "[BOOT]" : "      ",
                         GetMemoryTypeDescription(lun.MemoryType)));
 
                     totalSize += lun.SizeInKB;
                 }
 
                 sb.AppendLine();
-                sb.AppendLine(string.Format("  总容量: {0:F2} GB", totalSize / 1024.0 / 1024.0));
+                sb.AppendLine(string.Format("  Total Capacity: {0:F2} GB", totalSize / 1024.0 / 1024.0));
             }
             else
             {
-                sb.AppendLine("【eMMC 配置】");
+                sb.AppendLine("[eMMC Config]");
                 sb.AppendLine(string.Format("  Boot 分区 1: {0} MB", config.Emmc.BootPartition1Size * 128 / 1024));
                 sb.AppendLine(string.Format("  Boot 分区 2: {0} MB", config.Emmc.BootPartition2Size * 128 / 1024));
                 sb.AppendLine(string.Format("  RPMB: {0} MB", config.Emmc.RpmbSize * 128 / 1024));
@@ -584,10 +589,10 @@ namespace LoveAlways.Qualcomm.Services
         {
             switch (wp)
             {
-                case 0: return "无保护";
-                case 1: return "上电写保护";
-                case 2: return "永久写保护";
-                default: return string.Format("未知 ({0})", wp);
+                case 0: return "No protection";
+                case 1: return "Power on write protect";
+                case 2: return "Permanent write protect";
+                default: return string.Format("Unknown ({0})", wp);
             }
         }
 

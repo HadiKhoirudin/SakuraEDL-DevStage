@@ -1,10 +1,15 @@
 // ============================================================================
-// CloudLoaderService - 云端 Loader 自动匹配服务
-// 替代本地 PAK 资源，支持自动下载和缓存
+// CloudLoaderService - cloud Loader Automatic matching服务
+// 替代Local PAK 资源，SupportAutomaticdownload和缓存
 // ============================================================================
 
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text;
@@ -18,7 +23,7 @@ namespace LoveAlways.Qualcomm.Services
         #region Singleton
         private static CloudLoaderService _instance;
         private static readonly object _lock = new object();
-        
+
         public static CloudLoaderService Instance
         {
             get
@@ -37,123 +42,128 @@ namespace LoveAlways.Qualcomm.Services
         #endregion
 
         #region Configuration
-        
-        // API 地址配置
+
+        // API addressConfig
         private const string API_BASE_DEV = "http://localhost:8081/api";
-        private const string API_BASE_PROD = "https://api.xiriacg.top/api";
-        
-        // 当前使用的 API 地址
-        public string ApiBase { get; set; } = API_BASE_DEV;
-        
-        // 本地缓存目录
+        private const string API_BASE_PROD = "https://www.xiriacg.top/api";
+
+        // 当前Use的 API address
+        public string ApiBase { get; set; } = API_BASE_PROD;
+
+        // Local缓存Table of contents
         public string CacheDirectory { get; set; }
-        
-        // 是否启用云端匹配
+
+        // yesnoEnablecloud matching
         public bool EnableCloudMatch { get; set; } = true;
-        
-        // 是否启用本地缓存
+
+        // yesnoEnableLocal缓存
         public bool EnableCache { get; set; } = true;
-        
-        // 超时时间 (秒)
+
+        // timeoutTime (Second)
         public int TimeoutSeconds { get; set; } = 15;
-        
+
         #endregion
 
         #region Fields
-        
+
         private readonly HttpClient _httpClient;
         private Action<string> _log;
         private Action<string> _logDetail;
-        
+
         #endregion
 
         #region Constructor
-        
+
         private CloudLoaderService()
         {
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "MultiFlashTool/2.0");
-            
-            // 默认缓存目录
+
+            // default缓存Table of contents
             CacheDirectory = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory, 
-                "cache", 
+                AppDomain.CurrentDomain.BaseDirectory,
+                "cache",
                 "loaders"
             );
         }
-        
+
         #endregion
 
         #region Public Methods
-        
+
         /// <summary>
-        /// 设置日志回调
+        /// Settingslog回调
         /// </summary>
         public void SetLogger(Action<string> log, Action<string> logDetail = null)
         {
             _log = log;
             _logDetail = logDetail;
         }
-        
+
         /// <summary>
-        /// 根据设备信息自动匹配 Loader
+        /// 根据device informationAutomatic matching Loader
         /// </summary>
         public async Task<LoaderResult> MatchLoaderAsync(
-            string msmId, 
-            string pkHash = null, 
+            string msmId,
+            string pkHash = null,
             string oemId = null,
             string storageType = "ufs")
         {
             if (!EnableCloudMatch)
             {
-                Log("云端匹配已禁用");
+                Log("Cloud matching is disabled.");
                 return null;
             }
 
             try
             {
                 _httpClient.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
-                
-                // 1. 检查本地缓存
+
+                // 1. Check Local缓存
                 if (EnableCache && !string.IsNullOrEmpty(pkHash))
                 {
                     var cached = LoadFromCache(pkHash);
                     if (cached != null)
                     {
-                        Log(string.Format("使用本地缓存: {0}", cached.Filename));
+                        Log(string.Format("Use local cache: {0}", cached.Filename));
                         return cached;
                     }
                 }
-                
-                // 2. 调用云端 API 匹配
-                Log("正在云端匹配 Loader...");
-                LogDetail(string.Format("MSM ID: {0}, PK Hash: {1}...", msmId, 
-                    pkHash != null && pkHash.Length >= 16 ? pkHash.Substring(0, 16) : pkHash));
-                
-                // 构建请求 JSON
+
+                // 2. 调用cloud API match
+                Log("Matching in the cloud Loader...");
+                LogDetail(string.Format("MSM ID: {0}, PK Hash: {1}...", msmId, pkHash != null && pkHash.Length >= 16 ? pkHash.Substring(0, 16) : pkHash));
+
+                // 构建Please  JSON
                 var json = BuildMatchRequestJson(msmId, pkHash, oemId, storageType);
+
+                Debug.WriteLine($"\n{json}\n");
+
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-                
+
                 var response = await _httpClient.PostAsync(ApiBase + "/loaders/match", content);
                 var resultJson = await response.Content.ReadAsStringAsync();
-                
-                // 解析响应
+
+                // checkresponse
+
+                Debug.WriteLine($"\n{resultJson}\n");
+
                 int code = ParseJsonInt(resultJson, "code");
                 if (code != 0)
                 {
                     string message = ParseJsonString(resultJson, "message");
-                    Log(string.Format("云端无匹配: {0}", message ?? "未知错误"));
+                    Log(string.Format("Cloud no matches: {0}", message ?? "UnknownError"));
                     return null;
                 }
-                
-                // 解析 loader 数据
+
+                // check loader 数据
                 string loaderJson = ExtractJsonObject(resultJson, "loader");
                 if (string.IsNullOrEmpty(loaderJson))
                 {
-                    Log("云端无匹配: 无 loader 数据");
+                    Log("Cloud no matches: No loader data");
                     return null;
                 }
-                
+
                 int loaderId = ParseJsonInt(loaderJson, "id");
                 string filename = ParseJsonString(loaderJson, "filename");
                 string vendor = ParseJsonString(loaderJson, "vendor");
@@ -161,23 +171,23 @@ namespace LoveAlways.Qualcomm.Services
                 string authType = ParseJsonString(loaderJson, "auth_type");
                 string loaderStorageType = ParseJsonString(loaderJson, "storage_type");
                 string hwId = ParseJsonString(loaderJson, "hw_id");
-                
-                // 解析匹配信息
+
+                // checkmatch信息
                 string dataJson = ExtractJsonObject(resultJson, "data");
                 int score = ParseJsonInt(dataJson, "score");
                 string matchType = ParseJsonString(dataJson, "match_type");
-                
-                Log(string.Format("云端匹配成功: {0}", filename));
-                LogDetail(string.Format("厂商: {0}, 芯片: {1}, 认证: {2}", vendor, chip, authType));
-                LogDetail(string.Format("匹配类型: {0}, 置信度: {1}%", matchType, score));
-                
-                // 3. 下载 Loader 文件
+
+                Log(string.Format("cloud matching successfull: {0}", filename));
+                LogDetail(string.Format("Manufacturer: {0}, Chip: {1}, auth: {2}", vendor, chip, authType));
+                LogDetail(string.Format("Matching Type: {0}, Confidence: {1}%", matchType, score));
+
+                // 3. download Loader file
                 byte[] loaderData = null;
                 if (loaderId > 0)
                 {
                     loaderData = await DownloadLoaderAsync(loaderId);
                 }
-                
+
                 var loaderResult = new LoaderResult
                 {
                     Id = loaderId,
@@ -192,63 +202,65 @@ namespace LoveAlways.Qualcomm.Services
                     Confidence = score,
                     Data = loaderData
                 };
-                
-                // 4. 保存到缓存
+
+                // 4. Keep to缓存
                 if (EnableCache && loaderData != null && !string.IsNullOrEmpty(pkHash))
                 {
                     SaveToCache(pkHash, loaderResult);
                 }
-                
+
                 return loaderResult;
             }
             catch (TaskCanceledException)
             {
-                Log("云端匹配超时");
+                Log("cloud matching timeout");
                 return null;
             }
             catch (HttpRequestException ex)
             {
-                Log(string.Format("云端匹配失败: {0}", ex.Message));
+                Log(string.Format("cloud matching fail: {0}", ex.Message));
                 return null;
             }
             catch (Exception ex)
             {
-                Log(string.Format("云端匹配异常: {0}", ex.Message));
+                Log(string.Format("cloud matching abnormal: {0}", ex.Message));
                 return null;
             }
         }
-        
+
         /// <summary>
-        /// 从云端下载 Loader 文件
+        /// fromclouddownload Loader file
         /// </summary>
         public async Task<byte[]> DownloadLoaderAsync(int loaderId)
         {
             try
             {
-                Log(string.Format("正在下载 Loader (ID: {0})...", loaderId));
-                
+                Debug.WriteLine(string.Format("\nDownloading Loader (ID: {0})...\n", loaderId));
+
+                Log(string.Format("Downloading Loader (ID: {0})...", loaderId));
+
                 var response = await _httpClient.GetAsync(string.Format("{0}/loaders/{1}/download", ApiBase, loaderId));
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    Log(string.Format("下载失败: HTTP {0}", (int)response.StatusCode));
+                    Log(string.Format("download fail: HTTP {0}", (int)response.StatusCode));
                     return null;
                 }
-                
+
                 var data = await response.Content.ReadAsByteArrayAsync();
-                Log(string.Format("下载完成: {0} KB", data.Length / 1024));
-                
+                Log(string.Format("Download finished: {0} KB", data.Length / 1024));
+
                 return data;
             }
             catch (Exception ex)
             {
-                Log(string.Format("下载异常: {0}", ex.Message));
+                Log(string.Format("Download abnormal: {0}", ex.Message));
                 return null;
             }
         }
-        
+
         /// <summary>
-        /// 上报设备日志 (异步，不阻塞主流程)
+        /// 上报devicelog (异步，not阻塞主流程)
         /// </summary>
         public void ReportDeviceLog(
             string msmId,
@@ -258,24 +270,24 @@ namespace LoveAlways.Qualcomm.Services
             string matchResult)
         {
             if (!EnableCloudMatch) return;
-            
+
             Task.Run(async () =>
             {
                 try
                 {
                     var json = BuildDeviceLogJson(msmId, pkHash, oemId, storageType, matchResult);
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    await _httpClient.PostAsync(ApiBase + "/device-logs", content);
+                    //await _httpClient.PostAsync(ApiBase + "/device-logs", content);
                 }
                 catch
                 {
-                    // 静默失败，不影响主流程
+                    // 静默 fail，not影响主流程
                 }
             });
         }
-        
+
         /// <summary>
-        /// 清除本地缓存
+        /// 清除Local缓存
         /// </summary>
         public void ClearCache()
         {
@@ -284,23 +296,23 @@ namespace LoveAlways.Qualcomm.Services
                 if (Directory.Exists(CacheDirectory))
                 {
                     Directory.Delete(CacheDirectory, true);
-                    Log("缓存已清除");
+                    Log("Cache cleared");
                 }
             }
             catch (Exception ex)
             {
-                Log(string.Format("清除缓存失败: {0}", ex.Message));
+                Log(string.Format("Clear cache fail: {0}", ex.Message));
             }
         }
-        
+
         /// <summary>
-        /// 获取缓存大小
+        /// Get缓存Size
         /// </summary>
         public long GetCacheSize()
         {
             if (!Directory.Exists(CacheDirectory))
                 return 0;
-                
+
             long size = 0;
             foreach (var file in Directory.GetFiles(CacheDirectory, "*", SearchOption.AllDirectories))
             {
@@ -308,11 +320,11 @@ namespace LoveAlways.Qualcomm.Services
             }
             return size;
         }
-        
+
         #endregion
 
         #region Private Methods - JSON Helpers
-        
+
         private string BuildMatchRequestJson(string msmId, string pkHash, string oemId, string storageType)
         {
             var sb = new StringBuilder();
@@ -327,7 +339,7 @@ namespace LoveAlways.Qualcomm.Services
             sb.Append("}");
             return sb.ToString();
         }
-        
+
         private string BuildDeviceLogJson(string msmId, string pkHash, string oemId, string storageType, string matchResult)
         {
             var sb = new StringBuilder();
@@ -344,13 +356,13 @@ namespace LoveAlways.Qualcomm.Services
             sb.Append("}");
             return sb.ToString();
         }
-        
+
         private string EscapeJson(string value)
         {
             if (string.IsNullOrEmpty(value)) return "";
             return value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
         }
-        
+
         private string ParseJsonString(string json, string key)
         {
             if (string.IsNullOrEmpty(json)) return null;
@@ -358,7 +370,7 @@ namespace LoveAlways.Qualcomm.Services
             var match = Regex.Match(json, pattern);
             return match.Success ? match.Groups[1].Value : null;
         }
-        
+
         private int ParseJsonInt(string json, string key)
         {
             if (string.IsNullOrEmpty(json)) return 0;
@@ -372,14 +384,14 @@ namespace LoveAlways.Qualcomm.Services
             }
             return 0;
         }
-        
+
         private string ExtractJsonObject(string json, string key)
         {
             if (string.IsNullOrEmpty(json)) return null;
             var pattern = string.Format("\"{0}\"\\s*:\\s*\\{{", Regex.Escape(key));
             var match = Regex.Match(json, pattern);
             if (!match.Success) return null;
-            
+
             int start = match.Index + match.Length - 1;
             int depth = 0;
             for (int i = start; i < json.Length; i++)
@@ -391,21 +403,21 @@ namespace LoveAlways.Qualcomm.Services
             }
             return null;
         }
-        
+
         #endregion
 
         #region Private Methods - Cache
-        
+
         private LoaderResult LoadFromCache(string pkHash)
         {
             try
             {
                 var cacheFile = GetCachePath(pkHash);
                 var metaFile = cacheFile + ".meta";
-                
+
                 if (!File.Exists(cacheFile) || !File.Exists(metaFile))
                     return null;
-                
+
                 var metaJson = File.ReadAllText(metaFile);
                 var result = new LoaderResult
                 {
@@ -421,7 +433,7 @@ namespace LoveAlways.Qualcomm.Services
                     Confidence = ParseJsonInt(metaJson, "Confidence"),
                     Data = File.ReadAllBytes(cacheFile)
                 };
-                
+
                 return result;
             }
             catch
@@ -429,23 +441,23 @@ namespace LoveAlways.Qualcomm.Services
                 return null;
             }
         }
-        
+
         private void SaveToCache(string pkHash, LoaderResult result)
         {
             try
             {
                 var cacheFile = GetCachePath(pkHash);
                 var metaFile = cacheFile + ".meta";
-                
+
                 Directory.CreateDirectory(Path.GetDirectoryName(cacheFile));
-                
-                // 保存 Loader 数据
+
+                // Keep Loader 数据
                 if (result.Data != null)
                 {
                     File.WriteAllBytes(cacheFile, result.Data);
                 }
-                
-                // 保存元数据
+
+                // Keep元数据
                 var sb = new StringBuilder();
                 sb.Append("{");
                 sb.AppendFormat("\"Id\":{0}", result.Id);
@@ -459,43 +471,43 @@ namespace LoveAlways.Qualcomm.Services
                 sb.AppendFormat(",\"MatchType\":\"{0}\"", EscapeJson(result.MatchType ?? ""));
                 sb.AppendFormat(",\"Confidence\":{0}", result.Confidence);
                 sb.Append("}");
-                
+
                 File.WriteAllText(metaFile, sb.ToString());
-                
-                LogDetail(string.Format("已缓存: {0}", result.Filename));
+
+                LogDetail(string.Format("Cached: {0}", result.Filename));
             }
             catch (Exception ex)
             {
-                LogDetail(string.Format("缓存保存失败: {0}", ex.Message));
+                LogDetail(string.Format("Keep cache fail: {0}", ex.Message));
             }
         }
-        
+
         private string GetCachePath(string pkHash)
         {
-            // 使用 PK Hash 前 8 位作为子目录
+            // Use PK Hash 前 8 位作为子Table of contents
             var subDir = pkHash.Length >= 8 ? pkHash.Substring(0, 8) : pkHash;
             return Path.Combine(CacheDirectory, subDir, pkHash + ".bin");
         }
-        
+
         private void Log(string message)
         {
             if (_log != null)
                 _log(message);
         }
-        
+
         private void LogDetail(string message)
         {
             if (_logDetail != null)
                 _logDetail(message);
         }
-        
+
         #endregion
     }
 
     #region Data Models
-    
+
     /// <summary>
-    /// Loader 匹配结果
+    /// Loader matchresult
     /// </summary>
     public class LoaderResult
     {
@@ -511,6 +523,6 @@ namespace LoveAlways.Qualcomm.Services
         public int Confidence { get; set; }
         public byte[] Data { get; set; }
     }
-    
+
     #endregion
 }

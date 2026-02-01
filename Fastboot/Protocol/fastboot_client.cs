@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,18 +15,18 @@ using LoveAlways.Fastboot.Transport;
 namespace LoveAlways.Fastboot.Protocol
 {
     /// <summary>
-    /// Fastboot 客户端核心类
-    /// 基于 Google AOSP fastboot 源码重写的 C# 实现
+    /// Fastboot Client Core Class
+    /// C# implementation rewritten based on Google AOSP fastboot source code
     /// 
-    /// 支持功能：
-    /// - 设备检测和连接
-    /// - 变量读取 (getvar)
-    /// - 分区刷写 (flash) - 支持 Sparse 镜像
-    /// - 分区擦除 (erase)
-    /// - 重启操作 (reboot)
-    /// - A/B 槽位切换
-    /// - Bootloader 解锁/锁定
-    /// - 实时进度回调
+    /// Supported Features:
+    /// - Device detection and connection
+    /// - Variable reading (getvar)
+    /// - Partition flashing (flash) - Supports Sparse images
+    /// - Partition erasing (erase)
+    /// - Reboot operations (reboot)
+    /// - A/B slot switching
+    /// - Bootloader unlock/lock
+    /// - Real-time progress callback
     /// </summary>
     public class FastbootClient : IDisposable
     {
@@ -30,32 +35,32 @@ namespace LoveAlways.Fastboot.Protocol
         private readonly Action<string> _logDetail;
         private bool _disposed;
         
-        // 设备信息缓存
+        // Device info cache
         private Dictionary<string, string> _variables;
-        private long _maxDownloadSize = 512 * 1024 * 1024; // 默认 512MB
+        private long _maxDownloadSize = 512 * 1024 * 1024; // Default 512MB
         
         /// <summary>
-        /// 是否已连接
+        /// Whether connected
         /// </summary>
         public bool IsConnected => _transport?.IsConnected ?? false;
         
         /// <summary>
-        /// 设备序列号
+        /// Device serial number
         /// </summary>
         public string Serial => _transport?.DeviceId;
         
         /// <summary>
-        /// 最大下载大小
+        /// Maximum download size
         /// </summary>
         public long MaxDownloadSize => _maxDownloadSize;
         
         /// <summary>
-        /// 设备变量
+        /// Device variables
         /// </summary>
         public IReadOnlyDictionary<string, string> Variables => _variables;
         
         /// <summary>
-        /// 进度更新事件
+        /// Progress update event
         /// </summary>
         public event EventHandler<FastbootProgressEventArgs> ProgressChanged;
         
@@ -66,10 +71,10 @@ namespace LoveAlways.Fastboot.Protocol
             _variables = new Dictionary<string, string>();
         }
         
-        #region 设备连接
+        #region Device Connection
         
         /// <summary>
-        /// 枚举所有 Fastboot 设备
+        /// Enumerate all Fastboot devices
         /// </summary>
         public static List<FastbootDeviceDescriptor> GetDevices()
         {
@@ -77,7 +82,7 @@ namespace LoveAlways.Fastboot.Protocol
         }
         
         /// <summary>
-        /// 连接到设备
+        /// Connect to device
         /// </summary>
         public async Task<bool> ConnectAsync(FastbootDeviceDescriptor device, CancellationToken ct = default)
         {
@@ -86,7 +91,7 @@ namespace LoveAlways.Fastboot.Protocol
             
             Disconnect();
             
-            _log($"连接设备: {device}");
+            _log($"Connecting device: {device}");
             
             if (device.Type == TransportType.Usb)
             {
@@ -94,25 +99,25 @@ namespace LoveAlways.Fastboot.Protocol
             }
             else
             {
-                throw new NotSupportedException("暂不支持 TCP 连接");
+                throw new NotSupportedException("TCP connections are not supported for now");
             }
             
             if (!await _transport.ConnectAsync(ct))
             {
-                _log("连接失败");
+                _log("Connection failed");
                 return false;
             }
             
-            _log("连接成功");
+            _log("Connection successful");
             
-            // 读取设备信息
+            // Read device info
             await RefreshDeviceInfoAsync(ct);
             
             return true;
         }
         
         /// <summary>
-        /// 断开连接
+        /// Disconnect
         /// </summary>
         public void Disconnect()
         {
@@ -124,10 +129,10 @@ namespace LoveAlways.Fastboot.Protocol
         
         #endregion
         
-        #region 基础命令
+        #region Basic Commands
         
         /// <summary>
-        /// 发送命令并等待响应
+        /// Send command and wait for response
         /// </summary>
         public async Task<FastbootResponse> SendCommandAsync(string command, int timeoutMs = FastbootProtocol.DEFAULT_TIMEOUT_MS, CancellationToken ct = default)
         {
@@ -140,18 +145,18 @@ namespace LoveAlways.Fastboot.Protocol
             
             if (response == null || response.Length == 0)
             {
-                return new FastbootResponse { Type = ResponseType.Fail, Message = "无响应" };
+                return new FastbootResponse { Type = ResponseType.Fail, Message = "No response" };
             }
             
             var result = FastbootProtocol.ParseResponse(response, response.Length);
             _logDetail($"<<< {result}");
             
-            // 处理 INFO 消息（可能有多个）
+            // Handle INFO messages (there may be multiple)
             while (result.IsInfo)
             {
                 _log($"INFO: {result.Message}");
                 
-                // 继续读取下一个响应
+                // Continue reading next response
                 response = await ReceiveResponseAsync(timeoutMs, ct);
                 if (response == null) break;
                 
@@ -178,7 +183,7 @@ namespace LoveAlways.Fastboot.Protocol
         }
         
         /// <summary>
-        /// 获取变量值
+        /// Get variable value
         /// </summary>
         public async Task<string> GetVariableAsync(string name, CancellationToken ct = default)
         {
@@ -193,16 +198,16 @@ namespace LoveAlways.Fastboot.Protocol
         }
         
         /// <summary>
-        /// 刷新设备信息
+        /// Refresh device information
         /// </summary>
         public async Task RefreshDeviceInfoAsync(CancellationToken ct = default)
         {
             _variables.Clear();
             
-            // 尝试使用 getvar all 获取所有变量
+            // Try to get all variables using getvar:all
             bool gotAllVars = await TryGetAllVariablesAsync(ct);
             
-            // 如果 getvar all 失败或没有获取到足够的变量，逐个读取重要变量
+            // If getvar:all fails or doesn't get enough variables, read important variables individually
             if (!gotAllVars || _variables.Count < 5)
             {
                 string[] importantVars = {
@@ -236,7 +241,7 @@ namespace LoveAlways.Fastboot.Protocol
                 }
             }
             
-            // 解析 max-download-size
+            // Parse max-download-size
             if (_variables.TryGetValue(FastbootProtocol.VAR_MAX_DOWNLOAD_SIZE, out string maxDlSize))
             {
                 if (maxDlSize.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
@@ -249,13 +254,13 @@ namespace LoveAlways.Fastboot.Protocol
                 }
             }
             
-            _log($"设备: {GetVariableValue(FastbootProtocol.VAR_PRODUCT, "未知")}");
-            _log($"序列号: {GetVariableValue(FastbootProtocol.VAR_SERIALNO, "未知")}");
-            _log($"最大下载: {_maxDownloadSize / 1024 / 1024} MB");
+            _log($"Device: {GetVariableValue(FastbootProtocol.VAR_PRODUCT, "Unknown")}");
+            _log($"Serial: {GetVariableValue(FastbootProtocol.VAR_SERIALNO, "Unknown")}");
+            _log($"Max download: {_maxDownloadSize / 1024 / 1024} MB");
         }
         
         /// <summary>
-        /// 尝试使用 getvar all 获取所有变量
+        /// Try to get all variables using getvar:all
         /// </summary>
         private async Task<bool> TryGetAllVariablesAsync(CancellationToken ct)
         {
@@ -267,17 +272,17 @@ namespace LoveAlways.Fastboot.Protocol
                 
                 byte[] cmdBytes = FastbootProtocol.BuildCommand($"{FastbootProtocol.CMD_GETVAR}:{FastbootProtocol.VAR_ALL}");
                 
-                // 使用 TransferAsync 发送命令并获取第一个响应
+                // Send command using TransferAsync and get the first response
                 byte[] response = await _transport.TransferAsync(cmdBytes, 2000, ct);
                 
                 if (response == null || response.Length == 0)
                 {
-                    _logDetail("getvar:all 无响应");
+                    _logDetail("getvar:all no response");
                     return false;
                 }
                 
-                // 读取所有响应（INFO 消息）
-                int timeout = 15000; // 15秒超时
+                // Read all responses (INFO messages)
+                int timeout = 15000; // 15s timeout
                 var startTime = DateTime.Now;
                 int varCount = 0;
                 
@@ -292,40 +297,40 @@ namespace LoveAlways.Fastboot.Protocol
                     
                     if (result.IsInfo)
                     {
-                        // 解析 INFO 消息格式: "key: value" 或 "(bootloader) key: value"
+                        // Parse INFO message format: "key: value" or "(bootloader) key: value"
                         if (ParseVariableFromInfo(result.Message))
                             varCount++;
                     }
                     else if (result.IsSuccess)
                     {
-                        // OKAY 表示命令成功结束
-                        _logDetail($"getvar:all 完成，获取 {varCount} 个变量");
+                        // OKAY indicates command finished successfully
+                        _logDetail($"getvar:all complete, got {varCount} variables");
                         break;
                     }
                     else if (result.IsFail)
                     {
-                        // FAIL 表示命令失败
-                        _logDetail($"getvar:all 失败: {result.Message}");
+                        // FAIL indicates command failed
+                        _logDetail($"getvar:all failed: {result.Message}");
                         break;
                     }
                     
-                    // 继续读取下一个响应
+                    // Continue reading next response
                     response = await ReceiveResponseAsync(1000, ct);
                 }
                 
-                _logDetail($"总共获取 {_variables.Count} 个变量");
+                _logDetail($"Total { _variables.Count } variables obtained");
                 return _variables.Count > 0;
             }
             catch (Exception ex)
             {
-                _logDetail($"getvar:all 异常: {ex.Message}");
+                _logDetail($"getvar:all exception: {ex.Message}");
                 return false;
             }
         }
         
         /// <summary>
-        /// 从 INFO 消息解析变量
-        /// 支持格式：
+        /// Parse variable from INFO message
+        /// Supported formats:
         /// - key: value
         /// - partition-size:boot_a: 0x4000000
         /// - is-logical:system_a: yes
@@ -337,15 +342,15 @@ namespace LoveAlways.Fastboot.Protocol
             
             string line = message.Trim();
             
-            // 移除 (bootloader) 前缀
+            // Remove (bootloader) prefix
             if (line.StartsWith("(bootloader)"))
             {
                 line = line.Substring(12).Trim();
             }
             
-            // 使用正则表达式解析：支持 partition-size:xxx: value 和 key: value 格式
-            // 格式：key: value 或 prefix:name: value
-            // 正则：匹配 "key: value" 其中 key 可以包含 "prefix:name" 格式
+            // Parse using regex: supports partition-size:xxx: value and key: value formats
+            // Format: key: value or prefix:name: value
+            // Regex: match "key: value" where key can contain "prefix:name" format
             var match = System.Text.RegularExpressions.Regex.Match(line, 
                 @"^([a-zA-Z0-9_-]+(?::[a-zA-Z0-9_-]+)?):\s*(.+)$");
             
@@ -373,21 +378,21 @@ namespace LoveAlways.Fastboot.Protocol
         
         #endregion
         
-        #region 刷写操作
+        #region Flashing Operations
         
         /// <summary>
-        /// 刷写分区
+        /// Flash partition
         /// </summary>
-        /// <param name="partition">分区名</param>
-        /// <param name="imagePath">镜像文件路径</param>
-        /// <param name="progress">进度回调</param>
-        /// <param name="ct">取消令牌</param>
+        /// <param name="partition">Partition name</param>
+        /// <param name="imagePath">Image file path</param>
+        /// <param name="progress">Progress callback</param>
+        /// <param name="ct">Cancellation token</param>
         public async Task<bool> FlashAsync(string partition, string imagePath, 
             IProgress<FastbootProgressEventArgs> progress = null, CancellationToken ct = default)
         {
             if (!File.Exists(imagePath))
             {
-                _log($"文件不存在: {imagePath}");
+                _log($"File does not exist: {imagePath}");
                 return false;
             }
             
@@ -398,7 +403,7 @@ namespace LoveAlways.Fastboot.Protocol
         }
         
         /// <summary>
-        /// 刷写分区（从 SparseImage）
+        /// Flash partition (from SparseImage)
         /// </summary>
         public async Task<bool> FlashAsync(string partition, SparseImage image,
             IProgress<FastbootProgressEventArgs> progress = null, CancellationToken ct = default)
@@ -406,27 +411,27 @@ namespace LoveAlways.Fastboot.Protocol
             EnsureConnected();
             
             long totalSize = image.SparseSize;
-            _log($"刷写 {partition}: {totalSize / 1024} KB ({(image.IsSparse ? "Sparse" : "Raw")})");
+            _log($"Flashing {partition}: {totalSize / 1024} KB ({(image.IsSparse ? "Sparse" : "Raw")})");
             
-            // 如果文件大于 max-download-size，需要分块
+            // If file is larger than max-download-size, it needs to be chunked
             if (totalSize > _maxDownloadSize && !image.IsSparse)
             {
-                _log($"文件过大，需要 Resparse");
-                // TODO: 实现 resparse
+                _log("File is too large, need Resparse");
+                // TODO: Implement resparse
                 return false;
             }
             
-            // 分块传输 - 使用设备报告的 max-download-size（与官方 fastboot 一致）
+            // Chunked transfer - use max-download-size reported by device (consistent with official fastboot)
             int chunkIndex = 0;
             int totalChunks = 0;
             long totalSent = 0;
             
-            // 速度计算变量
+            // Speed calculation variables
             var speedStopwatch = System.Diagnostics.Stopwatch.StartNew();
             long lastSpeedBytes = 0;
             DateTime lastSpeedTime = DateTime.Now;
             double currentSpeed = 0;
-            const int speedUpdateIntervalMs = 200; // 每200ms更新一次速度
+            const int speedUpdateIntervalMs = 200; // Update speed every 200ms
             
             foreach (var chunk in image.SplitForTransfer(_maxDownloadSize))
             {
@@ -435,8 +440,8 @@ namespace LoveAlways.Fastboot.Protocol
                 if (totalChunks == 0)
                     totalChunks = chunk.TotalChunks;
                 
-                // 报告进度: Sending
-                // 进度始终基于已发送字节数计算（0-95%）
+                // Report progress: Sending
+                // Progress is always based on bytes sent (0-95%)
                 var progressArgs = new FastbootProgressEventArgs
                 {
                     Partition = partition,
@@ -449,29 +454,29 @@ namespace LoveAlways.Fastboot.Protocol
                     SpeedBps = currentSpeed
                 };
                 
-                // 发送 download 命令
+                // Send download command
                 var downloadResponse = await SendCommandAsync(
                     $"{FastbootProtocol.CMD_DOWNLOAD}:{chunk.Size:x8}",
                     FastbootProtocol.DEFAULT_TIMEOUT_MS, ct);
                 
                 if (!downloadResponse.IsData)
                 {
-                    _log($"下载失败: {downloadResponse.Message}");
+                    _log($"Download failed: {downloadResponse.Message}");
                     return false;
                 }
                 
-                // 发送数据
+                // Send data
                 long expectedSize = downloadResponse.DataSize;
                 if (expectedSize != chunk.Size)
                 {
-                    _log($"数据大小不匹配: 期望 {expectedSize}, 实际 {chunk.Size}");
+                    _log($"Data size mismatch: expected {expectedSize}, actual {chunk.Size}");
                 }
                 
-                // 分块发送数据
+                // Send data in chunks
                 int offset = 0;
-                int blockSize = 64 * 1024; // 64KB 块，更频繁的更新
+                int blockSize = 64 * 1024; // 64KB block, more frequent updates
                 long lastProgressBytes = totalSent;
-                const int progressIntervalBytes = 256 * 1024; // 每 256KB 报告一次进度
+                const int progressIntervalBytes = 256 * 1024; // Report progress every 256KB
                 
                 while (offset < chunk.Size)
                 {
@@ -483,7 +488,7 @@ namespace LoveAlways.Fastboot.Protocol
                     offset += toSend;
                     totalSent += toSend;
                     
-                    // 计算实时速度
+                    // Calculate real-time speed
                     var now = DateTime.Now;
                     var timeSinceLastSpeedUpdate = (now - lastSpeedTime).TotalMilliseconds;
                     
@@ -495,7 +500,7 @@ namespace LoveAlways.Fastboot.Protocol
                         lastSpeedTime = now;
                     }
                     
-                    // 每 256KB 或 chunk 结束时报告进度
+                    // Report progress every 256KB or at the end of chunk
                     bool isChunkEnd = (offset >= chunk.Size);
                     bool shouldReport = (totalSent - lastProgressBytes) >= progressIntervalBytes || isChunkEnd;
                     
@@ -510,43 +515,43 @@ namespace LoveAlways.Fastboot.Protocol
                     }
                 }
                 
-                // 等待 OKAY
+                // Wait for OKAY
                 var dataResponse = await ReceiveResponseAsync(FastbootProtocol.DATA_TIMEOUT_MS, ct);
                 if (dataResponse == null)
                 {
-                    _log("数据传输超时");
+                    _log("Data transfer timeout");
                     return false;
                 }
                 
                 var dataResult = FastbootProtocol.ParseResponse(dataResponse, dataResponse.Length);
                 if (!dataResult.IsSuccess)
                 {
-                    _log($"数据传输失败: {dataResult.Message}");
+                    _log($"Data transfer failed: {dataResult.Message}");
                     return false;
                 }
                 
-                // 发送 flash 命令
+                // Send flash command
                 progressArgs.Stage = ProgressStage.Writing;
-                // Writing 阶段占 95-100%
+                // Writing stage takes 95-100%
                 progressArgs.Percent = 95 + (chunkIndex + 1) * 5.0 / totalChunks;
                 ReportProgress(progressArgs);
                 progress?.Report(progressArgs);
                 
-                // 标准 Fastboot 协议：flash 命令始终是 flash:partition
+                // Standard Fastboot protocol: flash command is always flash:partition
                 string flashCmd = $"{FastbootProtocol.CMD_FLASH}:{partition}";
                 
                 var flashResponse = await SendCommandAsync(flashCmd, FastbootProtocol.DATA_TIMEOUT_MS, ct);
                 
                 if (!flashResponse.IsSuccess)
                 {
-                    _log($"刷写失败: {flashResponse.Message}");
+                    _log($"Flash failed: {flashResponse.Message}");
                     return false;
                 }
                 
                 chunkIndex++;
             }
             
-            // 完成
+            // Finish
             var completeArgs = new FastbootProgressEventArgs
             {
                 Partition = partition,
@@ -560,18 +565,18 @@ namespace LoveAlways.Fastboot.Protocol
             ReportProgress(completeArgs);
             progress?.Report(completeArgs);
             
-            _log($"刷写 {partition} 完成");
+            _log($"Flash {partition} complete");
             return true;
         }
         
         /// <summary>
-        /// 擦除分区
+        /// Erase partition
         /// </summary>
         public async Task<bool> EraseAsync(string partition, CancellationToken ct = default)
         {
             EnsureConnected();
             
-            _log($"擦除 {partition}...");
+            _log($"Erasing {partition}...");
             
             var response = await SendCommandAsync(
                 $"{FastbootProtocol.CMD_ERASE}:{partition}",
@@ -579,55 +584,55 @@ namespace LoveAlways.Fastboot.Protocol
             
             if (response.IsSuccess)
             {
-                _log($"擦除 {partition} 完成");
+                _log($"Erase {partition} complete");
                 return true;
             }
             
-            _log($"擦除失败: {response.Message}");
+            _log($"Erase failed: {response.Message}");
             return false;
         }
         
         #endregion
         
-        #region 重启操作
+        #region Reboot Operations
         
         /// <summary>
-        /// 重启到系统
+        /// Reboot to system
         /// </summary>
         public async Task<bool> RebootAsync(CancellationToken ct = default)
         {
-            _log("重启到系统...");
+            _log("Rebooting to system...");
             var response = await SendCommandAsync(FastbootProtocol.CMD_REBOOT, FastbootProtocol.DEFAULT_TIMEOUT_MS, ct);
             Disconnect();
             return response.IsSuccess;
         }
         
         /// <summary>
-        /// 重启到 Bootloader
+        /// Reboot to Bootloader
         /// </summary>
         public async Task<bool> RebootBootloaderAsync(CancellationToken ct = default)
         {
-            _log("重启到 Bootloader...");
+            _log("Rebooting to Bootloader...");
             var response = await SendCommandAsync(FastbootProtocol.CMD_REBOOT_BOOTLOADER, FastbootProtocol.DEFAULT_TIMEOUT_MS, ct);
             return response.IsSuccess;
         }
         
         /// <summary>
-        /// 重启到 Fastbootd
+        /// Reboot to Fastbootd
         /// </summary>
         public async Task<bool> RebootFastbootdAsync(CancellationToken ct = default)
         {
-            _log("重启到 Fastbootd...");
+            _log("Rebooting to Fastbootd...");
             var response = await SendCommandAsync(FastbootProtocol.CMD_REBOOT_FASTBOOT, FastbootProtocol.DEFAULT_TIMEOUT_MS, ct);
             return response.IsSuccess;
         }
         
         /// <summary>
-        /// 重启到 Recovery
+        /// Reboot to Recovery
         /// </summary>
         public async Task<bool> RebootRecoveryAsync(CancellationToken ct = default)
         {
-            _log("重启到 Recovery...");
+            _log("Rebooting to Recovery...");
             var response = await SendCommandAsync(FastbootProtocol.CMD_REBOOT_RECOVERY, FastbootProtocol.DEFAULT_TIMEOUT_MS, ct);
             Disconnect();
             return response.IsSuccess;
@@ -635,38 +640,38 @@ namespace LoveAlways.Fastboot.Protocol
         
         #endregion
         
-        #region 解锁/锁定
+        #region Unlock/Lock
         
         /// <summary>
-        /// 解锁 Bootloader
+        /// Unlock Bootloader
         /// </summary>
         public async Task<bool> UnlockAsync(CancellationToken ct = default)
         {
-            _log("解锁 Bootloader...");
+            _log("Unlocking Bootloader...");
             var response = await SendCommandAsync(FastbootProtocol.CMD_FLASHING_UNLOCK, FastbootProtocol.DEFAULT_TIMEOUT_MS, ct);
             return response.IsSuccess;
         }
         
         /// <summary>
-        /// 锁定 Bootloader
+        /// Lock Bootloader
         /// </summary>
         public async Task<bool> LockAsync(CancellationToken ct = default)
         {
-            _log("锁定 Bootloader...");
+            _log("Locking Bootloader...");
             var response = await SendCommandAsync(FastbootProtocol.CMD_FLASHING_LOCK, FastbootProtocol.DEFAULT_TIMEOUT_MS, ct);
             return response.IsSuccess;
         }
         
         #endregion
         
-        #region A/B 槽位
+        #region A/B Slots
         
         /// <summary>
-        /// 设置活动槽位
+        /// Set active slot
         /// </summary>
         public async Task<bool> SetActiveSlotAsync(string slot, CancellationToken ct = default)
         {
-            _log($"设置活动槽位: {slot}");
+            _log($"Set active slot: {slot}");
             var response = await SendCommandAsync(
                 $"{FastbootProtocol.CMD_SET_ACTIVE}:{slot}",
                 FastbootProtocol.DEFAULT_TIMEOUT_MS, ct);
@@ -674,7 +679,7 @@ namespace LoveAlways.Fastboot.Protocol
         }
         
         /// <summary>
-        /// 获取当前槽位
+        /// Get current slot
         /// </summary>
         public async Task<string> GetCurrentSlotAsync(CancellationToken ct = default)
         {
@@ -683,10 +688,10 @@ namespace LoveAlways.Fastboot.Protocol
         
         #endregion
         
-        #region OEM 命令
+        #region OEM Commands
         
         /// <summary>
-        /// 执行 OEM 命令
+        /// Execute OEM command
         /// </summary>
         public async Task<FastbootResponse> OemCommandAsync(string command, CancellationToken ct = default)
         {
@@ -695,12 +700,12 @@ namespace LoveAlways.Fastboot.Protocol
         
         #endregion
         
-        #region 辅助方法
+        #region Helper Methods
         
         private void EnsureConnected()
         {
             if (!IsConnected)
-                throw new InvalidOperationException("设备未连接");
+                throw new InvalidOperationException("Device not connected");
         }
         
         private void ReportProgress(FastbootProgressEventArgs args)
@@ -721,7 +726,7 @@ namespace LoveAlways.Fastboot.Protocol
     }
     
     /// <summary>
-    /// 进度阶段
+    /// Progress Stage
     /// </summary>
     public enum ProgressStage
     {
@@ -733,7 +738,7 @@ namespace LoveAlways.Fastboot.Protocol
     }
     
     /// <summary>
-    /// 进度事件参数
+    /// Progress Event Arguments
     /// </summary>
     public class FastbootProgressEventArgs : EventArgs
     {

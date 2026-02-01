@@ -1,7 +1,12 @@
 // ============================================================================
-// LoveAlways - 看门狗机制
+// LoveAlways - Watchdog Mechanism
 // Watchdog Mechanism for Protocol Communication
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Diagnostics;
@@ -11,18 +16,18 @@ using System.Threading.Tasks;
 namespace LoveAlways.Common
 {
     /// <summary>
-    /// 看门狗状态
+    /// Watchdog State
     /// </summary>
     public enum WatchdogState
     {
-        Idle,       // 空闲
-        Running,    // 运行中
-        Timeout,    // 已超时
-        Stopped     // 已停止
+        Idle,       // Idle
+        Running,    // Running
+        Timeout,    // Timeout
+        Stopped     // Stopped
     }
 
     /// <summary>
-    /// 看门狗超时事件参数
+    /// Watchdog Timeout Event Arguments
     /// </summary>
     public class WatchdogTimeoutEventArgs : EventArgs
     {
@@ -34,53 +39,53 @@ namespace LoveAlways.Common
     }
 
     /// <summary>
-    /// 通用看门狗接口
+    /// General Watchdog Interface
     /// </summary>
     public interface IWatchdog : IDisposable
     {
         /// <summary>
-        /// 当前状态
+        /// Current State
         /// </summary>
         WatchdogState State { get; }
 
         /// <summary>
-        /// 超时时间
+        /// Timeout Value
         /// </summary>
         TimeSpan Timeout { get; set; }
 
         /// <summary>
-        /// 超时次数
+        /// Timeout Count
         /// </summary>
         int TimeoutCount { get; }
 
         /// <summary>
-        /// 启动看门狗
+        /// Start Watchdog
         /// </summary>
         void Start(string operationName = null);
 
         /// <summary>
-        /// 停止看门狗
+        /// Stop Watchdog
         /// </summary>
         void Stop();
 
         /// <summary>
-        /// 喂狗 (重置计时器)
+        /// Feed Dog (Reset Timer)
         /// </summary>
         void Feed();
 
         /// <summary>
-        /// 检查是否超时
+        /// Check if Timed Out
         /// </summary>
         bool IsTimedOut { get; }
 
         /// <summary>
-        /// 超时事件
+        /// On Timeout Event
         /// </summary>
         event EventHandler<WatchdogTimeoutEventArgs> OnTimeout;
     }
 
     /// <summary>
-    /// 通用看门狗实现
+    /// General Watchdog Implementation
     /// </summary>
     public class Watchdog : IWatchdog
     {
@@ -103,11 +108,11 @@ namespace LoveAlways.Common
         public event EventHandler<WatchdogTimeoutEventArgs> OnTimeout;
 
         /// <summary>
-        /// 创建看门狗
+        /// Create Watchdog
         /// </summary>
-        /// <param name="moduleName">模块名称 (Qualcomm/Spreadtrum/Fastboot)</param>
-        /// <param name="timeout">超时时间</param>
-        /// <param name="log">日志回调</param>
+        /// <param name="moduleName">Module Name (Qualcomm/Spreadtrum/Fastboot)</param>
+        /// <param name="timeout">Timeout Value</param>
+        /// <param name="log">Log Callback</param>
         public Watchdog(string moduleName, TimeSpan timeout, Action<string> log = null)
         {
             _moduleName = moduleName;
@@ -117,7 +122,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 启动看门狗
+        /// Start Watchdog
         /// </summary>
         public void Start(string operationName = null)
         {
@@ -133,15 +138,15 @@ namespace LoveAlways.Common
                 _stopwatch.Restart();
                 State = WatchdogState.Running;
 
-                _log?.Invoke($"[{_moduleName}] 看门狗启动: {_currentOperation} (超时: {Timeout.TotalSeconds}秒)");
+                _log?.Invoke($"[{_moduleName}] Watchdog started: {_currentOperation} (Timeout: {Timeout.TotalSeconds}s)");
 
-                // 启动后台监控任务
+                // Start background monitor task
                 _monitorTask = MonitorAsync(_cts.Token);
             }
         }
 
         /// <summary>
-        /// 停止看门狗
+        /// Stop Watchdog
         /// </summary>
         public void Stop()
         {
@@ -150,12 +155,12 @@ namespace LoveAlways.Common
                 _cts?.Cancel();
                 _stopwatch.Stop();
                 State = WatchdogState.Stopped;
-                _log?.Invoke($"[{_moduleName}] 看门狗停止: {_currentOperation}");
+                _log?.Invoke($"[{_moduleName}] Watchdog stopped: {_currentOperation}");
             }
         }
 
         /// <summary>
-        /// 喂狗 - 重置计时器
+        /// Feed Dog - Reset Timer
         /// </summary>
         public void Feed()
         {
@@ -169,7 +174,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 后台监控任务
+        /// Background Monitor Task
         /// </summary>
         private async Task MonitorAsync(CancellationToken ct)
         {
@@ -177,7 +182,7 @@ namespace LoveAlways.Common
             {
                 while (!ct.IsCancellationRequested && State == WatchdogState.Running)
                 {
-                    await Task.Delay(1000, ct); // 每秒检查一次
+                    await Task.Delay(1000, ct); // Check every second
 
                     lock (_lock)
                     {
@@ -186,7 +191,7 @@ namespace LoveAlways.Common
                             State = WatchdogState.Timeout;
                             _timeoutCount++;
 
-                            _log?.Invoke($"[{_moduleName}] 看门狗超时! 操作: {_currentOperation}, 已等待: {_stopwatch.Elapsed.TotalSeconds:F1}秒, 超时次数: {_timeoutCount}");
+                            _log?.Invoke($"[{_moduleName}] Watchdog timeout! Operation: {_currentOperation}, Elapsed: {_stopwatch.Elapsed.TotalSeconds:F1}s, Timeout Count: {_timeoutCount}");
 
                             var args = new WatchdogTimeoutEventArgs
                             {
@@ -198,7 +203,7 @@ namespace LoveAlways.Common
 
                             OnTimeout?.Invoke(this, args);
 
-                            // 如果需要重置，自动重启看门狗
+                            // If reset is needed, automatically restart watchdog
                             if (args.ShouldReset)
                             {
                                 _stopwatch.Restart();
@@ -210,11 +215,11 @@ namespace LoveAlways.Common
             }
             catch (OperationCanceledException)
             {
-                // 正常取消
+                // Normal cancellation
             }
             catch (Exception ex)
             {
-                _log?.Invoke($"[{_moduleName}] 看门狗监控异常: {ex.Message}");
+                _log?.Invoke($"[{_moduleName}] Watchdog monitor exception: {ex.Message}");
             }
         }
 
@@ -233,21 +238,21 @@ namespace LoveAlways.Common
                 taskToWait = _monitorTask;
             }
             
-            // 在锁外等待任务完成，避免死锁
+            // Wait for task completion outside lock to avoid deadlock
             if (taskToWait != null)
             {
                 try
                 {
-                    // 最多等待 2 秒
+                    // Wait at most 2 seconds
                     taskToWait.Wait(2000);
                 }
                 catch (AggregateException)
                 {
-                    // 忽略任务取消异常
+                    // Ignore task cancellation exception
                 }
                 catch (ObjectDisposedException)
                 {
-                    // 忽略已释放异常
+                    // Ignore disposed exception
                 }
             }
             
@@ -261,7 +266,7 @@ namespace LoveAlways.Common
     }
 
     /// <summary>
-    /// 看门狗作用域 (using 模式)
+    /// Watchdog Scope (using pattern)
     /// </summary>
     public class WatchdogScope : IDisposable
     {
@@ -274,7 +279,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 喂狗
+        /// Feed Dog
         /// </summary>
         public void Feed() => _watchdog.Feed();
 
@@ -285,7 +290,7 @@ namespace LoveAlways.Common
     }
 
     /// <summary>
-    /// 看门狗管理器 - 统一管理各模块的看门狗
+    /// Watchdog Manager - Unified management of watchdogs for each module
     /// </summary>
     public static class WatchdogManager
     {
@@ -295,7 +300,7 @@ namespace LoveAlways.Common
         private static Watchdog _fastbootWatchdog;
 
         /// <summary>
-        /// 默认超时配置
+        /// Default Timeout Configuration
         /// </summary>
         public static class DefaultTimeouts
         {
@@ -305,7 +310,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 获取或创建高通看门狗
+        /// Get or Create Qualcomm Watchdog
         /// </summary>
         public static Watchdog GetQualcommWatchdog(Action<string> log = null)
         {
@@ -320,7 +325,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 获取或创建展讯看门狗
+        /// Get or Create Spreadtrum Watchdog
         /// </summary>
         public static Watchdog GetSpreadtrumWatchdog(Action<string> log = null)
         {
@@ -335,7 +340,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 获取或创建 Fastboot 看门狗
+        /// Get or Create Fastboot Watchdog
         /// </summary>
         public static Watchdog GetFastbootWatchdog(Action<string> log = null)
         {
@@ -350,7 +355,7 @@ namespace LoveAlways.Common
         }
 
         /// <summary>
-        /// 释放所有看门狗
+        /// Dispose All Watchdogs
         /// </summary>
         public static void DisposeAll()
         {

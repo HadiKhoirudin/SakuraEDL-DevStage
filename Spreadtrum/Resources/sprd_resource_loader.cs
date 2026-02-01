@@ -1,7 +1,12 @@
 // ============================================================================
-// LoveAlways - 展讯资源加载器
-// 优先从资源包 (sprd_resources.pak) 加载，后备使用嵌入资源
+// LoveAlways - Spreadtrum Resource Loader
+// Prioritizes loading from resource package (sprd_resources.pak), falls back to embedded resources
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.IO;
@@ -10,8 +15,8 @@ using System.Reflection;
 namespace LoveAlways.Spreadtrum.Resources
 {
     /// <summary>
-    /// 展讯模块资源加载器
-    /// 加载优先级: 资源包 (sprd_resources.pak) > 嵌入资源
+    /// Spreadtrum module resource loader
+    /// Loading priority: Resource Package (sprd_resources.pak) > Embedded Resources
     /// </summary>
     public static class SprdResourceLoader
     {
@@ -20,14 +25,14 @@ namespace LoveAlways.Spreadtrum.Resources
         private static bool _pakChecked;
         private static readonly object _lock = new object();
 
-        // 资源包文件名
+        // Resource package filename
         private const string PAK_FILENAME = "sprd_resources.pak";
         
-        // 嵌入资源名称前缀
+        // Embedded resource name prefix
         private const string EMBEDDED_PREFIX = "LoveAlways.Spreadtrum.Resources.";
         
         /// <summary>
-        /// Exploit payload 文件名
+        /// Exploit payload filenames
         /// </summary>
         public static class ExploitPayloads
         {
@@ -36,10 +41,10 @@ namespace LoveAlways.Spreadtrum.Resources
             public const string Exploit_65015f48 = "exploit_65015f48.bin";
         }
 
-        #region 资源包管理
+        #region Resource Package Management
 
         /// <summary>
-        /// 确保资源包已加载
+        /// Ensure resource package is loaded
         /// </summary>
         private static void EnsurePak()
         {
@@ -66,7 +71,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取资源包路径
+        /// Get resource package path
         /// </summary>
         private static string GetPakPath()
         {
@@ -74,7 +79,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 检查资源包是否可用
+        /// Check if resource package is available
         /// </summary>
         public static bool IsPakAvailable()
         {
@@ -83,7 +88,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取资源包版本
+        /// Get resource package version
         /// </summary>
         public static int GetPakVersion()
         {
@@ -92,7 +97,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取资源包中的资源数量
+        /// Get number of resources in the package
         /// </summary>
         public static int GetPakResourceCount()
         {
@@ -102,13 +107,13 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region Exploit 加载
+        #region Exploit Loading
 
         /// <summary>
-        /// 根据 FDL1 地址获取对应的 exploit payload
+        /// Get corresponding exploit payload by FDL1 address
         /// </summary>
-        /// <param name="fdl1Address">FDL1 加载地址</param>
-        /// <returns>Exploit payload 数据，如果没有匹配返回 null</returns>
+        /// <param name="fdl1Address">FDL1 load address</param>
+        /// <returns>Exploit payload data, returns null if no match</returns>
         public static byte[] GetExploitPayload(uint fdl1Address)
         {
             string exploitName = GetExploitNameByAddress(fdl1Address);
@@ -123,10 +128,10 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 根据 exploit 名称获取 payload
+        /// Get payload by exploit name
         /// </summary>
-        /// <param name="exploitName">例如 "0x4ee8", "0x65015f08"</param>
-        /// <returns>Exploit payload 数据</returns>
+        /// <param name="exploitName">Example: "0x4ee8", "0x65015f08"</param>
+        /// <returns>Exploit payload data</returns>
         public static byte[] GetExploitPayloadByName(string exploitName)
         {
             string fileName = GetExploitFileName(exploitName);
@@ -137,11 +142,11 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 根据 FDL1 地址获取 exploit 名称
+        /// Get exploit name by FDL1 address
         /// </summary>
         private static string GetExploitNameByAddress(uint fdl1Address)
         {
-            // 基于 iReverse 项目的 Prepare_Exploit 函数逻辑
+            // Based on Prepare_Exploit function logic in iReverse project
             if (fdl1Address == 0x5000 || fdl1Address == 0x00005000)
                 return "0x4ee8";
             
@@ -155,7 +160,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取 exploit 文件名
+        /// Get exploit filename
         /// </summary>
         private static string GetExploitFileName(string exploitName)
         {
@@ -173,7 +178,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 检查是否有可用的 exploit payload
+        /// Check if exploit payload is available
         /// </summary>
         public static bool HasExploitPayload(uint fdl1Address)
         {
@@ -181,7 +186,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 检查是否有可用的 exploit (别名)
+        /// Check if exploit is available (Alias)
         /// </summary>
         public static bool HasExploitForAddress(uint fdl1Address)
         {
@@ -189,7 +194,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取 exploit 地址 ID
+        /// Get exploit address ID
         /// </summary>
         public static string GetExploitAddressId(uint fdl1Address)
         {
@@ -198,16 +203,16 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 通用资源加载
+        #region General Resource Loading
 
         /// <summary>
-        /// 加载资源 (优先从资源包，后备嵌入资源)
+        /// Load resource (Priority: Package, Fallback: Embedded)
         /// </summary>
-        /// <param name="resourceName">资源文件名</param>
-        /// <returns>资源数据</returns>
+        /// <param name="resourceName">Resource filename</param>
+        /// <returns>Resource data</returns>
         public static byte[] LoadResource(string resourceName)
         {
-            // 1. 尝试从资源包加载
+            // 1. Try loading from resource package
             EnsurePak();
             if (_pak != null)
             {
@@ -216,12 +221,12 @@ namespace LoveAlways.Spreadtrum.Resources
                     return pakData;
             }
 
-            // 2. 后备: 从嵌入资源加载
+            // 2. Fallback: load from embedded resources
             return LoadEmbeddedResource(resourceName);
         }
 
         /// <summary>
-        /// 从嵌入资源加载
+        /// Load from embedded resource
         /// </summary>
         private static byte[] LoadEmbeddedResource(string resourceName)
         {
@@ -233,7 +238,7 @@ namespace LoveAlways.Spreadtrum.Resources
                 {
                     if (stream == null)
                     {
-                        // 尝试其他可能的名称格式
+                        // Try other possible name formats
                         foreach (string name in _assembly.GetManifestResourceNames())
                         {
                             if (name.EndsWith(resourceName, StringComparison.OrdinalIgnoreCase))
@@ -260,7 +265,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 从流读取所有字节
+        /// Read all bytes from stream
         /// </summary>
         private static byte[] ReadAllBytes(Stream stream)
         {
@@ -273,10 +278,10 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region Exploit 信息
+        #region Exploit Information
 
         /// <summary>
-        /// 获取所有可用的 exploit 信息
+        /// Get all available exploit information
         /// </summary>
         public static ExploitInfo[] GetAvailableExploits()
         {
@@ -286,7 +291,7 @@ namespace LoveAlways.Spreadtrum.Resources
                 {
                     Name = "0x4ee8",
                     FileName = ExploitPayloads.Exploit_4ee8,
-                    Description = "SC77xx 系列 BSL 溢出漏洞",
+                    Description = "SC77xx series BSL overflow vulnerability",
                     SupportedAddresses = new uint[] { 0x5000, 0x00005000 },
                     SupportedChips = "SC7731, SC7730, SC9830"
                 },
@@ -294,7 +299,7 @@ namespace LoveAlways.Spreadtrum.Resources
                 {
                     Name = "0x65015f08",
                     FileName = ExploitPayloads.Exploit_65015f08,
-                    Description = "SC98xx/T 系列签名绕过漏洞",
+                    Description = "SC98xx/T series signature bypass vulnerability",
                     SupportedAddresses = new uint[] { 0x65000800 },
                     SupportedChips = "SC9863A, T610, T618"
                 },
@@ -302,7 +307,7 @@ namespace LoveAlways.Spreadtrum.Resources
                 {
                     Name = "0x65015f48",
                     FileName = ExploitPayloads.Exploit_65015f48,
-                    Description = "SC98xx 系列签名绕过漏洞 (变体)",
+                    Description = "SC98xx series signature bypass vulnerability (variant)",
                     SupportedAddresses = new uint[] { 0x65000000 },
                     SupportedChips = "SC9850, SC9860"
                 }
@@ -311,13 +316,13 @@ namespace LoveAlways.Spreadtrum.Resources
 
         #endregion
 
-        #region 临时文件提取
+        #region Temporary File Extraction
 
         /// <summary>
-        /// 将 exploit payload 提取到临时目录
+        /// Extract exploit payload to temporary directory
         /// </summary>
-        /// <param name="exploitName">Exploit 名称</param>
-        /// <returns>提取后的文件路径，失败返回 null</returns>
+        /// <param name="exploitName">Exploit name</param>
+        /// <returns>Extracted file path, returns null if failed</returns>
         public static string ExtractExploitToTemp(string exploitName)
         {
             byte[] payload = GetExploitPayloadByName(exploitName);
@@ -343,7 +348,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 清理临时提取的文件
+        /// Cleanup temporarily extracted files
         /// </summary>
         public static void CleanupTemp()
         {
@@ -357,19 +362,19 @@ namespace LoveAlways.Spreadtrum.Resources
             }
             catch
             {
-                // 忽略清理错误
+                // Ignore cleanup errors
             }
         }
 
         #endregion
 
-        #region 资源包打包工具
+        #region Resource Package Tools
 
         /// <summary>
-        /// 从指定目录创建资源包
+        /// Create resource package from specified directory
         /// </summary>
-        /// <param name="sourceDir">源目录</param>
-        /// <param name="outputPath">输出路径 (可选，默认为程序目录下的 sprd_resources.pak)</param>
+        /// <param name="sourceDir">Source directory</param>
+        /// <param name="outputPath">Output path (Optional, default is sprd_resources.pak in app directory)</param>
         public static void CreateResourcePak(string sourceDir, string outputPath = null)
         {
             if (string.IsNullOrEmpty(outputPath))
@@ -379,9 +384,9 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 从嵌入资源创建资源包
+        /// Create resource package from embedded resources
         /// </summary>
-        /// <param name="outputPath">输出路径</param>
+        /// <param name="outputPath">Output path</param>
         public static void CreateResourcePakFromEmbedded(string outputPath = null)
         {
             if (string.IsNullOrEmpty(outputPath))
@@ -389,7 +394,7 @@ namespace LoveAlways.Spreadtrum.Resources
 
             var resources = new System.Collections.Generic.List<(string Name, byte[] Data, SprdResourcePak.ResourceType Type)>();
 
-            // 添加所有 exploit 资源
+            // Add all exploit resources
             foreach (var exploit in GetAvailableExploits())
             {
                 byte[] data = LoadEmbeddedResource(exploit.FileName);
@@ -409,7 +414,7 @@ namespace LoveAlways.Spreadtrum.Resources
     }
 
     /// <summary>
-    /// Exploit 信息结构
+    /// Exploit information structure
     /// </summary>
     public class ExploitInfo
     {

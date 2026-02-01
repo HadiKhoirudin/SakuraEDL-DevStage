@@ -1,8 +1,8 @@
 // ============================================================================
 // LoveAlways - MediaTek Key Extractor
-// 提取设备密钥信息 (seccfg, efuse, rpmb keys)
+// Extract device key info (seccfg, efuse, rpmb keys)
 // ============================================================================
-// 参考: mtkclient keys.py, seccfg parser
+// Reference: mtkclient keys.py, seccfg parser
 // ============================================================================
 
 using System;
@@ -15,7 +15,7 @@ using System.Text;
 namespace LoveAlways.MediaTek.Security
 {
     /// <summary>
-    /// 密钥类型
+    /// Key Type
     /// </summary>
     public enum KeyType
     {
@@ -33,7 +33,7 @@ namespace LoveAlways.MediaTek.Security
     }
 
     /// <summary>
-    /// 提取的密钥信息
+    /// Extracted Key Information
     /// </summary>
     public class ExtractedKey
     {
@@ -50,79 +50,79 @@ namespace LoveAlways.MediaTek.Security
     }
 
     /// <summary>
-    /// Seccfg 分区结构
+    /// Seccfg Partition Structure
     /// </summary>
     public class SeccfgData
     {
-        /// <summary>魔数</summary>
+        /// <summary>Magic Number</summary>
         public uint Magic { get; set; }
         
-        /// <summary>版本</summary>
+        /// <summary>Version</summary>
         public uint Version { get; set; }
         
-        /// <summary>锁定状态 (0=解锁, 1=锁定)</summary>
+        /// <summary>Lock State (0=Unlocked, 1=Locked)</summary>
         public uint LockState { get; set; }
         
-        /// <summary>关键锁定状态</summary>
+        /// <summary>Critical Lock State</summary>
         public uint CriticalLockState { get; set; }
         
-        /// <summary>SBC 标志</summary>
+        /// <summary>SBC Flag</summary>
         public uint SbcFlag { get; set; }
         
-        /// <summary>防回滚版本</summary>
+        /// <summary>Anti-rollback Version</summary>
         public uint AntiRollbackVersion { get; set; }
         
-        /// <summary>加密数据</summary>
+        /// <summary>Encrypted Data</summary>
         public byte[] EncryptedData { get; set; }
         
-        /// <summary>哈希</summary>
+        /// <summary>Hash</summary>
         public byte[] Hash { get; set; }
         
-        /// <summary>是否已解锁</summary>
+        /// <summary>Whether Unlocked</summary>
         public bool IsUnlocked => LockState == 0;
         
-        /// <summary>原始数据</summary>
+        /// <summary>Raw Data</summary>
         public byte[] RawData { get; set; }
     }
 
     /// <summary>
-    /// eFuse 数据
+    /// eFuse Data
     /// </summary>
     public class EfuseData
     {
-        /// <summary>安全启动状态</summary>
+        /// <summary>Secure Boot Status</summary>
         public bool SecureBootEnabled { get; set; }
         
-        /// <summary>SLA 状态</summary>
+        /// <summary>SLA Status</summary>
         public bool SlaEnabled { get; set; }
         
-        /// <summary>DAA 状态</summary>
+        /// <summary>DAA Status</summary>
         public bool DaaEnabled { get; set; }
         
-        /// <summary>SBC 状态</summary>
+        /// <summary>SBC Status</summary>
         public bool SbcEnabled { get; set; }
         
         /// <summary>Root Key Hash</summary>
         public byte[] RootKeyHash { get; set; }
         
-        /// <summary>防回滚版本</summary>
+        /// <summary>Anti-rollback Version</summary>
         public uint AntiRollbackVersion { get; set; }
         
-        /// <summary>原始 eFuse 数据</summary>
+        /// <summary>Raw eFuse Data</summary>
         public byte[] RawData { get; set; }
     }
 
     /// <summary>
-    /// MediaTek 密钥提取器
+    /// MediaTek Key Extractor
     /// </summary>
     public static class KeyExtractor
     {
-        // Seccfg 魔数
+        // Seccfg Magic Numbers
         private const uint SECCFG_MAGIC = 0x53454343;  // "SECC"
         private const uint SECCFG_MAGIC_V2 = 0x4D4D4D01;  // MTK V2
         private const uint SECCFG_MAGIC_V3 = 0x53454346;  // "SECF"
         
-        // 默认密钥 (用于未加密的 seccfg)
+        // Default Key (Used for unencrypted seccfg)
         private static readonly byte[] DefaultKey = new byte[16]
         {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -130,7 +130,7 @@ namespace LoveAlways.MediaTek.Security
         };
 
         /// <summary>
-        /// 解析 Seccfg 分区数据
+        /// Parse Seccfg partition data
         /// </summary>
         public static SeccfgData ParseSeccfg(byte[] data)
         {
@@ -145,36 +145,36 @@ namespace LoveAlways.MediaTek.Security
             using (var ms = new MemoryStream(data))
             using (var br = new BinaryReader(ms))
             {
-                // 读取魔数
+                // Read Magic Number
                 seccfg.Magic = br.ReadUInt32();
                 
-                // 验证魔数
+                // Validate Magic Number
                 if (seccfg.Magic != SECCFG_MAGIC && 
                     seccfg.Magic != SECCFG_MAGIC_V2 && 
                     seccfg.Magic != SECCFG_MAGIC_V3)
                 {
-                    // 尝试解析为未加密格式
+                    // Try parsing as unencrypted format
                     ms.Position = 0;
                     return ParseSeccfgUnencrypted(data);
                 }
                 
-                // 版本
+                // Version
                 seccfg.Version = br.ReadUInt32();
                 
-                // 根据版本解析
+                // Parse based on version
                 if (seccfg.Magic == SECCFG_MAGIC_V3)
                 {
-                    // V3 格式
+                    // V3 Format
                     ParseSeccfgV3(br, seccfg);
                 }
                 else if (seccfg.Magic == SECCFG_MAGIC_V2)
                 {
-                    // V2 格式
+                    // V2 Format
                     ParseSeccfgV2(br, seccfg);
                 }
                 else
                 {
-                    // V1 格式
+                    // V1 Format
                     ParseSeccfgV1(br, seccfg);
                 }
             }
@@ -184,33 +184,33 @@ namespace LoveAlways.MediaTek.Security
 
         private static void ParseSeccfgV1(BinaryReader br, SeccfgData seccfg)
         {
-            // 偏移 8: 锁定状态
+            // Offset 8: Lock State
             seccfg.LockState = br.ReadUInt32();
             seccfg.CriticalLockState = br.ReadUInt32();
             seccfg.SbcFlag = br.ReadUInt32();
             
-            // 跳过保留字段
+            // Skip reserved fields
             br.ReadBytes(20);
             
-            // 哈希 (32 字节)
+            // Hash (32 bytes)
             seccfg.Hash = br.ReadBytes(32);
         }
 
         private static void ParseSeccfgV2(BinaryReader br, SeccfgData seccfg)
         {
-            // V2 格式有更多字段
+            // V2 Format has more fields
             seccfg.LockState = br.ReadUInt32();
             seccfg.CriticalLockState = br.ReadUInt32();
             seccfg.SbcFlag = br.ReadUInt32();
             seccfg.AntiRollbackVersion = br.ReadUInt32();
             
-            // 保留字段
+            // Reserved fields
             br.ReadBytes(16);
             
-            // 哈希 (32 字节)
+            // Hash (32 bytes)
             seccfg.Hash = br.ReadBytes(32);
             
-            // 加密数据 (如果存在)
+            // Encrypted Data (if exists)
             if (br.BaseStream.Position < br.BaseStream.Length - 64)
             {
                 int remaining = (int)(br.BaseStream.Length - br.BaseStream.Position);
@@ -220,7 +220,7 @@ namespace LoveAlways.MediaTek.Security
 
         private static void ParseSeccfgV3(BinaryReader br, SeccfgData seccfg)
         {
-            // V3 格式
+            // V3 Format
             uint flags = br.ReadUInt32();
             seccfg.LockState = flags & 0x01;
             seccfg.CriticalLockState = (flags >> 1) & 0x01;
@@ -228,16 +228,16 @@ namespace LoveAlways.MediaTek.Security
             
             seccfg.AntiRollbackVersion = br.ReadUInt32();
             
-            // 保留字段
+            // Reserved fields
             br.ReadBytes(24);
             
-            // 哈希 (32 字节 SHA256)
+            // Hash (32 bytes SHA256)
             seccfg.Hash = br.ReadBytes(32);
         }
 
         private static SeccfgData ParseSeccfgUnencrypted(byte[] data)
         {
-            // 尝试解析未加密的 seccfg
+            // Try parsing unencrypted seccfg
             var seccfg = new SeccfgData
             {
                 RawData = data,
@@ -245,8 +245,8 @@ namespace LoveAlways.MediaTek.Security
                 Version = 0
             };
             
-            // 搜索锁定状态标记
-            // 通常在固定偏移位置
+            // Search for lock state markers
+            // Usually at fixed offset positions
             if (data.Length >= 8)
             {
                 seccfg.LockState = BitConverter.ToUInt32(data, 4);
@@ -256,7 +256,7 @@ namespace LoveAlways.MediaTek.Security
         }
 
         /// <summary>
-        /// 解析 eFuse 数据
+        /// Parse eFuse data
         /// </summary>
         public static EfuseData ParseEfuse(byte[] data)
         {
@@ -268,12 +268,12 @@ namespace LoveAlways.MediaTek.Security
                 RawData = data
             };
 
-            // eFuse 布局取决于具体芯片
-            // 这是一个通用解析
+            // eFuse layout depends on specific chip
+            // This is a generic parsing
             using (var ms = new MemoryStream(data))
             using (var br = new BinaryReader(ms))
             {
-                // 安全配置通常在前 4 字节
+                // Security config is usually in the first 4 bytes
                 uint secConfig = br.ReadUInt32();
                 
                 efuse.SecureBootEnabled = (secConfig & 0x01) != 0;
@@ -281,13 +281,13 @@ namespace LoveAlways.MediaTek.Security
                 efuse.DaaEnabled = (secConfig & 0x04) != 0;
                 efuse.SbcEnabled = (secConfig & 0x08) != 0;
                 
-                // 防回滚版本
+                // Anti-rollback version
                 efuse.AntiRollbackVersion = br.ReadUInt32();
                 
-                // Root Key Hash (如果存在)
+                // Root Key Hash (if exists)
                 if (data.Length >= 40)
                 {
-                    br.ReadBytes(8);  // 跳过保留字段
+                    br.ReadBytes(8);  // Skip reserved fields
                     efuse.RootKeyHash = br.ReadBytes(32);
                 }
             }
@@ -296,19 +296,19 @@ namespace LoveAlways.MediaTek.Security
         }
 
         /// <summary>
-        /// 从 ME ID 和 SoC ID 派生密钥
+        /// Derive Key from ME ID and SoC ID
         /// </summary>
         public static byte[] DeriveKey(byte[] meId, byte[] socId)
         {
             if (meId == null || socId == null)
                 return null;
 
-            // 组合 ME ID 和 SoC ID
+            // Combine ME ID and SoC ID
             var combined = new byte[meId.Length + socId.Length];
             Array.Copy(meId, 0, combined, 0, meId.Length);
             Array.Copy(socId, 0, combined, meId.Length, socId.Length);
 
-            // 使用 SHA256 派生密钥
+            // Use SHA256 to derive key
             using (var sha256 = SHA256.Create())
             {
                 return sha256.ComputeHash(combined);
@@ -316,16 +316,16 @@ namespace LoveAlways.MediaTek.Security
         }
 
         /// <summary>
-        /// 生成 RPMB Key
+        /// Generate RPMB Key
         /// </summary>
         public static byte[] GenerateRpmbKey(byte[] meId, byte[] socId, byte[] hwId = null)
         {
-            // RPMB Key 通常基于设备唯一标识符派生
+            // RPMB Key is usually derived from device unique identifier
             var baseKey = DeriveKey(meId, socId);
             
             if (hwId != null && hwId.Length > 0)
             {
-                // 如果有 HW ID，进一步派生
+                // If HW ID exists, derive further
                 using (var sha256 = SHA256.Create())
                 {
                     var combined = new byte[baseKey.Length + hwId.Length];
@@ -339,7 +339,7 @@ namespace LoveAlways.MediaTek.Security
         }
 
         /// <summary>
-        /// 解密 Seccfg 数据
+        /// Decrypt Seccfg Data
         /// </summary>
         public static byte[] DecryptSeccfg(byte[] encryptedData, byte[] key)
         {
@@ -353,7 +353,7 @@ namespace LoveAlways.MediaTek.Security
                     aes.Mode = CipherMode.CBC;
                     aes.Padding = PaddingMode.PKCS7;
                     aes.Key = key.Take(16).ToArray();
-                    aes.IV = new byte[16];  // 零 IV
+                    aes.IV = new byte[16];  // Zero IV
 
                     using (var decryptor = aes.CreateDecryptor())
                     using (var ms = new MemoryStream())
@@ -372,7 +372,7 @@ namespace LoveAlways.MediaTek.Security
         }
 
         /// <summary>
-        /// 提取所有可用密钥
+        /// Extract all available keys
         /// </summary>
         public static List<ExtractedKey> ExtractAllKeys(
             byte[] seccfgData = null,
@@ -404,7 +404,7 @@ namespace LoveAlways.MediaTek.Security
                 });
             }
 
-            // 派生密钥
+            // Derived Key
             if (meId != null && socId != null)
             {
                 var derivedKey = DeriveKey(meId, socId);
@@ -428,7 +428,7 @@ namespace LoveAlways.MediaTek.Security
                 }
             }
 
-            // Seccfg 相关
+            // Seccfg-related
             if (seccfgData != null)
             {
                 var seccfg = ParseSeccfg(seccfgData);
@@ -443,7 +443,7 @@ namespace LoveAlways.MediaTek.Security
                 }
             }
 
-            // eFuse 相关
+            // eFuse-related
             if (efuseData != null)
             {
                 var efuse = ParseEfuse(efuseData);
@@ -462,34 +462,34 @@ namespace LoveAlways.MediaTek.Security
         }
 
         /// <summary>
-        /// 验证 Seccfg 完整性
+        /// Verify Seccfg Integrity
         /// </summary>
         public static bool VerifySeccfgIntegrity(SeccfgData seccfg)
         {
             if (seccfg == null || seccfg.RawData == null || seccfg.Hash == null)
                 return false;
 
-            // 计算数据哈希 (不包括哈希字段本身)
+            // Calculate data hash (excluding hash field itself)
             using (var sha256 = SHA256.Create())
             {
-                // 找到哈希字段的位置
+                // Find position of hash field
                 int hashOffset = Array.IndexOf(seccfg.RawData, seccfg.Hash[0]);
                 if (hashOffset < 0)
                     return false;
 
-                // 计算前半部分的哈希
+                // Calculate hash of the first half
                 var toHash = new byte[hashOffset];
                 Array.Copy(seccfg.RawData, 0, toHash, 0, hashOffset);
                 
                 var calculated = sha256.ComputeHash(toHash);
                 
-                // 比较
+                // Compare
                 return calculated.Take(32).SequenceEqual(seccfg.Hash);
             }
         }
 
         /// <summary>
-        /// 生成解锁的 Seccfg
+        /// Generate Unlocked Seccfg
         /// </summary>
         public static byte[] GenerateUnlockedSeccfg(SeccfgData original)
         {
@@ -498,31 +498,31 @@ namespace LoveAlways.MediaTek.Security
 
             var unlocked = (byte[])original.RawData.Clone();
 
-            // 修改锁定状态
-            // 这取决于具体的 seccfg 格式
+            // Modify Lock State
+            // This depends on specific seccfg format
             if (original.Magic == SECCFG_MAGIC_V3)
             {
-                // V3: 标志在偏移 8
-                unlocked[8] = 0x00;  // 清除锁定位
+                // V3: Flags at offset 8
+                unlocked[8] = 0x00;  // Clear lock bit
             }
             else
             {
-                // V1/V2: 锁定状态在偏移 8
+                // V1/V2: Lock state at offset 8
                 unlocked[8] = 0x00;
                 unlocked[9] = 0x00;
                 unlocked[10] = 0x00;
                 unlocked[11] = 0x00;
             }
 
-            // 重新计算哈希 (如果需要)
-            // 注意: 没有正确的密钥无法生成有效的哈希
-            // 这里只是修改数据，实际使用需要正确签名
+            // Recalculate Hash (if needed)
+            // Note: Valid hash cannot be generated without correct key
+            // Here just modify data, actual usage requires correct signature
 
             return unlocked;
         }
 
         /// <summary>
-        /// 导出密钥到文件
+        /// Export keys to file
         /// </summary>
         public static bool ExportKeys(List<ExtractedKey> keys, string outputPath)
         {
@@ -552,27 +552,27 @@ namespace LoveAlways.MediaTek.Security
         }
 
         /// <summary>
-        /// 获取密钥提取器说明
+        /// Get Key Extractor Description
         /// </summary>
         public static string GetDescription()
         {
             return @"MediaTek Key Extractor
 ================================================
-功能:
-  - 解析 seccfg 分区 (锁定状态、安全配置)
-  - 解析 eFuse 数据 (安全启动状态、防回滚版本)
-  - 从 ME ID 和 SoC ID 派生密钥
-  - 生成 RPMB Key
-  - 验证和修改 seccfg 完整性
+Function:
+  - Parse seccfg partition (Lock State, Security Configuration)
+  - Parse eFuse data (Secure Boot Status, Anti-rollback Version)
+  - Derive keys from ME ID and SoC ID
+  - Generate RPMB Key
+  - Verify and modify seccfg integrity
 
-支持的格式:
+Supported Formats:
   - Seccfg V1/V2/V3
-  - eFuse 通用格式
+  - eFuse General Format
 
-注意:
-  - 修改 seccfg 需要正确的签名密钥
-  - RPMB Key 派生算法可能因厂商而异
-  - 某些操作可能使设备变砖，请谨慎操作";
+Note:
+  - Modifying seccfg requires correct signature key
+  - RPMB Key derivation algorithm may vary by manufacturer
+  - Some operations may brick the device, please operate with caution";
         }
     }
 }

@@ -5,7 +5,7 @@ using System.Reflection;
 namespace LoveAlways
 {
     /// <summary>
-    /// 嵌入式资源提取器 - 将嵌入的 ADB/Fastboot 工具提取到运行目录
+    /// Embedded Resource Extractor - Extracts embedded ADB/Fastboot tools to the execution directory
     /// </summary>
     public static class EmbeddedResourceExtractor
     {
@@ -13,7 +13,7 @@ namespace LoveAlways
         private static readonly object _lock = new object();
 
         /// <summary>
-        /// 需要提取的资源文件列表
+        /// List of resource files to extract
         /// </summary>
         private static readonly string[] EmbeddedFiles = new string[]
         {
@@ -24,7 +24,7 @@ namespace LoveAlways
         };
 
         /// <summary>
-        /// 提取所有嵌入的工具文件到程序目录
+        /// Extract all embedded tool files to the program directory
         /// </summary>
         public static void ExtractAll()
         {
@@ -66,7 +66,7 @@ namespace LoveAlways
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"提取 {fileName} 失败: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Extraction of {fileName} failed: {ex.Message}");
                     }
                 }
 
@@ -105,7 +105,7 @@ namespace LoveAlways
                 var allResources = assembly.GetManifestResourceNames();
                 System.Diagnostics.Debug.WriteLine($"可用资源: {string.Join(", ", allResources)}");
                 
-                // 如果文件已存在于当前目录，无需提取
+                // If file already exists in current directory, no need to extract
                 if (File.Exists(targetPath))
                     return;
                     
@@ -120,16 +120,16 @@ namespace LoveAlways
                     resourceStream.CopyTo(fileStream);
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"已提取: {fileName}");
+                System.Diagnostics.Debug.WriteLine($"Extracted: {fileName}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"写入 {fileName} 失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to write {fileName}: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 获取工具文件路径（确保已提取）
+        /// Get tool file path (ensures extracted)
         /// </summary>
         public static string GetToolPath(string toolName)
         {
@@ -138,7 +138,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 检查工具是否可用
+        /// Check if tool is available
         /// </summary>
         public static bool IsToolAvailable(string toolName)
         {

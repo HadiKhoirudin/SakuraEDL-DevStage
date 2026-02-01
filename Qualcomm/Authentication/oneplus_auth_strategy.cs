@@ -1,7 +1,12 @@
 // ============================================================================
-// LoveAlways - OnePlus 动态认证策略
-// 支持 OnePlus 5/5T/6/6T/7/7Pro/7T/8/8Pro/8T/9/9Pro/Nord/N10/N100
+// LoveAlways - OnePlus Dynamic Authentication Strategy
+// Supports OnePlus 5/5T/6/6T/7/7Pro/7T/8/8Pro/8T/9/9Pro/Nord/N10/N100 
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -22,11 +27,11 @@ namespace LoveAlways.Qualcomm.Authentication
 
         public string Name { get { return "OnePlus (Demacia/SetProjModel)"; } }
 
-        // 设备配置: projId -> (version, cm, paramMode)
-        // 完整设备列表 (参考 edl-master)
+        // Device config: projId -> (version, cm, paramMode)
+        // Full device list (Reference: edl-master)
         private static readonly Dictionary<string, Tuple<int, string, int>> DeviceConfigs = new Dictionary<string, Tuple<int, string, int>>
         {
-            // ========== OP5-7T 系列 (Version 1) ==========
+            // ========== OP5-7T Series (Version 1) ==========
             { "16859", Tuple.Create(1, (string)null, 0) },  // OP5 cheeseburger
             { "17801", Tuple.Create(1, (string)null, 0) },  // OP5T dumpling
             { "17819", Tuple.Create(1, (string)null, 0) },  // OP6 enchilada
@@ -42,7 +47,7 @@ namespace LoveAlways.Qualcomm.Authentication
             { "19861", Tuple.Create(1, (string)null, 0) },  // OP7T Pro 5G T-Mo hotdogg
             { "19863", Tuple.Create(1, (string)null, 0) },  // OP7T T-Mo hotdogt
             
-            // ========== OP8 系列 (Version 2) ==========
+            // ========== OP8 Series (Version 2) ==========
             { "19821", Tuple.Create(2, "0cffee8a", 0) },  // OP8 instantnoodle
             { "19855", Tuple.Create(2, "6d9215b4", 0) },  // OP8 T-Mo instantnoodlet
             { "19867", Tuple.Create(2, "4107b2d4", 0) },  // OP8 Verizon instantnoodlev
@@ -51,11 +56,11 @@ namespace LoveAlways.Qualcomm.Authentication
             { "19805", Tuple.Create(2, "1a5ec176", 0) },  // OP8T kebab
             { "20809", Tuple.Create(2, "d6bc8c36", 0) },  // OP8T T-Mo kebabt
             
-            // ========== OP Nord 系列 (Version 2) ==========
+            // ========== OP Nord Series (Version 2) ==========
             { "20801", Tuple.Create(2, "eacf50e7", 0) },  // OP Nord avicii
             { "20813", Tuple.Create(2, "48ad7b61", 0) },  // OP Nord CE ebba
             
-            // ========== OP9 系列 (Version 2) ==========
+            // ========== OP9 Series (Version 2) ==========
             { "19815", Tuple.Create(2, "9c151c7f", 0) },  // OP9 Pro lemonadep
             { "20859", Tuple.Create(2, "9c151c7f", 0) },  // OP9 Pro CN
             { "20857", Tuple.Create(2, "9c151c7f", 0) },  // OP9 Pro IN
@@ -68,12 +73,12 @@ namespace LoveAlways.Qualcomm.Authentication
             { "20854", Tuple.Create(2, "16225d4e", 0) },  // OP9 T-Mo lemonadet
             { "2085A", Tuple.Create(2, "7f19519a", 0) },  // OP9 Pro T-Mo lemonadept
             
-            // ========== Dre 系列 (Version 1) ==========
+            // ========== Dre Series (Version 1) ==========
             { "20818", Tuple.Create(1, (string)null, 0) },  // dre8t
             { "2083C", Tuple.Create(1, (string)null, 0) },  // dre8m
             { "2083D", Tuple.Create(1, (string)null, 0) },  // dre9
             
-            // ========== N10/N100 系列 (Version 3) ==========
+            // ========== N10/N100 Series (Version 3) ==========
             { "20885", Tuple.Create(3, "3a403a71", 1) },  // N10 5G Metro billie8t
             { "20886", Tuple.Create(3, "b8bd9e39", 1) },  // N10 5G Global billie8
             { "20888", Tuple.Create(3, "142f1bd7", 1) },  // N10 5G TMO billie8t
@@ -105,9 +110,9 @@ namespace LoveAlways.Qualcomm.Authentication
 
         public async Task<bool> AuthenticateAsync(FirehoseClient client, string programmerPath, CancellationToken ct = default(CancellationToken))
         {
-            _log("[OnePlus] 开始认证流程...");
+            _log("[OnePlus] Starting authentication process...");
 
-            // 获取序列号
+            // Get serial number
             if (!string.IsNullOrEmpty(client.ChipSerial))
             {
                 string serialHex = client.ChipSerial.Replace("0x", "");
@@ -116,27 +121,27 @@ namespace LoveAlways.Qualcomm.Authentication
                     _serial = s.ToString();
             }
 
-            _log(string.Format("[OnePlus] 序列号: {0}", _serial));
+            _log(string.Format("[OnePlus] Serial: {0}", _serial));
 
-            // 尝试获取 projId
+            // Try to get projId
             await ReadProjIdAsync(client, ct);
 
             if (string.IsNullOrEmpty(_projId))
             {
-                _log("[OnePlus] 无法获取 projid，使用默认值 18821");
+                _log("[OnePlus] Unable to get projid, using default value 18821");
                 _projId = "18821";
             }
 
-            // 尝试主 projId
+            // Try primary projId
             if (await TryAuthenticateWithProjIdAsync(client, _projId, ct))
                 return true;
 
-            // 尝试备选 projId
+            // Try alternative projId
             var alternatives = GetAlternativeProjIds(_projId);
             foreach (var altProjId in alternatives)
             {
                 if (ct.IsCancellationRequested) break;
-                _log(string.Format("[OnePlus] 尝试备选 projid: {0}", altProjId));
+                _log(string.Format("[OnePlus] Trying alternative projid: {0}", altProjId));
                 if (await TryAuthenticateWithProjIdAsync(client, altProjId, ct))
                 {
                     _projId = altProjId;
@@ -144,7 +149,7 @@ namespace LoveAlways.Qualcomm.Authentication
                 }
             }
 
-            _log("[OnePlus] ❌ 所有认证尝试均失败");
+            _log("[OnePlus] ❌ All authentication attempts failed");
             return false;
         }
 
@@ -152,7 +157,7 @@ namespace LoveAlways.Qualcomm.Authentication
         {
             try
             {
-                _log("[OnePlus] 正在读取 ProjId...");
+                _log("[OnePlus] Reading ProjId...");
                 string response = await client.SendRawXmlAsync("<?xml version=\"1.0\" ?><data><getprjversion /></data>", ct);
                 if (!string.IsNullOrEmpty(response))
                 {
@@ -163,7 +168,7 @@ namespace LoveAlways.Qualcomm.Authentication
                         if (val.Length >= 5)
                         {
                             _projId = val;
-                            _log(string.Format("[OnePlus] ✓ 获取到 ProjId: {0}", _projId));
+                            _log(string.Format("[OnePlus] ✓ Obtained ProjId: {0}", _projId));
                             return;
                         }
                     }
@@ -171,22 +176,22 @@ namespace LoveAlways.Qualcomm.Authentication
             }
             catch (Exception ex)
             {
-                _log("[OnePlus] getprjversion 异常: " + ex.Message);
+                _log("[OnePlus] getprjversion exception: " + ex.Message);
             }
 
-            // 猜测逻辑
+            // Guessing logic
             string hwid = (client.ChipHwId ?? "").ToLower();
             string pkHash = (client.ChipPkHash ?? "").ToLower();
 
             if (pkHash.StartsWith("2acf3a85") || pkHash.StartsWith("8aabc662") || hwid.Contains("e1500a00") || hwid.Contains("000a50e1"))
             {
                 _projId = "18821"; // OP7 Pro
-                _log("[OnePlus] 猜测设备为 OP7 Pro (SM8150)");
+                _log("[OnePlus] Guessed device as OP7 Pro (SM8150)");
             }
             else if (pkHash.StartsWith("c0c66e27") || hwid.Contains("e1b00800") || hwid.Contains("0008b0e1"))
             {
                 _projId = "18801"; // OP6T
-                _log("[OnePlus] 猜测设备为 OP6T (SDM845)");
+                _log("[OnePlus] Guessed device as OP6T (SDM845)");
             }
         }
 
@@ -218,7 +223,7 @@ namespace LoveAlways.Qualcomm.Authentication
             _version = config.Item1;
             string modelId = config.Item2 ?? projId;
 
-            _log(string.Format("[OnePlus] 尝试: ProjId={0}, 算法=V{1}", projId, _version));
+            _log(string.Format("[OnePlus] Trying: ProjId={0}, Algorithm=V{1}", projId, _version));
 
             try
             {
@@ -229,7 +234,7 @@ namespace LoveAlways.Qualcomm.Authentication
             }
             catch (Exception ex)
             {
-                _log("[OnePlus] 认证出错: " + ex.Message);
+                _log("[OnePlus] Authentication error: " + ex.Message);
                 return false;
             }
         }
@@ -240,13 +245,13 @@ namespace LoveAlways.Qualcomm.Authentication
             string prodKey = _projId == "18825" || _projId == "18801" ? ProdKeyOld : ProdKeyNew;
 
             // 1. Demacia
-            _log("[OnePlus] Step 1: demacia 验证...");
+            _log("[OnePlus] Step 1: demacia verification...");
             var demacia = GenerateDemaciaToken(pk);
             string demCmd = string.Format("demacia token=\"{0}\" pk=\"{1}\"", demacia.Item2, demacia.Item1);
             string demResp = await client.SendRawXmlAsync(demCmd, ct);
             
             if (!string.IsNullOrEmpty(demResp) && demResp.Contains("verify_res=\"0\""))
-                _log("[OnePlus] ✓ demacia 验证成功");
+                _log("[OnePlus] ✓ demacia verification successful");
 
             // 2. SetProjModel
             _log(string.Format("[OnePlus] Step 2: setprojmodel (model={0})...", modelId));
@@ -257,20 +262,20 @@ namespace LoveAlways.Qualcomm.Authentication
             bool ok = !string.IsNullOrEmpty(resp) && (resp.Contains("model_check=\"0\"") || resp.Contains("ACK"));
             if (ok) 
             {
-                _log("[OnePlus] ✓ 认证成功！设备已解锁。");
+                _log("[OnePlus] ✓ Authentication successful! Device unlocked.");
                 
-                // 保存 token 和 pk 到 FirehoseClient，后续写入时使用
+                // Save token and pk to FirehoseClient for future write operations
                 client.OnePlusProgramToken = proj.Item2;  // token
                 client.OnePlusProgramPk = proj.Item1;     // pk
                 client.OnePlusProjId = _projId;
-                _log("[OnePlus] 已保存认证令牌用于后续写入操作");
+                _log("[OnePlus] Authentication token saved for subsequent write operations");
             }
             return ok;
         }
 
         private async Task<bool> AuthenticateV3Async(FirehoseClient client, string modelId, CancellationToken ct)
         {
-            _log("[OnePlus] Step 1: 获取设备时间戳...");
+            _log("[OnePlus] Step 1: Getting device timestamp...");
             string startResp = await client.SendRawXmlAsync("setprocstart", ct);
             string timestamp = ExtractAttribute(startResp, "device_timestamp");
             if (string.IsNullOrEmpty(timestamp)) return false;
@@ -286,18 +291,18 @@ namespace LoveAlways.Qualcomm.Authentication
             bool ok = !string.IsNullOrEmpty(resp) && (resp.Contains("model_check=\"0\"") || resp.Contains("ACK"));
             if (ok) 
             {
-                _log("[OnePlus] ✓ 认证成功！设备已解锁。");
+                _log("[OnePlus] ✓ Authentication successful! Device unlocked.");
                 
-                // 保存 token 和 pk 到 FirehoseClient，后续写入时使用
+                // Save token and pk to FirehoseClient for future write operations
                 client.OnePlusProgramToken = sw.Item2;  // token
                 client.OnePlusProgramPk = sw.Item1;     // pk
                 client.OnePlusProjId = _projId;
-                _log("[OnePlus] 已保存认证令牌用于后续写入操作");
+                _log("[OnePlus] Authentication token saved for subsequent write operations");
             }
             return ok;
         }
 
-        #region 加密助手
+        #region Encryption Helper
 
         private static string GenerateRandomPk()
         {

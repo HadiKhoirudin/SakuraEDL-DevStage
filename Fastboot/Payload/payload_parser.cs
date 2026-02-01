@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,10 +15,10 @@ using System.Threading.Tasks;
 namespace LoveAlways.Fastboot.Payload
 {
     /// <summary>
-    /// Android OTA Payload.bin 解析器
-    /// 支持解析 A/B OTA 更新包中的 payload.bin 文件
+    /// Android OTA Payload.bin Parser
+    /// Supports parsing payload.bin files in A/B OTA update packages
     /// 
-    /// Payload.bin 文件格式 (Chrome OS Update Engine):
+    /// Payload.bin File Format (Chrome OS Update Engine):
     /// - Magic: "CrAU" (4 bytes)
     /// - File format version: uint64 (big-endian)
     /// - Manifest size: uint64 (big-endian)
@@ -23,7 +28,7 @@ namespace LoveAlways.Fastboot.Payload
     /// - Data blocks
     /// - Payload signatures
     /// 
-    /// 注意：此实现使用简化的 protobuf 解析，不依赖 Google.Protobuf 库
+    /// Note: This implementation uses a simplified protobuf parser and does not depend on the Google.Protobuf library.
     /// </summary>
     public class PayloadParser : IDisposable
     {
@@ -111,14 +116,14 @@ namespace LoveAlways.Fastboot.Payload
         #region Public Methods
         
         /// <summary>
-        /// 从文件路径加载 Payload
+        /// Load Payload from file path
         /// </summary>
         public async Task<bool> LoadAsync(string filePath, CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentNullException(nameof(filePath));
             
-            // 支持 ZIP 文件
+            // Support ZIP files
             if (filePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
                 return await LoadFromZipAsync(filePath, ct);
@@ -128,10 +133,7 @@ namespace LoveAlways.Fastboot.Payload
             _ownsStream = true;
             return await LoadFromStreamAsync(stream, ct);
         }
-        
-        /// <summary>
-        /// 从流加载 Payload
-        /// </summary>
+                    
         public async Task<bool> LoadFromStreamAsync(Stream stream, CancellationToken ct = default)
         {
             if (stream == null)
@@ -144,11 +146,11 @@ namespace LoveAlways.Fastboot.Payload
         }
         
         /// <summary>
-        /// 从 ZIP 文件加载 Payload
+        /// Load Payload from ZIP file
         /// </summary>
         public async Task<bool> LoadFromZipAsync(string zipPath, CancellationToken ct = default)
         {
-            _log("正在从 ZIP 文件提取 payload.bin...");
+            _log("Extracting payload.bin from ZIP file...");
             
             try
             {
@@ -159,11 +161,11 @@ namespace LoveAlways.Fastboot.Payload
                     
                     if (payloadEntry == null)
                     {
-                        _log("ZIP 文件中未找到 payload.bin");
+                        _log("payload.bin not found in ZIP file");
                         return false;
                     }
                     
-                    // 提取到临时文件
+                    // Extract to temporary file
                     _tempFilePath = Path.Combine(Path.GetTempPath(), $"payload_{Guid.NewGuid()}.bin");
                     payloadEntry.ExtractToFile(_tempFilePath, true);
                     
@@ -175,14 +177,14 @@ namespace LoveAlways.Fastboot.Payload
             }
             catch (Exception ex)
             {
-                _log($"从 ZIP 加载失败: {ex.Message}");
-                _logDetail($"ZIP 加载错误: {ex}");
+                _log($"Load from ZIP failed: {ex.Message}");
+                _logDetail($"ZIP load error: {ex}");
                 return false;
             }
         }
         
         /// <summary>
-        /// 提取指定分区到文件
+        /// Extract specified partition to file
         /// </summary>
         public async Task<bool> ExtractPartitionAsync(string partitionName, string outputPath,
             IProgress<PayloadExtractProgress> progress = null, CancellationToken ct = default)
@@ -195,7 +197,7 @@ namespace LoveAlways.Fastboot.Payload
             
             if (partition == null)
             {
-                _log($"未找到分区: {partitionName}");
+                _log($"Partition not found: {partitionName}");
                 return false;
             }
             
@@ -203,13 +205,13 @@ namespace LoveAlways.Fastboot.Payload
         }
         
         /// <summary>
-        /// 提取所有分区到目录
+        /// Extract all partitions to directory
         /// </summary>
         public async Task<int> ExtractAllPartitionsAsync(string outputDir,
             IProgress<PayloadExtractProgress> progress = null, CancellationToken ct = default)
         {
             if (!IsInitialized)
-                throw new InvalidOperationException("Payload 尚未初始化");
+                throw new InvalidOperationException("Payload not yet initialized");
             
             if (!Directory.Exists(outputDir))
                 Directory.CreateDirectory(outputDir);
@@ -224,7 +226,7 @@ namespace LoveAlways.Fastboot.Payload
                 var partition = Partitions[i];
                 var outputPath = Path.Combine(outputDir, $"{partition.Name}.img");
                 
-                _log($"正在提取 {partition.Name} ({i + 1}/{totalPartitions})...");
+                _log($"Extracting {partition.Name} ({i + 1}/{totalPartitions})...");
                 
                 if (await ExtractPartitionInternalAsync(partition, outputPath, null, ct))
                 {
@@ -240,7 +242,7 @@ namespace LoveAlways.Fastboot.Payload
                 });
             }
             
-            _log($"提取完成: {successCount}/{totalPartitions} 个分区");
+            _log($"Extraction complete: {successCount}/{totalPartitions} partitions");
             return successCount;
         }
         
@@ -252,67 +254,67 @@ namespace LoveAlways.Fastboot.Payload
         {
             try
             {
-                _logDetail("开始解析 Payload 头部...");
+                _logDetail("Starting to parse Payload header...");
                 
-                // 读取 Magic
+                // Read Magic
                 byte[] magicBytes = _reader.ReadBytes(4);
                 string magic = Encoding.ASCII.GetString(magicBytes);
                 
                 if (magic != PAYLOAD_MAGIC)
                 {
-                    _log($"无效的 Payload 文件 (Magic: {magic}, 期望: {PAYLOAD_MAGIC})");
+                    _log($"Invalid Payload file (Magic: {magic}, expected: {PAYLOAD_MAGIC})");
                     return false;
                 }
                 
-                // 读取文件格式版本 (big-endian uint64)
+                // Read file format version (big-endian uint64)
                 FileFormatVersion = ReadBigEndianUInt64();
-                _logDetail($"文件格式版本: {FileFormatVersion}");
+                _logDetail($"File format version: {FileFormatVersion}");
                 
                 if (FileFormatVersion < 2)
                 {
-                    _log($"不支持的 Payload 版本: {FileFormatVersion} (需要 >= 2)");
+                    _log($"Unsupported Payload version: {FileFormatVersion} (requires >= 2)");
                     return false;
                 }
                 
-                // 读取 Manifest 大小 (big-endian uint64)
+                // Read Manifest size (big-endian uint64)
                 ManifestSize = ReadBigEndianUInt64();
-                _logDetail($"Manifest 大小: {ManifestSize} bytes");
+                _logDetail($"Manifest size: {ManifestSize} bytes");
                 
-                // 读取 Metadata 签名大小 (big-endian uint32, version >= 2)
+                // Read Metadata signature size (big-endian uint32, version >= 2)
                 MetadataSignatureSize = ReadBigEndianUInt32();
-                _logDetail($"Metadata 签名大小: {MetadataSignatureSize} bytes");
+                _logDetail($"Metadata signature size: {MetadataSignatureSize} bytes");
                 
                 ct.ThrowIfCancellationRequested();
                 
-                // 解析 Manifest (protobuf)
+                // Parse Manifest (protobuf)
                 if (ManifestSize > int.MaxValue)
                 {
-                    _log("Manifest 大小超出限制");
+                    _log("Manifest size exceeds limit");
                     return false;
                 }
                 
                 byte[] manifestData = _reader.ReadBytes((int)ManifestSize);
                 ParseManifest(manifestData);
                 
-                // 跳过 Metadata 签名
+                // Skip Metadata signature
                 if (MetadataSignatureSize > 0)
                 {
                     _reader.ReadBytes((int)MetadataSignatureSize);
                 }
                 
-                // 记录数据起始位置
+                // Record data starting position
                 _dataStartOffset = _stream.Position;
-                _logDetail($"数据起始偏移: 0x{_dataStartOffset:X}");
+                _logDetail($"Data start offset: 0x{_dataStartOffset:X}");
                 
                 IsInitialized = true;
-                _log($"Payload 解析成功: {Partitions.Count} 个分区, Block Size: {BlockSize}");
+                _log($"Payload parsed successfully: {Partitions.Count} partitions, Block Size: {BlockSize}");
                 
                 return true;
             }
             catch (Exception ex)
             {
-                _log($"Payload 解析失败: {ex.Message}");
-                _logDetail($"解析错误: {ex}");
+                _log($"Payload parsing failed: {ex.Message}");
+                _logDetail($"Parsing error: {ex}");
                 return false;
             }
         }
@@ -551,17 +553,17 @@ namespace LoveAlways.Fastboot.Payload
                     {
                         ct.ThrowIfCancellationRequested();
                         
-                        // 读取操作数据
+                        // Read operation data
                         _stream.Seek(_dataStartOffset + (long)operation.DataOffset, SeekOrigin.Begin);
                         byte[] rawData = _reader.ReadBytes((int)operation.DataLength);
                         
-                        // 计算目标位置
+                        // Calculate target position
                         long dstStart = (long)operation.DstStartBlock * BlockSize;
                         long dstLength = (long)operation.DstNumBlocks * BlockSize;
                         
                         outStream.Seek(dstStart, SeekOrigin.Begin);
                         
-                        // 根据操作类型处理数据
+                        // Process data based on operation type
                         byte[] outputData = await DecompressDataAsync(operation.Type, rawData, dstLength, ct);
                         
                         if (outputData != null)
@@ -580,13 +582,13 @@ namespace LoveAlways.Fastboot.Payload
                     }
                 }
                 
-                _log($"分区 {partition.Name} 提取完成");
+                _log($"Partition {partition.Name} extraction complete");
                 return true;
             }
             catch (Exception ex)
             {
-                _log($"提取分区 {partition.Name} 失败: {ex.Message}");
-                _logDetail($"提取错误: {ex}");
+                _log($"Failed to extract partition {partition.Name}: {ex.Message}");
+                _logDetail($"Extraction error: {ex}");
                 return false;
             }
         }
@@ -610,7 +612,7 @@ namespace LoveAlways.Fastboot.Payload
                         return new byte[expectedLength];
                     
                     default:
-                        _logDetail($"未知操作类型: {opType}, 返回原始数据");
+                        _logDetail($"Unknown operation type: {opType}, returning raw data");
                         return data;
                 }
             }, ct);
@@ -618,17 +620,17 @@ namespace LoveAlways.Fastboot.Payload
         
         private byte[] DecompressBzip2(byte[] compressedData)
         {
-            // 简化实现：BZip2 解压需要额外库
-            // 这里返回原始数据，实际使用时需要添加 BZip2 支持
-            _logDetail("BZip2 解压暂未实现，返回原始数据");
+            // Simplified implementation: BZip2 decompression requires an extra library
+            // Returning raw data here, actual use requires adding BZip2 support
+            _logDetail("BZip2 decompression not yet implemented, returning raw data");
             return compressedData;
         }
         
         private byte[] DecompressXz(byte[] compressedData)
         {
-            // 简化实现：XZ 解压需要额外库
-            // 这里返回原始数据，实际使用时需要添加 XZ 支持
-            _logDetail("XZ 解压暂未实现，返回原始数据");
+            // Simplified implementation: XZ decompression requires an extra library
+            // Returning raw data here, actual use requires adding XZ support
+            _logDetail("XZ decompression not yet implemented, returning raw data");
             return compressedData;
         }
         
@@ -703,7 +705,7 @@ namespace LoveAlways.Fastboot.Payload
                     _stream?.Dispose();
                 }
                 
-                // 清理临时文件
+                // Clean up temporary files
                 if (!string.IsNullOrEmpty(_tempFilePath) && File.Exists(_tempFilePath))
                 {
                     try { File.Delete(_tempFilePath); } catch { }
@@ -717,7 +719,7 @@ namespace LoveAlways.Fastboot.Payload
     }
     
     /// <summary>
-    /// Payload 分区信息
+    /// Payload partition info
     /// </summary>
     public class PayloadPartition
     {
@@ -746,7 +748,7 @@ namespace LoveAlways.Fastboot.Payload
     }
     
     /// <summary>
-    /// Payload 操作
+    /// Payload operation
     /// </summary>
     public class PayloadOperation
     {
@@ -758,7 +760,7 @@ namespace LoveAlways.Fastboot.Payload
     }
     
     /// <summary>
-    /// 提取进度
+    /// Extraction progress
     /// </summary>
     public class PayloadExtractProgress
     {

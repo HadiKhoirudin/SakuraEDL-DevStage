@@ -1,10 +1,15 @@
 // ============================================================================
-// LoveAlways - MediaTek SLA 认证
+// LoveAlways - MediaTek SLA Auth
 // MediaTek Secure Boot Authentication (SLA)
 // ============================================================================
-// 参考: mtkclient 项目 sla.py
-// SLA (Secure Level Authentication) 用于设备安全认证
+// Reference: mtkclient project sla.py
+// SLA (Secure Level Authentication) is used for device security authentication
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.IO;
@@ -15,7 +20,7 @@ using System.Threading.Tasks;
 namespace LoveAlways.MediaTek.Common
 {
     /// <summary>
-    /// SLA 认证状态
+    /// SLA Auth Status
     /// </summary>
     public enum SlaAuthStatus
     {
@@ -27,27 +32,27 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// MTK SLA 认证管理器
+    /// MTK SLA Auth Manager
     /// </summary>
     public class MtkSlaAuth
     {
         private readonly Action<string> _log;
         
-        // SLA 命令
+        // SLA Commands
         private const byte CMD_SLA_CHALLENGE = 0xB4;
         private const byte CMD_SLA_AUTH = 0xB5;
         
-        // 默认认证数据长度
+        // Default auth data length
         private const int CHALLENGE_LEN = 16;
         private const int AUTH_LEN = 256;
         
-        // 认证状态
+        // Authentication status
         public SlaAuthStatus Status { get; private set; } = SlaAuthStatus.NotRequired;
         
-        // 认证数据路径
+        // Auth data path
         public string AuthFilePath { get; set; }
         
-        // 是否使用默认认证
+        // Whether to use default auth
         public bool UseDefaultAuth { get; set; } = true;
 
         public MtkSlaAuth(Action<string> log = null)
@@ -55,10 +60,10 @@ namespace LoveAlways.MediaTek.Common
             _log = log ?? delegate { };
         }
 
-        #region 认证流程
+        #region Authentication Flow
 
         /// <summary>
-        /// 执行 SLA 认证
+        /// Execute SLA Auth
         /// </summary>
         public async Task<bool> AuthenticateAsync(
             Func<byte[], int, CancellationToken, Task<bool>> writeAsync,
@@ -66,62 +71,62 @@ namespace LoveAlways.MediaTek.Common
             ushort hwCode,
             CancellationToken ct = default)
         {
-            _log("[SLA] 开始 SLA 认证...");
+            _log("[SLA] Starting SLA Auth...");
             Status = SlaAuthStatus.InProgress;
 
             try
             {
-                // 1. 发送 SLA 质询请求
+                // 1. Send SLA challenge request
                 var challengeCmd = new byte[] { CMD_SLA_CHALLENGE };
                 if (!await writeAsync(challengeCmd, 1, ct))
                 {
-                    _log("[SLA] 发送质询命令失败");
+                    _log("[SLA] Failed to send challenge command");
                     Status = SlaAuthStatus.Failed;
                     return false;
                 }
 
-                // 2. 接收质询数据
+                // 2. Receive challenge data
                 var challenge = await readAsync(CHALLENGE_LEN, 5000, ct);
                 if (challenge == null || challenge.Length < CHALLENGE_LEN)
                 {
-                    _log("[SLA] 接收质询失败");
+                    _log("[SLA] Failed to receive challenge");
                     Status = SlaAuthStatus.Failed;
                     return false;
                 }
 
-                _log($"[SLA] 质询: {BitConverter.ToString(challenge, 0, Math.Min(8, challenge.Length)).Replace("-", "")}...");
+                _log($"[SLA] Challenge: {BitConverter.ToString(challenge, 0, Math.Min(8, challenge.Length)).Replace("-", "")}...");
 
-                // 3. 生成认证响应
+                // 3. Generate auth response
                 byte[] authResponse = GenerateAuthResponse(challenge, hwCode);
                 if (authResponse == null)
                 {
-                    _log("[SLA] 生成认证响应失败");
+                    _log("[SLA] Failed to generate auth response");
                     Status = SlaAuthStatus.Failed;
                     return false;
                 }
 
-                // 4. 发送认证命令
+                // 4. Send auth command
                 var authCmd = new byte[] { CMD_SLA_AUTH };
                 if (!await writeAsync(authCmd, 1, ct))
                 {
-                    _log("[SLA] 发送认证命令失败");
+                    _log("[SLA] Failed to send auth command");
                     Status = SlaAuthStatus.Failed;
                     return false;
                 }
 
-                // 5. 发送认证响应
+                // 5. Send auth response
                 if (!await writeAsync(authResponse, authResponse.Length, ct))
                 {
-                    _log("[SLA] 发送认证响应失败");
+                    _log("[SLA] Failed to send auth response");
                     Status = SlaAuthStatus.Failed;
                     return false;
                 }
 
-                // 6. 读取认证结果
+                // 6. Read auth result
                 var result = await readAsync(2, 5000, ct);
                 if (result == null || result.Length < 2)
                 {
-                    _log("[SLA] 读取认证结果失败");
+                    _log("[SLA] Failed to read auth result");
                     Status = SlaAuthStatus.Failed;
                     return false;
                 }
@@ -129,39 +134,39 @@ namespace LoveAlways.MediaTek.Common
                 ushort status = (ushort)(result[0] << 8 | result[1]);
                 if (status == 0)
                 {
-                    _log("[SLA] ✓ SLA 认证成功");
+                    _log("[SLA] ✓ SLA Auth successful");
                     Status = SlaAuthStatus.Passed;
                     return true;
                 }
                 else
                 {
-                    _log($"[SLA] 认证失败: 0x{status:X4}");
+                    _log($"[SLA] Auth failed: 0x{status:X4}");
                     Status = SlaAuthStatus.Failed;
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                _log($"[SLA] 认证异常: {ex.Message}");
+                _log($"[SLA] Auth exception: {ex.Message}");
                 Status = SlaAuthStatus.Failed;
                 return false;
             }
         }
 
         /// <summary>
-        /// 生成认证响应
+        /// Generate Auth Response
         /// </summary>
         private byte[] GenerateAuthResponse(byte[] challenge, ushort hwCode)
         {
-            // 1. 尝试从密钥数据库加载 (优先)
+            // 1. Try loading from key database (Priority)
             var keyRecord = Auth.MtkSlaKeys.GetKeyByDaCode(hwCode);
             if (keyRecord != null)
             {
-                _log($"[SLA] 使用数据库密钥: {keyRecord.Vendor} - {keyRecord.Name}");
+                _log($"[SLA] Using database key: {keyRecord.Vendor} - {keyRecord.Name}");
                 return SignChallengeWithRsaKey(challenge, keyRecord);
             }
             
-            // 2. 尝试从文件加载认证数据
+            // 2. Try loading auth data from file
             if (!string.IsNullOrEmpty(AuthFilePath) && File.Exists(AuthFilePath))
             {
                 try
@@ -169,42 +174,42 @@ namespace LoveAlways.MediaTek.Common
                     var authData = File.ReadAllBytes(AuthFilePath);
                     if (authData.Length >= AUTH_LEN)
                     {
-                        _log($"[SLA] 使用认证文件: {Path.GetFileName(AuthFilePath)}");
+                        _log($"[SLA] Using auth file: {Path.GetFileName(AuthFilePath)}");
                         return SignChallenge(challenge, authData);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _log($"[SLA] 加载认证文件失败: {ex.Message}");
+                    _log($"[SLA] Failed to load auth file: {ex.Message}");
                 }
             }
 
-            // 3. 尝试使用通用密钥
+            // 3. Try using generic keys
             foreach (var genericKey in Auth.MtkSlaKeys.GetGenericKeys())
             {
-                _log($"[SLA] 尝试通用密钥: {genericKey.Vendor} - {genericKey.Name}");
+                _log($"[SLA] Trying generic key: {genericKey.Vendor} - {genericKey.Name}");
                 var result = SignChallengeWithRsaKey(challenge, genericKey);
                 if (result != null)
                     return result;
             }
             
-            // 4. 尝试使用默认认证 (简化算法，仅用于开发设备)
+            // 4. Try using default auth (Simplified algorithm, for dev devices only)
             if (UseDefaultAuth)
             {
                 var defaultAuth = GetDefaultAuth(hwCode);
                 if (defaultAuth != null)
                 {
-                    _log("[SLA] 使用默认认证数据 (简化算法)");
+                    _log("[SLA] Using default auth data (Simplified algorithm)");
                     return SignChallenge(challenge, defaultAuth);
                 }
             }
 
-            _log("[SLA] 无可用认证数据");
+            _log("[SLA] No available auth data");
             return null;
         }
         
         /// <summary>
-        /// 使用RSA密钥签名challenge
+        /// Sign challenge with RSA key
         /// </summary>
         private byte[] SignChallengeWithRsaKey(byte[] challenge, Auth.SlaKeyRecord keyRecord)
         {
@@ -212,16 +217,16 @@ namespace LoveAlways.MediaTek.Common
             {
                 if (string.IsNullOrEmpty(keyRecord.D) || string.IsNullOrEmpty(keyRecord.N) || string.IsNullOrEmpty(keyRecord.E))
                 {
-                    _log("[SLA] 密钥数据不完整");
+                    _log("[SLA] Key data incomplete");
                     return null;
                 }
                 
-                // 从Hex字符串转换为字节数组
+                // Convert from Hex string to byte array
                 var d = HexToBytes(keyRecord.D);
                 var n = HexToBytes(keyRecord.N);
                 var e = HexToBytes(keyRecord.E);
                 
-                // 创建RSA参数
+                // Create RSA parameters
                 var rsaParams = new System.Security.Cryptography.RSAParameters
                 {
                     D = d,
@@ -229,21 +234,21 @@ namespace LoveAlways.MediaTek.Common
                     Exponent = e
                 };
                 
-                // 创建RSA实例
+                // Create RSA instance
                 using (var rsa = System.Security.Cryptography.RSA.Create())
                 {
                     rsa.ImportParameters(rsaParams);
                     
-                    // RSA-PSS 签名
+                    // RSA-PSS Signature
                     var signature = rsa.SignData(
                         challenge,
                         System.Security.Cryptography.HashAlgorithmName.SHA256,
                         System.Security.Cryptography.RSASignaturePadding.Pss
                     );
                     
-                    _log($"[SLA] RSA签名成功: {signature.Length} 字节");
+                    _log($"[SLA] RSA signed successful: {signature.Length} bytes");
                     
-                    // 扩展到AUTH_LEN (如果需要)
+                    // Extend to AUTH_LEN (if needed)
                     if (signature.Length < AUTH_LEN)
                     {
                         var result = new byte[AUTH_LEN];
@@ -256,13 +261,13 @@ namespace LoveAlways.MediaTek.Common
             }
             catch (Exception ex)
             {
-                _log($"[SLA] RSA签名异常: {ex.Message}");
+                _log($"[SLA] RSA signature exception: {ex.Message}");
                 return null;
             }
         }
         
         /// <summary>
-        /// Hex字符串转字节数组
+        /// Hex string to byte array
         /// </summary>
         private static byte[] HexToBytes(string hex)
         {
@@ -284,13 +289,13 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 签名质询数据 (使用RSA-PSS)
+        /// Sign challenge data (Using RSA-PSS)
         /// </summary>
         private byte[] SignChallenge(byte[] challenge, byte[] authKey)
         {
             try
             {
-                // 尝试使用真实的RSA密钥
+                // Try to use real RSA key
                 var rsaKey = TryLoadRsaKey(authKey);
                 if (rsaKey != null)
                 {
@@ -299,16 +304,16 @@ namespace LoveAlways.MediaTek.Common
             }
             catch (Exception ex)
             {
-                _log($"[SLA] RSA签名失败: {ex.Message}");
+                _log($"[SLA] RSA signature failed: {ex.Message}");
             }
             
-            // 降级: 简单的 HMAC-SHA256 签名（仅用于开发设备）
-            _log("[SLA] 警告: 使用简化签名算法（仅适用于开发设备）");
+            // Fallback: simple HMAC-SHA256 signature (for dev devices only)
+            _log("[SLA] Warning: Using simplified signature algorithm (dev devices only)");
             using (var hmac = new HMACSHA256(authKey))
             {
                 byte[] signature = hmac.ComputeHash(challenge);
                 
-                // 扩展到认证长度
+                // Extend to auth length
                 byte[] response = new byte[AUTH_LEN];
                 Array.Copy(signature, 0, response, 0, Math.Min(signature.Length, AUTH_LEN));
                 
@@ -317,7 +322,7 @@ namespace LoveAlways.MediaTek.Common
         }
         
         /// <summary>
-        /// 尝试从字节数组加载RSA密钥
+        /// Try to load RSA key from byte array
         /// </summary>
         private System.Security.Cryptography.RSA TryLoadRsaKey(byte[] keyData)
         {
@@ -326,9 +331,9 @@ namespace LoveAlways.MediaTek.Common
             
             try
             {
-                // TODO: .NET Framework 4.8不支持ImportRSAPrivateKey
-                // 需要实现PKCS#8/PKCS#1解析或使用BouncyCastle库
-                // 暂时返回null，使用内置证书
+                // TODO: .NET Framework 4.8 does not support ImportRSAPrivateKey
+                // Need to implement PKCS#8/PKCS#1 parsing or use BouncyCastle library
+                // Temporarily return null, use built-in certificate
                 return null;
                 
                 // var rsa = System.Security.Cryptography.RSA.Create();
@@ -342,11 +347,11 @@ namespace LoveAlways.MediaTek.Common
         }
         
         /// <summary>
-        /// RSA-PSS 签名 (MTK SLA使用的算法)
+        /// RSA-PSS Sign (Algorithm used by MTK SLA)
         /// </summary>
         private byte[] RsaPssSign(byte[] data, System.Security.Cryptography.RSA rsa)
         {
-            // MTK SLA 使用 RSA-PSS with SHA256
+            // MTK SLA uses RSA-PSS with SHA256
             var signature = rsa.SignData(
                 data,
                 System.Security.Cryptography.HashAlgorithmName.SHA256,
@@ -357,14 +362,14 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 获取默认认证数据
+        /// Get default auth data
         /// </summary>
         private byte[] GetDefaultAuth(ushort hwCode)
         {
-            // 对于某些芯片，可以使用默认/通用认证数据
-            // 这通常是空白或已知的测试密钥
+            // For some chips, default/generic auth data can be used
+            // This is usually blank or a known test key
             
-            // 生成芯片特定的默认密钥
+            // Generate chip-specific default key
             byte[] key = new byte[32];
             byte[] hwBytes = BitConverter.GetBytes(hwCode);
             
@@ -378,10 +383,10 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region DAA 认证
+        #region DAA Auth
 
         /// <summary>
-        /// 执行 DAA (Device Authentication) 认证
+        /// Execute DAA (Device Authentication) Auth
         /// </summary>
         public async Task<bool> AuthenticateDaaAsync(
             Func<byte[], int, CancellationToken, Task<bool>> writeAsync,
@@ -391,15 +396,15 @@ namespace LoveAlways.MediaTek.Common
         {
             if (rootCert == null || rootCert.Length == 0)
             {
-                _log("[DAA] 未提供 Root 证书");
+                _log("[DAA] Root certificate not provided");
                 return false;
             }
 
-            _log("[DAA] 开始 DAA 认证...");
+            _log("[DAA] Starting DAA Auth...");
 
             try
             {
-                // 发送证书长度
+                // Send certificate length
                 byte[] lenBytes = new byte[4];
                 lenBytes[0] = (byte)(rootCert.Length >> 24);
                 lenBytes[1] = (byte)(rootCert.Length >> 16);
@@ -408,54 +413,54 @@ namespace LoveAlways.MediaTek.Common
 
                 if (!await writeAsync(lenBytes, 4, ct))
                 {
-                    _log("[DAA] 发送证书长度失败");
+                    _log("[DAA] Failed to send certificate length");
                     return false;
                 }
 
-                // 发送证书数据
+                // Send certificate data
                 if (!await writeAsync(rootCert, rootCert.Length, ct))
                 {
-                    _log("[DAA] 发送证书失败");
+                    _log("[DAA] Failed to send certificate");
                     return false;
                 }
 
-                // 读取结果
+                // Read result
                 var result = await readAsync(2, 5000, ct);
                 if (result == null || result.Length < 2)
                 {
-                    _log("[DAA] 读取结果失败");
+                    _log("[DAA] Failed to read result");
                     return false;
                 }
 
                 ushort status = (ushort)(result[0] << 8 | result[1]);
                 if (status == 0)
                 {
-                    _log("[DAA] ✓ DAA 认证成功");
+                    _log("[DAA] ✓ DAA Auth successful");
                     return true;
                 }
 
-                _log($"[DAA] 认证失败: 0x{status:X4}");
+                _log($"[DAA] Auth failed: 0x{status:X4}");
                 return false;
             }
             catch (Exception ex)
             {
-                _log($"[DAA] 认证异常: {ex.Message}");
+                _log($"[DAA] Auth exception: {ex.Message}");
                 return false;
             }
         }
 
         #endregion
 
-        #region 证书管理
+        #region Certificate Management
 
         /// <summary>
-        /// 加载认证证书
+        /// Load Auth Certificate
         /// </summary>
         public byte[] LoadAuthCert(string filePath)
         {
             if (!File.Exists(filePath))
             {
-                _log($"[SLA] 证书文件不存在: {filePath}");
+                _log($"[SLA] Certificate file does not exist: {filePath}");
                 return null;
             }
 
@@ -465,44 +470,44 @@ namespace LoveAlways.MediaTek.Common
             }
             catch (Exception ex)
             {
-                _log($"[SLA] 加载证书失败: {ex.Message}");
+                _log($"[SLA] Failed to load certificate: {ex.Message}");
                 return null;
             }
         }
 
         /// <summary>
-        /// 检查是否需要 SLA 认证
+        /// Check if SLA Auth is required
         /// </summary>
         public static bool IsSlaRequired(uint targetConfig)
         {
-            // 检查 SLA 位
+            // Check SLA bit
             return (targetConfig & 0x00000002) != 0;
         }
 
         /// <summary>
-        /// 检查是否需要 DAA 认证
+        /// Check if DAA Auth is required
         /// </summary>
         public static bool IsDaaRequired(uint targetConfig)
         {
-            // 检查 DAA 位
+            // Check DAA bit
             return (targetConfig & 0x00000004) != 0;
         }
 
         /// <summary>
-        /// 检查是否需要 Root 证书
+        /// Check if Root Certificate is required
         /// </summary>
         public static bool IsRootCertRequired(uint targetConfig)
         {
-            // 检查 Root Cert 位
+            // Check Root Cert bit
             return (targetConfig & 0x00000100) != 0;
         }
 
         #endregion
         
-        #region 静态方法
+        #region Static Methods
         
         /// <summary>
-        /// 签名 challenge (静态方法，用于 XML DA 协议)
+        /// Sign challenge (Static method, for XML DA protocol)
         /// </summary>
         public static Task<byte[]> SignChallengeAsync(byte[] challenge, CancellationToken ct = default)
         {
@@ -511,25 +516,25 @@ namespace LoveAlways.MediaTek.Common
                 if (challenge == null || challenge.Length == 0)
                     return null;
                 
-                // 生成默认密钥
+                // Generate default key
                 byte[] key = new byte[32];
                 for (int i = 0; i < key.Length; i++)
                 {
                     key[i] = (byte)(0x5A ^ (challenge[i % challenge.Length]) ^ i);
                 }
                 
-                // 使用 HMAC-SHA256 签名
+                // Use HMAC-SHA256 signature
                 using (var hmac = new HMACSHA256(key))
                 {
                     byte[] hash = hmac.ComputeHash(challenge);
                     
-                    // 生成 2KB 的签名数据 (符合截图中的 2KB 写入)
+                    // Generate 2KB signature data (matches 2KB write in screenshot)
                     byte[] signature = new byte[2048];
                     
-                    // 复制哈希到签名开头
+                    // Copy hash to start of signature
                     Array.Copy(hash, 0, signature, 0, hash.Length);
                     
-                    // 填充剩余部分
+                    // Fill remaining part
                     for (int i = hash.Length; i < signature.Length; i++)
                     {
                         signature[i] = (byte)(hash[i % hash.Length] ^ (i >> 8));

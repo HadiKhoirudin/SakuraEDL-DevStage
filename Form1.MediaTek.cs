@@ -1,6 +1,5 @@
-// ============================================================================
 // LoveAlways - Form1.MediaTek.cs
-// MediaTek 平台 UI 集成
+// MediaTek Platform UI Integration
 // ============================================================================
 
 using System;
@@ -27,13 +26,13 @@ namespace LoveAlways
         private CancellationTokenSource _mtkCts;
         private bool _mtkIsConnected;
         
-        // MTK 日志级别: 0=关闭, 1=基本, 2=详细, 3=调试
+        // MTK Log Level: 0=Off, 1=Basic, 2=Detail, 3=Debug
         private int _mtkLogLevel = 2;
 
-        #region MTK 日志辅助
+        #region MTK Log Helpers
 
         /// <summary>
-        /// MTK 日志输出 (带前缀和颜色)
+        /// MTK Log Output (With Prefix and Color)
         /// </summary>
         private void MtkLog(string message, Color? color = null, int level = 1)
         {
@@ -42,37 +41,37 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// MTK 信息日志
+        /// MTK Info Log
         /// </summary>
         private void MtkLogInfo(string message) => MtkLog(message, Color.Cyan, 1);
 
         /// <summary>
-        /// MTK 成功日志
+        /// MTK Success Log
         /// </summary>
         private void MtkLogSuccess(string message) => MtkLog(message, Color.Green, 1);
 
         /// <summary>
-        /// MTK 警告日志
+        /// MTK Warning Log
         /// </summary>
         private void MtkLogWarning(string message) => MtkLog(message, Color.Orange, 1);
 
         /// <summary>
-        /// MTK 错误日志
+        /// MTK Error Log
         /// </summary>
         private void MtkLogError(string message) => MtkLog(message, Color.Red, 1);
 
         /// <summary>
-        /// MTK 详细日志 (需要 level >= 2)
+        /// MTK Detail Log (Requires level >= 2)
         /// </summary>
         private void MtkLogDetail(string message) => MtkLog(message, Color.Gray, 2);
 
         /// <summary>
-        /// MTK 调试日志 (需要 level >= 3)
+        /// MTK Debug Log (Requires level >= 3)
         /// </summary>
         private void MtkLogDebug(string message) => MtkLog(message, Color.DarkGray, 3);
 
         /// <summary>
-        /// MTK 协议日志 (十六进制数据)
+        /// MTK Protocol Log (Hex Data)
         /// </summary>
         private void MtkLogHex(string label, byte[] data, int maxLen = 32)
         {
@@ -85,23 +84,23 @@ namespace LoveAlways
 
         #endregion
 
-        #region MTK 初始化
+        #region MTK Initialization
 
         /// <summary>
-        /// 初始化 MediaTek 模块
+        /// Initialize MediaTek Module
         /// </summary>
         private void InitializeMediaTekModule()
         {
             try
             {
-                // 加载芯片列表
+                // Load Chip List
                 LoadMtkChipList();
                 
-                // 加载漏洞类型列表
+                // Load Exploit Types
                 LoadMtkExploitTypes();
 
-                // 绑定按钮事件
-                // 注意: 连接/断开按钮已隐藏，连接逻辑改为读取分区表时自动执行
+                // Bind Button Events
+                // Note: Connect/Disconnect button hidden, connection logic auto executed when Read GPT
                 mtkBtnReadGpt.Click += MtkBtnReadGpt_Click;
                 mtkInputScatterFile.SuffixClick += MtkInputScatterFile_SuffixClick;
                 mtkBtnWritePartition.Click += MtkBtnWritePartition_Click;
@@ -119,39 +118,39 @@ namespace LoveAlways
                 mtkInputDaFile.SuffixClick += MtkInputDaFile_SuffixClick;
                 mtkSelectChip.SelectedIndexChanged += MtkSelectChip_SelectedIndexChanged;
 
-                // 设置初始状态
+                // Set Initial State
                 MtkSetConnectionState(false);
                 mtkBtnExploit.Enabled = false;
 
-                // 创建 UI 控制器 (用于后台任务)
+                // Create UI Controller (For Background Tasks)
                 _mtkController = new MediatekUIController(
                     (msg, color) => SafeInvoke(() => AppendLog(msg, color)),
                     msg => SafeInvoke(() => AppendLog(msg, Color.Gray))
                 );
 
-                // 绑定控制器事件
+                // Bind Controller Events
                 _mtkController.OnProgress += MtkController_OnProgress;
                 _mtkController.OnStateChanged += MtkController_OnStateChanged;
                 _mtkController.OnDeviceConnected += MtkController_OnDeviceConnected;
                 _mtkController.OnDeviceDisconnected += MtkController_OnDeviceDisconnected;
                 _mtkController.OnPartitionTableLoaded += MtkController_OnPartitionTableLoaded;
 
-                MtkLogInfo("联发科模块已初始化");
+                MtkLogInfo("MediaTek Module Initialized");
             }
             catch (Exception ex)
             {
-                MtkLogError($"初始化错误: {ex.Message}");
+                MtkLogError($"Init Error: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 加载芯片列表
+        /// Load Chip List
         /// </summary>
         private void LoadMtkChipList()
         {
             mtkSelectChip.Items.Clear();
 
-            // 从数据库加载芯片列表
+            // Load from Database
             var chips = MtkChipDatabase.GetAllChips()
                 .OrderBy(c => c.ChipName)
                 .ToList();
@@ -161,34 +160,34 @@ namespace LoveAlways
                 string displayName = $"{chip.ChipName} (0x{chip.HwCode:X4})";
                 if (MtkDaDatabase.SupportsExploit(chip.HwCode))
                 {
-                    displayName += " [漏洞]";
+                    displayName += " [Exploit]";
                 }
                 mtkSelectChip.Items.Add(new AntdUI.SelectItem(displayName) { Tag = chip.HwCode });
             }
 
-            // 添加自动检测选项
-            mtkSelectChip.Items.Insert(0, new AntdUI.SelectItem("自动检测") { Tag = (ushort)0 });
+            // Add Auto Detect Option
+            mtkSelectChip.Items.Insert(0, new AntdUI.SelectItem("Auto Detect") { Tag = (ushort)0 });
             mtkSelectChip.SelectedIndex = 0;
         }
 
         /// <summary>
-        /// 加载漏洞类型列表
+        /// Load Exploit Types
         /// </summary>
         private void LoadMtkExploitTypes()
         {
             mtkSelectExploitType.Items.Clear();
 
-            // 添加漏洞类型选项
-            mtkSelectExploitType.Items.Add(new AntdUI.SelectItem("自动") { Tag = "Auto" });
+            // Add Exploit Type Options
+            mtkSelectExploitType.Items.Add(new AntdUI.SelectItem("Auto") { Tag = "Auto" });
             mtkSelectExploitType.Items.Add(new AntdUI.SelectItem("Carbonara") { Tag = "Carbonara" });
-            mtkSelectExploitType.Items.Add(new AntdUI.SelectItem("AllInOne签名") { Tag = "AllinoneSignature" });
-            mtkSelectExploitType.Items.Add(new AntdUI.SelectItem("无") { Tag = "None" });
+            mtkSelectExploitType.Items.Add(new AntdUI.SelectItem("AllInOne Signature") { Tag = "AllinoneSignature" });
+            mtkSelectExploitType.Items.Add(new AntdUI.SelectItem("None") { Tag = "None" });
 
             mtkSelectExploitType.SelectedIndex = 0;
         }
 
         /// <summary>
-        /// 芯片选择改变时更新漏洞类型
+        /// Update Exploit Type when Chip Selection Changed
         /// </summary>
         private void MtkSelectChip_SelectedIndexChanged(object sender, AntdUI.IntEventArgs e)
         {
@@ -196,7 +195,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 根据选择的芯片更新漏洞类型
+        /// Update Exploit Type based on Selected Chip
         /// </summary>
         private void UpdateExploitTypeForSelectedChip()
         {
@@ -210,15 +209,15 @@ namespace LoveAlways
             ushort hwCode = (ushort)selectedItem.Tag;
             if (hwCode == 0)
             {
-                // 自动检测模式，使用自动漏洞类型
+                // Auto Detect Mode, use Auto Exploit Type
                 mtkSelectExploitType.SelectedIndex = 0;  // Auto
                 return;
             }
 
-            // 获取芯片的漏洞类型
+            // Get Chip Exploit Type
             string exploitType = MtkChipDatabase.GetExploitType(hwCode);
             
-            // 根据漏洞类型自动选择
+            // Auto Select based on Exploit Type
             for (int i = 0; i < mtkSelectExploitType.Items.Count; i++)
             {
                 var item = mtkSelectExploitType.Items[i] as AntdUI.SelectItem;
@@ -229,30 +228,30 @@ namespace LoveAlways
                 }
             }
 
-            // 更新漏洞按钮状态
+            // Update Exploit Button State
             bool hasExploit = MtkChipDatabase.GetChip(hwCode)?.HasExploit ?? false;
             bool isAllinone = MtkChipDatabase.IsAllinoneSignatureSupported(hwCode);
             
             if (isAllinone)
             {
-                mtkBtnExploit.Text = "AllInOne漏洞";
+                mtkBtnExploit.Text = "AllInOne Exploit";
                 mtkBtnExploit.Enabled = _mtkIsConnected;
-                AppendLog($"[MTK] 选择芯片支持 ALLINONE-SIGNATURE 漏洞", Color.Cyan);
+                AppendLog($"[MTK] Chip supports ALLINONE-SIGNATURE Exploit", Color.Cyan);
             }
             else if (hasExploit)
             {
-                mtkBtnExploit.Text = "执行漏洞";
+                mtkBtnExploit.Text = "Execute Exploit";
                 mtkBtnExploit.Enabled = _mtkIsConnected;
             }
             else
             {
-                mtkBtnExploit.Text = "无漏洞";
+                mtkBtnExploit.Text = "No Exploit";
                 mtkBtnExploit.Enabled = false;
             }
         }
 
         /// <summary>
-        /// 清理 MediaTek 模块
+        /// Cleanup MediaTek Module
         /// </summary>
         private void CleanupMediaTekModule()
         {
@@ -260,13 +259,13 @@ namespace LoveAlways
             _mtkController?.Dispose();
             _mtkController = null;
             
-            // 释放 CancellationTokenSource
+            // Dispose CancellationTokenSource
             _mtkCts?.Dispose();
             _mtkCts = null;
         }
         
         /// <summary>
-        /// 安全重置 MTK CancellationTokenSource
+        /// Safe Reset MTK CancellationTokenSource
         /// </summary>
         private void MtkResetCancellationToken()
         {
@@ -277,13 +276,13 @@ namespace LoveAlways
 
         #endregion
 
-        #region MTK 按钮事件
+        #region MTK Button Events
 
         private async void MtkBtnConnect_Click(object sender, EventArgs e)
         {
             if (_mtkIsConnected)
             {
-                AppendLog("[MTK] 已经连接", Color.Orange);
+                AppendLog("[MTK] Already Connected", Color.Orange);
                 return;
             }
 
@@ -293,12 +292,12 @@ namespace LoveAlways
             try
             {
                 MtkSetButtonsEnabled(false);
-                MtkUpdateProgress(0, 0, "等待设备...");
+                MtkUpdateProgress(0, 0, "Waiting for device...");
 
-                // 创建服务
+                // Create Service
                 _mtkService = new MediatekService();
 
-                // 绑定事件 - 只转发进度，日志由 MtkLog 统一处理
+                // Bind Events - Only forward progress, logs handled by MtkLog
                 _mtkService.OnProgress += (current, total) => SafeInvoke(() =>
                 {
                     MtkUpdateProgress(current, total);
@@ -309,30 +308,30 @@ namespace LoveAlways
                     MtkUpdateStateDisplay(state);
                 });
 
-                // 服务层日志 - 只显示重要信息
+                // Service layer logs - only show important information
                 _mtkService.OnLog += (msg, color) => SafeInvoke(() =>
                 {
-                    // 过滤掉重复的 [MTK] 前缀日志
+                    // Filter duplicate [MTK] prefix logs
                     if (_mtkLogLevel >= 2 || color == Color.Red || color == Color.Green)
                         AppendLog(msg, color);
                 });
 
-                // 等待设备连接
-                MtkLogInfo("等待设备连接...");
+                // Wait for device connection
+                MtkLogInfo("Waiting for device connection...");
 
-                MtkUpdateProgress(0, 0, "请进入 BROM 模式");
+                MtkUpdateProgress(0, 0, "Please enter BROM mode");
                 string comPort = await MtkWaitForDeviceAsync(_mtkCts.Token);
 
                 if (string.IsNullOrEmpty(comPort))
                 {
-                    MtkUpdateProgress(0, 0, "未检测到设备");
-                    MtkLogWarning("未检测到设备");
+                    MtkUpdateProgress(0, 0, "Device Not Detected");
+                    MtkLogWarning("Device Not Detected");
                     return;
                 }
 
-                // 连接设备
-                MtkLogInfo($"发现设备: {comPort}");
-                MtkUpdateProgress(0, 0, "连接中...");
+                // Connect Device
+                MtkLogInfo($"Found Device: {comPort}");
+                MtkUpdateProgress(0, 0, "Connecting...");
                 bool success = await _mtkService.ConnectAsync(comPort, 115200, _mtkCts.Token);
 
                 if (success)
@@ -340,72 +339,72 @@ namespace LoveAlways
                     _mtkIsConnected = true;
                     MtkSetConnectionState(true);
 
-                    // 更新设备信息
+                    // Update Device Info
                     if (_mtkService.CurrentDevice != null)
                     {
                         MtkUpdateDeviceInfo(_mtkService.CurrentDevice);
                     }
 
-                    // 设置 DA 文件路径
+                    // Set DA File Path
                     if (_mtkUseSeparateDa)
                     {
-                        // 使用分离的 DA1 + DA2 文件
+                        // Use Separate DA1 + DA2 Files
                         if (!string.IsNullOrEmpty(_mtkCustomDa1Path) && File.Exists(_mtkCustomDa1Path))
                         {
                             _mtkService.SetCustomDa1(_mtkCustomDa1Path);
-                            AppendLog($"[MTK] 使用自定义 DA1: {Path.GetFileName(_mtkCustomDa1Path)}", Color.Cyan);
+                            AppendLog($"[MTK] Use Custom DA1: {Path.GetFileName(_mtkCustomDa1Path)}", Color.Cyan);
                         }
                         
                         if (!string.IsNullOrEmpty(_mtkCustomDa2Path) && File.Exists(_mtkCustomDa2Path))
                         {
                             _mtkService.SetCustomDa2(_mtkCustomDa2Path);
-                            AppendLog($"[MTK] 使用自定义 DA2: {Path.GetFileName(_mtkCustomDa2Path)}", Color.Cyan);
+                            AppendLog($"[MTK] Use Custom DA2: {Path.GetFileName(_mtkCustomDa2Path)}", Color.Cyan);
                         }
                     }
                     else
                     {
-                        // 使用 AllInOne DA 文件
+                        // Use AllInOne DA File
                         string daPath = mtkInputDaFile.Text?.Trim();
                         if (!string.IsNullOrEmpty(daPath) && File.Exists(daPath))
                         {
                             _mtkService.SetDaFilePath(daPath);
                         }
                         
-                        // 兼容: 也检查单独设置的 DA2
+                        // Compatibility: Also check separately set DA2
                         if (!string.IsNullOrEmpty(_mtkCustomDa2Path) && File.Exists(_mtkCustomDa2Path))
                         {
                             _mtkService.SetCustomDa2(_mtkCustomDa2Path);
                         }
                     }
 
-                    // 加载 DA (如果使用漏洞利用)
+                    // Load DA (If Exploit is used)
                     if (mtkChkExploit.Checked)
                     {
-                        MtkUpdateProgress(0, 0, "加载 DA...");
+                        MtkUpdateProgress(0, 0, "Loading DA...");
                         await _mtkService.LoadDaAsync(_mtkCts.Token);
                     }
 
-                    MtkUpdateProgress(100, 100, "已连接");
-                    MtkLogSuccess("设备连接成功");
+                    MtkUpdateProgress(100, 100, "Connected");
+                    MtkLogSuccess("Device Connected Success");
 
-                    // 更新右侧面板
+                    // Update Right Panel
                     UpdateMtkInfoPanel();
                 }
                 else
                 {
-                    MtkUpdateProgress(0, 0, "连接失败");
-                    MtkLogError("设备连接失败");
+                    MtkUpdateProgress(0, 0, "Connection Failed");
+                    MtkLogError("Device Connection Failed");
                 }
             }
             catch (OperationCanceledException)
             {
-                MtkUpdateProgress(0, 0, "已取消");
-                MtkLogWarning("操作已取消");
+                MtkUpdateProgress(0, 0, "Cancelled");
+                MtkLogWarning("Operation Cancelled");
             }
             catch (Exception ex)
             {
-                MtkUpdateProgress(0, 0, "连接错误");
-                MtkLogError($"连接错误: {ex.Message}");
+                MtkUpdateProgress(0, 0, "Connection Error");
+                MtkLogError($"Connection Error: {ex.Message}");
             }
             finally
             {
@@ -414,11 +413,11 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 等待 MTK 设备连接
+        /// Wait for MTK Device Connection
         /// </summary>
         private async Task<string> MtkWaitForDeviceAsync(CancellationToken ct)
         {
-            // 使用端口检测器等待 MTK 设备
+            // Use Port Detector to wait for MTK device
             using (var detector = new MtkPortDetector())
             {
                 var portInfo = await detector.WaitForDeviceAsync(30000, ct);
@@ -442,8 +441,8 @@ namespace LoveAlways
             MtkClearDeviceInfo();
             mtkListPartitions.Items.Clear();
 
-            MtkUpdateProgress(0, 0, "已断开");
-            MtkLogDetail("已断开连接");
+            MtkUpdateProgress(0, 0, "Disconnected");
+            MtkLogDetail("Disconnected");
         }
 
         private async void MtkBtnReadGpt_Click(object sender, EventArgs e)
@@ -455,7 +454,7 @@ namespace LoveAlways
             {
                 MtkSetButtonsEnabled(false);
 
-                // 如果未连接，先自动连接设备
+                // If not connected, auto connect first
                 if (!_mtkIsConnected || _mtkService == null)
                 {
                     bool connected = await MtkAutoConnectAsync();
@@ -465,9 +464,9 @@ namespace LoveAlways
                     }
                 }
 
-                // 读取分区表
-                MtkUpdateProgress(0, 0, "读取分区表...");
-                MtkLogInfo("读取分区表...");
+                // Read GPT
+                MtkUpdateProgress(0, 0, "Reading Partition Table...");
+                MtkLogInfo("Reading Partition Table...");
 
                 var partitions = await _mtkService.ReadPartitionTableAsync(_mtkCts.Token);
 
@@ -487,24 +486,24 @@ namespace LoveAlways
                     }
 
                     string elapsed = MtkGetElapsedTime();
-                    MtkUpdateProgress(100, 100, $"{partitions.Count} 个分区 [{elapsed}]");
-                    MtkLogSuccess($"读取到 {partitions.Count} 个分区 ({elapsed})");
+                    MtkUpdateProgress(100, 100, $"{partitions.Count} Partitions [{elapsed}]");
+                    MtkLogSuccess($"Read {partitions.Count} Partitions ({elapsed})");
                 }
                 else
                 {
-                    MtkUpdateProgress(0, 0, "无分区数据");
-                    MtkLogWarning("未读取到分区信息");
+                    MtkUpdateProgress(0, 0, "No Partition Data");
+                    MtkLogWarning("No Partition Info Read");
                 }
             }
             catch (OperationCanceledException)
             {
-                MtkUpdateProgress(0, 0, "已取消");
-                MtkLogWarning("操作已取消");
+                MtkUpdateProgress(0, 0, "Cancelled");
+                MtkLogWarning("Operation Cancelled");
             }
             catch (Exception ex)
             {
-                MtkUpdateProgress(0, 0, "读取失败");
-                MtkLogError($"读取分区表失败: {ex.Message}");
+                MtkUpdateProgress(0, 0, "Read Failed");
+                MtkLogError($"Read GPT Failed: {ex.Message}");
             }
             finally
             {
@@ -513,18 +512,18 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 自动连接 MTK 设备
+        /// Auto Connect MTK Device
         /// </summary>
         private async Task<bool> MtkAutoConnectAsync()
         {
             MtkStartTimer();
-            MtkUpdateProgress(0, 0, "等待设备...");
-            MtkLogInfo("等待设备 (请进入 BROM 模式)");
+            MtkUpdateProgress(0, 0, "Waiting for device...");
+            MtkLogInfo("Waiting for device (Please enter BROM mode)");
 
-            // 创建服务
+            // Create Service
             _mtkService = new MediatekService();
 
-            // 绑定事件 - 简化日志输出
+            // Bind Events - Simple Log Output
             _mtkService.OnProgress += (current, total) => SafeInvoke(() =>
             {
                 MtkUpdateProgress(current, total);
@@ -537,59 +536,59 @@ namespace LoveAlways
 
             _mtkService.OnLog += (msg, color) => SafeInvoke(() =>
             {
-                // 只显示重要日志
+                // Only show important logs
                 if (_mtkLogLevel >= 2 || color == Color.Red || color == Color.Green)
                     AppendLog(msg, color);
             });
 
-            // 等待设备连接
+            // Wait for device connection
             string comPort = await MtkWaitForDeviceAsync(_mtkCts.Token);
 
             if (string.IsNullOrEmpty(comPort))
             {
-                MtkUpdateProgress(0, 0, "超时");
-                MtkLogWarning("未检测到设备");
+                MtkUpdateProgress(0, 0, "Timeout");
+                MtkLogWarning("Device Not Detected");
                 return false;
             }
 
-            // 连接设备
-            MtkLogInfo($"发现: {comPort}");
-            MtkUpdateProgress(0, 0, "连接中...");
+            // Connect Device
+            MtkLogInfo($"Found: {comPort}");
+            MtkUpdateProgress(0, 0, "Connecting...");
             bool success = await _mtkService.ConnectAsync(comPort, 115200, _mtkCts.Token);
 
             if (!success)
             {
-                MtkUpdateProgress(0, 0, "连接失败");
-                MtkLogError("设备连接失败");
+                MtkUpdateProgress(0, 0, "Connection Failed");
+                MtkLogError("Device Connection Failed");
                 return false;
             }
 
             _mtkIsConnected = true;
             MtkSetConnectionState(true);
 
-            // 更新设备信息
+            // Update Device Info
             if (_mtkService.CurrentDevice != null)
             {
                 MtkUpdateDeviceInfo(_mtkService.CurrentDevice);
             }
 
-            // 设置 DA 文件路径
+            // Set DA File Path
             MtkApplyDaSettings();
 
-            // 加载 DA (如果需要)
+            // Load DA (If needed)
             if (mtkChkExploit.Checked)
             {
-                MtkUpdateProgress(0, 0, "加载 DA...");
+                MtkUpdateProgress(0, 0, "Loading DA...");
                 await _mtkService.LoadDaAsync(_mtkCts.Token);
             }
 
-            AppendLog("[MTK] 设备连接成功", Color.Green);
+            AppendLog("[MTK] Device Connected Success", Color.Green);
             UpdateMtkInfoPanel();
             return true;
         }
 
         /// <summary>
-        /// 应用 DA 设置
+        /// Apply DA Settings
         /// </summary>
         private void MtkApplyDaSettings()
         {
@@ -597,29 +596,29 @@ namespace LoveAlways
 
             if (_mtkUseSeparateDa)
             {
-                // 使用分离的 DA1 + DA2 文件
+                // Use Separate DA1 + DA2 Files
                 if (!string.IsNullOrEmpty(_mtkCustomDa1Path) && File.Exists(_mtkCustomDa1Path))
                 {
                     _mtkService.SetCustomDa1(_mtkCustomDa1Path);
-                    AppendLog($"[MTK] 使用自定义 DA1: {Path.GetFileName(_mtkCustomDa1Path)}", Color.Cyan);
+                    AppendLog($"[MTK] Use Custom DA1: {Path.GetFileName(_mtkCustomDa1Path)}", Color.Cyan);
                 }
                 
                 if (!string.IsNullOrEmpty(_mtkCustomDa2Path) && File.Exists(_mtkCustomDa2Path))
                 {
                     _mtkService.SetCustomDa2(_mtkCustomDa2Path);
-                    AppendLog($"[MTK] 使用自定义 DA2: {Path.GetFileName(_mtkCustomDa2Path)}", Color.Cyan);
+                    AppendLog($"[MTK] Use Custom DA2: {Path.GetFileName(_mtkCustomDa2Path)}", Color.Cyan);
                 }
             }
             else
             {
-                // 使用 AllInOne DA 文件
+                // Use AllInOne DA File
                 string daPath = mtkInputDaFile.Text?.Trim();
                 if (!string.IsNullOrEmpty(daPath) && File.Exists(daPath))
                 {
                     _mtkService.SetDaFilePath(daPath);
                 }
                 
-                // 兼容: 也检查单独设置的 DA2
+                // Compatibility: Also check separately set DA2
                 if (!string.IsNullOrEmpty(_mtkCustomDa2Path) && File.Exists(_mtkCustomDa2Path))
                 {
                     _mtkService.SetCustomDa2(_mtkCustomDa2Path);
@@ -634,13 +633,13 @@ namespace LoveAlways
             var selectedPartitions = MtkGetSelectedPartitions();
             if (selectedPartitions.Length == 0)
             {
-                MtkLogWarning("请选择要写入的分区");
+                MtkLogWarning("Please Select Partitions to Write");
                 return;
             }
 
             using (var folderDialog = new FolderBrowserDialog())
             {
-                folderDialog.Description = "选择包含分区镜像的文件夹";
+                folderDialog.Description = "Select Folder Containing Partition Images";
                 if (folderDialog.ShowDialog() != DialogResult.OK)
                     return;
 
@@ -660,38 +659,38 @@ namespace LoveAlways
                         if (mtkChkSkipUserdata.Checked &&
                             (partition.Name.ToLower() == "userdata" || partition.Name.ToLower() == "data"))
                         {
-                            MtkLogDetail($"跳过 {partition.Name}");
+                            MtkLogDetail($"Skip {partition.Name}");
                             continue;
                         }
 
                         string filePath = MtkFindPartitionFile(folderDialog.SelectedPath, partition.Name);
                         if (string.IsNullOrEmpty(filePath))
                         {
-                            MtkLogWarning($"未找到 {partition.Name} 镜像");
+                            MtkLogWarning($"Not Found {partition.Name} Image");
                             continue;
                         }
 
-                        MtkUpdateProgress(current, total, $"写入 {partition.Name} ({current}/{total})");
-                        MtkLogInfo($"写入: {partition.Name}");
+                        MtkUpdateProgress(current, total, $"Writing {partition.Name} ({current}/{total})");
+                        MtkLogInfo($"Writing: {partition.Name}");
 
                         bool result = await _mtkService.WritePartitionAsync(partition.Name, filePath, _mtkCts.Token);
                         if (result) success++;
                     }
 
                     string elapsed = MtkGetElapsedTime();
-                    MtkUpdateProgress(100, 100, $"完成 {success}/{total} [{elapsed}]");
-                    MtkLogSuccess($"写入完成 {success}/{total} ({elapsed})");
+                    MtkUpdateProgress(100, 100, $"Completed {success}/{total} [{elapsed}]");
+                    MtkLogSuccess($"Write Completed {success}/{total} ({elapsed})");
 
                     if (mtkChkRebootAfter.Checked)
                     {
-                        MtkLogInfo("正在重启设备...");
+                        MtkLogInfo("Rebooting device...");
                         await _mtkService.RebootAsync(_mtkCts.Token);
                     }
                 }
                 catch (Exception ex)
                 {
-                    MtkUpdateProgress(0, 0, "写入失败");
-                    MtkLogError($"写入失败: {ex.Message}");
+                    MtkUpdateProgress(0, 0, "Write Failed");
+                    MtkLogError($"Write Failed: {ex.Message}");
                 }
                 finally
                 {
@@ -707,13 +706,13 @@ namespace LoveAlways
             var selectedPartitions = MtkGetSelectedPartitions();
             if (selectedPartitions.Length == 0)
             {
-                MtkLogWarning("请选择要读取的分区");
+                MtkLogWarning("Please Select Partitions to Read");
                 return;
             }
 
             using (var folderDialog = new FolderBrowserDialog())
             {
-                folderDialog.Description = "选择保存位置";
+                folderDialog.Description = "Select Save Location";
                 if (folderDialog.ShowDialog() != DialogResult.OK)
                     return;
 
@@ -729,8 +728,8 @@ namespace LoveAlways
                     foreach (var partition in selectedPartitions)
                     {
                         current++;
-                        MtkUpdateProgress(current, total, $"读取 {partition.Name} ({current}/{total})");
-                        MtkLogInfo($"读取: {partition.Name} ({MtkFormatSize(partition.Size)})");
+                        MtkUpdateProgress(current, total, $"Reading {partition.Name} ({current}/{total})");
+                        MtkLogInfo($"Reading: {partition.Name} ({MtkFormatSize(partition.Size)})");
 
                         string fileName = $"{partition.Name}.img";
                         string outputPath = Path.Combine(folderDialog.SelectedPath, fileName);
@@ -743,19 +742,19 @@ namespace LoveAlways
 
                         if (result)
                         {
-                            MtkLogSuccess($"已保存: {fileName}");
+                            MtkLogSuccess($"Saved: {fileName}");
                             success++;
                         }
                     }
 
                     string elapsed = MtkGetElapsedTime();
-                    MtkUpdateProgress(100, 100, $"完成 {success}/{total} [{elapsed}]");
-                    MtkLogSuccess($"读取完成 {success}/{total} ({elapsed})");
+                    MtkUpdateProgress(100, 100, $"Completed {success}/{total} [{elapsed}]");
+                    MtkLogSuccess($"Read Completed {success}/{total} ({elapsed})");
                 }
                 catch (Exception ex)
                 {
-                    MtkUpdateProgress(0, 0, "读取失败");
-                    MtkLogError($"读取失败: {ex.Message}");
+                    MtkUpdateProgress(0, 0, "Read Failed");
+                    MtkLogError($"Read Failed: {ex.Message}");
                 }
                 finally
                 {
@@ -771,13 +770,13 @@ namespace LoveAlways
             var selectedPartitions = MtkGetSelectedPartitions();
             if (selectedPartitions.Length == 0)
             {
-                MtkLogWarning("请选择要擦除的分区");
+                MtkLogWarning("Please Select Partitions to Erase");
                 return;
             }
 
             var result = MessageBox.Show(
-                $"确定要擦除选中的 {selectedPartitions.Length} 个分区吗？\n此操作不可恢复！",
-                "确认擦除",
+                $"Are you sure you want to erase selected {selectedPartitions.Length} partitions?\nThis operation cannot be undone!",
+                "Confirm Erase",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning
             );
@@ -796,20 +795,20 @@ namespace LoveAlways
                 foreach (var partition in selectedPartitions)
                 {
                     current++;
-                    MtkUpdateProgress(current, total, $"擦除 {partition.Name} ({current}/{total})");
-                    MtkLogInfo($"擦除: {partition.Name}");
+                    MtkUpdateProgress(current, total, $"Erasing {partition.Name} ({current}/{total})");
+                    MtkLogInfo($"Erasing: {partition.Name}");
 
                     await _mtkService.ErasePartitionAsync(partition.Name, _mtkCts.Token);
                 }
 
                 string elapsed = MtkGetElapsedTime();
-                MtkUpdateProgress(100, 100, $"完成 [{elapsed}]");
-                MtkLogSuccess($"擦除完成 {total} 个分区 ({elapsed})");
+                MtkUpdateProgress(100, 100, $"Completed [{elapsed}]");
+                MtkLogSuccess($"Erase Completed {total} Partitions ({elapsed})");
             }
             catch (Exception ex)
             {
-                MtkUpdateProgress(0, 0, "擦除失败");
-                MtkLogError($"擦除失败: {ex.Message}");
+                MtkUpdateProgress(0, 0, "Erase Failed");
+                MtkLogError($"Erase Failed: {ex.Message}");
             }
             finally
             {
@@ -823,41 +822,41 @@ namespace LoveAlways
 
             try
             {
-                MtkUpdateProgress(0, 0, "重启设备...");
+                MtkUpdateProgress(0, 0, "Rebooting device...");
                 await _mtkService.RebootAsync(_mtkCts.Token);
-                MtkUpdateProgress(100, 100, "重启命令已发送");
-                AppendLog("[MTK] 设备重启中...", Color.Green);
+                MtkUpdateProgress(100, 100, "Reboot Command Sent");
+                AppendLog("[MTK] Device Rebooting...", Color.Green);
 
                 MtkDisconnect();
             }
             catch (Exception ex)
             {
-                AppendLog($"[MTK] 重启失败: {ex.Message}", Color.Red);
+                AppendLog($"[MTK] Reboot Failed: {ex.Message}", Color.Red);
             }
         }
 
         private void MtkBtnReadImei_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
-            AppendLog("[MTK] IMEI 读取功能需要 NVRAM 访问，暂不支持", Color.Orange);
+            AppendLog("[MTK] IMEI Read requires NVRAM access, not supported yet", Color.Orange);
         }
 
         private void MtkBtnWriteImei_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
-            AppendLog("[MTK] IMEI 写入功能需要 NVRAM 访问，暂不支持", Color.Orange);
+            AppendLog("[MTK] IMEI Write requires NVRAM access, not supported yet", Color.Orange);
         }
 
         private void MtkBtnBackupNvram_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
-            AppendLog("[MTK] NVRAM 备份功能暂不支持", Color.Orange);
+            AppendLog("[MTK] NVRAM Backup not supported yet", Color.Orange);
         }
 
         private void MtkBtnRestoreNvram_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
-            AppendLog("[MTK] NVRAM 恢复功能暂不支持", Color.Orange);
+            AppendLog("[MTK] NVRAM Restore not supported yet", Color.Orange);
         }
 
         private async void MtkBtnFormatData_Click(object sender, EventArgs e)
@@ -865,8 +864,8 @@ namespace LoveAlways
             if (!MtkEnsureConnected()) return;
 
             var result = MessageBox.Show(
-                "确定要格式化 Data 分区吗？\n这将清除所有用户数据！",
-                "确认格式化",
+                "Are you sure you want to format Data partition?\nThis will erase all user data!",
+                "Confirm Format",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning
             );
@@ -877,16 +876,16 @@ namespace LoveAlways
             try
             {
                 MtkSetButtonsEnabled(false);
-                MtkUpdateProgress(0, 0, "格式化 Data...");
+                MtkUpdateProgress(0, 0, "Formatting Data...");
 
                 await _mtkService.ErasePartitionAsync("userdata", _mtkCts.Token);
 
-                MtkUpdateProgress(100, 100, "格式化完成");
-                AppendLog("[MTK] Data 分区已格式化", Color.Green);
+                MtkUpdateProgress(100, 100, "Format Completed");
+                AppendLog("[MTK] Data Partition Formatted", Color.Green);
             }
             catch (Exception ex)
             {
-                AppendLog($"[MTK] 格式化失败: {ex.Message}", Color.Red);
+                AppendLog($"[MTK] Format Failed: {ex.Message}", Color.Red);
             }
             finally
             {
@@ -897,21 +896,21 @@ namespace LoveAlways
         private void MtkBtnUnlockBl_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
-            AppendLog("[MTK] Bootloader 解锁功能需要特殊权限，暂不支持", Color.Orange);
+            AppendLog("[MTK] Bootloader Unlock requires special permissions, not supported yet", Color.Orange);
         }
 
         /// <summary>
-        /// 执行漏洞利用按钮点击事件
+        /// Execute Exploit Button Click Event
         /// </summary>
         private async void MtkBtnExploit_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
 
-            // 获取选择的漏洞类型
+            // Get Selected Exploit Type
             var selectedExploitItem = mtkSelectExploitType.SelectedValue as AntdUI.SelectItem;
             string exploitType = selectedExploitItem?.Tag?.ToString() ?? "Auto";
 
-            // 如果是自动模式，根据芯片判断
+            // If Auto Mode, determine by chip
             if (exploitType == "Auto")
             {
                 ushort hwCode = _mtkService?.ChipInfo?.HwCode ?? 0;
@@ -919,7 +918,7 @@ namespace LoveAlways
                 
                 if (exploitType == "None" || string.IsNullOrEmpty(exploitType))
                 {
-                    AppendLog("[MTK] 当前芯片不支持任何已知漏洞", Color.Orange);
+                    AppendLog("[MTK] Current chip does not support any known exploit", Color.Orange);
                     return;
                 }
             }
@@ -938,12 +937,12 @@ namespace LoveAlways
                 }
                 else
                 {
-                    AppendLog($"[MTK] 未知漏洞类型: {exploitType}", Color.Red);
+                    AppendLog($"[MTK] Unknown Exploit Type: {exploitType}", Color.Red);
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"[MTK] 漏洞利用异常: {ex.Message}", Color.Red);
+                AppendLog($"[MTK] Exploit Exception: {ex.Message}", Color.Red);
             }
             finally
             {
@@ -952,19 +951,19 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 执行 ALLINONE-SIGNATURE 漏洞
-        /// 仅适用于 MT6989/MT6983/MT6985 等 Dimensity 9000 系列
+        /// Execute ALLINONE-SIGNATURE Exploit
+        /// Only for Dimensity 9000 series (MT6989/MT6983/MT6985)
         /// </summary>
         private async Task ExecuteAllinoneSignatureExploitAsync()
         {
             ushort hwCode = _mtkService?.ChipInfo?.HwCode ?? 0;
             string chipName = _mtkService?.ChipInfo?.ChipName ?? "Unknown";
 
-            // 检查芯片是否支持
+            // Check if chip supports
             if (!MtkChipDatabase.IsAllinoneSignatureSupported(hwCode))
             {
-                AppendLog($"[MTK] 芯片 {chipName} (0x{hwCode:X4}) 不支持 ALLINONE-SIGNATURE 漏洞", Color.Red);
-                AppendLog("[MTK] 此漏洞仅适用于以下芯片:", Color.Yellow);
+                AppendLog($"[MTK] Chip {chipName} (0x{hwCode:X4}) does not support ALLINONE-SIGNATURE Exploit", Color.Red);
+                AppendLog("[MTK] This exploit only supports following chips:", Color.Yellow);
                 
                 var supportedChips = MtkChipDatabase.GetAllinoneSignatureChips();
                 foreach (var chip in supportedChips)
@@ -975,40 +974,40 @@ namespace LoveAlways
             }
 
             AppendLog("[MTK] ═══════════════════════════════════════", Color.Yellow);
-            AppendLog($"[MTK] 执行 ALLINONE-SIGNATURE 漏洞利用", Color.Yellow);
-            AppendLog($"[MTK] 目标芯片: {chipName} (0x{hwCode:X4})", Color.Yellow);
+            AppendLog($"[MTK] Executing ALLINONE-SIGNATURE Exploit", Color.Yellow);
+            AppendLog($"[MTK] Target Chip: {chipName} (0x{hwCode:X4})", Color.Yellow);
             AppendLog("[MTK] ═══════════════════════════════════════", Color.Yellow);
 
-            MtkUpdateProgress(0, 0, "执行漏洞利用...");
+            MtkUpdateProgress(0, 0, "Executing Exploit...");
 
-            // 检查 DA2 是否已加载
+            // Check if DA2 Loaded
             if (_mtkService.State != MtkDeviceState.Da2Loaded)
             {
-                AppendLog("[MTK] 请先连接设备并加载 DA2", Color.Orange);
+                AppendLog("[MTK] Please connect device and load DA2 first", Color.Orange);
                 return;
             }
 
             bool success = await _mtkService.RunAllinoneSignatureExploitAsync(
-                null,  // 使用默认 shellcode
-                null,  // 使用默认指针表
+                null,  // Use default shellcode
+                null,  // Use default pointer table
                 _mtkCts.Token);
 
             if (success)
             {
-                MtkUpdateProgress(100, 100, "漏洞利用成功");
-                AppendLog("[MTK] ✓ ALLINONE-SIGNATURE 漏洞利用成功!", Color.Green);
-                AppendLog("[MTK] 设备安全检查已禁用", Color.Green);
+                MtkUpdateProgress(100, 100, "Exploit Success");
+                AppendLog("[MTK] ✓ ALLINONE-SIGNATURE Exploit Success!", Color.Green);
+                AppendLog("[MTK] Device Security Check Disabled", Color.Green);
             }
             else
             {
-                MtkUpdateProgress(0, 0, "漏洞利用失败");
-                AppendLog("[MTK] ✗ ALLINONE-SIGNATURE 漏洞利用失败", Color.Red);
+                MtkUpdateProgress(0, 0, "Exploit Failed");
+                AppendLog("[MTK] ✗ ALLINONE-SIGNATURE Exploit Failed", Color.Red);
             }
         }
 
         /// <summary>
-        /// 执行 Carbonara 漏洞
-        /// 适用于大多数 MT67xx/MT68xx 芯片
+        /// Execute Carbonara Exploit
+        /// For most MT67xx/MT68xx chips
         /// </summary>
         private async Task ExecuteCarbonaraExploitAsync()
         {
@@ -1016,18 +1015,18 @@ namespace LoveAlways
             string chipName = _mtkService?.ChipInfo?.ChipName ?? "Unknown";
 
             AppendLog("[MTK] ═══════════════════════════════════════", Color.Yellow);
-            AppendLog($"[MTK] 执行 Carbonara 漏洞利用", Color.Yellow);
-            AppendLog($"[MTK] 目标芯片: {chipName} (0x{hwCode:X4})", Color.Yellow);
+            AppendLog($"[MTK] Executing Carbonara Exploit", Color.Yellow);
+            AppendLog($"[MTK] Target Chip: {chipName} (0x{hwCode:X4})", Color.Yellow);
             AppendLog("[MTK] ═══════════════════════════════════════", Color.Yellow);
 
-            MtkUpdateProgress(0, 0, "执行漏洞利用...");
+            MtkUpdateProgress(0, 0, "Executing Exploit...");
 
-            // Carbonara 漏洞在 LoadDaAsync 中自动执行
-            // 这里只是显示信息
-            AppendLog("[MTK] Carbonara 漏洞会在连接时自动执行", Color.Cyan);
-            AppendLog("[MTK] 如果连接成功，表示漏洞已生效", Color.Cyan);
+            // Carbonara exploit auto executed in LoadDaAsync
+            // Here just show info
+            AppendLog("[MTK] Carbonara Exploit will be executed automatically when connecting", Color.Cyan);
+            AppendLog("[MTK] If connection success, means exploit works", Color.Cyan);
 
-            MtkUpdateProgress(100, 100, "完成");
+            MtkUpdateProgress(100, 100, "Completed");
         }
 
         private void MtkChkSelectAll_CheckedChanged(object sender, AntdUI.BoolEventArgs e)
@@ -1042,90 +1041,90 @@ namespace LoveAlways
         {
             using (var openDialog = new OpenFileDialog())
             {
-                openDialog.Filter = "DA 文件|*.bin;*.da|所有文件|*.*";
-                openDialog.Multiselect = true;  // 支持多选
-                openDialog.Title = "选择 DA 文件 (可多选 DA1/DA2)";
+                openDialog.Filter = "DA Files|*.bin;*.da|All Files|*.*";
+                openDialog.Multiselect = true;  // Support Multi-Select
+                openDialog.Title = "Select DA File (Support Multi-Select DA1/DA2)";
                 
                 if (openDialog.ShowDialog() == DialogResult.OK)
                 {
-                    // 重置分离 DA 状态
+                    // Reset Separate DA State
                     _mtkCustomDa1Path = null;
                     _mtkCustomDa2Path = null;
                     _mtkUseSeparateDa = false;
                     
                     if (openDialog.FileNames.Length == 1)
                     {
-                        // 单文件选择 - 可能是 AllInOne 或单独的 DA1
+                        // Single File - AllInOne or Separate DA1
                         string fileName = Path.GetFileName(openDialog.FileName).ToLower();
                         
-                        // 检查是否为 DA2 (如果用户只选了 DA2)
+                        // Check if DA2 (If user only selected DA2)
                         if (fileName.Contains("da2") || fileName.Contains("stage2"))
                         {
                             _mtkCustomDa2Path = openDialog.FileName;
                             mtkInputDaFile.Text = openDialog.FileName;
-                            AppendLog($"[MTK] ⚠ 只选择了 DA2，请同时选择 DA1", Color.Orange);
+                            AppendLog($"[MTK] ⚠ Only selected DA2, please select DA1 together", Color.Orange);
                         }
                         else
                         {
                             mtkInputDaFile.Text = openDialog.FileName;
-                            AppendLog($"[MTK] DA 文件: {Path.GetFileName(openDialog.FileName)}", Color.Cyan);
+                            AppendLog($"[MTK] DA File: {Path.GetFileName(openDialog.FileName)}", Color.Cyan);
                         }
                     }
                     else
                     {
-                        // 多文件选择 - 自动识别 DA1/DA2
+                        // Multi File - Auto Detect DA1/DA2
                         var (da1Path, da2Path, allInOnePath) = AutoDetectDaFiles(openDialog.FileNames);
                         
                         if (!string.IsNullOrEmpty(allInOnePath))
                         {
-                            // AllInOne DA 文件
+                            // AllInOne DA File
                             mtkInputDaFile.Text = allInOnePath;
                             _mtkUseSeparateDa = false;
-                            AppendLog($"[MTK] 检测到 AllInOne DA: {Path.GetFileName(allInOnePath)}", Color.Cyan);
+                            AppendLog($"[MTK] Detected AllInOne DA: {Path.GetFileName(allInOnePath)}", Color.Cyan);
                         }
                         else if (!string.IsNullOrEmpty(da1Path) && !string.IsNullOrEmpty(da2Path))
                         {
-                            // 分离的 DA1 + DA2 文件 (完整)
+                            // Separate DA1 + DA2 (Complete)
                             _mtkCustomDa1Path = da1Path;
                             _mtkCustomDa2Path = da2Path;
                             _mtkUseSeparateDa = true;
                             
-                            // 显示为 "DA1 + DA2" 格式
+                            // Show as "DA1 + DA2" format
                             mtkInputDaFile.Text = $"{Path.GetFileName(da1Path)} + {Path.GetFileName(da2Path)}";
                             
-                            AppendLog($"[MTK] 检测到 DA1: {Path.GetFileName(da1Path)}", Color.Cyan);
-                            AppendLog($"[MTK] 检测到 DA2: {Path.GetFileName(da2Path)}", Color.Cyan);
-                            AppendLog("[MTK] ✓ 已自动识别 DA1 + DA2 (分离格式)", Color.Green);
+                            AppendLog($"[MTK] Detected DA1: {Path.GetFileName(da1Path)}", Color.Cyan);
+                            AppendLog($"[MTK] Detected DA2: {Path.GetFileName(da2Path)}", Color.Cyan);
+                            AppendLog("[MTK] ✓ Auto Identified DA1 + DA2 (Separate Format)", Color.Green);
                         }
                         else if (!string.IsNullOrEmpty(da1Path))
                         {
-                            // 只有 DA1
+                            // Only DA1
                             mtkInputDaFile.Text = da1Path;
-                            AppendLog($"[MTK] 检测到 DA1: {Path.GetFileName(da1Path)}", Color.Cyan);
-                            AppendLog("[MTK] ⚠ 未检测到 DA2，部分功能可能受限", Color.Orange);
+                            AppendLog($"[MTK] Detected DA1: {Path.GetFileName(da1Path)}", Color.Cyan);
+                            AppendLog("[MTK] ⚠ DA2 Not Detected, some functions may be limited", Color.Orange);
                         }
                         else if (!string.IsNullOrEmpty(da2Path))
                         {
-                            // 只有 DA2
+                            // Only DA2
                             _mtkCustomDa2Path = da2Path;
                             mtkInputDaFile.Text = da2Path;
-                            AppendLog($"[MTK] 检测到 DA2: {Path.GetFileName(da2Path)}", Color.Cyan);
-                            AppendLog("[MTK] ⚠ 未检测到 DA1，请同时选择 DA1", Color.Orange);
+                            AppendLog($"[MTK] Detected DA2: {Path.GetFileName(da2Path)}", Color.Cyan);
+                            AppendLog("[MTK] ⚠ DA1 Not Detected, please select DA1 together", Color.Orange);
                         }
                     }
                 }
             }
         }
         
-        // 存储自动识别的 DA1/DA2 路径 (分离格式)
+        // Store Auto Detected DA1/DA2 Paths (Separate Format)
         private string _mtkCustomDa1Path;
         private string _mtkCustomDa2Path;
-        private bool _mtkUseSeparateDa;  // 是否使用分离的 DA1/DA2
-        private string _mtkScatterPath;  // Scatter 配置文件路径
-        private List<MtkScatterEntry> _mtkScatterEntries;  // Scatter 分区配置
+        private bool _mtkUseSeparateDa;  // Use Separate DA1/DA2
+        private string _mtkScatterPath;  // Scatter Config Path
+        private List<MtkScatterEntry> _mtkScatterEntries;  // Scatter Partition Config
         
         /// <summary>
-        /// 自动检测 DA 文件类型
+        /// Auto Detect DA File Type
         /// </summary>
         private (string da1Path, string da2Path, string allInOnePath) AutoDetectDaFiles(string[] filePaths)
         {
@@ -1137,7 +1136,7 @@ namespace LoveAlways
             {
                 string fileName = Path.GetFileName(path).ToLower();
                 
-                // 检测 AllInOne DA
+                // Detect AllInOne DA
                 if (fileName.Contains("allinone") || fileName.Contains("all_in_one") || 
                     fileName.Contains("all-in-one") || fileName == "mtk_da.bin")
                 {
@@ -1145,7 +1144,7 @@ namespace LoveAlways
                     continue;
                 }
                 
-                // 检测 DA1 (Stage1)
+                // Detect DA1 (Stage1)
                 if (fileName.Contains("da1") || fileName.Contains("stage1") || 
                     fileName.Contains("_1.") || fileName.Contains("-1.") ||
                     fileName.EndsWith("_da1.bin") || fileName.EndsWith("-da1.bin"))
@@ -1154,7 +1153,7 @@ namespace LoveAlways
                     continue;
                 }
                 
-                // 检测 DA2 (Stage2)
+                // Detect DA2 (Stage2)
                 if (fileName.Contains("da2") || fileName.Contains("stage2") || 
                     fileName.Contains("_2.") || fileName.Contains("-2.") ||
                     fileName.EndsWith("_da2.bin") || fileName.EndsWith("-da2.bin"))
@@ -1163,23 +1162,23 @@ namespace LoveAlways
                     continue;
                 }
                 
-                // 如果文件名不明确，检查文件大小
+                // If filename ambiguous, check size
                 try
                 {
                     var fileInfo = new FileInfo(path);
                     if (fileInfo.Length > 500000 && fileInfo.Length < 700000)
                     {
-                        // ~600KB 通常是 DA1
+                        // ~600KB Usually DA1
                         if (da1Path == null) da1Path = path;
                     }
                     else if (fileInfo.Length > 300000 && fileInfo.Length < 400000)
                     {
-                        // ~350KB 通常是 DA2
+                        // ~350KB Usually DA2
                         if (da2Path == null) da2Path = path;
                     }
                     else if (fileInfo.Length > 1000000)
                     {
-                        // > 1MB 可能是 AllInOne
+                        // > 1MB Possibly AllInOne
                         if (allInOnePath == null) allInOnePath = path;
                     }
                 }
@@ -1191,7 +1190,7 @@ namespace LoveAlways
 
         #endregion
 
-        #region MTK 控制器事件
+        #region MTK Controller Events
 
         private void MtkController_OnProgress(int current, int total)
         {
@@ -1213,13 +1212,13 @@ namespace LoveAlways
         {
             SafeInvoke(() =>
             {
-                // 简洁的设备信息日志
+                // Concise Device Info Log
                 string chipName = device.ChipInfo?.GetChipName() ?? "Unknown";
                 string hwCode = device.ChipInfo != null ? $"0x{device.ChipInfo.HwCode:X4}" : "--";
                 string protocol = _mtkService?.IsXFlashMode == true ? "XFlash" : "XML";
-                MtkLogSuccess($"设备连接: {chipName} ({hwCode}) [{protocol}]");
+                MtkLogSuccess($"Device Connected: {chipName} ({hwCode}) [{protocol}]");
 
-                // 更新右侧信息面板
+                // Update Right Info Panel
                 UpdateMtkInfoPanelFromDevice(device);
             });
         }
@@ -1228,7 +1227,7 @@ namespace LoveAlways
         {
             SafeInvoke(() =>
             {
-                MtkLogWarning("设备已断开");
+                MtkLogWarning("Device Disconnected");
                 UpdateMtkInfoPanel();
             });
         }
@@ -1237,16 +1236,16 @@ namespace LoveAlways
         {
             SafeInvoke(() =>
             {
-                MtkLogInfo($"加载 {partitions.Count} 个分区");
+                MtkLogInfo($"Loaded {partitions.Count} Partitions");
             });
         }
 
         #endregion
 
-        #region MTK 右侧信息面板
+        #region MTK Right Info Panel
 
         /// <summary>
-        /// 更新右侧信息面板为 MTK 专用显示
+        /// Update Right Info Panel for MTK
         /// </summary>
         private void UpdateMtkInfoPanel()
         {
@@ -1256,29 +1255,29 @@ namespace LoveAlways
                 if (deviceInfo?.ChipInfo != null)
                 {
                     string protocol = _mtkService.IsXFlashMode ? "XFlash" : "XML";
-                    uiLabel9.Text = $"平台：MediaTek";
-                    uiLabel11.Text = $"芯片：{deviceInfo.ChipInfo.GetChipName()}";
-                    uiLabel12.Text = $"HW Code：0x{deviceInfo.ChipInfo.HwCode:X4}";
-                    uiLabel10.Text = $"协议：{protocol}";
-                    uiLabel3.Text = $"ME ID：{(deviceInfo.MeIdHex?.Length > 16 ? deviceInfo.MeIdHex.Substring(0, 16) + "..." : deviceInfo.MeIdHex ?? "--")}";
-                    uiLabel13.Text = $"状态：已连接";
-                    uiLabel14.Text = $"漏洞：{(MtkDaDatabase.SupportsExploit(deviceInfo.ChipInfo.HwCode) ? "可用" : "不可用")}";
+                    uiLabel9.Text = $"Platform: MediaTek";
+                    uiLabel11.Text = $"Chip: {deviceInfo.ChipInfo.GetChipName()}";
+                    uiLabel12.Text = $"HW Code: 0x{deviceInfo.ChipInfo.HwCode:X4}";
+                    uiLabel10.Text = $"Protocol: {protocol}";
+                    uiLabel3.Text = $"ME ID: {(deviceInfo.MeIdHex?.Length > 16 ? deviceInfo.MeIdHex.Substring(0, 16) + "..." : deviceInfo.MeIdHex ?? "--")}";
+                    uiLabel13.Text = $"Status: Connected";
+                    uiLabel14.Text = $"Exploit: {(MtkDaDatabase.SupportsExploit(deviceInfo.ChipInfo.HwCode) ? "Available" : "Unavailable")}";
                     return;
                 }
             }
 
-            // 未连接时显示等待状态
-            uiLabel9.Text = "平台：MediaTek";
-            uiLabel11.Text = "芯片：等待连接";
-            uiLabel12.Text = "HW Code：--";
-            uiLabel10.Text = "协议：--";
-            uiLabel3.Text = "ME ID：--";
-            uiLabel13.Text = "状态：未连接";
-            uiLabel14.Text = "漏洞：--";
+            // Waiting Status
+            uiLabel9.Text = "Platform: MediaTek";
+            uiLabel11.Text = "Chip: Waiting";
+            uiLabel12.Text = "HW Code: --";
+            uiLabel10.Text = "Protocol: --";
+            uiLabel3.Text = "ME ID: --";
+            uiLabel13.Text = "Status: Disconnected";
+            uiLabel14.Text = "Exploit: --";
         }
 
         /// <summary>
-        /// MTK 设备连接后更新右侧面板
+        /// Update Right Info Panel after MTK Device Connected
         /// </summary>
         private void UpdateMtkInfoPanelFromDevice(MtkDeviceInfo deviceInfo)
         {
@@ -1287,26 +1286,26 @@ namespace LoveAlways
                 if (deviceInfo?.ChipInfo != null)
                 {
                     string protocol = _mtkService?.IsXFlashMode == true ? "XFlash" : "XML";
-                    uiLabel9.Text = $"平台：MediaTek";
-                    uiLabel11.Text = $"芯片：{deviceInfo.ChipInfo.GetChipName()}";
-                    uiLabel12.Text = $"HW Code：0x{deviceInfo.ChipInfo.HwCode:X4}";
-                    uiLabel10.Text = $"协议：{protocol}";
-                    uiLabel3.Text = $"ME ID：{(deviceInfo.MeIdHex?.Length > 16 ? deviceInfo.MeIdHex.Substring(0, 16) + "..." : deviceInfo.MeIdHex ?? "--")}";
-                    uiLabel13.Text = $"状态：已连接";
-                    uiLabel14.Text = $"漏洞：{(MtkDaDatabase.SupportsExploit(deviceInfo.ChipInfo.HwCode) ? "可用" : "不可用")}";
+                    uiLabel9.Text = $"Platform: MediaTek";
+                    uiLabel11.Text = $"Chip: {deviceInfo.ChipInfo.GetChipName()}";
+                    uiLabel12.Text = $"HW Code: 0x{deviceInfo.ChipInfo.HwCode:X4}";
+                    uiLabel10.Text = $"Protocol: {protocol}";
+                    uiLabel3.Text = $"ME ID: {(deviceInfo.MeIdHex?.Length > 16 ? deviceInfo.MeIdHex.Substring(0, 16) + "..." : deviceInfo.MeIdHex ?? "--")}";
+                    uiLabel13.Text = $"Status: Connected";
+                    uiLabel14.Text = $"Exploit: {(MtkDaDatabase.SupportsExploit(deviceInfo.ChipInfo.HwCode) ? "Available" : "Unavailable")}";
                 }
             });
         }
 
         #endregion
 
-        #region MTK 辅助方法
+        #region MTK Helper Methods
 
         private bool MtkEnsureConnected()
         {
             if (!_mtkIsConnected || _mtkService == null)
             {
-                AppendLog("[MTK] 请先连接设备", Color.Orange);
+                AppendLog("[MTK] Please connect device first", Color.Orange);
                 return false;
             }
             return true;
@@ -1315,11 +1314,11 @@ namespace LoveAlways
         private void MtkSetConnectionState(bool connected)
         {
             _mtkIsConnected = connected;
-            // 连接/断开按钮已隐藏，不再控制它们的状态
+            // Connect/Disconnect buttons hidden, no longer controlling them
             // mtkBtnConnect.Enabled = !connected;
             // mtkBtnDisconnect.Enabled = connected;
             
-            // 读取分区表始终可用，会自动执行连接
+            // Read GPT always enabled, triggers auto connect
             mtkBtnReadGpt.Enabled = true;
             mtkBtnWritePartition.Enabled = connected;
             mtkBtnReadPartition.Enabled = connected;
@@ -1332,7 +1331,7 @@ namespace LoveAlways
             mtkBtnFormatData.Enabled = connected;
             mtkBtnUnlockBl.Enabled = connected;
             
-            // 更新漏洞按钮状态
+            // Update Exploit Button State
             if (connected && _mtkService?.ChipInfo != null)
             {
                 ushort hwCode = _mtkService.ChipInfo.HwCode;
@@ -1343,15 +1342,15 @@ namespace LoveAlways
                 
                 if (isAllinone)
                 {
-                    mtkBtnExploit.Text = "AllInOne漏洞";
+                    mtkBtnExploit.Text = "AllInOne Exploit";
                 }
                 else if (hasExploit)
                 {
-                    mtkBtnExploit.Text = "执行漏洞";
+                    mtkBtnExploit.Text = "Execute Exploit";
                 }
                 else
                 {
-                    mtkBtnExploit.Text = "无漏洞";
+                    mtkBtnExploit.Text = "No Exploit";
                 }
             }
             else
@@ -1362,7 +1361,7 @@ namespace LoveAlways
 
         private void MtkSetButtonsEnabled(bool enabled)
         {
-            // 读取分区表按钮始终根据 enabled 状态控制（支持自动连接）
+            // Read GPT button always controlled by enabled state (support auto connect)
             mtkBtnReadGpt.Enabled = enabled;
             
             if (_mtkIsConnected)
@@ -1378,7 +1377,7 @@ namespace LoveAlways
                 mtkBtnFormatData.Enabled = enabled;
                 mtkBtnUnlockBl.Enabled = enabled;
             }
-            // 连接/断开按钮已隐藏，不再控制它们的状态
+            // Connect/Disconnect buttons hidden
         }
 
         private void MtkUpdateDeviceInfo(MtkDeviceInfo info)
@@ -1386,8 +1385,8 @@ namespace LoveAlways
             if (info.ChipInfo != null)
             {
                 mtkLblHwCode.Text = $"HW: 0x{info.ChipInfo.HwCode:X4}";
-                mtkLblChipName.Text = $"芯片: {info.ChipInfo.GetChipName()}";
-                mtkLblDaMode.Text = $"模式: {info.ChipInfo.DaMode}";
+                mtkLblChipName.Text = $"Chip: {info.ChipInfo.GetChipName()}";
+                mtkLblDaMode.Text = $"Mode: {info.ChipInfo.DaMode}";
             }
         }
 
@@ -1395,17 +1394,17 @@ namespace LoveAlways
         {
             string stateText = state switch
             {
-                MtkDeviceState.Disconnected => "未连接",
-                MtkDeviceState.Handshaking => "握手中...",
-                MtkDeviceState.Brom => "BROM 模式",
-                MtkDeviceState.Preloader => "Preloader 模式",
-                MtkDeviceState.Da1Loaded => "DA1 已加载",
-                MtkDeviceState.Da2Loaded => "DA2 已加载",
-                MtkDeviceState.Error => "错误",
-                _ => "未知"
+                MtkDeviceState.Disconnected => "Disconnected",
+                MtkDeviceState.Handshaking => "Handshaking...",
+                MtkDeviceState.Brom => "BROM Mode",
+                MtkDeviceState.Preloader => "Preloader Mode",
+                MtkDeviceState.Da1Loaded => "DA1 Loaded",
+                MtkDeviceState.Da2Loaded => "DA2 Loaded",
+                MtkDeviceState.Error => "Error",
+                _ => "Unknown"
             };
 
-            mtkLblStatus.Text = $"状态: {stateText}";
+            mtkLblStatus.Text = $"Status: {stateText}";
 
             Color stateColor = state switch
             {
@@ -1422,11 +1421,11 @@ namespace LoveAlways
 
         private void MtkClearDeviceInfo()
         {
-            mtkLblStatus.Text = "状态: 未连接";
+            mtkLblStatus.Text = "Status: Disconnected";
             mtkLblStatus.ForeColor = Color.Gray;
             mtkLblHwCode.Text = "HW: --";
-            mtkLblChipName.Text = "芯片: --";
-            mtkLblDaMode.Text = "模式: --";
+            mtkLblChipName.Text = "Chip: --";
+            mtkLblDaMode.Text = "Mode: --";
         }
 
         private MtkPartitionInfo[] MtkGetSelectedPartitions()
@@ -1463,13 +1462,13 @@ namespace LoveAlways
             return $"{size:0.##} {sizes[order]}";
         }
 
-        // MTK 操作计时
+        // MTK Operation Timer
         private DateTime _mtkOperationStartTime;
         private long _mtkLastBytes;
         private DateTime _mtkLastSpeedUpdate;
         
         /// <summary>
-        /// 开始 MTK 操作计时
+        /// Start MTK Operation Timer
         /// </summary>
         private void MtkStartTimer()
         {
@@ -1479,7 +1478,7 @@ namespace LoveAlways
         }
         
         /// <summary>
-        /// 获取操作已用时间
+        /// Get Elapsed Time
         /// </summary>
         private string MtkGetElapsedTime()
         {
@@ -1490,14 +1489,14 @@ namespace LoveAlways
         }
         
         /// <summary>
-        /// 计算传输速度
+        /// Calculate Transfer Speed
         /// </summary>
         private string MtkCalculateSpeed(long currentBytes)
         {
             var now = DateTime.Now;
             var timeDiff = (now - _mtkLastSpeedUpdate).TotalSeconds;
             
-            if (timeDiff < 0.5) return "";  // 至少 0.5 秒更新一次
+            if (timeDiff < 0.5) return "";  // Update at least once every 0.5 seconds
             
             var bytesDiff = currentBytes - _mtkLastBytes;
             var speed = bytesDiff / timeDiff;
@@ -1511,7 +1510,7 @@ namespace LoveAlways
         }
         
         /// <summary>
-        /// 更新进度条 - 使用现有的双进度条
+        /// Update Progress - Use Existing Dual Progress Bars
         /// </summary>
         private void MtkUpdateProgress(int current, int total, string statusText = null)
         {
@@ -1526,7 +1525,7 @@ namespace LoveAlways
                     uiProcessBar1.Value = Math.Min(percentage, 100);
                     uiProcessBar2.Value = Math.Min(percentage, 100);
                     
-                    // 更新圆形进度条
+                    // Update circular progress bars
                     progress1.Value = (float)percentage / 100f;
                     progress2.Value = (float)percentage / 100f;
                     
@@ -1534,16 +1533,16 @@ namespace LoveAlways
                     timeInfo = MtkGetElapsedTime();
                     if (current > 0 && current < total)
                     {
-                        // 估算剩余时间
+                        // Estimate Remaining Time
                         var elapsed = DateTime.Now - _mtkOperationStartTime;
                         var remaining = TimeSpan.FromSeconds(elapsed.TotalSeconds / current * (total - current));
                         if (remaining.TotalHours >= 1)
-                            timeInfo += $" / 剩余 {remaining.Hours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
+                            timeInfo += $" / Remaining {remaining.Hours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
                         else if (remaining.TotalSeconds > 5)
-                            timeInfo += $" / 剩余 {remaining.Minutes:D2}:{remaining.Seconds:D2}";
+                            timeInfo += $" / Remaining {remaining.Minutes:D2}:{remaining.Seconds:D2}";
                         
-                        // 计算速度 (假设 current 是字节数)
-                        if (total > 1000)  // 大于 1KB 才计算速度
+                        // Calculate Speed (Assume current is bytes)
+                        if (total > 1000)  // Only calculate if > 1KB
                         {
                             speedInfo = MtkCalculateSpeed(current);
                         }
@@ -1557,7 +1556,7 @@ namespace LoveAlways
                     progress2.Value = 0;
                 }
 
-                // 更新状态显示
+                // Update Status Display
                 if (!string.IsNullOrEmpty(statusText))
                 {
                     string fullStatus = statusText;
@@ -1566,13 +1565,13 @@ namespace LoveAlways
                     if (!string.IsNullOrEmpty(speedInfo))
                         fullStatus += $" {speedInfo}";
                     
-                    mtkLblStatus.Text = $"状态: {fullStatus}";
+                    mtkLblStatus.Text = $"Status: {fullStatus}";
                 }
             });
         }
         
         /// <summary>
-        /// 更新进度条 (带字节数，用于计算速度)
+        /// Update Progress (With Bytes, for Speed Calculation)
         /// </summary>
         private void MtkUpdateProgressWithBytes(long currentBytes, long totalBytes, string operation)
         {
@@ -1584,12 +1583,12 @@ namespace LoveAlways
                 progress1.Value = (float)percentage / 100f;
                 progress2.Value = (float)percentage / 100f;
                 
-                // 计算速度和时间
+                // Calculate Speed and Time
                 string timeInfo = MtkGetElapsedTime();
                 string speedInfo = MtkCalculateSpeed(currentBytes);
                 string sizeInfo = $"{MtkFormatSize((ulong)currentBytes)}/{MtkFormatSize((ulong)totalBytes)}";
                 
-                // 估算剩余时间
+                // Estimate Remaining Time
                 if (currentBytes > 0 && currentBytes < totalBytes)
                 {
                     var elapsed = DateTime.Now - _mtkOperationStartTime;
@@ -1597,9 +1596,9 @@ namespace LoveAlways
                     if (remaining.TotalSeconds > 5)
                     {
                         if (remaining.TotalHours >= 1)
-                            timeInfo += $" 剩余{remaining.Hours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
+                            timeInfo += $" Remaining {remaining.Hours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
                         else
-                            timeInfo += $" 剩余{remaining.Minutes:D2}:{remaining.Seconds:D2}";
+                            timeInfo += $" Remaining {remaining.Minutes:D2}:{remaining.Seconds:D2}";
                     }
                 }
                 
@@ -1608,29 +1607,29 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 检查是否有 MTK 操作正在进行 (包括等待设备阶段)
+        /// Check if MTK operation is in progress (including waiting for device)
         /// </summary>
         public bool MtkHasPendingOperation => _mtkCts != null && !_mtkCts.IsCancellationRequested;
 
         /// <summary>
-        /// 取消当前 MTK 操作
+        /// Cancel current MTK operation
         /// </summary>
         public void MtkCancelOperation()
         {
             if (_mtkCts != null && !_mtkCts.IsCancellationRequested)
             {
                 _mtkCts.Cancel();
-                MtkLogWarning("操作已取消");
-                MtkUpdateProgress(0, 0, "已取消");
+                MtkLogWarning("Operation Cancelled");
+                MtkUpdateProgress(0, 0, "Cancelled");
             }
         }
 
         #endregion
 
-        #region MTK Scatter 配置文件解析
+        #region MTK Scatter Config Parsing
 
         /// <summary>
-        /// MTK Scatter 分区条目
+        /// MTK Scatter Partition Entry
         /// </summary>
         public class MtkScatterEntry
         {
@@ -1644,14 +1643,14 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// Scatter 文件选择按钮点击事件
+        /// Scatter File Selection Button Click Event
         /// </summary>
         private void MtkInputScatterFile_SuffixClick(object sender, EventArgs e)
         {
             using (var openDialog = new OpenFileDialog())
             {
-                openDialog.Filter = "Scatter 文件|*scatter*.txt;*scatter*|所有文件|*.*";
-                openDialog.Title = "选择 MTK Scatter 配置文件";
+                openDialog.Filter = "Scatter File|*scatter*.txt;*scatter*|All Files|*.*";
+                openDialog.Title = "Select MTK Scatter Config File";
 
                 if (openDialog.ShowDialog() == DialogResult.OK)
                 {
@@ -1663,7 +1662,7 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 从 Scatter 文件加载分区配置
+        /// Load Partition Config from Scatter File
         /// </summary>
         private void LoadScatterPartitions(string scatterPath)
         {
@@ -1673,9 +1672,9 @@ namespace LoveAlways
 
                 if (_mtkScatterEntries != null && _mtkScatterEntries.Count > 0)
                 {
-                    AppendLog($"[MTK] 已加载 Scatter 配置: {_mtkScatterEntries.Count} 个分区", Color.Green);
+                    AppendLog($"[MTK] Scatter Config Loaded: {_mtkScatterEntries.Count} Partitions", Color.Green);
 
-                    // 更新分区列表显示
+                    // Update Partition List Display
                     mtkListPartitions.Items.Clear();
                     foreach (var entry in _mtkScatterEntries)
                     {
@@ -1689,23 +1688,23 @@ namespace LoveAlways
                         mtkListPartitions.Items.Add(item);
                     }
 
-                    // 显示配置文件路径
-                    AppendLog($"[MTK] Scatter 文件: {Path.GetFileName(scatterPath)}", Color.Cyan);
+                    // Show Config File Path
+                    AppendLog($"[MTK] Scatter File: {Path.GetFileName(scatterPath)}", Color.Cyan);
                 }
                 else
                 {
-                    AppendLog("[MTK] Scatter 文件解析失败或为空", Color.Orange);
+                    AppendLog("[MTK] Scatter File Parse Failed or Empty", Color.Orange);
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"[MTK] 解析 Scatter 文件失败: {ex.Message}", Color.Red);
+                AppendLog($"[MTK] Parse Scatter File Failed: {ex.Message}", Color.Red);
             }
         }
 
         /// <summary>
-        /// 解析 MTK Scatter 文件
-        /// 支持多种格式: 老式格式和新式 YAML 格式
+        /// Parse MTK Scatter File
+        /// Supports multiple formats: Legacy and New YAML format
         /// </summary>
         private List<MtkScatterEntry> ParseScatterFile(string filePath)
         {
@@ -1724,10 +1723,10 @@ namespace LoveAlways
                     if (string.IsNullOrEmpty(line) || line.StartsWith("#"))
                         continue;
 
-                    // 检测新条目开始 (partition_name: 或 - partition_name:)
+                    // Detect New Entry Start (partition_name: or - partition_name:)
                     if (line.StartsWith("- partition_name:") || line.StartsWith("partition_name:"))
                     {
-                        // 保存前一个条目
+                        // Save Previous Entry
                         if (currentEntry != null && !string.IsNullOrEmpty(currentEntry.Name))
                         {
                             entries.Add(currentEntry);
@@ -1742,7 +1741,7 @@ namespace LoveAlways
                     if (currentEntry == null)
                         continue;
 
-                    // 解析各个字段
+                    // Parse Fields
                     if (line.StartsWith("file_name:"))
                     {
                         currentEntry.FileName = ExtractScatterValue(line, "file_name");
@@ -1754,7 +1753,7 @@ namespace LoveAlways
                     }
                     else if (line.StartsWith("physical_start_addr:"))
                     {
-                        // 优先使用 physical_start_addr
+                        // Prefer physical_start_addr
                         string addr = ExtractScatterValue(line, "physical_start_addr");
                         currentEntry.StartAddr = ParseHexOrDecimal(addr);
                     }
@@ -1778,24 +1777,24 @@ namespace LoveAlways
                     }
                 }
 
-                // 添加最后一个条目
+                // Add Last Entry
                 if (currentEntry != null && !string.IsNullOrEmpty(currentEntry.Name))
                 {
                     entries.Add(currentEntry);
                 }
 
-                AppendLog($"[MTK] 解析 Scatter 成功: {entries.Count} 个分区", Color.Gray);
+                AppendLog($"[MTK] Scatter Parsed Success: {entries.Count} Partitions", Color.Gray);
             }
             catch (Exception ex)
             {
-                AppendLog($"[MTK] 解析 Scatter 异常: {ex.Message}", Color.Red);
+                AppendLog($"[MTK] check Scatter abnormal: {ex.Message}", Color.Red);
             }
 
             return entries;
         }
 
         /// <summary>
-        /// 从 Scatter 行提取值
+        /// Extract Value from Scatter Line
         /// </summary>
         private string ExtractScatterValue(string line, string key)
         {
@@ -1805,19 +1804,19 @@ namespace LoveAlways
 
             string value = line.Substring(colonIndex + 1).Trim();
 
-            // 移除可能的注释
+            // Remove Possible Comments
             int commentIndex = value.IndexOf('#');
             if (commentIndex >= 0)
                 value = value.Substring(0, commentIndex).Trim();
 
-            // 移除引号
+            // Remove Quotes
             value = value.Trim('"', '\'', ' ');
 
             return value;
         }
 
         /// <summary>
-        /// 解析十六进制或十进制数值
+        /// Parse Hex or Decimal Value
         /// </summary>
         private long ParseHexOrDecimal(string value)
         {
@@ -1841,20 +1840,20 @@ namespace LoveAlways
         }
 
         /// <summary>
-        /// 根据 Scatter 配置刷写分区
+        /// Flash Partition by Scatter Config
         /// </summary>
         private async Task MtkFlashFromScatterAsync(string imageFolder)
         {
             if (_mtkScatterEntries == null || _mtkScatterEntries.Count == 0)
             {
-                AppendLog("[MTK] 未加载 Scatter 配置", Color.Orange);
+                AppendLog("[MTK] Scatter Config Not Loaded", Color.Orange);
                 return;
             }
 
             var downloadEntries = _mtkScatterEntries.Where(e => e.IsDownload).ToList();
             if (downloadEntries.Count == 0)
             {
-                AppendLog("[MTK] Scatter 中没有标记为下载的分区", Color.Orange);
+                AppendLog("[MTK] No Partitions Changed to Download in Scatter", Color.Orange);
                 return;
             }
 
@@ -1865,16 +1864,16 @@ namespace LoveAlways
             foreach (var entry in downloadEntries)
             {
                 current++;
-                MtkUpdateProgress(current, total, $"刷写 {entry.Name}...");
+                MtkUpdateProgress(current, total, $"Flashing {entry.Name}...");
 
-                // 查找镜像文件
+                // Find Image File
                 string imagePath = null;
                 if (!string.IsNullOrEmpty(entry.FileName))
                 {
                     imagePath = Path.Combine(imageFolder, entry.FileName);
                     if (!File.Exists(imagePath))
                     {
-                        // 尝试其他常见扩展名
+                        // Try other common extensions
                         imagePath = MtkFindPartitionFile(imageFolder, entry.Name);
                     }
                 }
@@ -1885,24 +1884,24 @@ namespace LoveAlways
 
                 if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
                 {
-                    AppendLog($"[MTK] 跳过 {entry.Name}: 未找到镜像文件", Color.Gray);
+                    AppendLog($"[MTK] Skip {entry.Name}: Image File Not Found", Color.Gray);
                     continue;
                 }
 
                 try
                 {
-                    AppendLog($"[MTK] 刷写 {entry.Name} <- {Path.GetFileName(imagePath)}", Color.Cyan);
+                    AppendLog($"[MTK] Flashing {entry.Name} <- {Path.GetFileName(imagePath)}", Color.Cyan);
                     await _mtkService.WritePartitionAsync(entry.Name, imagePath, _mtkCts.Token);
                     success++;
                 }
                 catch (Exception ex)
                 {
-                    AppendLog($"[MTK] 刷写 {entry.Name} 失败: {ex.Message}", Color.Red);
+                    AppendLog($"[MTK] Flash {entry.Name} Failed: {ex.Message}", Color.Red);
                 }
             }
 
-            MtkUpdateProgress(100, 100, $"完成 {success}/{total}");
-            AppendLog($"[MTK] Scatter 刷写完成: {success}/{total} 成功", success == total ? Color.Green : Color.Orange);
+            MtkUpdateProgress(100, 100, $"Completed {success}/{total}");
+            AppendLog($"[MTK] Scatter Flash Complete: {success}/{total} Success", success == total ? Color.Green : Color.Orange);
         }
 
         #endregion

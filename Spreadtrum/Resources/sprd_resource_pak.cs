@@ -1,8 +1,13 @@
 // ============================================================================
-// LoveAlways - 展讯资源包读取器
-// 从外部资源包 (sprd_resources.pak) 加载 Exploit/FDL 等资源
-// 支持 SPAK v1 格式
+// LoveAlways - Spreadtrum Resource Package Reader
+// Load resources like Exploit/FDL from external resource package (sprd_resources.pak)
+// Supports SPAK v1 format
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -13,12 +18,12 @@ using System.Text;
 namespace LoveAlways.Spreadtrum.Resources
 {
     /// <summary>
-    /// 展讯资源包读取器 (SPAK 格式)
+    /// Spreadtrum Resource Package Reader (SPAK Format)
     /// 
-    /// SPAK v1 格式:
+    /// SPAK v1 format:
     /// Header: Magic(4 "SPAK") + Version(4) + Count(4)
     /// Entry: Name(64) + Offset(8) + CompSize(4) + OrigSize(4) + Type(4) + Reserved(4)
-    /// Data: GZip 压缩的资源数据
+    /// Data: GZip compressed resource data
     /// </summary>
     public class SprdResourcePak : IDisposable
     {
@@ -33,27 +38,27 @@ namespace LoveAlways.Spreadtrum.Resources
         private bool _disposed;
 
         /// <summary>
-        /// 资源包版本
+        /// Resource package version
         /// </summary>
         public int Version { get; private set; }
 
         /// <summary>
-        /// 资源条目数
+        /// Resource entry count
         /// </summary>
         public int Count => _index.Count;
 
         /// <summary>
-        /// 资源类型
+        /// Resource type
         /// </summary>
         public enum ResourceType : uint
         {
             Unknown = 0,
             Exploit = 1,        // Exploit payload
-            Fdl1 = 2,           // FDL1 文件
-            Fdl2 = 3,           // FDL2 文件
-            ChipData = 4,       // 芯片数据
-            Config = 5,         // 配置文件
-            Script = 6          // 脚本文件
+            Fdl1 = 2,           // FDL1 file
+            Fdl2 = 3,           // FDL2 file
+            ChipData = 4,       // Chip data
+            Config = 5,         // Configuration file
+            Script = 6          // Script file
         }
 
         private struct PakEntry
@@ -66,7 +71,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 创建资源包读取器
+        /// Create resource package reader
         /// </summary>
         public SprdResourcePak(string pakPath)
         {
@@ -76,27 +81,27 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 加载资源包索引
+        /// Load resource package index
         /// </summary>
         private void LoadIndex()
         {
             _fileStream = new FileStream(_pakPath, FileMode.Open, FileAccess.Read, FileShare.Read);
             using (var br = new BinaryReader(_fileStream, Encoding.UTF8, true))
             {
-                // 读取魔数
+                // Read magic number
                 byte[] magic = br.ReadBytes(4);
                 if (Encoding.ASCII.GetString(magic) != MAGIC)
-                    throw new InvalidDataException("无效的 SPAK 文件");
+                    throw new InvalidDataException("Invalid SPAK file");
 
-                // 版本
+                // Version
                 Version = (int)br.ReadUInt32();
                 if (Version > CURRENT_VERSION)
-                    throw new InvalidDataException($"不支持的 SPAK 版本: {Version}");
+                    throw new InvalidDataException($"Unsupported SPAK version: {Version}");
 
-                // 条目数
+                // Entry count
                 uint count = br.ReadUInt32();
 
-                // 读取索引
+                // Read index
                 for (int i = 0; i < count; i++)
                 {
                     byte[] nameBytes = br.ReadBytes(ENTRY_NAME_SIZE);
@@ -119,7 +124,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取资源数据
+        /// Get resource data
         /// </summary>
         public byte[] GetResource(string name)
         {
@@ -130,7 +135,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取指定类型的所有资源名
+        /// Get all resource names of specified type
         /// </summary>
         public string[] GetResourcesByType(ResourceType type)
         {
@@ -144,7 +149,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取所有 Exploit 资源
+        /// Get all Exploit resource names
         /// </summary>
         public string[] GetExploitNames()
         {
@@ -152,7 +157,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 检查资源是否存在
+        /// Check if resource exists
         /// </summary>
         public bool HasResource(string name)
         {
@@ -160,7 +165,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取资源类型
+        /// Get resource type
         /// </summary>
         public ResourceType GetResourceType(string name)
         {
@@ -170,7 +175,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 获取所有资源名称
+        /// Get all resource names
         /// </summary>
         public string[] GetAllResourceNames()
         {
@@ -180,7 +185,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 读取并解压数据
+        /// Read and decompress data
         /// </summary>
         private byte[] ReadAndDecompress(long offset, int compSize, int origSize)
         {
@@ -190,11 +195,11 @@ namespace LoveAlways.Spreadtrum.Resources
                 byte[] compressed = new byte[compSize];
                 _fileStream.Read(compressed, 0, compSize);
 
-                // 如果压缩后和原始大小相同，说明未压缩
+                // If compressed size is same as original, it's not compressed
                 if (compSize == origSize)
                     return compressed;
 
-                // GZip 解压
+                // GZip decompression
                 using (var input = new MemoryStream(compressed))
                 using (var gzip = new GZipStream(input, CompressionMode.Decompress))
                 using (var output = new MemoryStream())
@@ -228,29 +233,29 @@ namespace LoveAlways.Spreadtrum.Resources
             Dispose(false);
         }
 
-        #region 静态打包方法
+        #region Static Packaging Methods
 
         /// <summary>
-        /// 创建资源包
+        /// Create resource package
         /// </summary>
-        /// <param name="outputPath">输出文件路径</param>
-        /// <param name="resources">资源列表 (名称, 数据, 类型)</param>
+        /// <param name="outputPath">Output file path</param>
+        /// <param name="resources">Resource list (Name, Data, Type)</param>
         public static void CreatePak(string outputPath, List<(string Name, byte[] Data, ResourceType Type)> resources)
         {
             using (var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write))
             using (var bw = new BinaryWriter(fs))
             {
-                // 写入头部
+                // Write header
                 bw.Write(Encoding.ASCII.GetBytes(MAGIC));
                 bw.Write((uint)CURRENT_VERSION);
                 bw.Write((uint)resources.Count);
 
-                // 计算数据起始偏移
+                // Calculate data start offset
                 long headerSize = 12; // Magic(4) + Version(4) + Count(4)
                 long indexSize = resources.Count * ENTRY_SIZE;
                 long dataOffset = headerSize + indexSize;
 
-                // 准备压缩数据和索引
+                // Prepare compressed data and index
                 var compressedData = new List<byte[]>();
                 var entries = new List<PakEntry>();
 
@@ -271,7 +276,7 @@ namespace LoveAlways.Spreadtrum.Resources
                     dataOffset += compressed.Length;
                 }
 
-                // 写入索引
+                // Write index
                 foreach (var entry in entries)
                 {
                     byte[] nameBytes = new byte[ENTRY_NAME_SIZE];
@@ -286,7 +291,7 @@ namespace LoveAlways.Spreadtrum.Resources
                     bw.Write((uint)0); // Reserved
                 }
 
-                // 写入数据
+                // Write data
                 foreach (var data in compressedData)
                 {
                     bw.Write(data);
@@ -295,7 +300,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// GZip 压缩
+        /// GZip compression
         /// </summary>
         private static byte[] Compress(byte[] data)
         {
@@ -310,10 +315,10 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 从目录创建资源包
+        /// Create resource package from directory
         /// </summary>
-        /// <param name="sourceDir">源目录</param>
-        /// <param name="outputPath">输出文件路径</param>
+        /// <param name="sourceDir">Source directory</param>
+        /// <param name="outputPath">Output file path</param>
         public static void CreatePakFromDirectory(string sourceDir, string outputPath)
         {
             var resources = new List<(string Name, byte[] Data, ResourceType Type)>();
@@ -331,7 +336,7 @@ namespace LoveAlways.Spreadtrum.Resources
         }
 
         /// <summary>
-        /// 根据文件名推断资源类型
+        /// Infer resource type based on file name
         /// </summary>
         private static ResourceType InferResourceType(string fileName)
         {
@@ -355,7 +360,7 @@ namespace LoveAlways.Spreadtrum.Resources
     }
 
     /// <summary>
-    /// 资源包信息
+    /// Resource package info
     /// </summary>
     public class SprdPakResourceInfo
     {

@@ -1,23 +1,26 @@
-// ============================================================================
-// LoveAlways - Sparse Image 处理器
+// LoveAlways - Sparse Image Handler
 // Android Sparse Image Handler for Spreadtrum
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.IO;
 
 namespace LoveAlways.Spreadtrum.Common
 {
-    /// <summary>
-    /// Sparse Image 处理器
-    /// 用于解压 Android Sparse 格式的镜像文件
+    /// Sparse Image Handler
+    /// Used to decompress Android Sparse format image files
     /// </summary>
     public class SparseHandler
     {
         // Sparse Magic: 0xED26FF3A
         public const uint SPARSE_MAGIC = 0xED26FF3A;
 
-        // Chunk 类型
+        // Chunk types
         public const ushort CHUNK_TYPE_RAW = 0xCAC1;
         public const ushort CHUNK_TYPE_FILL = 0xCAC2;
         public const ushort CHUNK_TYPE_DONT_CARE = 0xCAC3;
@@ -30,8 +33,7 @@ namespace LoveAlways.Spreadtrum.Common
             _log = log;
         }
 
-        /// <summary>
-        /// 检查是否为 Sparse Image
+        /// Check if it's a Sparse Image
         /// </summary>
         public static bool IsSparseImage(byte[] header)
         {
@@ -42,8 +44,7 @@ namespace LoveAlways.Spreadtrum.Common
             return magic == SPARSE_MAGIC;
         }
 
-        /// <summary>
-        /// 检查文件是否为 Sparse Image
+        /// Check if file is a Sparse Image
         /// </summary>
         public static bool IsSparseImage(string filePath)
         {
@@ -62,8 +63,7 @@ namespace LoveAlways.Spreadtrum.Common
             }
         }
 
-        /// <summary>
-        /// 解压 Sparse Image 到 Raw Image
+        /// Decompress Sparse Image to Raw Image
         /// </summary>
         public void Decompress(string sparseFile, string outputFile, Action<long, long> progress = null)
         {
@@ -74,25 +74,24 @@ namespace LoveAlways.Spreadtrum.Common
             }
         }
 
-        /// <summary>
-        /// 解压 Sparse Image 流
+        /// Decompress Sparse Image stream
         /// </summary>
         public void Decompress(Stream input, Stream output, Action<long, long> progress = null)
         {
             using (var reader = new BinaryReader(input))
             {
-                // 读取 Sparse Header
+                // Read Sparse Header
                 var header = ReadSparseHeader(reader);
                 
-                Log("[Sparse] 版本: {0}.{1}", header.MajorVersion, header.MinorVersion);
-                Log("[Sparse] 块大小: {0}", header.BlockSize);
-                Log("[Sparse] 总块数: {0}", header.TotalBlocks);
-                Log("[Sparse] 总 Chunk 数: {0}", header.TotalChunks);
+                Log("[Sparse] Version: {0}.{1}", header.MajorVersion, header.MinorVersion);
+                Log("[Sparse] Block Size: {0}", header.BlockSize);
+                Log("[Sparse] Total Blocks: {0}", header.TotalBlocks);
+                Log("[Sparse] Total Chunk Count: {0}", header.TotalChunks);
 
                 long totalSize = (long)header.TotalBlocks * header.BlockSize;
                 long written = 0;
 
-                // 处理每个 Chunk
+                // Process each Chunk
                 for (int i = 0; i < header.TotalChunks; i++)
                 {
                     var chunk = ReadChunkHeader(reader);
@@ -102,43 +101,42 @@ namespace LoveAlways.Spreadtrum.Common
                     switch (chunk.ChunkType)
                     {
                         case CHUNK_TYPE_RAW:
-                            // 原始数据，直接复制
+                            // Raw data, copy directly
                             CopyData(reader, output, chunkDataSize);
                             written += chunkDataSize;
                             break;
 
                         case CHUNK_TYPE_FILL:
-                            // 填充数据
+                            // Fill data
                             uint fillValue = reader.ReadUInt32();
                             WriteFillData(output, fillValue, chunkDataSize);
                             written += chunkDataSize;
                             break;
 
                         case CHUNK_TYPE_DONT_CARE:
-                            // 不关心的区域，写入零
+                            // Don't care area, write zeros
                             WriteZeros(output, chunkDataSize);
                             written += chunkDataSize;
                             break;
 
                         case CHUNK_TYPE_CRC32:
-                            // CRC32 校验，跳过
+                            // CRC32 checksum, skip
                             reader.ReadUInt32();
                             break;
 
                         default:
-                            Log("[Sparse] 未知 Chunk 类型: 0x{0:X4}", chunk.ChunkType);
+                            Log("[Sparse] Unknown Chunk Type: 0x{0:X4}", chunk.ChunkType);
                             break;
                     }
 
                     progress?.Invoke(written, totalSize);
                 }
 
-                Log("[Sparse] 解压完成，输出大小: {0} bytes", written);
+                Log("[Sparse] Decompression complete, output size: {0} bytes", written);
             }
         }
 
-        /// <summary>
-        /// 压缩 Raw Image 到 Sparse Image
+        /// Compress Raw Image to Sparse Image
         /// </summary>
         public void Compress(string rawFile, string outputFile, uint blockSize = 4096, Action<long, long> progress = null)
         {
@@ -149,15 +147,14 @@ namespace LoveAlways.Spreadtrum.Common
             }
         }
 
-        /// <summary>
-        /// 压缩 Raw Image 流
+        /// Compress Raw Image stream
         /// </summary>
         public void Compress(Stream input, Stream output, uint blockSize = 4096, Action<long, long> progress = null)
         {
             long inputLength = input.Length;
             uint totalBlocks = (uint)((inputLength + blockSize - 1) / blockSize);
 
-            // 临时存储 Chunks
+            // Temporarily store Chunks
             using (var chunkStream = new MemoryStream())
             using (var chunkWriter = new BinaryWriter(chunkStream))
             using (var reader = new BinaryReader(input))
@@ -174,10 +171,10 @@ namespace LoveAlways.Spreadtrum.Common
                     if (read == 0)
                         break;
 
-                    // 检查是否全零
+                    // Check if all zeros
                     bool isZero = IsZeroBlock(blockBuffer, read);
                     
-                    // 检查是否填充块
+                    // Check if fill block
                     uint fillValue;
                     bool isFill = IsFillBlock(blockBuffer, read, out fillValue);
 
@@ -206,18 +203,18 @@ namespace LoveAlways.Spreadtrum.Common
                     progress?.Invoke(processed, inputLength);
                 }
 
-                // 写入 Sparse Header
+                // Write Sparse Header
                 WriteSparseHeader(writer, totalBlocks, chunkCount, blockSize);
 
-                // 写入 Chunks
+                // Write Chunks
                 chunkStream.Position = 0;
                 chunkStream.CopyTo(output);
 
-                Log("[Sparse] 压缩完成，{0} 块 -> {1} Chunks", totalBlocks, chunkCount);
+                Log("[Sparse] Compression complete, {0} blocks -> {1} Chunks", totalBlocks, chunkCount);
             }
         }
 
-        #region 内部方法
+        #region Internal Methods
 
         private SparseHeader ReadSparseHeader(BinaryReader reader)
         {
@@ -225,7 +222,7 @@ namespace LoveAlways.Spreadtrum.Common
 
             header.Magic = reader.ReadUInt32();
             if (header.Magic != SPARSE_MAGIC)
-                throw new InvalidDataException("不是有效的 Sparse Image");
+                throw new InvalidDataException("Not a valid Sparse Image");
 
             header.MajorVersion = reader.ReadUInt16();
             header.MinorVersion = reader.ReadUInt16();
@@ -294,7 +291,7 @@ namespace LoveAlways.Spreadtrum.Common
             byte[] fillBytes = BitConverter.GetBytes(value);
             byte[] buffer = new byte[4096];
             
-            // 填充 buffer
+            // Fill buffer
             for (int i = 0; i < buffer.Length; i += 4)
             {
                 Array.Copy(fillBytes, 0, buffer, i, 4);
@@ -362,7 +359,7 @@ namespace LoveAlways.Spreadtrum.Common
         #endregion
     }
 
-    #region 数据结构
+    #region Data Structures
 
     /// <summary>
     /// Sparse Header

@@ -1,23 +1,28 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Text;
 
 namespace LoveAlways.Fastboot.Protocol
 {
     /// <summary>
-    /// Fastboot 协议定义
-    /// 基于 Google AOSP platform/system/core/fastboot 源码分析
+    /// Fastboot Protocol Definition
+    /// Based on Google AOSP platform/system/core/fastboot source analysis
     /// 
-    /// 协议格式：
-    /// - 命令：ASCII 字符串，最大 4096 字节
-    /// - 响应：4 字节前缀 + 可选数据
-    ///   - "OKAY" - 命令成功
-    ///   - "FAIL" - 命令失败，后跟错误信息
-    ///   - "DATA" - 准备接收数据，后跟 8 字节十六进制长度
-    ///   - "INFO" - 信息消息，后跟文本
+    /// Protocol Format:
+    /// - Command: ASCII string, maximum 4096 bytes
+    /// - Response: 4-byte prefix + optional data
+    ///   - "OKAY" - Command successful
+    ///   - "FAIL" - Command failed, followed by error message
+    ///   - "DATA" - Ready to receive data, followed by 8-byte hex length
+    ///   - "INFO" - Information message, followed by text
     /// </summary>
     public static class FastbootProtocol
     {
-        // 协议常量 (根据 Google 官方 README.md)
+        // Protocol constants (according to Official Google README.md)
         public const int MAX_COMMAND_LENGTH = 4096;
         public const int MAX_RESPONSE_LENGTH = 256;
         public const int RESPONSE_PREFIX_LENGTH = 4;
@@ -25,37 +30,37 @@ namespace LoveAlways.Fastboot.Protocol
         public const int DATA_TIMEOUT_MS = 60000;
         public const string PROTOCOL_VERSION = "0.4";
         
-        // USB 协议常量
+        // USB protocol constants
         public const int USB_CLASS_FASTBOOT = 0xFF;
         public const int USB_SUBCLASS_FASTBOOT = 0x42;
         public const int USB_PROTOCOL_FASTBOOT = 0x03;
         
-        #region 厂商 USB Vendor ID
+        #region Vendor USB Vendor IDs
         
         public const int USB_VID_GOOGLE = 0x18D1;       // Google / Pixel
-        public const int USB_VID_XIAOMI = 0x2717;       // 小米
+        public const int USB_VID_XIAOMI = 0x2717;       // Xiaomi
         public const int USB_VID_OPPO = 0x22D9;         // OPPO
-        public const int USB_VID_ONEPLUS = 0x2A70;      // 一加
-        public const int USB_VID_QUALCOMM = 0x05C6;     // 高通
-        public const int USB_VID_SAMSUNG = 0x04E8;      // 三星
-        public const int USB_VID_HUAWEI = 0x12D1;       // 华为
-        public const int USB_VID_MOTOROLA = 0x22B8;     // 摩托罗拉
-        public const int USB_VID_SONY = 0x0FCE;         // 索尼
+        public const int USB_VID_ONEPLUS = 0x2A70;      // OnePlus
+        public const int USB_VID_QUALCOMM = 0x05C6;     // Qualcomm
+        public const int USB_VID_SAMSUNG = 0x04E8;      // Samsung
+        public const int USB_VID_HUAWEI = 0x12D1;       // Huawei
+        public const int USB_VID_MOTOROLA = 0x22B8;     // Motorola
+        public const int USB_VID_SONY = 0x0FCE;         // Sony
         public const int USB_VID_LG = 0x1004;           // LG
         public const int USB_VID_HTC = 0x0BB4;          // HTC
-        public const int USB_VID_ASUS = 0x0B05;         // 华硕
-        public const int USB_VID_LENOVO = 0x17EF;       // 联想
+        public const int USB_VID_ASUS = 0x0B05;         // ASUS
+        public const int USB_VID_LENOVO = 0x17EF;       // Lenovo
         public const int USB_VID_VIVO = 0x2D95;         // VIVO
-        public const int USB_VID_MEIZU = 0x2A45;        // 魅族
-        public const int USB_VID_ZTE = 0x19D2;          // 中兴/努比亚
-        public const int USB_VID_REALME = 0x22D9;       // Realme (同 OPPO)
+        public const int USB_VID_MEIZU = 0x2A45;        // Meizu
+        public const int USB_VID_ZTE = 0x19D2;          // ZTE / Nubia
+        public const int USB_VID_REALME = 0x22D9;       // Realme (Same as OPPO)
         public const int USB_VID_NOTHING = 0x2970;      // Nothing Phone
         public const int USB_VID_FAIRPHONE = 0x2AE5;    // Fairphone
         public const int USB_VID_ESSENTIAL = 0x2E17;    // Essential
         public const int USB_VID_NVIDIA = 0x0955;       // NVIDIA Shield
-        public const int USB_VID_MTK = 0x0E8D;          // 联发科 MTK
+        public const int USB_VID_MTK = 0x0E8D;          // MediaTek MTK
         
-        // 所有支持的 Vendor ID 列表
+        // List of all supported Vendor IDs
         public static readonly int[] SUPPORTED_VENDOR_IDS = {
             USB_VID_GOOGLE, USB_VID_XIAOMI, USB_VID_OPPO, USB_VID_ONEPLUS,
             USB_VID_QUALCOMM, USB_VID_SAMSUNG, USB_VID_HUAWEI, USB_VID_MOTOROLA,
@@ -66,50 +71,50 @@ namespace LoveAlways.Fastboot.Protocol
         
         #endregion
         
-        // 响应前缀
+        // Response prefixes
         public const string RESPONSE_OKAY = "OKAY";
         public const string RESPONSE_FAIL = "FAIL";
         public const string RESPONSE_DATA = "DATA";
         public const string RESPONSE_INFO = "INFO";
         public const string RESPONSE_TEXT = "TEXT";
         
-        #region Google 官方标准命令 (必须支持)
+        #region Official Google Standard Commands (Must Support)
         
-        // 基础命令
-        public const string CMD_GETVAR = "getvar";              // 查询变量
-        public const string CMD_DOWNLOAD = "download";          // 下载数据到设备内存
-        public const string CMD_UPLOAD = "upload";              // 从设备上传数据
-        public const string CMD_FLASH = "flash";                // 刷写分区
-        public const string CMD_ERASE = "erase";                // 擦除分区
-        public const string CMD_BOOT = "boot";                  // 从内存启动
-        public const string CMD_CONTINUE = "continue";          // 继续启动流程
+        // Basic commands
+        public const string CMD_GETVAR = "getvar";              // Query variable
+        public const string CMD_DOWNLOAD = "download";          // Download data to device memory
+        public const string CMD_UPLOAD = "upload";              // Upload data from device
+        public const string CMD_FLASH = "flash";                // Flash partition
+        public const string CMD_ERASE = "erase";                // Erase partition
+        public const string CMD_BOOT = "boot";                  // Boot from memory
+        public const string CMD_CONTINUE = "continue";          // Continue boot process
         
-        // 重启命令
+        // Reboot commands
         public const string CMD_REBOOT = "reboot";
         public const string CMD_REBOOT_BOOTLOADER = "reboot-bootloader";
-        public const string CMD_REBOOT_FASTBOOT = "reboot-fastboot";     // 重启到 fastbootd
+        public const string CMD_REBOOT_FASTBOOT = "reboot-fastboot";     // Reboot to fastbootd
         public const string CMD_REBOOT_RECOVERY = "reboot-recovery";
-        public const string CMD_REBOOT_EDL = "reboot-edl";               // 重启到 EDL 模式
-        public const string CMD_POWERDOWN = "powerdown";                 // 关机
+        public const string CMD_REBOOT_EDL = "reboot-edl";               // Reboot to EDL mode
+        public const string CMD_POWERDOWN = "powerdown";                 // Power off
         
-        // A/B 槽位命令
-        public const string CMD_SET_ACTIVE = "set_active";               // 设置活动槽位
+        // A/B slot commands
+        public const string CMD_SET_ACTIVE = "set_active";               // Set active slot
         
-        // 解锁/锁定命令
+        // Unlock/lock commands
         public const string CMD_FLASHING_UNLOCK = "flashing unlock";
         public const string CMD_FLASHING_LOCK = "flashing lock";
         public const string CMD_FLASHING_UNLOCK_CRITICAL = "flashing unlock_critical";
         public const string CMD_FLASHING_LOCK_CRITICAL = "flashing lock_critical";
         public const string CMD_FLASHING_GET_UNLOCK_ABILITY = "flashing get_unlock_ability";
         
-        // 动态分区命令 (Android 10+)
+        // Dynamic partition commands (Android 10+)
         public const string CMD_UPDATE_SUPER = "update-super";
         public const string CMD_CREATE_LOGICAL_PARTITION = "create-logical-partition";
         public const string CMD_DELETE_LOGICAL_PARTITION = "delete-logical-partition";
         public const string CMD_RESIZE_LOGICAL_PARTITION = "resize-logical-partition";
         public const string CMD_WIPE_SUPER = "wipe-super";
         
-        // GSI/快照命令
+        // GSI/Snapshot commands
         public const string CMD_GSI = "gsi";
         public const string CMD_GSI_WIPE = "gsi wipe";
         public const string CMD_GSI_DISABLE = "gsi disable";
@@ -118,17 +123,17 @@ namespace LoveAlways.Fastboot.Protocol
         public const string CMD_SNAPSHOT_UPDATE_CANCEL = "snapshot-update cancel";
         public const string CMD_SNAPSHOT_UPDATE_MERGE = "snapshot-update merge";
         
-        // 数据获取命令
-        public const string CMD_FETCH = "fetch";                // 从设备获取分区数据
+        // Data retrieval commands
+        public const string CMD_FETCH = "fetch";                // Fetch partition data from device
         
-        // OEM 通用命令
+        // OEM common commands
         public const string CMD_OEM = "oem";
         
         #endregion
         
-        #region 厂商专属命令 (OEM Commands)
+        #region Vendor Specific Commands (OEM Commands)
         
-        // ========== 小米/红米 (Xiaomi/Redmi) ==========
+        // ========== Xiaomi/Redmi ==========
         public const string OEM_XIAOMI_DEVICE_INFO = "oem device-info";
         public const string OEM_XIAOMI_REBOOT_EDL = "oem edl";
         public const string OEM_XIAOMI_LOCK = "oem lock";
@@ -137,16 +142,16 @@ namespace LoveAlways.Fastboot.Protocol
         public const string OEM_XIAOMI_GET_TOKEN = "oem get_token";
         public const string OEM_XIAOMI_WRITE_PERSIST = "oem write_persist";
         public const string OEM_XIAOMI_BATTERY = "oem battery";
-        public const string OEM_XIAOMI_REBOOT_FTMW = "oem ftmw";           // 工厂模式
+        public const string OEM_XIAOMI_REBOOT_FTMW = "oem ftmw";           // Factory mode
         public const string OEM_XIAOMI_CDMS = "oem cdms";
         
-        // ========== 一加 (OnePlus) ==========
+        // ========== OnePlus ==========
         public const string OEM_ONEPLUS_DEVICE_INFO = "oem device-info";
         public const string OEM_ONEPLUS_UNLOCK = "oem unlock";
         public const string OEM_ONEPLUS_LOCK = "oem lock";
         public const string OEM_ONEPLUS_ENABLE_DM_VERITY = "oem enable_dm_verity";
         public const string OEM_ONEPLUS_DISABLE_DM_VERITY = "oem disable_dm_verity";
-        public const string OEM_ONEPLUS_SN = "oem sn";                     // 获取序列号
+        public const string OEM_ONEPLUS_SN = "oem sn";                     // Get serial number
         public const string OEM_ONEPLUS_4K = "oem 4k-video-supported";
         public const string OEM_ONEPLUS_REBOOT_FTMW = "oem ftmw";
         
@@ -158,72 +163,72 @@ namespace LoveAlways.Fastboot.Protocol
         public const string OEM_OPPO_RW_FLAG = "oem rw_flag";
         public const string OEM_OPPO_DM_VERITY = "oem dm-verity";
         
-        // ========== 三星 (Samsung) - Odin 模式不同，部分支持 ==========
+        // ========== Samsung - Odin mode differs, partially supported ==========
         public const string OEM_SAMSUNG_UNLOCK = "oem unlock";
-        public const string OEM_SAMSUNG_FRPRESET = "oem frpreset";         // FRP 重置
+        public const string OEM_SAMSUNG_FRPRESET = "oem frpreset";         // FRP Reset
         
-        // ========== 华为 (Huawei) ==========
+        // ========== Huawei ==========
         public const string OEM_HUAWEI_UNLOCK = "oem unlock";
         public const string OEM_HUAWEI_GET_IDENTIFIER = "oem get-identifier-token";
         public const string OEM_HUAWEI_CHECK_ROOTINFO = "oem check-rootinfo";
         
-        // ========== 摩托罗拉 (Motorola) ==========
+        // ========== Motorola ==========
         public const string OEM_MOTO_UNLOCK = "oem unlock";
         public const string OEM_MOTO_LOCK = "oem lock";
         public const string OEM_MOTO_GET_UNLOCK_DATA = "oem get_unlock_data";
         public const string OEM_MOTO_BP_TOOLS_ON = "oem bp_tools_on";
         public const string OEM_MOTO_CONFIG_CARRIER = "oem config carrier";
         
-        // ========== 索尼 (Sony) ==========
+        // ========== Sony ==========
         public const string OEM_SONY_UNLOCK = "oem unlock";
         public const string OEM_SONY_GET_KEY = "oem key";
         public const string OEM_SONY_TA_BACKUP = "oem ta_backup";
         
-        // ========== 高通通用 (Qualcomm Generic) ==========
+        // Qualcomm Generic
         public const string OEM_QC_DEVICE_INFO = "oem device-info";
         public const string OEM_QC_ENABLE_CHARGER_SCREEN = "oem enable-charger-screen";
         public const string OEM_QC_DISABLE_CHARGER_SCREEN = "oem disable-charger-screen";
         public const string OEM_QC_OFF_MODE_CHARGE = "oem off-mode-charge";
         public const string OEM_QC_SELECT_DISPLAY_PANEL = "oem select-display-panel";
         
-        // ========== MTK 联发科通用 ==========
+        // ========== MTK MediaTek Universal ==========
         public const string OEM_MTK_REBOOT_META = "oem reboot-meta";
         public const string OEM_MTK_LOG_ENABLE = "oem log_enable";
         public const string OEM_MTK_P2U = "oem p2u";
         
         // ========== Google Pixel ==========
-        public const string OEM_PIXEL_UNLOCK = "flashing unlock";          // Pixel 使用标准命令
+        public const string OEM_PIXEL_UNLOCK = "flashing unlock";          // Pixel uses standard commands
         public const string OEM_PIXEL_LOCK = "flashing lock";
         public const string OEM_PIXEL_GET_UNLOCK_ABILITY = "flashing get_unlock_ability";
         public const string OEM_PIXEL_OFF_MODE_CHARGE = "oem off-mode-charge";
         
         #endregion
         
-        #region 标准变量名 (getvar)
+        #region Standard Variable Names (getvar)
         
-        // 协议/版本信息
-        public const string VAR_VERSION = "version";                       // 协议版本 (0.4)
+        // Protocol/version info
+        public const string VAR_VERSION = "version";                       // Protocol version (0.4)
         public const string VAR_VERSION_BOOTLOADER = "version-bootloader";
         public const string VAR_VERSION_BASEBAND = "version-baseband";
         public const string VAR_VERSION_OS = "version-os";
         public const string VAR_VERSION_VNDK = "version-vndk";
         
-        // 设备信息
+        // Device info
         public const string VAR_PRODUCT = "product";
         public const string VAR_SERIALNO = "serialno";
         public const string VAR_VARIANT = "variant";
         public const string VAR_HW_REVISION = "hw-revision";
         
-        // 安全状态
+        // Security status
         public const string VAR_SECURE = "secure";
         public const string VAR_UNLOCKED = "unlocked";
         public const string VAR_DEVICE_STATE = "device-state";             // locked/unlocked
         
-        // 容量限制
+        // Capacity limits
         public const string VAR_MAX_DOWNLOAD_SIZE = "max-download-size";
         public const string VAR_MAX_FETCH_SIZE = "max-fetch-size";
         
-        // A/B 槽位
+        // A/B slots
         public const string VAR_CURRENT_SLOT = "current-slot";
         public const string VAR_SLOT_COUNT = "slot-count";
         public const string VAR_HAS_SLOT = "has-slot";
@@ -231,48 +236,48 @@ namespace LoveAlways.Fastboot.Protocol
         public const string VAR_SLOT_UNBOOTABLE = "slot-unbootable";
         public const string VAR_SLOT_RETRY_COUNT = "slot-retry-count";
         
-        // 分区信息
+        // Partition info
         public const string VAR_PARTITION_SIZE = "partition-size";
         public const string VAR_PARTITION_TYPE = "partition-type";
         public const string VAR_IS_LOGICAL = "is-logical";
         
-        // Fastbootd / 动态分区
+        // Fastbootd / Dynamic partitions
         public const string VAR_IS_USERSPACE = "is-userspace";
         public const string VAR_SUPER_PARTITION_NAME = "super-partition-name";
         public const string VAR_SNAPSHOT_UPDATE_STATUS = "snapshot-update-status";
         
-        // 电池信息
+        // Battery info
         public const string VAR_BATTERY_VOLTAGE = "battery-voltage";
         public const string VAR_BATTERY_SOC_OK = "battery-soc-ok";
         public const string VAR_CHARGER_SCREEN_ENABLED = "charger-screen-enabled";
         public const string VAR_OFF_MODE_CHARGE = "off-mode-charge";
         
-        // 通用
-        public const string VAR_ALL = "all";                               // 获取所有变量
+        // Common
+        public const string VAR_ALL = "all";                               // Get all variables
         
         #endregion
         
-        #region 厂商特有变量
+        #region Vendor Specific Variables
         
-        // 小米
+        // Xiaomi
         public const string VAR_XIAOMI_ANTI = "anti";
         public const string VAR_XIAOMI_TOKEN = "token";
         public const string VAR_XIAOMI_PRODUCT_TYPE = "product_type";
         
-        // 一加
+        // OnePlus
         public const string VAR_ONEPLUS_BUILD_TYPE = "build-type";
         public const string VAR_ONEPLUS_CARRIER = "carrier";
         
-        // 华为
+        // Huawei
         public const string VAR_HUAWEI_IDENTIFIER_TOKEN = "identifier-token";
         
-        // 高通
+        // Qualcomm
         public const string VAR_QC_SECURESTATE = "securestate";
         
         #endregion
         
         /// <summary>
-        /// 构建命令字节
+        /// Build command bytes
         /// </summary>
         public static byte[] BuildCommand(string command)
         {
@@ -280,13 +285,13 @@ namespace LoveAlways.Fastboot.Protocol
                 throw new ArgumentNullException(nameof(command));
                 
             if (command.Length > MAX_COMMAND_LENGTH)
-                throw new ArgumentException($"命令长度超过 {MAX_COMMAND_LENGTH} 字节");
+                throw new ArgumentException($"Command length exceeds {MAX_COMMAND_LENGTH} bytes");
                 
             return Encoding.ASCII.GetBytes(command);
         }
         
         /// <summary>
-        /// 构建带参数的命令
+        /// Build command with arguments
         /// </summary>
         public static byte[] BuildCommand(string command, string argument)
         {
@@ -294,16 +299,16 @@ namespace LoveAlways.Fastboot.Protocol
         }
         
         /// <summary>
-        /// 构建下载命令（指定数据大小）
+        /// Build download command (specify data size)
         /// </summary>
         public static byte[] BuildDownloadCommand(long size)
         {
-            // 格式: download:XXXXXXXX (8位十六进制)
+            // Format: download:XXXXXXXX (8-digit hex)
             return BuildCommand($"{CMD_DOWNLOAD}:{size:x8}");
         }
         
         /// <summary>
-        /// 解析响应
+        /// Parse response
         /// </summary>
         public static FastbootResponse ParseResponse(byte[] data, int length)
         {
@@ -313,7 +318,7 @@ namespace LoveAlways.Fastboot.Protocol
                 {
                     Type = ResponseType.Unknown,
                     RawData = data,
-                    Message = "响应数据无效"
+                    Message = "Invalid response data"
                 };
             }
             
@@ -333,16 +338,16 @@ namespace LoveAlways.Fastboot.Protocol
             switch (prefix)
             {
                 case RESPONSE_OKAY:
-                    result.Type = ResponseType.Okay;
+                    result.Type = ResponseType.Okay; // Command successful
                     break;
                     
                 case RESPONSE_FAIL:
-                    result.Type = ResponseType.Fail;
+                    result.Type = ResponseType.Fail; // Command failed
                     break;
                     
                 case RESPONSE_DATA:
-                    result.Type = ResponseType.Data;
-                    // 解析数据长度 (8位十六进制)
+                    result.Type = ResponseType.Data; // Ready to receive data
+                    // Parse data length (8-digit hex)
                     if (payload.Length >= 8)
                     {
                         try
@@ -354,11 +359,11 @@ namespace LoveAlways.Fastboot.Protocol
                     break;
                     
                 case RESPONSE_INFO:
-                    result.Type = ResponseType.Info;
+                    result.Type = ResponseType.Info; // Info message
                     break;
                     
                 case RESPONSE_TEXT:
-                    result.Type = ResponseType.Text;
+                    result.Type = ResponseType.Text; // Text message
                     break;
                     
                 default:
@@ -372,20 +377,20 @@ namespace LoveAlways.Fastboot.Protocol
     }
     
     /// <summary>
-    /// 响应类型
+    /// Response Type
     /// </summary>
     public enum ResponseType
     {
         Unknown,
-        Okay,       // 命令成功
-        Fail,       // 命令失败
-        Data,       // 准备接收数据
-        Info,       // 信息消息
-        Text        // 文本消息
+        Okay,       // Command successful
+        Fail,       // Command failed
+        Data,       // Ready to receive data
+        Info,       // Info message
+        Text        // Text message
     }
     
     /// <summary>
-    /// Fastboot 响应
+    /// Fastboot Response
     /// </summary>
     public class FastbootResponse
     {

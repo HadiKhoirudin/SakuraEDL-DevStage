@@ -13,14 +13,14 @@ namespace LoveAlways
         private int _angle = 0;
         private int _progress = 0;
 
-        // 徽标进入动画字段
+        // Logo entry animation fields
         private int _logoAnimStep = 0;
-        private int _logoAnimTotal = 36; // 放慢：更多步骤，动画时长约 36 * 30ms ≈ 1.08s
+        private int _logoAnimTotal = 36; // Slow: more steps, duration approx. 36 * 30ms ≈ 1.08s
         private Point _logoStart;
         private Point _logoTarget;
         private Color _logoBaseColor;
 
-        // 低配模式标志
+        // Low performance mode flag
         private bool _lowPerformanceMode;
 
         public SplashForm()
@@ -28,28 +28,28 @@ namespace LoveAlways
             InitializeComponent();
             DoubleBuffered = true;
             
-            // 读取性能配置
+            // Read performance configuration
             _lowPerformanceMode = PerformanceConfig.LowPerformanceMode;
             
-            // 启动时背景略微透明，随后淡入 (低配模式直接不透明)
+            // Start with slightly transparent background, then fade in (low performance mode stays opaque)
             this.Opacity = _lowPerformanceMode ? 1.0 : 0.85;
 
-            // 启动后台预加载
+            // Start background preload
             PreloadManager.StartPreload();
 
             _timer = new Timer();
-            // 根据性能配置调整帧率
+            // Adjust frame rate based on performance configuration
             _timer.Interval = PerformanceConfig.AnimationInterval;
             _timer.Tick += Timer_Tick;
             _timer.Start();
             
-            // 低配模式减少动画步骤
+            // Low performance mode reduces animation steps
             if (_lowPerformanceMode)
             {
                 _logoAnimTotal = 18;
             }
 
-            // 初始化徽标进入动画：向下移动并淡入（如有异常则忽略）
+            // Initialize logo entry animation: move down and fade in (ignore if exception)
             try
             {
                 _logoAnimStep = 0;
@@ -58,7 +58,7 @@ namespace LoveAlways
                 _logoTarget = uiLedLabel1.Location;
                 _logoStart = new Point(_logoTarget.X, _logoTarget.Y - 40);
                 uiLedLabel1.Location = _logoStart;
-                // 不使用半透明 ForeColor（会产生白边），使用纯色并先隐藏，动画开始时显示
+                // Do not use translucent ForeColor (causes white edges), use solid and hide first, show when animation starts
                 uiLedLabel1.ForeColor = _logoBaseColor;
                 uiLedLabel1.Visible = false;
             }
@@ -71,14 +71,14 @@ namespace LoveAlways
 
         private void Timer_Tick(object sender, EventArgs e)
         {
-            // 低配模式下加快角度变化以补偿较低的帧率
+            // Increase angle change speed in low performance mode to compensate for lower frame rate
             _angle = (_angle + (_lowPerformanceMode ? 12 : 6)) % 360;
 
-            // fade-in (低配模式跳过或加快)
+            // fade-in (low performance mode skips or speeds up)
             if (!_lowPerformanceMode && this.Opacity < 1.0)
                 this.Opacity = Math.Min(1.0, this.Opacity + 0.02);
 
-            // 同步预加载进度（动画进度不低于预加载进度，但可以略微领先）
+            // Sync preload progress (animation progress not lower than preload progress, but can lead slightly)
             int targetProgress = Math.Max(_progress, PreloadManager.Progress);
             if (_progress < targetProgress)
                 _progress = Math.Min(_progress + 2, targetProgress);
@@ -94,13 +94,13 @@ namespace LoveAlways
                 }
                 if (uiLabelStatus != null)
                 {
-                    // 显示预加载模块的实际状态
+                    // Show actual status of preload module
                     uiLabelStatus.Text = PreloadManager.CurrentStatus;
                 }
             }
             catch { }
 
-            // 徽标进入动画（位置与淡入）
+            // Logo entry animation (position and fade-in)
             try
             {
                 if (_logoAnimStep < _logoAnimTotal)
@@ -111,7 +111,7 @@ namespace LoveAlways
                     t = 1f - (1f - t) * (1f - t);
                     int newY = _logoStart.Y + (int)((_logoTarget.Y - _logoStart.Y) * t);
                     uiLedLabel1.Location = new System.Drawing.Point(_logoStart.X, newY);
-                    // 动画开始时显示并使用不透明颜色以避免白色锯齿边
+                    // Show when animation starts and use opaque color to avoid white aliased edges
                     if (!uiLedLabel1.Visible) uiLedLabel1.Visible = true;
                     uiLedLabel1.ForeColor = _logoBaseColor;
                 }
@@ -120,7 +120,7 @@ namespace LoveAlways
 
             Invalidate();
 
-            // 预加载完成且进度达到100%才关闭
+            // Close only when preload is complete and progress reaches 100%
             if (_progress >= 100 && PreloadManager.IsPreloadComplete)
             {
                 _timer.Stop();
@@ -135,32 +135,32 @@ namespace LoveAlways
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            // 多开检测：如果发现同名进程超过 1 个，弹出错误提示并退出（不打开程序）
+            // Multi-instance detection: If more than 1 instance found, show error and exit
             try
             {
                 var procs = Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName);
                 if (procs.Length > 1)
                 {
-                    // 设置 SunnyUI 全局字体为 微软雅黑，确保提示窗体使用该字体
+                    // Set SunnyUI global font to Segoe UI to ensure prompt form uses this font
                     try
                     {
                         UIStyles.GlobalFont = true;
-                        UIStyles.GlobalFontName = "微软雅黑";
+                        UIStyles.GlobalFontName = "Segoe UI";
                     }
                     catch { }
 
-                    // 使用自定义窗口，控制大小和字体，然后退出当前进程，防止继续打开主窗体
+                    // Use custom window, control size and font, then exit current process to prevent main form opening
                     try
                     {
                         using (var dlg = new MultiInstanceForm())
                         {
-                            dlg.Message = "检测到已打开多个进程，请关闭其他程序";
+                            dlg.Message = "Multiple instances detected, please close other programs";
                             dlg.ShowDialog(this);
                         }
                     }
                     catch { }
 
-                    // 退出当前进程，防止继续打开主窗体
+                    // Exit current process to prevent main form opening
                     Environment.Exit(0);
                 }
             }

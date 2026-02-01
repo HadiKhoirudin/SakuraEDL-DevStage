@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   MultiFlash TOOL 便携版打包脚本
+echo   MultiFlash TOOL Portable Version Packaging Script
 echo ============================================
 echo.
 
@@ -9,63 +9,63 @@ set VERSION=2.2.0
 set OUTPUT_DIR=portable
 set PACKAGE_NAME=MultiFlash_Portable_v%VERSION%
 
-:: 清理旧的输出目录
+:: Clean old output directory
 if exist "%OUTPUT_DIR%\%PACKAGE_NAME%" rd /s /q "%OUTPUT_DIR%\%PACKAGE_NAME%"
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 mkdir "%OUTPUT_DIR%\%PACKAGE_NAME%"
 
-echo [复制] 正在复制文件...
+echo [Copy] Copying files...
 
-:: 复制主程序
+:: Copy main executable
 copy "bin\Release\MultiFlash.exe" "%OUTPUT_DIR%\%PACKAGE_NAME%\" >nul
 copy "bin\Release\MultiFlash.exe.config" "%OUTPUT_DIR%\%PACKAGE_NAME%\" >nul
 
-:: 复制 UI 库
+:: Copy UI libraries
 copy "bin\Release\AntdUI.dll" "%OUTPUT_DIR%\%PACKAGE_NAME%\" >nul
 copy "bin\Release\SunnyUI.dll" "%OUTPUT_DIR%\%PACKAGE_NAME%\" >nul
 copy "bin\Release\SunnyUI.Common.dll" "%OUTPUT_DIR%\%PACKAGE_NAME%\" >nul
 copy "bin\Release\HandyControl.dll" "%OUTPUT_DIR%\%PACKAGE_NAME%\" >nul
 
-:: 复制资源包（如果存在）
+:: Copy resource packages (if exists)
 if exist "bin\Release\edl_loaders.pak" copy "bin\Release\edl_loaders.pak" "%OUTPUT_DIR%\%PACKAGE_NAME%\" >nul
 if exist "bin\Release\firehose.pak" copy "bin\Release\firehose.pak" "%OUTPUT_DIR%\%PACKAGE_NAME%\" >nul
 
-:: 复制图标
+:: Copy icon
 copy "MultiFlash TOOL.ico" "%OUTPUT_DIR%\%PACKAGE_NAME%\" >nul
 
-:: 创建说明文件
-echo MultiFlash TOOL v%VERSION% 便携版 > "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
+:: Create instructions file
+echo MultiFlash TOOL v%VERSION% Portable Version > "%OUTPUT_DIR%\%PACKAGE_NAME%\Instructions.txt"
 echo. >> "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
-echo 使用说明: >> "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
-echo 1. 确保已安装 .NET Framework 4.8 >> "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
-echo 2. 直接运行 MultiFlash.exe >> "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
+echo Usage Instructions: >> "%OUTPUT_DIR%\%PACKAGE_NAME%\Instructions.txt"
+echo 1. Ensure .NET Framework 4.8 is installed >> "%OUTPUT_DIR%\%PACKAGE_NAME%\Instructions.txt"
+echo 2. Run MultiFlash.exe directly >> "%OUTPUT_DIR%\%PACKAGE_NAME%\Instructions.txt"
 echo. >> "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
-echo 系统要求: >> "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
-echo - Windows 7/8/10/11 >> "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
-echo - .NET Framework 4.8 >> "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
+echo System Requirements: >> "%OUTPUT_DIR%\%PACKAGE_NAME%\Instructions.txt"
+echo - Windows 7/8/10/11 >> "%OUTPUT_DIR%\%PACKAGE_NAME%\Instructions.txt"
+echo - .NET Framework 4.8 >> "%OUTPUT_DIR%\%PACKAGE_NAME%\Instructions.txt"
 echo. >> "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
-echo GitHub: https://github.com/xiriovo/edltool >> "%OUTPUT_DIR%\%PACKAGE_NAME%\说明.txt"
+echo GitHub: https://github.com/xiriovo/edltool >> "%OUTPUT_DIR%\%PACKAGE_NAME%\Instructions.txt"
 
 echo.
-echo [信息] 文件已复制到: %OUTPUT_DIR%\%PACKAGE_NAME%\
+echo [Info] Files copied to: %OUTPUT_DIR%\%PACKAGE_NAME%\
 echo.
 
-:: 检查是否有 7z
+:: Check if 7z is available
 where 7z >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
-    echo [打包] 正在创建压缩包...
+    echo [Packing] Creating archive...
     cd "%OUTPUT_DIR%"
     7z a -t7z -mx=9 "%PACKAGE_NAME%.7z" "%PACKAGE_NAME%\*" >nul
     cd ..
     echo [完成] 压缩包: %OUTPUT_DIR%\%PACKAGE_NAME%.7z
 ) else (
-    echo [提示] 未找到 7z，跳过压缩。
-    echo        请手动压缩 %OUTPUT_DIR%\%PACKAGE_NAME% 文件夹
+    echo [Tip] 7z not found, skipping compression.
+    echo        Please manually compress the %OUTPUT_DIR%\%PACKAGE_NAME% folder
 )
 
 echo.
 echo ============================================
-echo   便携版打包完成！
+echo   Portable version packaging complete!
 echo ============================================
 echo.
 pause

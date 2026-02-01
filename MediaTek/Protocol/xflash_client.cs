@@ -1,7 +1,12 @@
 // ============================================================================
-// LoveAlways - MediaTek XFlash 二进制协议客户端
-// 参考: mtkclient/Library/DA/xflash/xflash_lib.py
+// LoveAlways - MediaTek XFlash Binary Protocol Client
+// Reference: mtkclient/Library/DA/xflash/xflash_lib.py
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.Collections.Generic;
@@ -15,7 +20,7 @@ using LoveAlways.MediaTek.Models;
 namespace LoveAlways.MediaTek.Protocol
 {
     /// <summary>
-    /// XFlash 二进制协议客户端
+    /// XFlash Binary Protocol Client
     /// </summary>
     public class XFlashClient : IDisposable
     {
@@ -26,16 +31,16 @@ namespace LoveAlways.MediaTek.Protocol
         private readonly bool _ownsPortLock;
         private bool _disposed;
 
-        // 协议配置
+        // Protocol configuration
         private ChecksumAlgorithm _checksumLevel = ChecksumAlgorithm.None;
-        private int _packetLength = 0x1000;  // 默认 4KB
+        private int _packetLength = 0x1000;  // Default 4KB
         private StorageType _storageType = StorageType.Unknown;
 
-        // 常量
+        // Constants
         private const int DEFAULT_TIMEOUT_MS = 30000;
         private const int MAX_BUFFER_SIZE = 0x200000;  // 2MB
 
-        // 状态
+        // State
         public bool IsConnected { get; private set; }
         public StorageType Storage => _storageType;
 
@@ -57,17 +62,17 @@ namespace LoveAlways.MediaTek.Protocol
             }
         }
 
-        #region 底层协议
+        #region Low-level Protocol
 
         /// <summary>
-        /// 发送二进制命令
+        /// Send binary command
         /// </summary>
         private async Task<bool> SendCommandAsync(uint command, byte[] args = null, CancellationToken ct = default)
         {
             await _portLock.WaitAsync(ct);
             try
             {
-                // 构建数据包: [magic(4)] [dataType(4)] [length(4)] [command(4)] [args...]
+                // Build packet: [magic(4)] [dataType(4)] [length(4)] [command(4)] [args...]
                 int argsLen = args?.Length ?? 0;
                 int dataLen = 4 + argsLen;  // command + args
                 byte[] packet = new byte[12 + dataLen];
@@ -82,7 +87,7 @@ namespace LoveAlways.MediaTek.Protocol
                     Array.Copy(args, 0, packet, 16, args.Length);
                 }
 
-                // 计算校验和 (如果启用)
+                // Calculate checksum (if enabled)
                 if (_checksumLevel == ChecksumAlgorithm.CRC32)
                 {
                     uint crc = MtkCrc32.Compute(packet, 12, dataLen);
@@ -97,7 +102,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _log($"[XFlash] 发送命令失败: {ex.Message}");
+                _log($"[XFlash] Failed to send command: {ex.Message}");
                 return false;
             }
             finally
@@ -107,14 +112,14 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 接收响应
+        /// Receive response
         /// </summary>
         private async Task<byte[]> ReceiveResponseAsync(int timeoutMs = DEFAULT_TIMEOUT_MS, CancellationToken ct = default)
         {
             await _portLock.WaitAsync(ct);
             try
             {
-                // 读取头部 (12 bytes)
+                // Read header (12 bytes)
                 byte[] header = await ReadBytesAsync(12, timeoutMs, ct);
                 if (header == null)
                     return null;
@@ -122,7 +127,7 @@ namespace LoveAlways.MediaTek.Protocol
                 uint magic = MtkDataPacker.UnpackUInt32LE(header, 0);
                 if (magic != XFlashCmd.MAGIC)
                 {
-                    _log($"[XFlash] 魔数不匹配: 0x{magic:X8}");
+                    _log($"[XFlash] Magic mismatch: 0x{magic:X8}");
                     return null;
                 }
 
@@ -134,14 +139,14 @@ namespace LoveAlways.MediaTek.Protocol
 
                 if (length > MAX_BUFFER_SIZE)
                 {
-                    _log($"[XFlash] 数据长度异常: {length}");
+                    _log($"[XFlash] Abnormal data length: {length}");
                     return null;
                 }
 
-                // 读取数据
+                // Read data
                 byte[] data = await ReadBytesAsync((int)length, timeoutMs, ct);
                 
-                // 验证校验和 (如果启用)
+                // Verify checksum (if enabled)
                 if (_checksumLevel == ChecksumAlgorithm.CRC32 && data != null)
                 {
                     byte[] crcBytes = await ReadBytesAsync(4, timeoutMs, ct);
@@ -151,7 +156,7 @@ namespace LoveAlways.MediaTek.Protocol
                         uint actualCrc = MtkCrc32.Compute(data);
                         if (expectedCrc != actualCrc)
                         {
-                            _log($"[XFlash] CRC 校验失败: 期望 0x{expectedCrc:X8}, 实际 0x{actualCrc:X8}");
+                            _log($"[XFlash] CRC verification failed: Expected 0x{expectedCrc:X8}, Actual 0x{actualCrc:X8}");
                             return null;
                         }
                     }
@@ -166,7 +171,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 读取指定字节数
+        /// Read specified number of bytes
         /// </summary>
         private async Task<byte[]> ReadBytesAsync(int count, int timeoutMs, CancellationToken ct)
         {
@@ -195,7 +200,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 发送 ACK
+        /// Send ACK
         /// </summary>
         private async Task<bool> SendAckAsync(CancellationToken ct = default)
         {
@@ -217,14 +222,14 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 发送原始数据
+        /// Send raw data
         /// </summary>
         private async Task<bool> SendRawDataAsync(byte[] data, CancellationToken ct = default)
         {
             await _portLock.WaitAsync(ct);
             try
             {
-                // 数据包头
+                // Packet header
                 byte[] header = new byte[12];
                 MtkDataPacker.WriteUInt32LE(header, 0, XFlashCmd.MAGIC);
                 MtkDataPacker.WriteUInt32LE(header, 4, (uint)XFlashDataType.ProtocolRaw);
@@ -233,7 +238,7 @@ namespace LoveAlways.MediaTek.Protocol
                 _port.Write(header, 0, header.Length);
                 _port.Write(data, 0, data.Length);
 
-                // 发送校验和 (如果启用)
+                // Send checksum (if enabled)
                 if (_checksumLevel == ChecksumAlgorithm.CRC32)
                 {
                     uint crc = MtkCrc32.Compute(data);
@@ -252,14 +257,14 @@ namespace LoveAlways.MediaTek.Protocol
 
         #endregion
 
-        #region 初始化和配置
+        #region Initialization and Configuration
 
         /// <summary>
-        /// 设置校验和级别
+        /// Set checksum level
         /// </summary>
         public async Task<bool> SetChecksumLevelAsync(ChecksumAlgorithm level, CancellationToken ct = default)
         {
-            _log($"[XFlash] 设置校验和级别: {level}");
+            _log($"[XFlash] Setting checksum level: {level}");
 
             byte[] args = new byte[4];
             MtkDataPacker.WriteUInt32LE(args, 0, (uint)level);
@@ -275,20 +280,20 @@ namespace LoveAlways.MediaTek.Protocol
             if (status == XFlashError.OK)
             {
                 _checksumLevel = level;
-                _log($"[XFlash] ✓ 校验和级别已设置: {level}");
+                _log($"[XFlash] ✓ Checksum level set: {level}");
                 return true;
             }
 
-            _log($"[XFlash] 设置校验和失败: {XFlashError.GetErrorMessage(status)}");
+            _log($"[XFlash] Failed to set checksum: {XFlashError.GetErrorMessage(status)}");
             return false;
         }
 
         /// <summary>
-        /// 获取数据包长度
+        /// Get packet length
         /// </summary>
         public async Task<int> GetPacketLengthAsync(CancellationToken ct = default)
         {
-            _log("[XFlash] 获取数据包长度...");
+            _log("[XFlash] Getting packet length...");
 
             if (!await SendCommandAsync(XFlashCmd.GET_PACKET_LENGTH, null, ct))
                 return -1;
@@ -301,7 +306,7 @@ namespace LoveAlways.MediaTek.Protocol
             if (status == XFlashError.OK)
             {
                 _packetLength = (int)MtkDataPacker.UnpackUInt32LE(response, 4);
-                _log($"[XFlash] ✓ 数据包长度: {_packetLength} bytes");
+                _log($"[XFlash] ✓ Packet length: {_packetLength} bytes");
                 return _packetLength;
             }
 
@@ -309,13 +314,13 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 获取存储信息 (自动检测类型)
+        /// Get storage info (Auto-detect type)
         /// </summary>
         public async Task<bool> DetectStorageAsync(CancellationToken ct = default)
         {
-            _log("[XFlash] 检测存储类型...");
+            _log("[XFlash] Detecting storage type...");
 
-            // 尝试 eMMC
+            // Try eMMC
             if (await SendCommandAsync(XFlashCmd.GET_EMMC_INFO, null, ct))
             {
                 var response = await ReceiveResponseAsync(DEFAULT_TIMEOUT_MS, ct);
@@ -325,13 +330,13 @@ namespace LoveAlways.MediaTek.Protocol
                     if (status == XFlashError.OK)
                     {
                         _storageType = StorageType.EMMC;
-                        _log("[XFlash] ✓ 检测到 eMMC 存储");
+                        _log("[XFlash] ✓ eMMC storage detected");
                         return true;
                     }
                 }
             }
 
-            // 尝试 UFS
+            // Try UFS
             if (await SendCommandAsync(XFlashCmd.GET_UFS_INFO, null, ct))
             {
                 var response = await ReceiveResponseAsync(DEFAULT_TIMEOUT_MS, ct);
@@ -341,13 +346,13 @@ namespace LoveAlways.MediaTek.Protocol
                     if (status == XFlashError.OK)
                     {
                         _storageType = StorageType.UFS;
-                        _log("[XFlash] ✓ 检测到 UFS 存储");
+                        _log("[XFlash] ✓ UFS storage detected");
                         return true;
                     }
                 }
             }
 
-            // 尝试 NAND
+            // Try NAND
             if (await SendCommandAsync(XFlashCmd.GET_NAND_INFO, null, ct))
             {
                 var response = await ReceiveResponseAsync(DEFAULT_TIMEOUT_MS, ct);
@@ -357,26 +362,26 @@ namespace LoveAlways.MediaTek.Protocol
                     if (status == XFlashError.OK)
                     {
                         _storageType = StorageType.NAND;
-                        _log("[XFlash] ✓ 检测到 NAND 存储");
+                        _log("[XFlash] ✓ NAND storage detected");
                         return true;
                     }
                 }
             }
 
-            _log("[XFlash] 未能检测到存储类型");
+            _log("[XFlash] Failed to detect storage type");
             return false;
         }
 
         #endregion
 
-        #region 分区操作
+        #region Partition Operations
 
         /// <summary>
-        /// 读取分区表 (二进制协议)
+        /// Read partition table (Binary protocol)
         /// </summary>
         public async Task<List<MtkPartitionInfo>> ReadPartitionTableAsync(CancellationToken ct = default)
         {
-            _log("[XFlash] 读取分区表...");
+            _log("[XFlash] Reading partition table...");
 
             if (!await SendCommandAsync(XFlashCmd.GET_PARTITION_TBL_CATA, null, ct))
                 return null;
@@ -388,26 +393,26 @@ namespace LoveAlways.MediaTek.Protocol
             int status = (int)MtkDataPacker.UnpackUInt32LE(response, 0);
             if (status != XFlashError.OK)
             {
-                _log($"[XFlash] 读取分区表失败: {XFlashError.GetErrorMessage(status)}");
+                _log($"[XFlash] Failed to read partition table: {XFlashError.GetErrorMessage(status)}");
                 return null;
             }
 
-            // 解析分区表
+            // Parse partition table
             var partitions = new List<MtkPartitionInfo>();
             int offset = 4;
 
-            // 读取分区数量
+            // Read partition count
             if (response.Length < offset + 4)
                 return partitions;
 
             int count = (int)MtkDataPacker.UnpackUInt32LE(response, offset);
             offset += 4;
 
-            _log($"[XFlash] 分区数量: {count}");
+            _log($"[XFlash] Partition count: {count}");
 
             for (int i = 0; i < count && offset + 64 <= response.Length; i++)
             {
-                // 分区条目格式: [name(32)] [start(8)] [size(8)] [type(4)] [flags(4)]
+                // Partition entry format: [name(32)] [start(8)] [size(8)] [type(4)] [flags(4)]
                 string name = System.Text.Encoding.ASCII.GetString(response, offset, 32).TrimEnd('\0');
                 offset += 32;
 
@@ -423,7 +428,7 @@ namespace LoveAlways.MediaTek.Protocol
                 uint flags = MtkDataPacker.UnpackUInt32LE(response, offset);
                 offset += 4;
 
-                // 跳过可能的填充
+                // Skip possible padding
                 offset += 8;
 
                 partitions.Add(new MtkPartitionInfo
@@ -436,19 +441,19 @@ namespace LoveAlways.MediaTek.Protocol
                 });
             }
 
-            _log($"[XFlash] ✓ 读取到 {partitions.Count} 个分区");
+            _log($"[XFlash] ✓ Read {partitions.Count} partitions");
             return partitions;
         }
 
         /// <summary>
-        /// 读取分区数据 (二进制协议)
+        /// Read partition data (Binary protocol)
         /// </summary>
         public async Task<byte[]> ReadPartitionAsync(string partitionName, ulong offset, ulong size, 
             EmmcPartitionType partType = EmmcPartitionType.User, CancellationToken ct = default)
         {
-            _log($"[XFlash] 读取分区: {partitionName}, 偏移: 0x{offset:X}, 大小: {size}");
+            _log($"[XFlash] Reading partition: {partitionName}, offset: 0x{offset:X}, size: {size}");
 
-            // 构建参数: [partition_type(4)] [addr(8)] [size(8)] [storage_type(4)]
+            // Build parameters: [partition_type(4)] [addr(8)] [size(8)] [storage_type(4)]
             byte[] args = new byte[24];
             MtkDataPacker.WriteUInt32LE(args, 0, (uint)partType);
             MtkDataPacker.WriteUInt64LE(args, 4, offset);
@@ -458,7 +463,7 @@ namespace LoveAlways.MediaTek.Protocol
             if (!await SendCommandAsync(XFlashCmd.READ_DATA, args, ct))
                 return null;
 
-            // 接收状态响应
+            // Receive status response
             var statusResponse = await ReceiveResponseAsync(DEFAULT_TIMEOUT_MS, ct);
             if (statusResponse == null || statusResponse.Length < 4)
                 return null;
@@ -466,11 +471,11 @@ namespace LoveAlways.MediaTek.Protocol
             int status = (int)MtkDataPacker.UnpackUInt32LE(statusResponse, 0);
             if (status != XFlashError.OK)
             {
-                _log($"[XFlash] 读取分区失败: {XFlashError.GetErrorMessage(status)}");
+                _log($"[XFlash] Failed to read partition: {XFlashError.GetErrorMessage(status)}");
                 return null;
             }
 
-            // 接收数据
+            // Receive data
             using (var ms = new MemoryStream())
             {
                 ulong received = 0;
@@ -487,28 +492,28 @@ namespace LoveAlways.MediaTek.Protocol
                     ms.Write(chunk, 0, chunk.Length);
                     received += (ulong)chunk.Length;
 
-                    // 发送 ACK
+                    // Send ACK
                     await SendAckAsync(ct);
 
-                    // 更新进度
+                    // Update progress
                     double progress = (double)received * 100 / size;
                     _progressCallback?.Invoke(progress);
                 }
 
-                _log($"[XFlash] ✓ 读取完成: {received} bytes");
+                _log($"[XFlash] ✓ Read complete: {received} bytes");
                 return ms.ToArray();
             }
         }
 
         /// <summary>
-        /// 写入分区数据 (二进制协议)
+        /// Write partition data (Binary protocol)
         /// </summary>
         public async Task<bool> WritePartitionAsync(string partitionName, ulong offset, byte[] data,
             EmmcPartitionType partType = EmmcPartitionType.User, CancellationToken ct = default)
         {
-            _log($"[XFlash] 写入分区: {partitionName}, 偏移: 0x{offset:X}, 大小: {data.Length}");
+            _log($"[XFlash] Writing partition: {partitionName}, offset: 0x{offset:X}, size: {data.Length}");
 
-            // 构建参数: [partition_type(4)] [addr(8)] [size(8)] [storage_type(4)]
+            // Build parameters: [partition_type(4)] [addr(8)] [size(8)] [storage_type(4)]
             byte[] args = new byte[24];
             MtkDataPacker.WriteUInt32LE(args, 0, (uint)partType);
             MtkDataPacker.WriteUInt64LE(args, 4, offset);
@@ -518,7 +523,7 @@ namespace LoveAlways.MediaTek.Protocol
             if (!await SendCommandAsync(XFlashCmd.WRITE_DATA, args, ct))
                 return false;
 
-            // 接收状态响应
+            // Receive status response
             var statusResponse = await ReceiveResponseAsync(DEFAULT_TIMEOUT_MS, ct);
             if (statusResponse == null || statusResponse.Length < 4)
                 return false;
@@ -526,11 +531,11 @@ namespace LoveAlways.MediaTek.Protocol
             int status = (int)MtkDataPacker.UnpackUInt32LE(statusResponse, 0);
             if (status != XFlashError.OK)
             {
-                _log($"[XFlash] 写入准备失败: {XFlashError.GetErrorMessage(status)}");
+                _log($"[XFlash] Write preparation failed: {XFlashError.GetErrorMessage(status)}");
                 return false;
             }
 
-            // 分块发送数据
+            // Send data in chunks
             int chunkSize = _packetLength > 0 ? _packetLength : 0x10000;
             int sent = 0;
 
@@ -547,45 +552,45 @@ namespace LoveAlways.MediaTek.Protocol
                 if (!await SendRawDataAsync(chunk, ct))
                     return false;
 
-                // 等待 ACK
+                // Wait for ACK
                 var ack = await ReceiveResponseAsync(DEFAULT_TIMEOUT_MS, ct);
                 if (ack == null)
                 {
-                    _log("[XFlash] 未收到 ACK");
+                    _log("[XFlash] ACK not received");
                     return false;
                 }
 
                 sent += toSend;
 
-                // 更新进度
+                // Update progress
                 double progress = (double)sent * 100 / data.Length;
                 _progressCallback?.Invoke(progress);
             }
 
-            // 等待完成确认
+            // Wait for final confirmation
             var finalResponse = await ReceiveResponseAsync(DEFAULT_TIMEOUT_MS * 2, ct);
             if (finalResponse != null && finalResponse.Length >= 4)
             {
                 status = (int)MtkDataPacker.UnpackUInt32LE(finalResponse, 0);
                 if (status == XFlashError.OK)
                 {
-                    _log($"[XFlash] ✓ 写入完成: {sent} bytes");
+                    _log($"[XFlash] ✓ Write complete: {sent} bytes");
                     return true;
                 }
             }
 
-            _log("[XFlash] 写入未完成");
+            _log("[XFlash] Write incomplete");
             return false;
         }
 
         /// <summary>
-        /// 擦除分区
+        /// Erase partition
         /// </summary>
         public async Task<bool> FormatPartitionAsync(string partitionName, CancellationToken ct = default)
         {
-            _log($"[XFlash] 擦除分区: {partitionName}");
+            _log($"[XFlash] Erasing partition: {partitionName}");
 
-            // 构建参数: 分区名 (32 bytes, null terminated)
+            // Build parameters: Partition name (32 bytes, null terminated)
             byte[] args = new byte[36];
             byte[] nameBytes = System.Text.Encoding.ASCII.GetBytes(partitionName);
             Array.Copy(nameBytes, 0, args, 0, Math.Min(nameBytes.Length, 31));
@@ -601,33 +606,33 @@ namespace LoveAlways.MediaTek.Protocol
             int status = (int)MtkDataPacker.UnpackUInt32LE(response, 0);
             if (status == XFlashError.OK)
             {
-                _log($"[XFlash] ✓ 擦除完成: {partitionName}");
+                _log($"[XFlash] ✓ Erase complete: {partitionName}");
                 return true;
             }
 
-            _log($"[XFlash] 擦除失败: {XFlashError.GetErrorMessage(status)}");
+            _log($"[XFlash] Erase failed: {XFlashError.GetErrorMessage(status)}");
             return false;
         }
 
         #endregion
 
-        #region 设备控制
+        #region Device Control
 
         /// <summary>
-        /// 重启设备
+        /// Reboot device
         /// </summary>
         public async Task<bool> RebootAsync(CancellationToken ct = default)
         {
-            _log("[XFlash] 重启设备...");
+            _log("[XFlash] Rebooting device...");
             return await SendCommandAsync(XFlashCmd.SHUTDOWN, null, ct);
         }
 
         /// <summary>
-        /// 获取芯片 ID
+        /// Get chip ID
         /// </summary>
         public async Task<string> GetChipIdAsync(CancellationToken ct = default)
         {
-            _log("[XFlash] 获取芯片 ID...");
+            _log("[XFlash] Getting chip ID...");
 
             if (!await SendCommandAsync(XFlashCmd.GET_CHIP_ID, null, ct))
                 return null;
@@ -640,10 +645,10 @@ namespace LoveAlways.MediaTek.Protocol
             if (status != XFlashError.OK)
                 return null;
 
-            // 解析芯片 ID
+            // Parse chip ID
             uint chipId = MtkDataPacker.UnpackUInt32LE(response, 4);
             string chipIdStr = $"MT{chipId:X4}";
-            _log($"[XFlash] ✓ 芯片 ID: {chipIdStr}");
+            _log($"[XFlash] ✓ Chip ID: {chipIdStr}");
             return chipIdStr;
         }
 

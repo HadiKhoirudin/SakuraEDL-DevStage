@@ -1,5 +1,5 @@
 // ============================================================================
-// LoveAlways - 展讯 BSL/FDL 命令定义
+// LoveAlways - Spreadtrum BSL/FDL Command Definitions
 // Spreadtrum/Unisoc BSL (Boot Second Loader) Commands
 // ============================================================================
 
@@ -8,290 +8,289 @@ using System;
 namespace LoveAlways.Spreadtrum.Protocol
 {
     /// <summary>
-    /// BSL 命令类型 (参考 spd_cmd.h)
+    /// BSL Command Type (Reference spd_cmd.h)
     /// </summary>
     public enum BslCommand : byte
     {
         // ========================================
-        // 连接/握手命令
+        // Connection/Handshake Commands
         // ========================================
         
-        /// <summary>连接命令</summary>
+        /// <summary>Connect command</summary>
         BSL_CMD_CONNECT = 0x00,
         
         // ========================================
-        // 数据传输命令
+        // Data Transfer Commands
         // ========================================
         
         
-        /// <summary>开始数据传输 (发送地址和大小)</summary>
+        /// <summary>Start data transfer (Send address and size)</summary>
         BSL_CMD_START_DATA = 0x01,
         
-        /// <summary>数据块传输</summary>
+        /// <summary>Data block transfer</summary>
         BSL_CMD_MIDST_DATA = 0x02,
         
-        /// <summary>结束数据传输</summary>
+        /// <summary>End data transfer</summary>
         BSL_CMD_END_DATA = 0x03,
         
-        /// <summary>执行已下载的代码</summary>
+        /// <summary>Execute downloaded code</summary>
         BSL_CMD_EXEC_DATA = 0x04,
         
-        /// <summary>正常重启 / 复位设备</summary>
+        /// <summary>Normal reboot / Reset device</summary>
         BSL_CMD_NORMAL_RESET = 0x05,
-        BSL_CMD_RESET = 0x05,  // 别名
+        BSL_CMD_RESET = 0x05,  // Alias
         
-        /// <summary>读取 Flash 内容</summary>
+        /// <summary>Read flash content</summary>
         BSL_CMD_READ_FLASH = 0x06,
         
-        /// <summary>读取芯片类型</summary>
+        /// <summary>Read chip type</summary>
         BSL_CMD_READ_CHIP_TYPE = 0x07,
         
-        /// <summary>读取 NV 项</summary>
+        /// <summary>Read NV item</summary>
         BSL_CMD_READ_NVITEM = 0x08,
         
-        /// <summary>改变波特率 / 设置波特率</summary>
+        /// <summary>Change baud rate / Set baud rate</summary>
         BSL_CMD_CHANGE_BAUD = 0x09,
-        BSL_CMD_SET_BAUD = 0x09,  // 别名
+        BSL_CMD_SET_BAUD = 0x09,  // Alias
         
-        /// <summary>擦除 Flash</summary>
+        /// <summary>Erase Flash</summary>
         BSL_CMD_ERASE_FLASH = 0x0A,
         
-        /// <summary>重新分区 NAND Flash</summary>
+        /// <summary>Repartition NAND Flash</summary>
         BSL_CMD_REPARTITION = 0x0B,
         
-        /// <summary>读取 Flash 类型</summary>
+        /// <summary>Read Flash type</summary>
         BSL_CMD_READ_FLASH_TYPE = 0x0C,
         
-        /// <summary>读取 Flash 信息</summary>
+        /// <summary>Read Flash information</summary>
         BSL_CMD_READ_FLASH_INFO = 0x0D,
         
-        /// <summary>读取 NOR Flash 扇区大小</summary>
+        /// <summary>Read NOR Flash sector size</summary>
         BSL_CMD_READ_SECTOR_SIZE = 0x0F,
         
         // ========================================
-        // 分区读取命令 (正确值!)
+        // Partition Read Commands (Correct Values!)
         // ========================================
         
-        /// <summary>读取 Flash 开始</summary>
+        /// <summary>Read Flash Start</summary>
         BSL_CMD_READ_START = 0x10,
         
-        /// <summary>读取 Flash 中间数据</summary>
+        /// <summary>Read Flash Midst Data</summary>
         BSL_CMD_READ_MIDST = 0x11,
         
-        /// <summary>读取 Flash 结束</summary>
+        /// <summary>Read Flash End</summary>
         BSL_CMD_READ_END = 0x12,
         
         // ========================================
-        // 设备控制命令
+        // Device Control Commands
         // ========================================
         
-        /// <summary>保持充电</summary>
+        /// <summary>Keep charging</summary>
         BSL_CMD_KEEP_CHARGE = 0x13,
         
-        /// <summary>设置扩展表</summary>
+        /// <summary>Set extended table</summary>
         BSL_CMD_EXTTABLE = 0x14,
         
-        /// <summary>读取 Flash UID</summary>
+        /// <summary>Read Flash UID</summary>
         BSL_CMD_READ_FLASH_UID = 0x15,
         
-        /// <summary>读取软 SIM EID</summary>
+        /// <summary>Read Soft SIM EID</summary>
         BSL_CMD_READ_SOFTSIM_EID = 0x16,
         
-        /// <summary>关机</summary>
+        /// <summary>Power off</summary>
         BSL_CMD_POWER_OFF = 0x17,
         
-        /// <summary>检查 Root</summary>
+        /// <summary>Check Root</summary>
         BSL_CMD_CHECK_ROOT = 0x19,
         
-        /// <summary>读取芯片 UID</summary>
+        /// <summary>Read chip UID</summary>
         BSL_CMD_READ_CHIP_UID = 0x1A,
         
-        /// <summary>使能 Flash 写入</summary>
+        /// <summary>Enable Flash Write</summary>
         BSL_CMD_ENABLE_WRITE_FLASH = 0x1B,
         
-        /// <summary>使能安全启动 / 读取版本 (用于获取版本信息)</summary>
+        /// <summary>Enable Secure Boot / Read Version (used for version info)</summary>
         BSL_CMD_ENABLE_SECUREBOOT = 0x1C,
-        BSL_CMD_READ_VERSION = 0x1C,  // 别名，部分 FDL 使用此命令读取版本
-        
-        /// <summary>识别开始</summary>
+        BSL_CMD_READ_VERSION = 0x1C,  // Alias, some FDL use this for reading version        
+        /// <summary>Identify start</summary>
         BSL_CMD_IDENTIFY_START = 0x1D,
         
-        /// <summary>识别结束</summary>
+        /// <summary>Identify end</summary>
         BSL_CMD_IDENTIFY_END = 0x1E,
         
-        /// <summary>读取 CU Ref</summary>
+        /// <summary>Read CU Ref</summary>
         BSL_CMD_READ_CU_REF = 0x1F,
         
-        /// <summary>读取 Ref 信息</summary>
+        /// <summary>Read Ref info</summary>
         BSL_CMD_READ_REFINFO = 0x20,
         
-        /// <summary>禁用转码 (FDL2 必需)</summary>
+        /// <summary>Disable transcode (Required for FDL2)</summary>
         BSL_CMD_DISABLE_TRANSCODE = 0x21,
         
-        /// <summary>写入 NV 项</summary>
+        /// <summary>Write NV item</summary>
         BSL_CMD_WRITE_NVITEM = 0x22,
         
-        /// <summary>写入日期时间到 miscdata</summary>
+        /// <summary>Write Date/Time to miscdata</summary>
         BSL_CMD_WRITE_DATETIME = 0x22,
         
-        /// <summary>自定义 Dummy</summary>
+        /// <summary>Custom Dummy</summary>
         BSL_CMD_CUST_DUMMY = 0x23,
         
-        /// <summary>读取 RF 收发器类型</summary>
+        /// <summary>Read RF Transceiver Type</summary>
         BSL_CMD_READ_RF_TRANSCEIVER_TYPE = 0x24,
         
-        /// <summary>设置调试信息</summary>
+        /// <summary>Set debug information</summary>
         BSL_CMD_SET_DEBUGINFO = 0x25,
         
-        /// <summary>DDR 检查</summary>
+        /// <summary>DDR Check</summary>
         BSL_CMD_DDR_CHECK = 0x26,
         
-        /// <summary>自刷新</summary>
+        /// <summary>Self refresh</summary>
         BSL_CMD_SELF_REFRESH = 0x27,
         
-        /// <summary>使能原始数据写入 (用于 0x31 和 0x33)</summary>
+        /// <summary>Enable raw data writing (for 0x31 and 0x33)</summary>
         BSL_CMD_WRITE_RAW_DATA_ENABLE = 0x28,
         
-        /// <summary>读取 NAND 块信息</summary>
+        /// <summary>Read NAND block information</summary>
         BSL_CMD_READ_NAND_BLOCK_INFO = 0x29,
         
-        /// <summary>设置首次模式</summary>
+        /// <summary>Set first mode</summary>
         BSL_CMD_SET_FIRST_MODE = 0x2A,
         
-        /// <summary>读取分区列表</summary>
+        /// <summary>Read partition list</summary>
         BSL_CMD_READ_PARTITION = 0x2D,
         
-        /// <summary>解锁</summary>
+        /// <summary>Unlock</summary>
         BSL_CMD_UNLOCK = 0x30,
         
-        /// <summary>读取公钥 / 原始数据包</summary>
+        /// <summary>Read public key / raw data packet</summary>
         BSL_CMD_READ_PUBKEY = 0x31,
         BSL_CMD_DLOAD_RAW_START = 0x31,
         
-        /// <summary>写入刷新数据 / 发送签名</summary>
+        /// <summary>Write flush data / Send signature</summary>
         BSL_CMD_WRITE_FLUSH_DATA = 0x32,
         BSL_CMD_SEND_SIGNATURE = 0x32,
         
-        /// <summary>完整原始文件</summary>
+        /// <summary>Full raw file</summary>
         BSL_CMD_DLOAD_RAW_START2 = 0x33,
         
-        /// <summary>读取日志</summary>
+        /// <summary>Read log</summary>
         BSL_CMD_READ_LOG = 0x35,
         
-        /// <summary>读取 eFuse</summary>
+        /// <summary>Read eFuse</summary>
         BSL_CMD_READ_EFUSE = 0x60,
         
-        /// <summary>波特率检测 (内部使用) - 发送多个 0x7E</summary>
+        /// <summary>Baud rate detection (Internal use) - Sends multiple 0x7E</summary>
         BSL_CMD_CHECK_BAUD = 0x7E,
         
-        /// <summary>结束刷机过程</summary>
+        /// <summary>End flash process</summary>
         BSL_CMD_END_PROCESS = 0x7F,
         
         // ========================================
-        // 响应类型
+        // Response Types
         // ========================================
         
-        /// <summary>确认响应</summary>
+        /// <summary>ACK Response</summary>
         BSL_REP_ACK = 0x80,
         
-        /// <summary>版本响应</summary>
+        /// <summary>Version Response</summary>
         BSL_REP_VER = 0x81,
         
-        /// <summary>无效命令</summary>
+        /// <summary>Invalid Command</summary>
         BSL_REP_INVALID_CMD = 0x82,
         
-        /// <summary>未知命令</summary>
+        /// <summary>Unknown Command</summary>
         BSL_REP_UNKNOWN_CMD = 0x83,
         
-        /// <summary>操作失败</summary>
+        /// <summary>Operation Failed</summary>
         BSL_REP_OPERATION_FAILED = 0x84,
         
-        /// <summary>不支持的波特率</summary>
+        /// <summary>Unsupported Baud Rate</summary>
         BSL_REP_NOT_SUPPORT_BAUDRATE = 0x85,
         
-        /// <summary>下载未开始</summary>
+        /// <summary>Download Not Started</summary>
         BSL_REP_DOWN_NOT_START = 0x86,
         
-        /// <summary>重复开始下载</summary>
+        /// <summary>Repeated Start Download</summary>
         BSL_REP_DOWN_MULTI_START = 0x87,
         
-        /// <summary>下载提前结束</summary>
+        /// <summary>Download Ended Early</summary>
         BSL_REP_DOWN_EARLY_END = 0x88,
         
-        /// <summary>下载目标地址错误</summary>
+        /// <summary>Download Target Address Error</summary>
         BSL_REP_DOWN_DEST_ERROR = 0x89,
         
-        /// <summary>下载大小错误</summary>
+        /// <summary>Download Size Error</summary>
         BSL_REP_DOWN_SIZE_ERROR = 0x8A,
         
-        /// <summary>校验错误 (数据校验失败)</summary>
+        /// <summary>Verify Error (Data verification failed)</summary>
         BSL_REP_VERIFY_ERROR = 0x8B,
         
-        /// <summary>未校验</summary>
+        /// <summary>Not Verified</summary>
         BSL_REP_NOT_VERIFY = 0x8C,
         
-        /// <summary>内存不足</summary>
+        /// <summary>Not Enough Memory</summary>
         BSL_PHONE_NOT_ENOUGH_MEMORY = 0x8D,
         
-        /// <summary>等待输入超时</summary>
+        /// <summary>Wait Input Timeout</summary>
         BSL_PHONE_WAIT_INPUT_TIMEOUT = 0x8E,
         
-        /// <summary>操作成功 (内部)</summary>
+        /// <summary>Operation Succeed (Internal)</summary>
         BSL_PHONE_SUCCEED = 0x8F,
         
-        /// <summary>有效波特率</summary>
+        /// <summary>Valid Baud Rate</summary>
         BSL_PHONE_VALID_BAUDRATE = 0x90,
         
-        /// <summary>重复继续</summary>
+        /// <summary>Repeat Continue</summary>
         BSL_PHONE_REPEAT_CONTINUE = 0x91,
         
-        /// <summary>重复中断</summary>
+        /// <summary>Repeat Break</summary>
         BSL_PHONE_REPEAT_BREAK = 0x92,
         
-        /// <summary>读取 Flash 响应 / 数据响应</summary>
+        /// <summary>Read Flash Response / Data Response</summary>
         BSL_REP_READ_FLASH = 0x93,
         BSL_REP_DATA = 0x93,
         
-        /// <summary>芯片类型响应</summary>
+        /// <summary>Chip Type Response</summary>
         BSL_REP_CHIP_TYPE = 0x94,
         
-        /// <summary>NV 项响应</summary>
+        /// <summary>NV Item Response</summary>
         BSL_REP_READ_NVITEM = 0x95,
         
-        /// <summary>分区不兼容</summary>
+        /// <summary>Incompatible Partition</summary>
         BSL_REP_INCOMPATIBLE_PARTITION = 0x96,
         
-        /// <summary>签名校验失败</summary>
+        /// <summary>Signature Verification Failed</summary>
         BSL_REP_SIGN_VERIFY_ERROR = 0xA6,
         
-        /// <summary>检查 Root 为真</summary>
+        /// <summary>Check Root True</summary>
         BSL_REP_CHECK_ROOT_TRUE = 0xA7,
         
-        /// <summary>芯片 UID 响应</summary>
+        /// <summary>Chip UID Response</summary>
         BSL_REP_READ_CHIP_UID = 0xAB,
         
-        /// <summary>分区表响应</summary>
+        /// <summary>Partition Table Response</summary>
         BSL_REP_PARTITION = 0xBA,
         
-        /// <summary>日志响应</summary>
+        /// <summary>Log Response</summary>
         BSL_REP_READ_LOG = 0xBB,
         
-        /// <summary>不支持的命令</summary>
+        /// <summary>Unsupported Command</summary>
         BSL_REP_UNSUPPORTED_COMMAND = 0xFE,
         
-        /// <summary>日志输出</summary>
+        /// <summary>Log Output</summary>
         BSL_REP_LOG = 0xFF,
         
         // ========================================
-        // 兼容定义
+        // Compatibility Definitions
         // ========================================
         
-        /// <summary>Flash 信息响应</summary>
+        /// <summary>Flash Info Response</summary>
         BSL_REP_FLASH_INFO = 0x92,
     }
 
     /// <summary>
-    /// BSL 错误码
+    /// BSL Error Code
     /// </summary>
     public enum BslError : ushort
     {
@@ -313,47 +312,47 @@ namespace LoveAlways.Spreadtrum.Protocol
     }
 
     /// <summary>
-    /// FDL 阶段
+    /// FDL Stage
     /// </summary>
     public enum FdlStage
     {
-        /// <summary>未加载</summary>
+        /// <summary>Not Loaded</summary>
         None,
         
-        /// <summary>FDL1 - 第一阶段引导</summary>
+        /// <summary>FDL1 - Stage 1 Bootloader</summary>
         FDL1,
         
-        /// <summary>FDL2 - 第二阶段刷机</summary>
+        /// <summary>FDL2 - Stage 2 Flashing</summary>
         FDL2
     }
 
     /// <summary>
-    /// 展讯设备状态
+    /// Spreadtrum Device State
     /// </summary>
     public enum SprdDeviceState
     {
-        /// <summary>断开</summary>
+        /// <summary>Disconnected</summary>
         Disconnected,
         
-        /// <summary>已连接 (ROM 模式)</summary>
+        /// <summary>Connected (ROM Mode)</summary>
         Connected,
         
-        /// <summary>FDL1 已加载</summary>
+        /// <summary>FDL1 Loaded</summary>
         Fdl1Loaded,
         
-        /// <summary>FDL2 已加载 (可刷机)</summary>
+        /// <summary>FDL2 Loaded (Flashable)</summary>
         Fdl2Loaded,
         
-        /// <summary>错误状态</summary>
+        /// <summary>Error State</summary>
         Error
     }
 
     /// <summary>
-    /// 展讯芯片平台 (综合 spd_dump, SPRDClientCore, iReverse 等开源项目)
+    /// Spreadtrum Chip Platform (Consolidated from spd_dump, SPRDClientCore, iReverse and other open source projects)
     /// </summary>
     public static class SprdPlatform
     {
-        // ========== SC6xxx 功能机系列 ==========
+        // ========== SC6xxx Feature Phone Series ==========
         public const uint SC6500 = 0x6500;
         public const uint SC6530 = 0x6530;
         public const uint SC6531 = 0x6531;
@@ -369,7 +368,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         public const uint SC6620 = 0x6620;
         public const uint SC6800H = 0x6800;
         
-        // ========== SC77xx 系列 (传统 3G/4G) ==========
+        // ========== SC77xx Series (Legacy 3G/4G) ==========
         public const uint SC7701 = 0x7701;
         public const uint SC7702 = 0x7702;
         public const uint SC7710 = 0x7710;
@@ -387,7 +386,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         public const uint SC7731GF = 0x77310004;
         public const uint SC7731EF = 0x77310005;
         
-        // ========== SC85xx 系列 ==========
+        // ========== SC85xx Series ==========
         public const uint SC8521E = 0x8521;
         public const uint SC8541 = 0x8541;
         public const uint SC8541E = 0x8541;
@@ -397,7 +396,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         public const uint SC8581 = 0x8581;
         public const uint SC8581A = 0x85810001;
         
-        // ========== SC96xx/SC98xx 系列 ==========
+        // ========== SC96xx/SC98xx Series ==========
         public const uint SC9600 = 0x9600;
         public const uint SC9610 = 0x9610;
         public const uint SC9620 = 0x9620;
@@ -425,7 +424,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         public const uint SC9863 = 0x9863;
         public const uint SC9863A = 0x98630001;
         
-        // ========== Unisoc T 系列 (4G) ==========
+        // ========== Unisoc T Series (4G) ==========
         public const uint T310 = 0x0310;
         public const uint T606 = 0x0606;
         public const uint T610 = 0x0610;
@@ -438,7 +437,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         public const uint T820 = 0x0820;
         public const uint T900 = 0x0900;
         
-        // ========== Unisoc T 系列 (5G) ==========
+        // ========== Unisoc T Series (5G) ==========
         public const uint T740 = 0x0740;
         public const uint T750 = 0x0750;
         public const uint T765 = 0x0765;
@@ -451,31 +450,31 @@ namespace LoveAlways.Spreadtrum.Protocol
         public const uint T8000 = 0x8000;
         public const uint T8200 = 0x8200;
         
-        // ========== UMS 系列 (Unisoc Mobile SOC) ==========
-        public const uint UMS312 = 0x0312;      // T310 变体
-        public const uint UMS512 = 0x0512;      // T618 变体
-        public const uint UMS9230 = 0x9230;     // T606 变体
-        public const uint UMS9620 = 0x96200001; // T740 变体 (区分于 SC9620)
+        // ========== UMS Series (Unisoc Mobile SOC) ==========
+        public const uint UMS312 = 0x0312;      // T310 Variant
+        public const uint UMS512 = 0x0512;      // T618 Variant
+        public const uint UMS9230 = 0x9230;     // T606 Variant
+        public const uint UMS9620 = 0x96200001; // T740 Variant (Distinguish from SC9620)
         public const uint UMS9621 = 0x96210001;
         
-        // ========== UIS 系列 (Unisoc IoT SOC) ==========
+        // ========== UIS Series (Unisoc IoT SOC) ==========
         public const uint UIS7862 = 0x78620001;
         public const uint UIS7863 = 0x78630001;
         public const uint UIS7870 = 0x78700001;
         public const uint UIS7885 = 0x78850001;
-        public const uint UIS8581 = 0x85810002; // 区分于 SC8581
+        public const uint UIS8581 = 0x85810002; // Distinguish from SC8581
         public const uint UIS8910DM = 0x89100001;
         
-        // ========== T1xx 系列 (4G 功能机) - 参考 spreadtrum_flash ==========
+        // ========== T1xx Series (4G Feature Phone) - Reference spreadtrum_flash ==========
         public const uint T107 = 0x0107;      // UMS9107
-        public const uint T117 = 0x0117;      // UMS9117 (最常见)
+        public const uint T117 = 0x0117;      // UMS9117 (Most common)
         public const uint T127 = 0x0127;      // UMS9127
-        public const uint UMS9107 = 0x9107;   // T107 别名
-        public const uint UMS9117 = 0x9117;   // T117 别名
-        public const uint UMS9127 = 0x9127;   // T127 别名
+        public const uint UMS9107 = 0x9107;   // T107 Alias
+        public const uint UMS9117 = 0x9117;   // T117 Alias
+        public const uint UMS9127 = 0x9127;   // T127 Alias
         
-        // ========== W 系列 (功能机/IoT) ==========
-        public const uint W117 = 0x01170001;  // 使用不同的 ID 避免与 T117 冲突
+        // ========== W Series (Feature Phone/IoT) ==========
+        public const uint W117 = 0x01170001;  // Use different ID to avoid conflict with T117
         public const uint W217 = 0x0217;
         public const uint W307 = 0x0307;
         
@@ -483,27 +482,27 @@ namespace LoveAlways.Spreadtrum.Protocol
         public const uint UWS6121 = 0x6121;
         public const uint UWS6122 = 0x6122;
         public const uint UWS6131 = 0x6131;
-        public const uint UWS6152 = 0x6152;     // 用户询问的芯片
+        public const uint UWS6152 = 0x6152;     // Chip asked by user
         
-        // ========== S 系列 (平板/IoT) ==========
+        // ========== S Series (Tablet/IoT) ==========
         public const uint S9863A1H10 = 0x9863;
         
-        // ========== 特殊芯片 ID ==========
+        // ========== Special Chip IDs ==========
         public const uint CHIP_UNKNOWN = 0x0000;
         public const uint CHIP_SC6800H = 0x6800;
         public const uint CHIP_SC8800G = 0x8800;
         
         /// <summary>
-        /// 获取平台名称
+        /// Get platform name
         /// </summary>
         public static string GetPlatformName(uint chipId)
         {
-            // 处理带子型号的芯片 ID (高 16 位为基础 ID)
+            // Handle chip IDs with sub-models (High 16 bits are the base ID)
             uint baseId = chipId > 0xFFFF ? (chipId >> 16) : chipId;
             
             switch (chipId)
             {
-                // ========== SC6xxx 功能机系列 ==========
+                // ========== SC6xxx Feature Phone Series ==========
                 case SC6500: return "SC6500";
                 case SC6530: return "SC6530";
                 case SC6531E: return "SC6531E";
@@ -518,7 +517,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case SC6620: return "SC6620";
                 case SC6800H: return "SC6800H";
                 
-                // ========== SC77xx 系列 ==========
+                // ========== SC77xx Series ==========
                 case SC7701: return "SC7701";
                 case SC7702: return "SC7702";
                 case SC7710: return "SC7710";
@@ -536,7 +535,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case SC7731GF: return "SC7731GF";
                 case SC7731EF: return "SC7731EF";
                 
-                // ========== SC85xx 系列 ==========
+                // ========== SC85xx Series ==========
                 case SC8521E: return "SC8521E";
                 case SC8541E: return "SC8541E";
                 case SC8541EF: return "SC8541EF";
@@ -545,7 +544,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case SC8581: return "SC8581";
                 case SC8581A: return "SC8581A";
                 
-                // ========== SC96xx/SC98xx 系列 ==========
+                // ========== SC96xx/SC98xx Series ==========
                 case SC9600: return "SC9600";
                 case SC9610: return "SC9610";
                 case SC9620: return "SC9620";
@@ -573,7 +572,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case SC9863: return "SC9863A";
                 case SC9863A: return "SC9863A";
                 
-                // ========== T 系列 4G ==========
+                // ========== Unisoc T Series (4G) ==========
                 case T310: return "T310";
                 case T606: return "T606";
                 case T610: return "T610";
@@ -586,7 +585,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case T820: return "T820";
                 case T900: return "T900";
                 
-                // ========== T 系列 5G ==========
+                // ========== Unisoc T Series (5G) ==========
                 case T740: return "T740 (5G)";
                 case T750: return "T750 (5G)";
                 case T765: return "T765 (5G)";
@@ -599,22 +598,22 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case T8000: return "T8000 (5G)";
                 case T8200: return "T8200 (5G)";
                 
-                // ========== T1xx 系列 (4G 功能机) ==========
-                case T107: return "T107/UMS9107 (4G 功能机)";
-                case T117: return "T117/UMS9117 (4G 功能机)";
-                case T127: return "T127/UMS9127 (4G 功能机)";
+                // ========== Unisoc T1xx Series (4G Feature Phone) ==========
+                case T107: return "T107/UMS9107 (4G Feature Phone)";
+                case T117: return "T117/UMS9117 (4G Feature Phone)";
+                case T127: return "T127/UMS9127 (4G Feature Phone)";
                 case UMS9107: return "UMS9107 (T107)";
                 case UMS9117: return "UMS9117 (T117)";
                 case UMS9127: return "UMS9127 (T127)";
                 
-                // ========== UMS 系列 ==========
+                // ========== UMS Series ==========
                 case UMS312: return "UMS312 (T310)";
                 case UMS512: return "UMS512 (T618)";
                 case UMS9230: return "UMS9230 (T606)";
                 case UMS9620: return "UMS9620 (T740)";
                 case UMS9621: return "UMS9621";
                 
-                // ========== UIS 系列 ==========
+                // ========== UIS Series ==========
                 case UIS7862: return "UIS7862";
                 case UIS7863: return "UIS7863";
                 case UIS7870: return "UIS7870";
@@ -622,19 +621,19 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case UIS8581: return "UIS8581";
                 case UIS8910DM: return "UIS8910DM";
                 
-                // ========== W 系列 ==========
+                // ========== W Series ==========
                 case W117: return "W117";
                 case W217: return "W217";
                 case W307: return "W307";
                 
-                // ========== UWS 系列 ==========
+                // ========== UWS Series ==========
                 case UWS6121: return "UWS6121";
                 case UWS6122: return "UWS6122";
                 case UWS6131: return "UWS6131";
                 case UWS6152: return "UWS6152";
                 
                 default:
-                    // 尝试匹配基础 ID
+                    // Attempt to match Base ID
                     if (baseId == 0x6531) return string.Format("SC6531 (0x{0:X})", chipId);
                     if (baseId == 0x6533) return string.Format("SC6533 (0x{0:X})", chipId);
                     if (baseId == 0x7731) return string.Format("SC7731 (0x{0:X})", chipId);
@@ -651,8 +650,8 @@ namespace LoveAlways.Spreadtrum.Protocol
         }
 
         /// <summary>
-        /// 获取 FDL1 默认加载地址
-        /// 参考: spd_dump.c, SPRDClientCore, iReverse 项目
+        /// Get FDL1 default load address
+        /// Reference: spd_dump.c, SPRDClientCore, iReverse projects
         /// </summary>
         public static uint GetFdl1Address(uint chipId)
         {
@@ -660,19 +659,19 @@ namespace LoveAlways.Spreadtrum.Protocol
             
             switch (baseId)
             {
-                // ========== 需要 Exploit 的新平台 (0x65000800) ==========
+                // ========== New platforms requiring Exploit (0x65000800) ==========
                 case 0x9863:  // SC9863A
                 case 0x8581:  // SC8581A
                 case 0x9853:  // SC9853i
                     return 0x65000800;
                 
-                // ========== SC9850/SC9860/SC9861 系列 (0x65000000) ==========
+                // ========== SC9850/SC9860/SC9861 Series (0x65000000) ==========
                 case 0x9850:  // SC9850K
                 case 0x9860:  // SC9860G
                 case 0x9861:  // SC9861
                     return 0x65000000;
                     
-                // ========== T6xx/T7xx 系列需要 Exploit (0x65000800) ==========
+                // ========== T6xx/T7xx Series requiring Exploit (0x65000800) ==========
                 case 0x0610:  // T610
                 case 0x0612:  // T612
                 case 0x0616:  // T616
@@ -683,7 +682,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x0770:  // T770
                     return 0x65000800;
                     
-                // ========== 标准新平台 (0x5500) ==========
+                // ========== Standard New Platforms (0x5500) ==========
                 case 0x8521:  // SC8521E
                 case 0x8541:  // SC8541E
                 case 0x8551:  // SC8551
@@ -707,7 +706,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x8200:  // T8200
                     return 0x5500;
                     
-                // ========== 功能机平台 (0x40004000) ==========
+                // ========== Feature Phone Platforms (0x40004000) ==========
                 case 0x6500:  // SC6500
                 case 0x6530:  // SC6530
                 case 0x6531:  // SC6531E
@@ -716,31 +715,31 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x6610:  // SC6610
                 case 0x6620:  // SC6620
                 case 0x6800:  // SC6800H
-                    return 0x40004000;  // 功能机 FDL1 地址
+                    return 0x40004000;  // Feature phone FDL1 address
                     
-                // ========== W 系列功能机 (0x40004000) ==========
-                // 注意: W117 实际上就是 T117，使用 T1xx 系列地址
+                // ========== W Series Feature Phones (0x40004000) ==========
+                // Note: W117 is actually T117, using T1xx series address
                 case 0x0217:  // W217
                 case 0x0307:  // W307
                     return 0x40004000;
                     
-                // ========== T1xx 4G 功能机 (0x6200) - 参考 spreadtrum_flash ==========
+                // ========== T1xx 4G Feature Phones (0x6200) - Reference spreadtrum_flash ==========
                 case 0x0107:  // T107/UMS9107
-                case 0x0117:  // T117/UMS9117 (也叫 W117)
+                case 0x0117:  // T117/UMS9117 (also called W117)
                 case 0x0127:  // T127/UMS9127
                 case 0x9107:  // UMS9107
                 case 0x9117:  // UMS9117
                 case 0x9127:  // UMS9127
                     return 0x6200;
                     
-                // ========== UWS 可穿戴系列 (0x5500) ==========
+                // ========== UWS Wearable Series (0x5500) ==========
                 case 0x6121:  // UWS6121
                 case 0x6122:  // UWS6122
                 case 0x6131:  // UWS6131
                 case 0x6152:  // UWS6152
                     return 0x5500;
                     
-                // ========== UIS IoT 系列 (0x5500) ==========
+                // ========== UIS IoT Series (0x5500) ==========
                 case 0x7862:  // UIS7862
                 case 0x7863:  // UIS7863
                 case 0x7870:  // UIS7870
@@ -748,7 +747,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x8910:  // UIS8910DM
                     return 0x5500;
                     
-                // ========== 传统平台 (0x5000) ==========
+                // ========== Legacy Platforms (0x5000) ==========
                 case 0x7701:  // SC7701
                 case 0x7702:  // SC7702
                 case 0x7710:  // SC7710
@@ -764,13 +763,13 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x9820:  // SC9820
                 case 0x9830:  // SC9830
                 default:
-                    return 0x5000;  // 传统平台
+                    return 0x5000;  // Legacy platform
             }
         }
 
         /// <summary>
-        /// 获取 FDL2 默认加载地址
-        /// 参考: spd_dump.c, SPRDClientCore, iReverse 项目
+        /// Get FDL2 default load address
+        /// Reference: spd_dump.c, SPRDClientCore, iReverse projects
         /// </summary>
         public static uint GetFdl2Address(uint chipId)
         {
@@ -803,7 +802,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x0770:  // T770
                     return 0xB4FFFE00;
                     
-                // ========== T8xx / T9xx / 5G 系列 (0x9F000000) ==========
+                // ========== T8xx / T9xx / 5G Series (0x9F000000) ==========
                 case 0x0820:  // T820
                 case 0x0900:  // T900
                 case 0x0740:  // T740
@@ -819,13 +818,13 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x8200:  // T8200
                     return 0x9F000000;
                     
-                // ========== SC9850/SC9860/SC9861 系列 (0x8C800000) ==========
+                // ========== SC9850/SC9860/SC9861 Series (0x8C800000) ==========
                 case 0x9850:  // SC9850K
                 case 0x9860:  // SC9860G
                 case 0x9861:  // SC9861
                     return 0x8C800000;
                     
-                // ========== 传统平台 SC77xx / SC98xx (0x8A800000) ==========
+                // ========== Legacy Platforms SC77xx / SC98xx (0x8A800000) ==========
                 case 0x7701:  // SC7701
                 case 0x7702:  // SC7702
                 case 0x7710:  // SC7710
@@ -841,7 +840,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x9830:  // SC9830
                     return 0x8A800000;
                     
-                // ========== 功能机平台 (0x14000000) ==========
+                // ========== Feature Phone Platforms (0x14000000) ==========
                 case 0x6500:  // SC6500
                 case 0x6530:  // SC6530
                 case 0x6531:  // SC6531E
@@ -850,28 +849,28 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x6610:  // SC6610
                 case 0x6620:  // SC6620
                 case 0x6800:  // SC6800H
-                // 注意: W117 实际上就是 T117，使用 T1xx 系列地址
+                // Note: W117 is actually T117, using T1xx series address
                 case 0x0217:  // W217
                 case 0x0307:  // W307
                     return 0x14000000;
                     
-                // ========== T1xx 4G 功能机 (0x80100000) - 参考 spreadtrum_flash ==========
+                // ========== T1xx 4G Feature Phones (0x80100000) - Reference spreadtrum_flash ==========
                 case 0x0107:  // T107/UMS9107
-                case 0x0117:  // T117/UMS9117 (也叫 W117)
+                case 0x0117:  // T117/UMS9117 (also called W117)
                 case 0x0127:  // T127/UMS9127
                 case 0x9107:  // UMS9107
                 case 0x9117:  // UMS9117
                 case 0x9127:  // UMS9127
                     return 0x80100000;
                     
-                // ========== UWS 可穿戴系列 (0x9EFFFE00) ==========
+                // ========== UWS Wearable Series (0x9EFFFE00) ==========
                 case 0x6121:  // UWS6121
                 case 0x6122:  // UWS6122
                 case 0x6131:  // UWS6131
                 case 0x6152:  // UWS6152
                     return 0x9EFFFE00;
                     
-                // ========== UIS IoT 系列 (0x9EFFFE00) ==========
+                // ========== UIS IoT Series (0x9EFFFE00) ==========
                 case 0x7862:  // UIS7862
                 case 0x7863:  // UIS7863
                 case 0x7870:  // UIS7870
@@ -880,14 +879,15 @@ namespace LoveAlways.Spreadtrum.Protocol
                     return 0x9EFFFE00;
                     
                 default:
-                    return 0x9EFFFE00;  // 默认地址 (适用于大多数新平台)
+                    return 0x9EFFFE00;  // Default address (Applicable to most new platforms)
             }
         }
         
         /// <summary>
-        /// 获取 exec_addr (用于绕过签名验证)
-        /// 参考: spd_dump 源码中的 custom_exec_no_verify 机制
-        /// 这些地址是 BROM 中验证函数的地址，通过写入返回成功的代码来绕过验证
+        /// Get exec_addr (Used for signature bypass)
+        /// Reference: custom_exec_no_verify mechanism in spd_dump
+        /// These addresses are the addresses of the verify function in BROM.
+        /// Bypass verification by writing code that returns success.
         /// </summary>
         public static uint GetExecAddress(uint chipId)
         {
@@ -895,19 +895,19 @@ namespace LoveAlways.Spreadtrum.Protocol
             
             switch (baseId)
             {
-                // ========== SC9863A 系列 ==========
-                // 参考: spd_dump exec_addr 0x65012f48
+                // ========== SC9863A Series ==========
+                // Reference: spd_dump exec_addr 0x65012f48
                 case 0x9863:  // SC9863A
                     return 0x65012f48;
                     
-                // ========== T6xx 系列 (UMS512) ==========
-                // 这些芯片使用类似的 BROM，exec_addr 相同
+                // ========== T6xx Series (UMS512) ==========
+                // These chips use similar BROM, same exec_addr
                 case 0x0610:  // T610
                 case 0x0612:  // T612
                 case 0x0616:  // T616
                 case 0x0618:  // T618
                 case 0x0512:  // UMS512
-                    return 0x65012f48;  // 与 SC9863A 相同
+                    return 0x65012f48;  // Same as SC9863A
                     
                 // ========== SC9853i ==========
                 case 0x9853:  // SC9853i
@@ -917,21 +917,21 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x8581:  // SC8581A
                     return 0x65012f48;
                     
-                // ========== SC9850/SC9860 系列 ==========
-                // 这些较旧的芯片可能使用不同的地址
+                // ========== SC9850/SC9860 Series ==========
+                // These older chips may use different addresses
                 case 0x9850:  // SC9850K
                 case 0x9860:  // SC9860G
                 case 0x9861:  // SC9861
-                    return 0x65012000;  // 需要验证
+                    return 0x65012000;  // Need verification
                     
-                // ========== T7xx 系列 (需要 Exploit) ==========
-                // 已验证: T760 使用 exec_addr 0x65012f48
+                // ========== T7xx Series (Requires Exploit) ==========
+                // Verified: T760 uses exec_addr 0x65012f48
                 case 0x0700:  // T700
-                case 0x0760:  // T760 ✓ 已验证
+                case 0x0760:  // T760 ✓ Verified
                 case 0x0770:  // T770
                     return 0x65012f48;
                     
-                // ========== 5G 系列 ==========
+                // ========== 5G Series ==========
                 case 0x0740:  // T740
                 case 0x0750:  // T750
                 case 0x0765:  // T765
@@ -943,9 +943,9 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x7570:  // T7570
                 case 0x8000:  // T8000
                 case 0x8200:  // T8200
-                    return 0;  // 5G 平台可能不需要 exec bypass
+                    return 0;  // 5G platform may not need exec bypass
                     
-                // ========== 功能机平台 (不需要) ==========
+                // ========== Feature Phone Platforms (Not Required) ==========
                 case 0x6500:  // SC6500
                 case 0x6530:  // SC6530
                 case 0x6531:  // SC6531E
@@ -954,18 +954,18 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x6610:  // SC6610
                 case 0x6620:  // SC6620
                 case 0x6800:  // SC6800H
-                    return 0;  // 功能机不需要 exec bypass
+                    return 0;  // Feature phone does not need exec bypass
                     
-                // ========== T1xx 4G 功能机 ==========
+                // ========== T1xx 4G Feature Phones ==========
                 case 0x0107:  // T107
                 case 0x0117:  // T117
                 case 0x0127:  // T127
                 case 0x9107:  // UMS9107
                 case 0x9117:  // UMS9117
                 case 0x9127:  // UMS9127
-                    return 0;  // 4G 功能机通常不需要
+                    return 0;  // 4G Feature phone usually not required
                     
-                // ========== 传统平台 (不需要) ==========
+                // ========== Legacy Platforms (Not Required) ==========
                 case 0x7701:  // SC7701
                 case 0x7702:  // SC7702
                 case 0x7710:  // SC7710
@@ -981,27 +981,27 @@ namespace LoveAlways.Spreadtrum.Protocol
                 case 0x9820:  // SC9820
                 case 0x9830:  // SC9830
                 case 0x9832:  // SC9832E
-                    return 0;  // 传统平台不需要
+                    return 0;  // Legacy platform not required
                     
-                // ========== UWS 可穿戴 ==========
+                // ========== UWS Wearable ==========
                 case 0x6121:  // UWS6121
                 case 0x6122:  // UWS6122
                 case 0x6131:  // UWS6131
                 case 0x6152:  // UWS6152
-                    return 0;  // 可穿戴平台不需要
+                    return 0;  // Wearable platform not required
                     
                 default:
-                    // 对于未知芯片，如果 FDL1 地址是 0x65000800，则可能需要 exec bypass
+                    // For unknown chips, if FDL1 address is 0x65000800, then it may need exec bypass
                     if (GetFdl1Address(chipId) == 0x65000800)
                     {
-                        return 0x65012f48;  // 默认尝试
+                        return 0x65012f48;  // Default attempt
                     }
-                    return 0;  // 默认不使用 exec bypass
+                    return 0;  // Default not using exec bypass
             }
         }
         
         /// <summary>
-        /// 检查芯片是否需要 exec_no_verify 绕过
+        /// Check if chip needs exec_no_verify bypass
         /// </summary>
         public static bool NeedsExecBypass(uint chipId)
         {
@@ -1009,7 +1009,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         }
         
         /// <summary>
-        /// 根据芯片 ID 判断是否为 5G 平台
+        /// Determine if it is a 5G platform based on chip ID
         /// </summary>
         public static bool Is5GPlatform(uint chipId)
         {
@@ -1036,7 +1036,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         }
         
         /// <summary>
-        /// 根据芯片 ID 判断存储类型
+        /// Determine storage type based on chip ID
         /// </summary>
         public static string GetStorageType(uint chipId)
         {
@@ -1090,7 +1090,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         }
         
         /// <summary>
-        /// 判断是否为功能机平台
+        /// Determine if it is a feature phone platform
         /// </summary>
         public static bool IsFeaturePhonePlatform(uint chipId)
         {
@@ -1115,7 +1115,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         }
         
         /// <summary>
-        /// 判断是否为可穿戴平台
+        /// Determine if it is a wearable platform
         /// </summary>
         public static bool IsWearablePlatform(uint chipId)
         {
@@ -1133,7 +1133,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         }
         
         /// <summary>
-        /// 判断是否为 IoT 平台
+        /// Determine if it is an IoT platform
         /// </summary>
         public static bool IsIoTPlatform(uint chipId)
         {
@@ -1152,7 +1152,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         }
         
         /// <summary>
-        /// 判断是否需要 Exploit 才能下载 FDL
+        /// Determine if exploit is required to download FDL
         /// </summary>
         public static bool RequiresExploit(uint chipId)
         {
@@ -1178,7 +1178,7 @@ namespace LoveAlways.Spreadtrum.Protocol
     }
 
     /// <summary>
-    /// 展讯 USB VID/PID
+    /// Spreadtrum USB VID/PID
     /// </summary>
     public static class SprdUsbIds
     {
@@ -1186,48 +1186,48 @@ namespace LoveAlways.Spreadtrum.Protocol
         public const int VID_SPRD = 0x1782;
         public const int VID_UNISOC = 0x1782;
         
-        // 下载模式 PID (标准)
-        public const int PID_DOWNLOAD = 0x4D00;      // 标准下载模式
-        public const int PID_DOWNLOAD_2 = 0x4D01;    // 下载模式变体
-        public const int PID_DOWNLOAD_3 = 0x4D02;    // 下载模式变体2
-        public const int PID_DOWNLOAD_4 = 0x4D03;    // 下载模式变体3
+        // Download mode PID (Standard)
+        public const int PID_DOWNLOAD = 0x4D00;      // Standard download mode
+        public const int PID_DOWNLOAD_2 = 0x4D01;    // Download mode variant
+        public const int PID_DOWNLOAD_3 = 0x4D02;    // Download mode variant 2
+        public const int PID_DOWNLOAD_4 = 0x4D03;    // Download mode variant 3
         public const int PID_U2S_DIAG = 0x4D00;      // U2S Diag (SPRD U2S Diag)
         
-        // 下载模式 PID (新平台)
-        public const int PID_UMS_DOWNLOAD = 0x5000;  // UMS 系列下载模式
-        public const int PID_UWS_DOWNLOAD = 0x5001;  // UWS 系列下载模式
-        public const int PID_T606_DOWNLOAD = 0x5002; // T606 下载模式
+        // Download mode PID (New platform)
+        public const int PID_UMS_DOWNLOAD = 0x5000;  // UMS series download mode
+        public const int PID_UWS_DOWNLOAD = 0x5001;  // UWS series download mode
+        public const int PID_T606_DOWNLOAD = 0x5002; // T606 download mode
         
-        // 诊断模式 PID
-        public const int PID_DIAG = 0x4D10;          // 标准诊断模式
-        public const int PID_DIAG_2 = 0x4D11;        // 诊断模式变体
-        public const int PID_DIAG_3 = 0x4D14;        // 诊断模式变体2
+        // Diagnostic mode PID
+        public const int PID_DIAG = 0x4D10;          // Standard diagnostic mode
+        public const int PID_DIAG_2 = 0x4D11;        // Diagnostic mode variant
+        public const int PID_DIAG_3 = 0x4D14;        // Diagnostic mode variant 2
         
-        // ADB 模式 PID
-        public const int PID_ADB = 0x4D12;           // ADB 模式
-        public const int PID_ADB_2 = 0x4D13;         // ADB 模式变体
+        // ADB mode PID
+        public const int PID_ADB = 0x4D12;           // ADB mode
+        public const int PID_ADB_2 = 0x4D13;         // ADB mode variant
         
-        // MTP 模式 PID
-        public const int PID_MTP = 0x4D15;           // MTP 模式
-        public const int PID_MTP_2 = 0x4D16;         // MTP 模式变体
+        // MTP mode PID
+        public const int PID_MTP = 0x4D15;           // MTP mode
+        public const int PID_MTP_2 = 0x4D16;         // MTP mode variant
         
-        // CDC/ACM 模式 PID
-        public const int PID_CDC = 0x4D20;           // CDC 模式
-        public const int PID_ACM = 0x4D21;           // ACM 模式
-        public const int PID_SERIAL = 0x4D22;        // 串口模式
+        // CDC/ACM mode PID
+        public const int PID_CDC = 0x4D20;           // CDC mode
+        public const int PID_ACM = 0x4D21;           // ACM mode
+        public const int PID_SERIAL = 0x4D22;        // Serial mode
         
-        // 特殊 PID
-        public const int PID_RNDIS = 0x4D30;         // RNDIS 网络模式
-        public const int PID_FASTBOOT = 0x4D40;      // Fastboot 模式
+        // Special PID
+        public const int PID_RNDIS = 0x4D30;         // RNDIS network mode
+        public const int PID_FASTBOOT = 0x4D40;      // Fastboot mode
         
-        // ========== 其他厂商使用 Spreadtrum 芯片 ==========
+        // ========== Other manufacturers using Spreadtrum chips ==========
         
         // Samsung
         public const int VID_SAMSUNG = 0x04E8;
-        public const int PID_SAMSUNG_SPRD = 0x685D;  // Samsung Spreadtrum 下载
-        public const int PID_SAMSUNG_SPRD_2 = 0x685C; // Samsung Spreadtrum 下载2
-        public const int PID_SAMSUNG_DIAG = 0x6860;  // Samsung 诊断
-        public const int PID_SAMSUNG_DIAG_2 = 0x6862; // Samsung 诊断2
+        public const int PID_SAMSUNG_SPRD = 0x685D;  // Samsung Spreadtrum download
+        public const int PID_SAMSUNG_SPRD_2 = 0x685C; // Samsung Spreadtrum download 2
+        public const int PID_SAMSUNG_DIAG = 0x6860;  // Samsung diagnostic
+        public const int PID_SAMSUNG_DIAG_2 = 0x6862; // Samsung diagnostic 2
         
         // Huawei
         public const int VID_HUAWEI = 0x12D1;
@@ -1259,7 +1259,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         public const int PID_REALME_DOWNLOAD_2 = 0x2763;
         public const int PID_REALME_DOWNLOAD_3 = 0x2764;
         
-        // Xiaomi (部分使用 Spreadtrum)
+        // Xiaomi (Partial use of Spreadtrum)
         public const int VID_XIAOMI = 0x2717;
         public const int PID_XIAOMI_DOWNLOAD = 0xFF48;
         
@@ -1275,7 +1275,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         public const int VID_TRANSSION_2 = 0x1782;
         
         /// <summary>
-        /// 检查是否为展讯设备 VID
+        /// Check if it is a Spreadtrum device VID
         /// </summary>
         public static bool IsSprdVid(int vid)
         {
@@ -1291,7 +1291,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         }
         
         /// <summary>
-        /// 检查是否为下载模式 PID
+        /// Check if it is a download mode PID
         /// </summary>
         public static bool IsDownloadPid(int pid)
         {
@@ -1329,7 +1329,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         }
         
         /// <summary>
-        /// 检查是否为诊断模式 PID
+        /// Check if it is a diagnostic mode PID
         /// </summary>
         public static bool IsDiagPid(int pid)
         {

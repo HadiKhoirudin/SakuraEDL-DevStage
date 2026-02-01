@@ -1,9 +1,14 @@
 // ============================================================================
-// LoveAlways - MediaTek DA 加载器
+// LoveAlways - MediaTek DA Loader
 // MediaTek Download Agent Loader
 // ============================================================================
-// 参考: mtkclient 项目 mtk_daloader.py
+// Reference: mtkclient project mtk_daloader.py
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System;
 using System.IO;
@@ -16,7 +21,7 @@ using DaEntry = LoveAlways.MediaTek.Models.DaEntry;
 namespace LoveAlways.MediaTek.Protocol
 {
     /// <summary>
-    /// DA 加载器 - 负责解析和加载 DA 文件
+    /// DA Loader - Responsible for parsing and loading DA files
     /// </summary>
     public class DaLoader
     {
@@ -24,11 +29,11 @@ namespace LoveAlways.MediaTek.Protocol
         private readonly Action<string> _log;
         private readonly Action<double> _progressCallback;
 
-        // DA 文件头魔数
+        // DA file header magic numbers
         private const uint DA_MAGIC = 0x4D4D4D4D;  // "MMMM"
         private const uint DA_MAGIC_V6 = 0x68766561;  // "hvea" (XML DA)
         
-        // DA1/DA2 默认签名长度
+        // DA1/DA2 default signature lengths
         private const int DEFAULT_SIG_LEN = 0x100;
         private const int V6_SIG_LEN = 0x30;
 
@@ -39,16 +44,16 @@ namespace LoveAlways.MediaTek.Protocol
             _progressCallback = progressCallback;
         }
 
-        #region DA 文件解析
+        #region DA File Parsing
 
         /// <summary>
-        /// 解析 DA 文件 (MTK_AllInOne_DA.bin 格式)
+        /// Parse DA file (MTK_AllInOne_DA.bin format)
         /// </summary>
         public (DaEntry da1, DaEntry da2)? ParseDaFile(string filePath, ushort hwCode)
         {
             if (!File.Exists(filePath))
             {
-                _log($"[DA] DA 文件不存在: {filePath}");
+                _log($"[DA] DA file does not exist: {filePath}");
                 return null;
             }
 
@@ -57,19 +62,19 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 解析 DA 数据
+        /// Parse DA data
         /// </summary>
         public (DaEntry da1, DaEntry da2)? ParseDaData(byte[] data, ushort hwCode)
         {
             if (data == null || data.Length < 0x100)
             {
-                _log("[DA] DA 数据无效");
+                _log("[DA] Invalid DA data");
                 return null;
             }
 
             try
             {
-                // 检查 DA 文件格式
+                // Check DA file format
                 uint magic = BitConverter.ToUInt32(data, 0);
                 
                 if (magic == DA_MAGIC_V6)
@@ -83,23 +88,23 @@ namespace LoveAlways.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _log($"[DA] 解析 DA 失败: {ex.Message}");
+                _log($"[DA] Failed to parse DA: {ex.Message}");
                 return null;
             }
         }
 
         /// <summary>
-        /// 解析 V6 (XML) 格式的 DA 文件
+        /// Parse V6 (XML) format DA file
         /// </summary>
         private (DaEntry da1, DaEntry da2)? ParseDaV6(byte[] data, ushort hwCode)
         {
-            _log($"[DA] 解析 V6 DA 文件 (HW Code: 0x{hwCode:X4})");
+            _log($"[DA] Parsing V6 DA file (HW Code: 0x{hwCode:X4})");
 
-            // V6 DA 文件头结构
-            // 偏移 0x00: 魔数 "hvea"
-            // 偏移 0x04: 版本
-            // 偏移 0x08: DA 条目数量
-            // 偏移 0x0C: DA 条目表偏移
+            // V6 DA file header structure
+            // Offset 0x00: Magic "hvea"
+            // Offset 0x04: Version
+            // Offset 0x08: Number of DA entries
+            // Offset 0x0C: DA entry table offset
 
             int entryCount = BitConverter.ToInt32(data, 0x08);
             int tableOffset = BitConverter.ToInt32(data, 0x0C);
@@ -107,10 +112,10 @@ namespace LoveAlways.MediaTek.Protocol
             DaEntry da1 = null;
             DaEntry da2 = null;
 
-            // 遍历 DA 条目查找匹配的 HW Code
+            // Iterate through DA entries to find matching HW Code
             for (int i = 0; i < entryCount; i++)
             {
-                int entryOffset = tableOffset + (i * 0x40);  // 每个条目 64 字节
+                int entryOffset = tableOffset + (i * 0x40);  // 64 bytes per entry
                 
                 if (entryOffset + 0x40 > data.Length)
                     break;
@@ -119,7 +124,7 @@ namespace LoveAlways.MediaTek.Protocol
                 
                 if (entryHwCode == hwCode)
                 {
-                    // 找到匹配的条目
+                    // Found matching entry
                     uint da1Offset = BitConverter.ToUInt32(data, entryOffset + 0x10);
                     uint da1Size = BitConverter.ToUInt32(data, entryOffset + 0x14);
                     uint da1LoadAddr = BitConverter.ToUInt32(data, entryOffset + 0x18);
@@ -128,7 +133,7 @@ namespace LoveAlways.MediaTek.Protocol
                     uint da2Size = BitConverter.ToUInt32(data, entryOffset + 0x24);
                     uint da2LoadAddr = BitConverter.ToUInt32(data, entryOffset + 0x28);
 
-                    // 提取 DA1
+                    // Extract DA1
                     if (da1Offset > 0 && da1Size > 0 && da1Offset + da1Size <= data.Length)
                     {
                         da1 = new DaEntry
@@ -143,7 +148,7 @@ namespace LoveAlways.MediaTek.Protocol
                         Array.Copy(data, da1Offset, da1.Data, 0, da1Size);
                     }
 
-                    // 提取 DA2
+                    // Extract DA2
                     if (da2Offset > 0 && da2Size > 0 && da2Offset + da2Size <= data.Length)
                     {
                         da2 = new DaEntry
@@ -164,31 +169,31 @@ namespace LoveAlways.MediaTek.Protocol
 
             if (da1 == null)
             {
-                _log($"[DA] 未找到 HW Code 0x{hwCode:X4} 的 DA");
+                _log($"[DA] Could not find DA for HW Code 0x{hwCode:X4}");
                 return null;
             }
 
-            _log($"[DA] 找到 DA1: 地址=0x{da1.LoadAddr:X8}, 大小={da1.Data.Length}");
+            _log($"[DA] Found DA1: Address=0x{da1.LoadAddr:X8}, Size={da1.Data.Length}");
             if (da2 != null)
-                _log($"[DA] 找到 DA2: 地址=0x{da2.LoadAddr:X8}, 大小={da2.Data.Length}");
+                _log($"[DA] Found DA2: Address=0x{da2.LoadAddr:X8}, Size={da2.Data.Length}");
 
             return (da1, da2);
         }
 
         /// <summary>
-        /// 解析传统格式的 DA 文件
+        /// Parse legacy format DA file
         /// </summary>
         private (DaEntry da1, DaEntry da2)? ParseDaLegacy(byte[] data, ushort hwCode)
         {
-            _log($"[DA] 解析 Legacy DA 文件 (HW Code: 0x{hwCode:X4})");
+            _log($"[DA] Parsing Legacy DA file (HW Code: 0x{hwCode:X4})");
 
-            // Legacy DA 文件通常是单个 DA
-            // 需要根据具体格式解析
+            // Legacy DA files are usually a single DA
+            // Needs parsing based on specific format
             
             var da1 = new DaEntry
             {
                 Name = "DA1",
-                LoadAddr = 0x200000,  // 默认地址
+                LoadAddr = 0x200000,  // Default address
                 SignatureLen = DEFAULT_SIG_LEN,
                 Data = data,
                 Version = 3,
@@ -200,81 +205,81 @@ namespace LoveAlways.MediaTek.Protocol
 
         #endregion
 
-        #region DA 上传
+        #region DA Upload
 
         /// <summary>
-        /// 上传 DA1
+        /// Upload DA1
         /// </summary>
         public async Task<bool> UploadDa1Async(DaEntry da1, CancellationToken ct = default)
         {
             if (da1 == null || da1.Data == null)
             {
-                _log("[DA] DA1 数据为空");
+                _log("[DA] DA1 data is empty");
                 return false;
             }
 
-            _log($"[DA] 上传 DA1 到 0x{da1.LoadAddr:X8} ({da1.Data.Length} 字节)");
+            _log($"[DA] Uploading DA1 to 0x{da1.LoadAddr:X8} ({da1.Data.Length} bytes)");
 
             bool success = await _brom.SendDaAsync(da1.LoadAddr, da1.Data, da1.SignatureLen, ct);
             if (!success)
             {
-                _log("[DA] DA1 上传失败");
+                _log("[DA] DA1 upload failed");
                 return false;
             }
 
-            // 检查上传状态
+            // Check upload status
             ushort uploadStatus = _brom.LastUploadStatus;
-            _log($"[DA] DA 上传状态: 0x{uploadStatus:X4}");
+            _log($"[DA] DA upload status: 0x{uploadStatus:X4}");
             
-            // 等待设备处理 DA
-            _log("[DA] 等待设备处理 DA...");
+            // Wait for device to process DA
+            _log("[DA] Waiting for device to process DA...");
             await System.Threading.Tasks.Task.Delay(200, ct);
 
-            // 状态 0x7017 表示 DAA 安全错误
-            // 这意味着设备启用了 DAA (Download Agent Authentication) 保护
-            // 在 Preloader 模式下，设备可能会重新枚举或重启
+            // Status 0x7017 indicates DAA security error
+            // This means device has DAA (Download Agent Authentication) protection enabled
+            // In Preloader mode, device may re-enumerate or reboot
             if (uploadStatus == 0x7017 || uploadStatus == 0x7015)
             {
-                _log($"[DA] 状态 0x{uploadStatus:X4}: DAA 安全保护触发");
-                _log("[DA] ⚠ 设备启用了 DAA (Download Agent Authentication)");
-                _log("[DA] ⚠ 需要使用官方签名的 DA 或通过漏洞绕过");
-                _log("[DA] 尝试等待 USB 重新枚举...");
+                _log($"[DA] Status 0x{uploadStatus:X4}: DAA security protection triggered");
+                _log("[DA] ⚠ Device has DAA (Download Agent Authentication) enabled");
+                _log("[DA] ⚠ Requires officially signed DA or vulnerability bypass");
+                _log("[DA] Attempting to wait for USB re-enumeration...");
                 
-                // 等待一小段时间让设备处理
+                // Wait for device to process
                 await System.Threading.Tasks.Task.Delay(1500, ct);
                 
-                // 返回成功让上层处理 USB 重新枚举
+                // Return success to let upper layer handle USB re-enumeration
                 return true;
             }
 
-            // 跳转执行 DA1
+            // Jump to execute DA1
             try
             {
                 success = await _brom.JumpDaAsync(da1.LoadAddr, ct);
             }
             catch (Exception ex)
             {
-                // 端口关闭可能意味着 DA 正在运行并重新枚举 USB
-                _log($"[DA] JUMP_DA 异常: {ex.Message}");
-                _log("[DA] ⚠ 端口断开 - DA 可能已开始执行并重新枚举 USB");
-                _log("[DA] ⚠ 请等待设备重新出现并重新连接");
+                // Port closure may mean DA is running and re-enumerating USB
+                _log($"[DA] JUMP_DA exception: {ex.Message}");
+                _log("[DA] ⚠ Port disconnected - DA may have started execution and re-enumerated USB");
+                _log("[DA] ⚠ Please wait for device to reappear and reconnect");
                 
-                // 返回特殊状态，让上层处理重连
-                return true;  // 暂时返回成功，因为 DA 可能确实在运行
+                // Return special status to let upper layer handle reconnection
+                return true;  // Temporarily return success as DA might indeed be running
             }
             
             if (!success)
             {
-                // JUMP_DA 失败，检查端口状态
+                // JUMP_DA failed, check port status
                 if (!_brom.IsConnected)
                 {
-                    _log("[DA] ⚠ 端口已断开 - DA 可能正在运行");
-                    _log("[DA] ⚠ 设备将以新的 COM 端口重新出现");
-                    return true;  // DA 可能在运行
+                    _log("[DA] ⚠ Port disconnected - DA may be running");
+                    _log("[DA] ⚠ Device should reappear with a new COM port");
+                    return true;  // DA may be running
                 }
                 
-                // 尝试检测 DA 就绪信号
-                _log("[DA] JUMP_DA 失败，检测 DA 是否已启动...");
+                // Try to detect DA ready signal
+                _log("[DA] JUMP_DA failed, checking if DA has started...");
                 await System.Threading.Tasks.Task.Delay(500, ct);
                 
                 try
@@ -282,64 +287,64 @@ namespace LoveAlways.MediaTek.Protocol
                     bool daReady = await _brom.TryDetectDaReadyAsync(ct);
                     if (daReady)
                     {
-                        _log("[DA] ✓ DA 已启动");
+                        _log("[DA] ✓ DA started");
                         return true;
                     }
                 }
                 catch
                 {
-                    _log("[DA] 端口状态变化，DA 可能正在重新枚举 USB");
+                    _log("[DA] Port status changed, DA may be re-enumerating USB");
                     return true;
                 }
                 
-                _log("[DA] DA1 跳转执行失败");
+                _log("[DA] DA1 jump execution failed");
                 return false;
             }
 
-            _log("[DA] ✓ DA1 上传并执行成功");
+            _log("[DA] ✓ DA1 uploaded and executed successfully");
             return true;
         }
 
         /// <summary>
-        /// 上传 DA2 (通过 XML DA 协议)
+        /// Upload DA2 (via XML DA protocol)
         /// </summary>
         public async Task<bool> UploadDa2Async(DaEntry da2, XmlDaClient xmlClient, CancellationToken ct = default)
         {
             if (da2 == null || da2.Data == null)
             {
-                _log("[DA] DA2 数据为空");
+                _log("[DA] DA2 data is empty");
                 return false;
             }
 
-            _log($"[DA] 上传 DA2 到 0x{da2.LoadAddr:X8} ({da2.Data.Length} 字节)");
+            _log($"[DA] Uploading DA2 to 0x{da2.LoadAddr:X8} ({da2.Data.Length} bytes)");
 
-            // 使用 XML DA 协议上传 DA2
+            // Upload DA2 using XML DA protocol
             bool success = await xmlClient.UploadDa2Async(da2, ct);
             if (!success)
             {
-                _log("[DA] DA2 上传失败");
+                _log("[DA] DA2 upload failed");
                 return false;
             }
 
-            _log("[DA] ✓ DA2 上传成功");
+            _log("[DA] ✓ DA2 uploaded successfully");
             return true;
         }
 
         #endregion
 
-        #region DA 签名处理
+        #region DA Signature Handling
 
         /// <summary>
-        /// 计算 DA 哈希位置 (V6 格式)
+        /// Calculate DA hash position (V6 format)
         /// </summary>
         public int FindDa2HashPosition(byte[] da1, int sigLen)
         {
-            // V6 格式: hash_pos = len(da1) - sig_len - 0x30
+            // V6 format: hash_pos = len(da1) - sig_len - 0x30
             return da1.Length - sigLen - 0x30;
         }
 
         /// <summary>
-        /// 计算 SHA-256 哈希
+        /// Compute SHA-256 hash
         /// </summary>
         public byte[] ComputeSha256(byte[] data)
         {
@@ -350,44 +355,44 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 修复 DA1 中的 DA2 哈希 (用于 Carbonara 漏洞)
+        /// Fix DA2 hash in DA1 (used for Carbonara exploit)
         /// </summary>
         public byte[] FixDa1Hash(byte[] da1, byte[] patchedDa2, int hashPos)
         {
             if (hashPos < 0 || hashPos + 32 > da1.Length)
             {
-                _log("[DA] 哈希位置无效");
+                _log("[DA] Invalid hash position");
                 return da1;
             }
 
-            // 计算新的 DA2 哈希
+            // Compute new DA2 hash
             byte[] newHash = ComputeSha256(patchedDa2);
 
-            // 复制 DA1 并修改哈希
+            // Copy DA1 and modify hash
             byte[] result = new byte[da1.Length];
             Array.Copy(da1, result, da1.Length);
             Array.Copy(newHash, 0, result, hashPos, 32);
 
-            _log($"[DA] 已更新 DA1 中的 DA2 哈希 (位置: 0x{hashPos:X})");
+            _log($"[DA] Updated DA2 hash in DA1 (Position: 0x{hashPos:X})");
             return result;
         }
 
         #endregion
 
-        #region DA 补丁
+        #region DA Patching
 
         /// <summary>
-        /// 应用 DA 补丁 (用于 Carbonara 漏洞)
+        /// Apply DA patch (used for Carbonara exploit)
         /// </summary>
         public byte[] ApplyDaPatch(byte[] daData, byte[] originalBytes, byte[] patchBytes, int offset)
         {
             if (offset < 0 || offset + originalBytes.Length > daData.Length)
             {
-                _log("[DA] 补丁偏移无效");
+                _log("[DA] Invalid patch offset");
                 return daData;
             }
 
-            // 验证原始字节
+            // Verify original bytes
             bool match = true;
             for (int i = 0; i < originalBytes.Length; i++)
             {
@@ -400,32 +405,32 @@ namespace LoveAlways.MediaTek.Protocol
 
             if (!match)
             {
-                _log("[DA] 原始字节不匹配，无法应用补丁");
+                _log("[DA] Original bytes mismatch, cannot apply patch");
                 return daData;
             }
 
-            // 应用补丁
+            // Apply patch
             byte[] result = new byte[daData.Length];
             Array.Copy(daData, result, daData.Length);
             Array.Copy(patchBytes, 0, result, offset, patchBytes.Length);
 
-            _log($"[DA] 已应用补丁 (偏移: 0x{offset:X})");
+            _log($"[DA] Patch applied (Offset: 0x{offset:X})");
             return result;
         }
 
         /// <summary>
-        /// 查找安全检查函数 (用于 Carbonara 漏洞)
+        /// Find security check function (used for Carbonara exploit)
         /// </summary>
         public int FindSecurityCheckOffset(byte[] daData)
         {
-            // 查找安全检查指令模式
+            // Search for security check instruction patterns
             // ARM: MOV R0, #0 (0x00 0x00 0xA0 0xE3)
             // Thumb: MOVS R0, #0 (0x00 0x20)
             
             byte[] armPattern = { 0x00, 0x00, 0xA0, 0xE3 };  // MOV R0, #0
             byte[] thumbPattern = { 0x00, 0x20 };  // MOVS R0, #0
 
-            // 搜索 ARM 模式
+            // Search ARM mode
             for (int i = 0; i < daData.Length - 4; i++)
             {
                 bool match = true;
@@ -439,8 +444,8 @@ namespace LoveAlways.MediaTek.Protocol
                 }
                 if (match)
                 {
-                    // 检查上下文确认是安全检查
-                    // 通常后面会有 BX LR 或 POP {PC}
+                    // Check context to confirm security check
+                    // Usually followed by BX LR or POP {PC}
                     return i;
                 }
             }
@@ -449,7 +454,7 @@ namespace LoveAlways.MediaTek.Protocol
         }
 
         /// <summary>
-        /// 生成补丁字节 (MOV R0, #1)
+        /// Generate patch bytes (MOV R0, #1)
         /// </summary>
         public byte[] GenerateBypassPatch(bool isArm = true)
         {
@@ -467,14 +472,14 @@ namespace LoveAlways.MediaTek.Protocol
 
         #endregion
 
-        #region 辅助方法
+        #region Helper Methods
 
         /// <summary>
-        /// 获取 DA 默认加载地址
+        /// Get default DA load address
         /// </summary>
         public uint GetDefaultDa1Address(ushort hwCode)
         {
-            // 根据芯片返回默认 DA1 加载地址
+            // Return default DA1 load address based on chip
             return hwCode switch
             {
                 0x0279 => 0x200000,  // MT6797
@@ -483,16 +488,16 @@ namespace LoveAlways.MediaTek.Protocol
                 0x0562 => 0x200000,  // MT6761
                 0x0717 => 0x200000,  // MT6765
                 0x0788 => 0x200000,  // MT6873
-                _ => 0x200000        // 默认值
+                _ => 0x200000        // Default value
             };
         }
 
         /// <summary>
-        /// 获取 DA2 默认加载地址
+        /// Get default DA2 load address
         /// </summary>
         public uint GetDefaultDa2Address(ushort hwCode)
         {
-            // 根据芯片返回默认 DA2 加载地址
+            // Return default DA2 load address based on chip
             return hwCode switch
             {
                 0x0279 => 0x40000000,  // MT6797
@@ -501,26 +506,26 @@ namespace LoveAlways.MediaTek.Protocol
                 0x0562 => 0x40000000,  // MT6761
                 0x0717 => 0x40000000,  // MT6765
                 0x0788 => 0x40000000,  // MT6873
-                _ => 0x40000000        // 默认值
+                _ => 0x40000000        // Default value
             };
         }
 
         /// <summary>
-        /// 验证 DA 数据完整性
+        /// Verify DA data integrity
         /// </summary>
         public bool VerifyDaIntegrity(byte[] daData)
         {
             if (daData == null || daData.Length < 0x100)
                 return false;
 
-            // 检查 ELF 头
+            // Check ELF header
             if (daData[0] == 0x7F && daData[1] == 'E' && daData[2] == 'L' && daData[3] == 'F')
                 return true;
 
-            // 检查其他有效的 DA 头
+            // Check other valid DA headers
             // ...
 
-            return true;  // 默认接受
+            return true;  // Default accept
         }
 
         #endregion

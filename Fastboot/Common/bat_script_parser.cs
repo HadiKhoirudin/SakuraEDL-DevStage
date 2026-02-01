@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,8 +11,8 @@ using System.Text.RegularExpressions;
 namespace LoveAlways.Fastboot.Common
 {
     /// <summary>
-    /// Fastboot 刷机脚本解析器
-    /// 支持解析 flash_all.bat 等脚本文件
+    /// Fastboot Flashing Script Parser
+    /// Supports parsing script files such as flash_all.bat
     /// </summary>
     public class BatScriptParser
     {
@@ -21,37 +26,37 @@ namespace LoveAlways.Fastboot.Common
         }
 
         /// <summary>
-        /// 刷机任务
+        /// Flashing Task
         /// </summary>
         public class FlashTask
         {
             /// <summary>
-            /// 分区名称
+            /// Partition name
             /// </summary>
             public string PartitionName { get; set; }
 
             /// <summary>
-            /// 镜像文件路径（相对或绝对）
+            /// Image file path (relative or absolute)
             /// </summary>
             public string ImagePath { get; set; }
 
             /// <summary>
-            /// 镜像文件名
+            /// Image filename
             /// </summary>
             public string ImageFileName => Path.GetFileName(ImagePath ?? "");
 
             /// <summary>
-            /// 操作类型 (flash/erase/set_active/reboot)
+            /// Operation type (flash/erase/set_active/reboot)
             /// </summary>
             public string Operation { get; set; } = "flash";
 
             /// <summary>
-            /// 文件大小
+            /// File size
             /// </summary>
             public long FileSize { get; set; }
 
             /// <summary>
-            /// 文件大小格式化显示
+            /// Formatted file size display
             /// </summary>
             public string FileSizeFormatted
             {
@@ -69,22 +74,22 @@ namespace LoveAlways.Fastboot.Common
             }
 
             /// <summary>
-            /// 是否存在镜像文件
+            /// Whether the image file exists
             /// </summary>
             public bool ImageExists { get; set; }
 
             /// <summary>
-            /// 额外参数（如 --disable-verity）
+            /// Extra arguments (e.g., --disable-verity)
             /// </summary>
             public string ExtraArgs { get; set; }
 
             /// <summary>
-            /// 原始命令行
+            /// Raw command line
             /// </summary>
             public string RawCommand { get; set; }
 
             /// <summary>
-            /// 行号
+            /// Line number
             /// </summary>
             public int LineNumber { get; set; }
 
@@ -95,7 +100,7 @@ namespace LoveAlways.Fastboot.Common
         }
 
         /// <summary>
-        /// 解析 bat 脚本文件
+        /// Parse bat script file
         /// </summary>
         public List<FlashTask> ParseBatScript(string batPath)
         {
@@ -103,37 +108,37 @@ namespace LoveAlways.Fastboot.Common
 
             if (!File.Exists(batPath))
             {
-                _log($"[BatParser] 脚本文件不存在: {batPath}");
+                _log($"[BatParser] Script file does not exist: {batPath}");
                 return tasks;
             }
 
             _baseDir = Path.GetDirectoryName(batPath);
             string[] lines = File.ReadAllLines(batPath);
 
-            // 正则表达式匹配 fastboot 命令
-            // 支持格式:
+            // Regex matching fastboot commands
+            // Supported formats:
             // fastboot %* flash partition_name path/to/file.img
             // fastboot %* flash partition_ab path/to/file.img
             // fastboot %* erase partition_name
             // fastboot %* set_active a
             // fastboot %* reboot
 
-            // flash 命令正则
+            // flash command regex
             var flashRegex = new Regex(
                 @"fastboot\s+%\*\s+flash\s+(\S+)\s+(%~dp0)?([^\s|&]+)",
                 RegexOptions.IgnoreCase);
 
-            // erase 命令正则
+            // erase command regex
             var eraseRegex = new Regex(
                 @"fastboot\s+%\*\s+erase\s+(\S+)",
                 RegexOptions.IgnoreCase);
 
-            // set_active 命令正则
+            // set_active command regex
             var setActiveRegex = new Regex(
                 @"fastboot\s+%\*\s+set_active\s+(\S+)",
                 RegexOptions.IgnoreCase);
 
-            // reboot 命令正则
+            // reboot command regex
             var rebootRegex = new Regex(
                 @"fastboot\s+%\*\s+reboot(?:\s+(\S+))?",
                 RegexOptions.IgnoreCase);
@@ -142,18 +147,18 @@ namespace LoveAlways.Fastboot.Common
             {
                 string line = lines[i].Trim();
 
-                // 跳过注释和空行
+                // Skip comments and empty lines
                 if (string.IsNullOrWhiteSpace(line) || line.StartsWith("::") || line.StartsWith("REM "))
                     continue;
 
-                // 解析 flash 命令
+                // Parse flash command
                 var flashMatch = flashRegex.Match(line);
                 if (flashMatch.Success)
                 {
                     string partition = flashMatch.Groups[1].Value;
                     string imagePath = flashMatch.Groups[3].Value;
 
-                    // 处理路径
+                    // Handle path
                     imagePath = NormalizePath(imagePath);
                     string fullPath = ResolveFullPath(imagePath);
 
@@ -166,7 +171,7 @@ namespace LoveAlways.Fastboot.Common
                         LineNumber = i + 1
                     };
 
-                    // 检查文件是否存在并获取大小
+                    // Check if file exists and get size
                     if (File.Exists(fullPath))
                     {
                         task.ImageExists = true;
@@ -181,7 +186,7 @@ namespace LoveAlways.Fastboot.Common
                     continue;
                 }
 
-                // 解析 erase 命令
+                // Parse erase command
                 var eraseMatch = eraseRegex.Match(line);
                 if (eraseMatch.Success)
                 {
@@ -197,7 +202,7 @@ namespace LoveAlways.Fastboot.Common
                     continue;
                 }
 
-                // 解析 set_active 命令
+                // Parse set_active command
                 var setActiveMatch = setActiveRegex.Match(line);
                 if (setActiveMatch.Success)
                 {
@@ -213,7 +218,7 @@ namespace LoveAlways.Fastboot.Common
                     continue;
                 }
 
-                // 解析 reboot 命令
+                // Parse reboot command
                 var rebootMatch = rebootRegex.Match(line);
                 if (rebootMatch.Success)
                 {
@@ -230,12 +235,12 @@ namespace LoveAlways.Fastboot.Common
                 }
             }
 
-            _log($"[BatParser] 解析完成: {tasks.Count} 个任务");
+            _log($"[BatParser] Parse complete: {tasks.Count} tasks");
             return tasks;
         }
 
         /// <summary>
-        /// 解析 sh 脚本文件 (Linux 格式)
+        /// Parse sh script file (Linux format)
         /// </summary>
         public List<FlashTask> ParseShScript(string shPath)
         {
@@ -243,14 +248,14 @@ namespace LoveAlways.Fastboot.Common
 
             if (!File.Exists(shPath))
             {
-                _log($"[BatParser] 脚本文件不存在: {shPath}");
+                _log($"[BatParser] Script file does not exist: {shPath}");
                 return tasks;
             }
 
             _baseDir = Path.GetDirectoryName(shPath);
             string[] lines = File.ReadAllLines(shPath);
 
-            // sh 脚本格式:
+            // sh script format:
             // fastboot $* flash partition_name "$DIR/images/file.img"
             // fastboot $* flash partition_name $DIR/images/file.img
 
@@ -345,12 +350,12 @@ namespace LoveAlways.Fastboot.Common
                 }
             }
 
-            _log($"[BatParser] 解析完成: {tasks.Count} 个任务");
+            _log($"[BatParser] Parse complete: {tasks.Count} tasks");
             return tasks;
         }
 
         /// <summary>
-        /// 自动检测并解析脚本文件
+        /// Automatically detect and parse script file
         /// </summary>
         public List<FlashTask> ParseScript(string scriptPath)
         {
@@ -366,7 +371,7 @@ namespace LoveAlways.Fastboot.Common
             }
             else
             {
-                // 尝试检测文件内容
+                // Try to detect file content
                 string firstLine = "";
                 try
                 {
@@ -389,37 +394,36 @@ namespace LoveAlways.Fastboot.Common
         }
 
         /// <summary>
-        /// 标准化路径
+        /// Normalize path
         /// </summary>
         private string NormalizePath(string path)
         {
-            // 移除引号
+            // Remove quotes
             path = path.Trim('"', '\'');
             
-            // 将正斜杠转换为反斜杠
+            // Convert forward slashes to backward slashes
             path = path.Replace("/", "\\");
 
             return path;
         }
 
         /// <summary>
-        /// 解析完整路径
+        /// Resolve full path
         /// </summary>
         private string ResolveFullPath(string relativePath)
         {
-            // 如果已经是绝对路径，直接返回
-            if (Path.IsPathRooted(relativePath))
+            // If already an absolute path, return directly            if (Path.IsPathRooted(relativePath))
                 return relativePath;
 
-            // 移除可能的 images\ 或 images/ 前缀，因为某些脚本可能已经包含
+            // Remove possible images\ or images/ prefix, as some scripts may already contain them
             relativePath = relativePath.TrimStart('\\', '/');
 
-            // 组合基础目录
+            // Combine base directory
             return Path.Combine(_baseDir, relativePath);
         }
 
         /// <summary>
-        /// 扫描目录查找刷机脚本
+        /// Scan directory for flashing scripts
         /// </summary>
         public static List<string> FindFlashScripts(string directory)
         {
@@ -428,7 +432,7 @@ namespace LoveAlways.Fastboot.Common
             if (!Directory.Exists(directory))
                 return scripts;
 
-            // 常见的刷机脚本名称
+            // Common flashing script names
             string[] scriptNames = new[]
             {
                 "flash_all.bat",
@@ -454,20 +458,20 @@ namespace LoveAlways.Fastboot.Common
         }
 
         /// <summary>
-        /// 获取脚本类型描述
+        /// Get script type description
         /// </summary>
         public static string GetScriptDescription(string scriptPath)
         {
             string fileName = Path.GetFileName(scriptPath).ToLowerInvariant();
 
             if (fileName.Contains("except_storage"))
-                return "完整刷机 (保留数据)";
+                return "Full Flash (Keep Data)";
             else if (fileName.Contains("lock"))
-                return "完整刷机 + 锁定BL";
+                return "Full Flash + Lock BL";
             else if (fileName.Contains("flash_all"))
-                return "完整刷机 (清除数据)";
+                return "Full Flash (Wipe Data)";
             else
-                return "刷机脚本";
+                return "Flashing Script";
         }
     }
 }

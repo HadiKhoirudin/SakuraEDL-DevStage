@@ -1,3 +1,8 @@
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -7,23 +12,23 @@ using System.Threading.Tasks;
 namespace LoveAlways.Fastboot.Common
 {
     /// <summary>
-    /// ADB 命令执行辅助类
-    /// 依赖外部 adb.exe 执行命令
+    /// ADB Command Execution Helper Class
+    /// Depends on external adb.exe to execute commands
     /// </summary>
     public static class AdbHelper
     {
-        // ADB 可执行文件路径
+        // ADB executable path
         private static string _adbPath = null;
         
         /// <summary>
-        /// 获取 ADB 路径 (优先使用程序目录下的 adb.exe)
+        /// Get ADB path (prioritize adb.exe in the application directory)
         /// </summary>
         public static string GetAdbPath()
         {
             if (_adbPath != null)
                 return _adbPath;
             
-            // 1. 优先使用程序目录下的 adb.exe
+            // 1. Prioritize adb.exe in the application directory
             string appDir = AppDomain.CurrentDomain.BaseDirectory;
             string localAdb = Path.Combine(appDir, "adb.exe");
             if (File.Exists(localAdb))
@@ -32,7 +37,7 @@ namespace LoveAlways.Fastboot.Common
                 return _adbPath;
             }
             
-            // 2. 尝试 platform-tools 子目录
+            // 2. Try platform-tools subdirectory
             string platformTools = Path.Combine(appDir, "platform-tools", "adb.exe");
             if (File.Exists(platformTools))
             {
@@ -40,13 +45,13 @@ namespace LoveAlways.Fastboot.Common
                 return _adbPath;
             }
             
-            // 3. 假设 adb 在系统 PATH 中
+            // 3. Assume adb is in the system PATH
             _adbPath = "adb";
             return _adbPath;
         }
         
         /// <summary>
-        /// 检查 ADB 是否可用
+        /// Check if ADB is available
         /// </summary>
         public static async Task<bool> IsAvailableAsync()
         {
@@ -62,11 +67,11 @@ namespace LoveAlways.Fastboot.Common
         }
         
         /// <summary>
-        /// 执行 ADB 命令
+        /// Execute ADB command
         /// </summary>
-        /// <param name="arguments">ADB 命令参数</param>
-        /// <param name="timeoutMs">超时时间 (毫秒)</param>
-        /// <param name="ct">取消令牌</param>
+        /// <param name="arguments">ADB command parameters</param>
+        /// <param name="timeoutMs">Timeout (milliseconds)</param>
+        /// <param name="ct">Cancellation token</param>
         public static async Task<AdbResult> ExecuteAsync(string arguments, int timeoutMs = 10000, CancellationToken ct = default)
         {
             var result = new AdbResult();
@@ -105,14 +110,14 @@ namespace LoveAlways.Fastboot.Common
                     process.BeginOutputReadLine();
                     process.BeginErrorReadLine();
                     
-                    // 等待进程完成或超时
+                    // Wait for process completion or timeout
                     var completed = await Task.Run(() => process.WaitForExit(timeoutMs), ct);
                     
                     if (!completed)
                     {
                         try { process.Kill(); } catch { }
                         result.ExitCode = -1;
-                        result.Error = "命令执行超时";
+                        result.Error = "Command execution timed out";
                         return result;
                     }
                     
@@ -124,58 +129,58 @@ namespace LoveAlways.Fastboot.Common
             catch (Exception ex)
             {
                 result.ExitCode = -1;
-                result.Error = $"执行失败: {ex.Message}";
+                result.Error = $"Execution failed: {ex.Message}";
             }
             
             return result;
         }
         
-        #region 快捷方法
+        #region Shortcut Methods
         
         /// <summary>
-        /// 重启到系统
+        /// Reboot to system
         /// </summary>
         public static Task<AdbResult> RebootAsync(CancellationToken ct = default)
             => ExecuteAsync("reboot", 10000, ct);
         
         /// <summary>
-        /// 重启到 Bootloader (Fastboot)
+        /// Reboot to Bootloader (Fastboot)
         /// </summary>
         public static Task<AdbResult> RebootBootloaderAsync(CancellationToken ct = default)
             => ExecuteAsync("reboot bootloader", 10000, ct);
         
         /// <summary>
-        /// 重启到 Fastbootd
+        /// Reboot to Fastbootd
         /// </summary>
         public static Task<AdbResult> RebootFastbootAsync(CancellationToken ct = default)
             => ExecuteAsync("reboot fastboot", 10000, ct);
         
         /// <summary>
-        /// 重启到 Recovery
+        /// Reboot to Recovery
         /// </summary>
         public static Task<AdbResult> RebootRecoveryAsync(CancellationToken ct = default)
             => ExecuteAsync("reboot recovery", 10000, ct);
         
         /// <summary>
-        /// 重启到 EDL 模式 (联想/安卓)
+        /// Reboot to EDL mode
         /// </summary>
         public static Task<AdbResult> RebootEdlAsync(CancellationToken ct = default)
             => ExecuteAsync("reboot edl", 10000, ct);
         
         /// <summary>
-        /// 获取设备列表
+        /// Get device list
         /// </summary>
         public static Task<AdbResult> DevicesAsync(CancellationToken ct = default)
             => ExecuteAsync("devices", 5000, ct);
         
         /// <summary>
-        /// 获取设备状态
+        /// Get device state
         /// </summary>
         public static Task<AdbResult> GetStateAsync(CancellationToken ct = default)
             => ExecuteAsync("get-state", 5000, ct);
         
         /// <summary>
-        /// 执行 shell 命令
+        /// Execute shell command
         /// </summary>
         public static Task<AdbResult> ShellAsync(string command, int timeoutMs = 30000, CancellationToken ct = default)
             => ExecuteAsync($"shell {command}", timeoutMs, ct);
@@ -184,32 +189,32 @@ namespace LoveAlways.Fastboot.Common
     }
     
     /// <summary>
-    /// ADB 命令执行结果
+    /// ADB Command Execution Result
     /// </summary>
     public class AdbResult
     {
         /// <summary>
-        /// 退出代码 (0 = 成功)
+        /// Exit code (0 = success)
         /// </summary>
         public int ExitCode { get; set; } = -1;
         
         /// <summary>
-        /// 标准输出
+        /// Standard output
         /// </summary>
         public string Output { get; set; } = string.Empty;
         
         /// <summary>
-        /// 错误输出
+        /// Error output
         /// </summary>
         public string Error { get; set; } = string.Empty;
         
         /// <summary>
-        /// 是否成功
+        /// Whether successful
         /// </summary>
         public bool Success => ExitCode == 0;
         
         /// <summary>
-        /// 获取完整输出 (stdout + stderr)
+        /// Get full output (stdout + stderr)
         /// </summary>
         public string FullOutput => string.IsNullOrEmpty(Error) ? Output : $"{Output}\n{Error}".Trim();
     }

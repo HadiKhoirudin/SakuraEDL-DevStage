@@ -1,17 +1,22 @@
 // ============================================================================
-// LoveAlways - MediaTek 错误码解析与格式化
+// LoveAlways - MediaTek Error Code Parser and Formatter
 // MediaTek Error Code Parser and Formatter
 // ============================================================================
-// 参考: Penumbra 项目 https://shomy.is-a.dev/penumbra/
-// XFlash (V5) 和 XML (V6) 协议错误码结构化解析
+// Reference: Penumbra project https://shomy.is-a.dev/penumbra/
+// Structured parsing of XFlash (V5) and XML (V6) protocol error codes
 // ============================================================================
+
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 using System.Collections.Generic;
 
 namespace LoveAlways.MediaTek.Common
 {
     /// <summary>
-    /// 错误严重性级别
+    /// Error Severity Level
     /// </summary>
     public enum ErrorSeverity
     {
@@ -22,36 +27,36 @@ namespace LoveAlways.MediaTek.Common
     }
 
     /// <summary>
-    /// 错误域（组件）
+    /// Error Domain (Component)
     /// </summary>
     public enum ErrorDomain
     {
-        Common = 1,          // 通用错误
-        Security = 2,        // 安全相关
-        Library = 3,         // 库/函数错误
-        Device = 4,          // 设备/硬件错误
-        Host = 5,            // Host端错误
-        Brom = 6,            // BROM错误
-        Da = 7,              // DA错误
-        Preloader = 8        // Preloader错误
+        Common = 1,          // General error
+        Security = 2,        // Security related
+        Library = 3,         // Library/function error
+        Device = 4,          // Device/hardware error
+        Host = 5,            // Host-side error
+        Brom = 6,            // BROM error
+        Da = 7,              // DA error
+        Preloader = 8        // Preloader error
     }
 
     /// <summary>
-    /// MTK 错误码解析与格式化
+    /// MTK Error Code Parser and Formatter
     /// 
-    /// 错误码结构 (32位):
-    /// - 位31-30: 严重性 (Success=00, Info=01, Warning=10, Error=11)
-    /// - 位29-16: 保留
-    /// - 位23-16: 错误域 (1-8)
-    /// - 位15-0:  错误代码
+    /// Error code structure (32-bit):
+    /// - Bits 31-30: Severity (Success=00, Info=01, Warning=10, Error=11)
+    /// - Bits 29-24: Reserved
+    /// - Bits 23-16: Error Domain (1-8)
+    /// - Bits 15-0:  Error Code
     /// 
-    /// 示例: 0xC0070004
+    /// Example: 0xC0070004
     ///   0xC0000000 (Error) | 0x00070000 (DA Domain) | 0x0004 (Code 4)
     ///   => Error | DA | DA_HASH_MISMATCH
     /// </summary>
     public static class MtkErrorCodes
     {
-        #region 错误码掩码
+        #region Error Code Masks
 
         private const uint SEVERITY_MASK    = 0xC0000000;
         private const uint DOMAIN_MASK      = 0x00FF0000;
@@ -66,162 +71,162 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region 错误码定义
+        #region Error Code Definitions
 
         /// <summary>
-        /// 常见错误码及其描述
-        /// 来源: mtkclient项目 Library/error.py (ErrorCodes_XFlash, 已验证真实数据)
+        /// Common error codes and their descriptions
+        /// Source: mtkclient project Library/error.py (ErrorCodes_XFlash, verified real data)
         /// </summary>
         public static readonly Dictionary<uint, string> CommonErrors = new Dictionary<uint, string>
         {
-            // 成功
-            { 0x00000000, "OK - 成功" },
+            // Success
+            { 0x00000000, "OK - Success" },
             
-            // XFlash Common 错误 (0xC001xxxx)
-            { 0xC0010001, "Error - 错误" },
-            { 0xC0010002, "Abort - 中止" },
-            { 0xC0010003, "Unsupported command - 不支持的命令" },
-            { 0xC0010004, "Unsupported ctrl code - 不支持的控制码" },
-            { 0xC0010005, "Protocol error - 协议错误" },
-            { 0xC0010006, "Protocol buffer overflow - 协议缓冲区溢出" },
-            { 0xC0010007, "Insufficient buffer - 缓冲区不足" },
-            { 0xC0010008, "USB SCAN error - USB扫描错误" },
-            { 0xC0010009, "Invalid hsession - 无效会话句柄" },
-            { 0xC001000A, "Invalid session - 无效会话" },
-            { 0xC001000B, "Invalid stage - 无效阶段" },
-            { 0xC001000C, "Not implemented - 未实现" },
-            { 0xC001000D, "File not found - 文件未找到" },
-            { 0xC001000E, "Open file error - 打开文件错误" },
-            { 0xC001000F, "Write file error - 写入文件错误" },
-            { 0xC0010010, "Read file error - 读取文件错误" },
-            { 0xC0010011, "Create File error / Unsupported Version - 创建文件错误/不支持的版本" },
+            // XFlash Common error (0xC001xxxx)
+            { 0xC0010001, "Error - Error" },
+            { 0xC0010002, "Abort - Abort" },
+            { 0xC0010003, "Unsupported command - Unsupported command" },
+            { 0xC0010004, "Unsupported ctrl code - Unsupported control code" },
+            { 0xC0010005, "Protocol error - Protocol error" },
+            { 0xC0010006, "Protocol buffer overflow - Protocol buffer overflow" },
+            { 0xC0010007, "Insufficient buffer - Insufficient buffer" },
+            { 0xC0010008, "USB SCAN error - USB scan error" },
+            { 0xC0010009, "Invalid hsession - Invalid session handle" },
+            { 0xC001000A, "Invalid session - Invalid session" },
+            { 0xC001000B, "Invalid stage - Invalid stage" },
+            { 0xC001000C, "Not implemented - Not implemented" },
+            { 0xC001000D, "File not found - File not found" },
+            { 0xC001000E, "Open file error - Open file error" },
+            { 0xC001000F, "Write file error - Write file error" },
+            { 0xC0010010, "Read file error - Read file error" },
+            { 0xC0010011, "Create File error / Unsupported Version - Create file error / Unsupported Version" },
             
-            // Security 错误 (0xC002xxxx)
-            { 0xC0020001, "Rom info not found - ROM信息未找到" },
-            { 0xC0020002, "Cust name not found - 客户名称未找到" },
-            { 0xC0020003, "Device not supported - 设备不支持" },
-            { 0xC0020004, "DL forbidden - 下载禁止" },
-            { 0xC0020005, "Img too large - 镜像过大" },
-            { 0xC0020006, "PL verify fail - Preloader验证失败" },
-            { 0xC0020007, "Image verify fail - 镜像验证失败" },
-            { 0xC0020008, "Hash operation fail - 哈希操作失败" },
-            { 0xC0020009, "Hash binding check fail - 哈希绑定检查失败" },
-            { 0xC002000A, "Invalid buf - 无效缓冲区" },
-            { 0xC002000B, "Binding hash not available - 绑定哈希不可用" },
-            { 0xC002000C, "Write data not allowed - 写入数据不允许" },
-            { 0xC002000D, "Format not allowed - 格式化不允许" },
-            { 0xC002000E, "SV5 public key auth failed - SV5公钥认证失败" },
-            { 0xC002000F, "SV5 hash verify failed - SV5哈希验证失败" },
-            { 0xC0020010, "SV5 RSA OP failed - SV5 RSA操作失败" },
-            { 0xC0020011, "SV5 RSA verify failed - SV5 RSA验证失败" },
-            { 0xC0020012, "SV5 GFH not found - SV5 GFH未找到" },
-            { 0xC0020013, "Cert1 invalid - 证书1无效" },
-            { 0xC0020014, "Cert2 invalid - 证书2无效" },
-            { 0xC0020015, "Imghdr invalid - 镜像头无效" },
-            { 0xC0020016, "Sig size invalid - 签名大小无效" },
-            { 0xC0020017, "RSA pss op fail - RSA-PSS操作失败" },
-            { 0xC0020018, "Cert auth failed - 证书认证失败" },
-            { 0xC002002D, "Anti rollback violation - 防回滚违规" },
-            { 0xC002002E, "SECCFG not found - SECCFG未找到" },
-            { 0xC002002F, "SECCFG magic incorrect - SECCFG魔术值错误" },
-            { 0xC0020030, "SECCFG invalid - SECCFG无效" },
-            { 0xC0020049, "Remote Security policy disabled - 远程安全策略已禁用" },
-            { 0xC002004C, "DA Anti-Rollback error - DA防回滚错误" },
-            { 0xC0020053, "DA version Anti-Rollback error - DA版本防回滚错误" },
-            { 0xC002005C, "Lockstate seccfg fail - 锁定状态SECCFG失败" },
-            { 0xC002005D, "Lockstate custom fail - 锁定状态自定义失败" },
-            { 0xC002005E, "Lockstate inconsistent - 锁定状态不一致" },
+            // Security error (0xC002xxxx)
+            { 0xC0020001, "Rom info not found - ROM info not found" },
+            { 0xC0020002, "Cust name not found - Customer name not found" },
+            { 0xC0020003, "Device not supported - Device not supported" },
+            { 0xC0020004, "DL forbidden - Download forbidden" },
+            { 0xC0020005, "Img too large - Image too large" },
+            { 0xC0020006, "PL verify fail - Preloader verification failed" },
+            { 0xC0020007, "Image verify fail - Image verification failed" },
+            { 0xC0020008, "Hash operation fail - Hash operation failed" },
+            { 0xC0020009, "Hash binding check fail - Hash binding check failed" },
+            { 0xC002000A, "Invalid buf - Invalid buffer" },
+            { 0xC002000B, "Binding hash not available - Binding hash not available" },
+            { 0xC002000C, "Write data not allowed - Write data not allowed" },
+            { 0xC002000D, "Format not allowed - Format not allowed" },
+            { 0xC002000E, "SV5 public key auth failed - SV5 public key auth failed" },
+            { 0xC002000F, "SV5 hash verify failed - SV5 hash verify failed" },
+            { 0xC0020010, "SV5 RSA OP failed - SV5 RSA operation failed" },
+            { 0xC0020011, "SV5 RSA verify failed - SV5 RSA verification failed" },
+            { 0xC0020012, "SV5 GFH not found - SV5 GFH not found" },
+            { 0xC0020013, "Cert1 invalid - Certificate 1 invalid" },
+            { 0xC0020014, "Cert2 invalid - Certificate 2 invalid" },
+            { 0xC0020015, "Imghdr invalid - Image header invalid" },
+            { 0xC0020016, "Sig size invalid - Signature size invalid" },
+            { 0xC0020017, "RSA pss op fail - RSA-PSS operation failed" },
+            { 0xC0020018, "Cert auth failed - Certificate authentication failed" },
+            { 0xC002002D, "Anti rollback violation - Anti rollback violation" },
+            { 0xC002002E, "SECCFG not found - SECCFG not found" },
+            { 0xC002002F, "SECCFG magic incorrect - SECCFG magic incorrect" },
+            { 0xC0020030, "SECCFG invalid - SECCFG invalid" },
+            { 0xC0020049, "Remote Security policy disabled - Remote security policy disabled" },
+            { 0xC002004C, "DA Anti-Rollback error - DA Anti-Rollback error" },
+            { 0xC0020053, "DA version Anti-Rollback error - DA version Anti-Rollback error" },
+            { 0xC002005C, "Lockstate seccfg fail - Lock state SECCFG failed" },
+            { 0xC002005D, "Lockstate custom fail - Lock state custom failed" },
+            { 0xC002005E, "Lockstate inconsistent - Lock state inconsistent" },
             
-            // Library 错误 (0xC003xxxx)
-            { 0xC0030001, "Scatter file invalid - Scatter文件无效" },
-            { 0xC0030002, "DA file invalid - DA文件无效" },
-            { 0xC0030003, "DA selection error - DA选择错误" },
-            { 0xC0030004, "Preloader invalid - Preloader无效" },
-            { 0xC0030005, "EMI hdr invalid - EMI头无效" },
-            { 0xC0030006, "Storage mismatch - 存储不匹配" },
-            { 0xC0030007, "Invalid parameters - 无效参数" },
-            { 0xC0030008, "Invalid GPT - GPT无效" },
-            { 0xC0030009, "Invalid PMT - PMT无效" },
-            { 0xC003000A, "Layout changed - 布局已改变" },
-            { 0xC003000B, "Invalid format param - 无效格式化参数" },
-            { 0xC003000C, "Unknown storage section type - 未知存储段类型" },
-            { 0xC003000D, "Unknown scatter field - 未知Scatter字段" },
-            { 0xC003000E, "Partition tbl doesn't exist - 分区表不存在" },
-            { 0xC003000F, "Scatter hw chip id mismatch - Scatter硬件芯片ID不匹配" },
-            { 0xC0030010, "SEC cert file not found - 安全证书文件未找到" },
-            { 0xC0030011, "SEC auth file not found - 安全认证文件未找到" },
-            { 0xC0030012, "SEC auth file needed - 需要安全认证文件" },
+            // Library error (0xC003xxxx)
+            { 0xC0030001, "Scatter file invalid - Scatter file invalid" },
+            { 0xC0030002, "DA file invalid - DA file invalid" },
+            { 0xC0030003, "DA selection error - DA selection error" },
+            { 0xC0030004, "Preloader invalid - Preloader invalid" },
+            { 0xC0030005, "EMI hdr invalid - EMI header invalid" },
+            { 0xC0030006, "Storage mismatch - Storage mismatch" },
+            { 0xC0030007, "Invalid parameters - Invalid parameters" },
+            { 0xC0030008, "Invalid GPT - GPT invalid" },
+            { 0xC0030009, "Invalid PMT - PMT invalid" },
+            { 0xC003000A, "Layout changed - Layout changed" },
+            { 0xC003000B, "Invalid format param - Invalid format parameter" },
+            { 0xC003000C, "Unknown storage section type - Unknown storage section type" },
+            { 0xC003000D, "Unknown scatter field - Unknown scatter field" },
+            { 0xC003000E, "Partition tbl doesn't exist - Partition table does not exist" },
+            { 0xC003000F, "Scatter hw chip id mismatch - Scatter hardware chip ID mismatch" },
+            { 0xC0030010, "SEC cert file not found - Security certificate file not found" },
+            { 0xC0030011, "SEC auth file not found - Security authentication file not found" },
+            { 0xC0030012, "SEC auth file needed - Security authentication file needed" },
             
-            // Device 错误 (0xC004xxxx)
-            { 0xC0040001, "Unsupported operation - 不支持的操作" },
-            { 0xC0040002, "Thread error - 线程错误" },
-            { 0xC0040003, "Checksum error - 校验和错误" },
-            { 0xC0040004, "Unknown sparse - 未知稀疏镜像" },
-            { 0xC0040005, "Unknown sparse chunk type - 未知稀疏块类型" },
-            { 0xC0040006, "Partition not found - 分区未找到" },
-            { 0xC0040007, "Read parttbl failed - 读取分区表失败" },
-            { 0xC0040008, "Exceeded max partition number - 超过最大分区数" },
-            { 0xC0040009, "Unknown storage type - 未知存储类型" },
-            { 0xC004000A, "Dram Test failed - DRAM测试失败" },
-            { 0xC004000B, "Exceed available range - 超出可用范围" },
-            { 0xC004000C, "Write sparse image failed - 写入稀疏镜像失败" },
-            { 0xC0040030, "MMC error - MMC错误" },
-            { 0xC0040040, "Nand error - Nand错误" },
-            { 0xC0040041, "Nand in progress - Nand操作进行中" },
-            { 0xC0040042, "Nand timeout - Nand超时" },
-            { 0xC0040043, "Nand bad block - Nand坏块" },
-            { 0xC0040044, "Nand erase failed - Nand擦除失败" },
-            { 0xC0040045, "Nand page program failed - Nand页编程失败" },
-            { 0xC0040050, "EMI setting version error - EMI设置版本错误" },
-            { 0xC0040060, "UFS error - UFS错误" },
-            { 0xC0040100, "DA OTP not supported - DA OTP不支持" },
-            { 0xC0040102, "DA OTP lock failed - DA OTP锁定失败" },
-            { 0xC0040200, "EFUSE unknown error - EFUSE未知错误" },
-            { 0xC0040201, "EFUSE write timeout without verify - EFUSE写入超时（未验证）" },
-            { 0xC0040202, "EFUSE blown - EFUSE已熔断" },
-            { 0xC0040203, "EFUSE revert bit - EFUSE回退位" },
-            { 0xC0040204, "EFUSE blown partly - EFUSE部分熔断" },
-            { 0xC0040206, "EFUSE value is not zero - EFUSE值非零" },
-            { 0xC0040209, "EFUSE blow error - EFUSE熔断错误" },
+            // Device error (0xC004xxxx)
+            { 0xC0040001, "Unsupported operation - Unsupported operation" },
+            { 0xC0040002, "Thread error - Thread error" },
+            { 0xC0040003, "Checksum error - Checksum error" },
+            { 0xC0040004, "Unknown sparse - Unknown sparse image" },
+            { 0xC0040005, "Unknown sparse chunk type - Unknown sparse chunk type" },
+            { 0xC0040006, "Partition not found - Partition not found" },
+            { 0xC0040007, "Read parttbl failed - Read partition table failed" },
+            { 0xC0040008, "Exceeded max partition number - Exceeded maximum partition number" },
+            { 0xC0040009, "Unknown storage type - Unknown storage type" },
+            { 0xC004000A, "Dram Test failed - DRAM test failed" },
+            { 0xC004000B, "Exceed available range - Exceeded available range" },
+            { 0xC004000C, "Write sparse image failed - Write sparse image failed" },
+            { 0xC0040030, "MMC error - MMC error" },
+            { 0xC0040040, "Nand error - Nand error" },
+            { 0xC0040041, "Nand in progress - Nand operation in progress" },
+            { 0xC0040042, "Nand timeout - Nand timeout" },
+            { 0xC0040043, "Nand bad block - Nand bad block" },
+            { 0xC0040044, "Nand erase failed - Nand erase failed" },
+            { 0xC0040045, "Nand page program failed - Nand page program failed" },
+            { 0xC0040050, "EMI setting version error - EMI setting version error" },
+            { 0xC0040060, "UFS error - UFS error" },
+            { 0xC0040100, "DA OTP not supported - DA OTP not supported" },
+            { 0xC0040102, "DA OTP lock failed - DA OTP lock failed" },
+            { 0xC0040200, "EFUSE unknown error - EFUSE unknown error" },
+            { 0xC0040201, "EFUSE write timeout without verify - EFUSE write timeout (unverified)" },
+            { 0xC0040202, "EFUSE blown - EFUSE already blown" },
+            { 0xC0040203, "EFUSE revert bit - EFUSE revert bit" },
+            { 0xC0040204, "EFUSE blown partly - EFUSE partly blown" },
+            { 0xC0040206, "EFUSE value is not zero - EFUSE value is non-zero" },
+            { 0xC0040209, "EFUSE blow error - EFUSE blow error" },
             
-            // Host 错误 (0xC005xxxx)
-            { 0xC0050001, "Device ctrl exception - 设备控制异常" },
-            { 0xC0050002, "Shutdown Cmd exception - 关机命令异常" },
-            { 0xC0050003, "Download exception - 下载异常" },
-            { 0xC0050004, "Upload exception - 上传异常" },
-            { 0xC0050005, "Ext Ram exception - 外部RAM异常" },
-            { 0xC0050008, "Write data exception - 写入数据异常" },
-            { 0xC0050009, "Format exception - 格式化异常" },
+            // Host error (0xC005xxxx)
+            { 0xC0050001, "Device ctrl exception - Device control exception" },
+            { 0xC0050002, "Shutdown Cmd exception - Shutdown command exception" },
+            { 0xC0050003, "Download exception - Download exception" },
+            { 0xC0050004, "Upload exception - Upload exception" },
+            { 0xC0050005, "Ext Ram exception - External RAM exception" },
+            { 0xC0050008, "Write data exception - Write data exception" },
+            { 0xC0050009, "Format exception - Format exception" },
             
-            // BROM 错误 (0xC006xxxx)
-            { 0xC0060001, "Brom start cmd/connect not preloader failed - BROM启动命令失败" },
-            { 0xC0060002, "Brom get bbchip hw ver failed - BROM获取芯片版本失败" },
-            { 0xC0060003, "Brom cmd send da failed - BROM发送DA失败" },
-            { 0xC0060004, "Brom cmd jump da failed - BROM跳转DA失败" },
-            { 0xC0060005, "Brom cmd failed - BROM命令失败" },
-            { 0xC0060006, "Brom stage callback failed - BROM阶段回调失败" },
+            // BROM error (0xC006xxxx)
+            { 0xC0060001, "Brom start cmd/connect not preloader failed - BROM start command failed" },
+            { 0xC0060002, "Brom get bbchip hw ver failed - BROM get chip version failed" },
+            { 0xC0060003, "Brom cmd send da failed - BROM send DA failed" },
+            { 0xC0060004, "Brom cmd jump da failed - BROM jump DA failed" },
+            { 0xC0060005, "Brom cmd failed - BROM command failed" },
+            { 0xC0060006, "Brom stage callback failed - BROM stage callback failed" },
             
-            // DA 错误 (0xC007xxxx)
-            { 0xC0070001, "DA Version mismatch - DA版本不匹配" },
-            { 0xC0070002, "DA not found - DA未找到" },
-            { 0xC0070003, "DA section not found - DA段未找到" },
-            { 0xC0070004, "DA hash mismatch - DA哈希不匹配 (Carbonara预期)" },
-            { 0xC0070005, "DA exceed max num - DA超过最大数量" },
+            // DA error (0xC007xxxx)
+            { 0xC0070001, "DA Version mismatch - DA version mismatch" },
+            { 0xC0070002, "DA not found - DA not found" },
+            { 0xC0070003, "DA section not found - DA section not found" },
+            { 0xC0070004, "DA hash mismatch - DA hash mismatch (Carbonara expected)" },
+            { 0xC0070005, "DA exceed max num - DA exceeds maximum count" },
 
-            // Progress报告 (Info级别 0x4004xxxx)
-            { 0x40040004, "PROGRESS_REPORT - 操作进行中" },
-            { 0x40040005, "PROGRESS_DONE - 操作完成" },
+            // Progress Reports (Info level 0x4004xxxx)
+            { 0x40040004, "PROGRESS_REPORT - Operation in progress" },
+            { 0x40040005, "PROGRESS_DONE - Operation completed" },
             
-            // 特殊错误码
-            { 0x00005A5B, "DA_IN_BLACKLIST - DA在黑名单中" },
+            // Special error codes
+            { 0x00005A5B, "DA_IN_BLACKLIST - DA in blacklist" },
         };
 
         #endregion
 
-        #region 解析与格式化
+        #region Parsing and Formatting
 
         /// <summary>
-        /// 解析错误码
+        /// Parse error code
         /// </summary>
         public static (ErrorSeverity severity, ErrorDomain domain, ushort code) ParseErrorCode(uint errorCode)
         {
@@ -244,17 +249,17 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 格式化错误码为可读字符串
+        /// Format error code as readable string
         /// </summary>
         public static string FormatError(uint errorCode)
         {
-            // 检查是否为已知错误
+            // Check if it is a known error
             if (CommonErrors.TryGetValue(errorCode, out var knownError))
             {
                 return $"0x{errorCode:X8}: {knownError}";
             }
 
-            // 解析未知错误
+            // Parse unknown error
             var (severity, domain, code) = ParseErrorCode(errorCode);
             
             var severityStr = severity switch
@@ -283,7 +288,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 检查是否为错误（Error级别）
+        /// Check if it is an error (Error level)
         /// </summary>
         public static bool IsError(uint errorCode)
         {
@@ -291,7 +296,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 检查是否为成功
+        /// Check if it is success
         /// </summary>
         public static bool IsSuccess(uint errorCode)
         {
@@ -299,7 +304,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 检查是否为进度报告
+        /// Check if it is a progress report
         /// </summary>
         public static bool IsProgressReport(uint errorCode)
         {
@@ -307,7 +312,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 检查是否为DA哈希不匹配错误
+        /// Check if it is a DA hash mismatch error
         /// </summary>
         public static bool IsDaHashMismatch(uint errorCode)
         {
@@ -315,7 +320,7 @@ namespace LoveAlways.MediaTek.Common
         }
 
         /// <summary>
-        /// 构造错误码
+        /// Construct error code
         /// </summary>
         public static uint MakeErrorCode(ErrorSeverity severity, ErrorDomain domain, ushort code)
         {
@@ -333,55 +338,55 @@ namespace LoveAlways.MediaTek.Common
 
         #endregion
 
-        #region 详细描述
+        #region Detailed Descriptions
 
         /// <summary>
-        /// 获取错误的详细描述（含建议）
+        /// Get detailed description of error (including suggestions)
         /// </summary>
         public static string GetDetailedDescription(uint errorCode)
         {
             return errorCode switch
             {
                 0xC0070004 => @"DA_HASH_MISMATCH (0xC0070004)
-    原因: DA签名/哈希验证失败
-    可能情况:
-    1. DA文件已修改但未签名
-    2. 设备启用了DAA (Download Agent Authorization)
-    3. 使用了错误的DA文件版本
-    4. Carbonara漏洞利用第一次尝试（预期行为）
-    建议:
-    - 确认设备是否支持未签名DA
-    - 检查是否需要使用Kamakiri/Carbonara漏洞
-    - 验证DA文件完整性",
+    Reason: DA signature/hash verification failed
+    Possibilities:
+    1. DA file modified but not signed
+    2. Device has DAA (Download Agent Authorization) enabled
+    3. Wrong DA file version used
+    4. Carbonara exploit first attempt (expected behavior)
+    Suggestions:
+    - Confirm if device supports unsigned DA
+    - Check if Kamakiri/Carbonara exploit is needed
+    - Verify DA file integrity",
 
                 0xC0020003 => @"SECURITY_SLA_REQUIRED (0xC0020003)
-    原因: 设备需要SLA (Secure Level Authentication) 认证
-    可能情况:
-    1. Preloader或BROM需要RSA签名认证
-    2. 设备已启用安全启动
-    建议:
-    - 提供正确的SLA密钥进行认证
-    - 检查是否有可用的认证证书",
+    Reason: Device requires SLA (Secure Level Authentication)
+    Possibilities:
+    1. Preloader or BROM requires RSA signature authentication
+    2. Device has Secure Boot enabled
+    Suggestions:
+    - Provide correct SLA key for authentication
+    - Check for available authentication certificates",
 
                 0xC0020004 => @"SECURITY_DAA_REQUIRED (0xC0020004)
-    原因: 设备需要DAA (Download Agent Authorization) 认证
-    可能情况:
-    1. DA1需要签名验证才能加载
-    2. 设备安全启动已启用
-    建议:
-    - 使用Kamakiri漏洞临时禁用DAA
-    - 使用厂商签名的DA文件",
+    Reason: Device requires DAA (Download Agent Authorization)
+    Possibilities:
+    1. DA1 requires signature verification to load
+    2. Device Secure Boot enabled
+    Suggestions:
+    - Use Kamakiri exploit to temporarily disable DAA
+    - Use manufacturer signed DA file",
 
                 0xC0060003 => @"BROM_HANDSHAKE_FAIL (0xC0060003)
-    原因: BROM握手失败
-    可能情况:
-    1. 设备未进入BROM模式
-    2. USB连接不稳定
-    3. 驱动程序问题
-    建议:
-    - 确认设备处于BROM模式（断电后短接测试点）
-    - 检查USB连接和驱动
-    - 尝试更换USB端口",
+    Reason: BROM handshake failed
+    Possibilities:
+    1. Device not in BROM mode
+    2. USB connection unstable
+    3. Driver issues
+    Suggestions:
+    - Confirm device is in BROM mode (short TP after power off)
+    - Check USB connection and drivers
+    - Try changing USB port",
 
                 _ => FormatError(errorCode)
             };

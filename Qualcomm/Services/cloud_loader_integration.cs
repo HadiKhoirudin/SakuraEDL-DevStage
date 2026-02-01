@@ -1,47 +1,51 @@
 // ============================================================================
-// CloudLoaderIntegration - 云端 Loader 自动匹配集成示例
-// 展示如何在 Form1.cs 中替换 PAK 资源为云端自动匹配
+// CloudLoaderIntegration - cloud Loader Automatic matching集成示例
+// 展示如何在 Form1.cs 中替换 PAK 资源为Cloud-based automatic matching
 // ============================================================================
 
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+using LoveAlways.Qualcomm.Database;
+using LoveAlways.Qualcomm.UI;
 using System;
 using System.Drawing;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Database;
-using LoveAlways.Qualcomm.Services;
-using LoveAlways.Qualcomm.UI;
 
 namespace LoveAlways.Qualcomm.Services
 {
     /// <summary>
-    /// 云端 Loader 集成帮助类
-    /// 在 Form1.cs 中使用此类来实现云端自动匹配
+    /// cloud Loader 集成帮助类
+    /// 在 Form1.cs 中Use此类来实现Cloud-based automatic matching
     /// </summary>
     public static class CloudLoaderIntegration
     {
         /// <summary>
-        /// 初始化云端服务
+        /// 初始化cloud服务
         /// 在 Form1 构造函数中调用
         /// </summary>
         public static void Initialize(Action<string> log, Action<string> logDetail)
         {
             var service = CloudLoaderService.Instance;
             service.SetLogger(log, logDetail);
-            
-            // 配置 (可选)
+
+            // Config (可选)
             // service.ApiBase = "https://api.xiriacg.top/api";  // 生产环境
             // service.EnableCache = true;
             // service.TimeoutSeconds = 15;
         }
-        
+
         /// <summary>
-        /// 云端自动匹配连接
-        /// 替代原有的 PAK 资源选择方式
+        /// Cloud-based automatic matchingconnect
+        /// 替代原Have的 PAK 资源choose方式
         /// </summary>
-        /// <param name="controller">高通控制器</param>
-        /// <param name="deviceInfo">设备信息 (Sahara 握手后获取)</param>
-        /// <param name="storageType">存储类型</param>
-        /// <param name="log">日志回调</param>
-        /// <returns>连接结果</returns>
+        /// <param name="controller">Qualcomm控制器</param>
+        /// <param name="deviceInfo">device information (Sahara Handshake后Get)</param>
+        /// <param name="storageType">storageType</param>
+        /// <param name="log">log回调</param>
+        /// <returns>connectresult</returns>
         public static async Task<bool> ConnectWithCloudMatchAsync(
             QualcommUIController controller,
             SaharaDeviceInfo deviceInfo,
@@ -49,25 +53,25 @@ namespace LoveAlways.Qualcomm.Services
             Action<string, Color> log)
         {
             var cloudService = CloudLoaderService.Instance;
-            
-            // 1. 云端匹配
-            log("[云端] 正在匹配 Loader...", Color.Cyan);
-            
+
+            // 1. cloud matching
+            log("[cloud] Matching Loader...", Color.Cyan);
+
             var result = await cloudService.MatchLoaderAsync(
                 deviceInfo.MsmId,
                 deviceInfo.PkHash,
                 deviceInfo.OemId,
                 storageType
             );
-            
+
             if (result != null && result.Data != null)
             {
-                // 2. 匹配成功，使用云端 Loader
-                log($"[云端] 匹配成功: {result.Filename}", Color.Green);
-                log($"[云端] 厂商: {result.Vendor}, 芯片: {result.Chip}", Color.Blue);
-                log($"[云端] 置信度: {result.Confidence}%, 匹配类型: {result.MatchType}", Color.Blue);
-                
-                // 3. 根据认证类型选择连接方式
+                // 2. match successfull，Usecloud Loader
+                log($"[cloud] match successfull: {result.Filename}", Color.Green);
+                log($"[cloud] Manufacturer: {result.Vendor}, Chip: {result.Chip}", Color.Blue);
+                log($"[cloud] Confidence: {result.Confidence}%, Matching Type: {result.MatchType}", Color.Blue);
+
+                // 3. 根据authTypechooseconnect方式
                 string authMode = result.AuthType?.ToLower() switch
                 {
                     "miauth" => "xiaomi",
@@ -75,16 +79,16 @@ namespace LoveAlways.Qualcomm.Services
                     "vip" => "vip",
                     _ => "none"
                 };
-                
-                // 4. 连接设备
+
+                // 4. connectdevice
                 bool success = await controller.ConnectWithLoaderDataAsync(
                     storageType,
                     result.Data,
                     result.Filename,
                     authMode
                 );
-                
-                // 5. 上报设备日志
+
+                // 5. 上报devicelog
                 cloudService.ReportDeviceLog(
                     deviceInfo.MsmId,
                     deviceInfo.PkHash,
@@ -92,15 +96,15 @@ namespace LoveAlways.Qualcomm.Services
                     storageType,
                     success ? "success" : "failed"
                 );
-                
+
                 return success;
             }
             else
             {
-                // 6. 云端无匹配，回退到本地 PAK
-                log("[云端] 无匹配，尝试本地资源...", Color.Yellow);
-                
-                // 上报未匹配
+                // 6. Cloud no matches，回退 toLocal PAK
+                log("[cloud] Not found match loader, try local resources...", Color.Yellow);
+
+                // 上报未match
                 cloudService.ReportDeviceLog(
                     deviceInfo.MsmId,
                     deviceInfo.PkHash,
@@ -108,13 +112,13 @@ namespace LoveAlways.Qualcomm.Services
                     storageType,
                     "not_found"
                 );
-                
+
                 return await FallbackToLocalPakAsync(controller, deviceInfo, storageType, log);
             }
         }
-        
+
         /// <summary>
-        /// 回退到本地 PAK 资源
+        /// 回退 toLocal PAK 资源
         /// </summary>
         private static async Task<bool> FallbackToLocalPakAsync(
             QualcommUIController controller,
@@ -122,23 +126,23 @@ namespace LoveAlways.Qualcomm.Services
             string storageType,
             Action<string, Color> log)
         {
-            // 检查本地 PAK 是否可用
+            // Check Local PAK yesnoAvailable
             if (!EdlLoaderDatabase.IsPakAvailable())
             {
-                log("[本地] edl_loaders.pak 不存在", Color.Red);
+                log("[Local] edl_loaders.pak does not exist", Color.Red);
                 return false;
             }
-            
-            // 尝试按 HW ID (MSM ID) 匹配
+
+            // try按 HW ID (MSM ID) match
             var loaders = EdlLoaderDatabase.GetByChip(deviceInfo.MsmId);
             if (loaders.Length > 0)
             {
                 var loader = loaders[0];
                 var data = EdlLoaderDatabase.LoadLoader(loader.Id);
-                
+
                 if (data != null)
                 {
-                    log($"[本地] 使用: {loader.Name}", Color.Cyan);
+                    log($"[Local] Use: {loader.Name}", Color.Cyan);
                     return await controller.ConnectWithLoaderDataAsync(
                         storageType,
                         data,
@@ -147,14 +151,14 @@ namespace LoveAlways.Qualcomm.Services
                     );
                 }
             }
-            
-            log("[本地] 未找到匹配的 Loader", Color.Red);
+
+            log("[Local] Try to find matches loader", Color.Red);
             return false;
         }
     }
-    
+
     /// <summary>
-    /// Sahara 设备信息 (从握手协议获取)
+    /// Sahara device information (fromHandshakeProtocolGet)
     /// </summary>
     public class SaharaDeviceInfo
     {
@@ -176,27 +180,27 @@ namespace LoveAlways.Qualcomm.Services
    using LoveAlways.Qualcomm.Services;
    using LoveAlways.Qualcomm.Integration;
 
-2. 在 Form1 构造函数中初始化云端服务：
+2. 在 Form1 构造函数中初始化cloud服务：
    
    public Form1()
    {
        InitializeComponent();
        
-       // 初始化云端 Loader 服务
+       // 初始化cloud Loader 服务
        CloudLoaderIntegration.Initialize(
            msg => AppendLog(msg, Color.Blue),
            msg => AppendLog(msg, Color.Gray)
        );
    }
 
-3. 修改连接方法，添加云端自动匹配选项：
+3. 修改connect方法，添加Cloud-based automatic matching选Item：
 
    private async Task<bool> ConnectQualcommDeviceAsync()
    {
-       // 检查是否启用云端自动匹配
+       // Check yesnoEnableCloud-based automatic matching
        if (checkbox_CloudMatch.Checked)  // 添加一个复选框控制
        {
-           // 先获取设备信息 (Sahara 握手)
+           // 先Getdevice information (Sahara Handshake)
            var deviceInfo = await GetSaharaDeviceInfoAsync();
            
            if (deviceInfo != null)
@@ -210,17 +214,17 @@ namespace LoveAlways.Qualcomm.Services
            }
        }
        
-       // 原有的 PAK 资源选择逻辑
-       return await ConnectWithSelectedLoaderAsync();
+       // 原Have的 PAK 资源chooselogic
+       return await ConnectWithSelected LoaderAsync();
    }
 
-4. 或者更简单的方式，直接使用 CloudLoaderService：
+4. or者更简单的方式，直接Use CloudLoaderService：
 
    private async Task<bool> ConnectWithAutoMatchAsync()
    {
        var cloud = CloudLoaderService.Instance;
        
-       // 获取设备信息后调用
+       // Getdevice information后调用
        var result = await cloud.MatchLoaderAsync(
            deviceInfo.MsmId,
            deviceInfo.PkHash,
@@ -230,7 +234,7 @@ namespace LoveAlways.Qualcomm.Services
        
        if (result?.Data != null)
        {
-           AppendLog($"云端匹配: {result.Filename}", Color.Green);
+           AppendLog($"cloud matching: {result.Filename}", Color.Green);
            return await _qualcommController.ConnectWithLoaderDataAsync(
                "ufs", result.Data, result.Filename, "none");
        }
@@ -239,21 +243,21 @@ namespace LoveAlways.Qualcomm.Services
    }
 
 ================================================================================
-                          删除 PAK 资源相关代码
+                          Delete PAK 资源相关代码
 ================================================================================
 
-如果完全使用云端匹配，可以删除以下文件/代码：
+如果完全Usecloudmatch，可以Delete以下file/代码：
 
-1. 删除文件:
+1. Deletefile:
    - edl_loaders.pak (约 50-100MB)
    
 2. 可选保留以下代码作为离线回退:
-   - Qualcomm/Database/edl_loader_database.cs (保留元数据，删除 PAK 加载逻辑)
+   - Qualcomm/Database/edl_loader_database.cs (保留元数据，Delete PAK loadlogic)
    
 3. 修改 Form1.cs:
-   - 删除 PAK 可用性检查相关代码
-   - 删除 EDL Loader 下拉列表构建代码 (或改为从云端获取列表)
-   - 将连接逻辑改为云端优先
+   - Delete PAK Available性Check 相关代码
+   - Delete EDL Loader 下拉列表构建代码 (or改为fromcloudGet列表)
+   - 将connectlogic改为cloud优先
 
 ================================================================================
 */
