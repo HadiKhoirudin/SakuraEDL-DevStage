@@ -7,16 +7,15 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.MediaTek.Common;
+using LoveAlways.MediaTek.Models;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.Protocol;
 
 namespace LoveAlways.MediaTek.DA
 {
@@ -33,10 +32,10 @@ namespace LoveAlways.MediaTek.DA
 
         /// <summary>XFlash (V5) Extensions filename</summary>
         public const string V5_EXTENSION_FILE = "da_x_ext.bin";
-        
+
         /// <summary>XML (V6) Extensions filename</summary>
         public const string V6_EXTENSION_FILE = "da_xml_ext.bin";
-        
+
         /// <summary>Default Payload path</summary>
         public const string DEFAULT_PAYLOAD_PATH = "Payloads";
 
@@ -76,7 +75,7 @@ namespace LoveAlways.MediaTek.DA
             // Determine filename
             var fileName = isV6 ? V6_EXTENSION_FILE : V5_EXTENSION_FILE;
             var folderName = isV6 ? "da_xml" : "da_x";
-            
+
             // Try multiple possible paths
             var possiblePaths = new[]
             {
@@ -114,7 +113,7 @@ namespace LoveAlways.MediaTek.DA
             var searchedPaths = string.Join("\n  ", possiblePaths);
             var errorMsg = $"DA Extensions binary file not found\nSearch paths:\n  {searchedPaths}";
             _log.Error(errorMsg, LogCategory.Da);
-            
+
             throw new FileNotFoundException(errorMsg);
         }
 
@@ -130,7 +129,7 @@ namespace LoveAlways.MediaTek.DA
             // - Check ELF magic value
             // - Verify code segment
             // - Check entry point
-            
+
             return true;
         }
 
@@ -180,19 +179,19 @@ namespace LoveAlways.MediaTek.DA
 
                 // 4. Upload to device
                 _log.Info("Uploading Extensions to device...", LogCategory.Da);
-                
+
                 // TODO: Actual upload logic needs to be completed according to BromClient implementation
                 // Example interface provided here
                 /*
                 await bromClient.SendBootTo(loadAddr, binary);
                 */
-                
+
                 _log.Warning("Extensions upload function pending implementation (requires boot_to command support)", LogCategory.Da);
                 _log.Info("Tip: Need to patch DA1 using Carbonara exploit first, then load Extensions via boot_to", LogCategory.Exploit);
 
                 _log.LogSeparator();
                 _log.Success("Extensions configuration preparation complete", LogCategory.Da);
-                
+
                 return true;
             }
             catch (Exception ex)
@@ -213,10 +212,10 @@ namespace LoveAlways.MediaTek.DA
         {
             var fileName = isV6 ? V6_EXTENSION_FILE : V5_EXTENSION_FILE;
             var folderName = isV6 ? "da_xml" : "da_x";
-            
+
             var path1 = Path.Combine(_payloadBasePath, folderName, fileName);
             var path2 = Path.Combine(_payloadBasePath, fileName);
-            
+
             return File.Exists(path1) || File.Exists(path2);
         }
 
@@ -226,17 +225,17 @@ namespace LoveAlways.MediaTek.DA
         public void PrintPayloadInfo()
         {
             _log.LogHeader("DA Extensions Payload Info");
-            
+
             _log.Info($"Payload base path: {_payloadBasePath}", LogCategory.Da);
-            
+
             // V5 Extensions
             var v5Exists = CheckPayloadExists(false);
             _log.LogDeviceInfo("V5/XFlash Extensions", v5Exists ? "✓ Installed" : "✗ Not Found", LogCategory.Da);
-            
+
             // V6 Extensions
             var v6Exists = CheckPayloadExists(true);
             _log.LogDeviceInfo("V6/XML Extensions", v6Exists ? "✓ Installed" : "✗ Not Found", LogCategory.Da);
-            
+
             if (!v5Exists && !v6Exists)
             {
                 _log.LogSeparator('-', 60);
@@ -249,7 +248,7 @@ namespace LoveAlways.MediaTek.DA
                 _log.Info($"  2. Build: cd mtk-payloads && ./build_all.sh", LogCategory.Da);
                 _log.Info($"  3. Copy to: {_payloadBasePath}", LogCategory.Da);
             }
-            
+
             _log.LogSeparator();
         }
 
@@ -259,7 +258,7 @@ namespace LoveAlways.MediaTek.DA
         public DaExtensionsConfig CreateDefaultConfig(ushort hwCode, MtkDeviceInfo deviceInfo)
         {
             var config = DaExtensionsHelper.GetRecommendedConfig(hwCode, deviceInfo);
-            
+
             // Automatically load binary
             try
             {
@@ -269,7 +268,7 @@ namespace LoveAlways.MediaTek.DA
             {
                 _log.Warning($"Unable to load Extensions binary: {ex.Message}", LogCategory.Da);
             }
-            
+
             return config;
         }
 
@@ -283,10 +282,10 @@ namespace LoveAlways.MediaTek.DA
     {
         /// <summary>Send boot_to command to load code to specified address</summary>
         Task SendBootTo(uint address, byte[] data);
-        
+
         /// <summary>Send DA command</summary>
         Task SendDaCommand(uint command, byte[] data = null);
-        
+
         /// <summary>Receive DA response</summary>
         Task<byte[]> ReceiveDaResponse(int length);
     }

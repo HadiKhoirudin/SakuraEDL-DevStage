@@ -1,17 +1,15 @@
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+using LoveAlways.Qualcomm.Common;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Text.RegularExpressions;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Models;
+using System.Threading.Tasks;
 
 namespace LoveAlways.Qualcomm.Services
 {
@@ -43,24 +41,24 @@ namespace LoveAlways.Qualcomm.Services
         public async Task<List<FlashTask>> PrepareSuperTasksAsync(string firmwareRoot, long superStartSector, int sectorSize, string activeSlot = "a", string nvId = "")
         {
             var tasks = new List<FlashTask>();
-            
+
             // 1. Find critical files
             string imagesDir = Path.Combine(firmwareRoot, "IMAGES");
             string metaDir = Path.Combine(firmwareRoot, "META");
-            
+
             if (!Directory.Exists(imagesDir)) imagesDir = firmwareRoot;
-            
+
             // Prioritize Metadata with NV_ID: super_meta.{nvId}.raw
             string superMetaPath = null;
             if (!string.IsNullOrEmpty(nvId))
             {
                 superMetaPath = Directory.GetFiles(imagesDir, $"super_meta.{nvId}.raw").FirstOrDefault();
             }
-            
+
             if (string.IsNullOrEmpty(superMetaPath))
             {
                 superMetaPath = Directory.GetFiles(imagesDir, "super_meta*.raw").FirstOrDefault();
-                
+
                 // [Critical] If device cannot read NV_ID, auto extract from firmware package filename
                 if (!string.IsNullOrEmpty(superMetaPath) && string.IsNullOrEmpty(nvId))
                 {
@@ -78,7 +76,7 @@ namespace LoveAlways.Qualcomm.Services
             {
                 superDefPath = Path.Combine(metaDir, "super_def.json");
             }
-            
+
             if (string.IsNullOrEmpty(superMetaPath) || !File.Exists(superMetaPath))
             {
                 // If super_meta.raw not found, try searching for super.img itself (if it's a full image)
@@ -86,15 +84,16 @@ namespace LoveAlways.Qualcomm.Services
                 if (File.Exists(fullSuperPath))
                 {
                     _log("Full super.img found");
-                    tasks.Add(new FlashTask { 
-                        PartitionName = "super", 
-                        FilePath = fullSuperPath, 
-                        PhysicalSector = superStartSector, 
-                        SizeInBytes = new FileInfo(fullSuperPath).Length 
+                    tasks.Add(new FlashTask
+                    {
+                        PartitionName = "super",
+                        FilePath = fullSuperPath,
+                        PhysicalSector = superStartSector,
+                        SizeInBytes = new FileInfo(fullSuperPath).Length
                     });
                     return tasks;
                 }
-                
+
                 _log("super_meta.raw or super.img not found");
                 return tasks;
             }
@@ -137,9 +136,9 @@ namespace LoveAlways.Qualcomm.Services
                     long realSize = GetImageRealSize(imgPath);
                     long deviceSectorOffset = lp.GetDeviceSectorOffset(sectorSize);
                     if (deviceSectorOffset < 0) continue;
-                    
+
                     long physicalSector = superStartSector + deviceSectorOffset;
-                    
+
                     tasks.Add(new FlashTask
                     {
                         PartitionName = lp.Name,
@@ -163,14 +162,14 @@ namespace LoveAlways.Qualcomm.Services
             {
                 // Use simple regex to parse JSON (Avoid Newtonsoft.Json dependency)
                 string content = File.ReadAllText(defPath);
-                
+
                 // Find partitions array content
                 var matches = Regex.Matches(content, "\"name\":\\s*\"(.*?)\".*?\"path\":\\s*\"(.*?)\"", RegexOptions.Singleline);
                 foreach (Match m in matches)
                 {
                     string name = m.Groups[1].Value;
                     string relPath = m.Groups[2].Value;
-                    
+
                     string fullPath = Path.Combine(imagesDir, relPath.Replace("IMAGES/", ""));
                     if (File.Exists(fullPath)) map[name] = fullPath;
                 }
@@ -195,7 +194,7 @@ namespace LoveAlways.Qualcomm.Services
                 string baseName = lpName;
                 if (baseName.EndsWith("_a") || baseName.EndsWith("_b"))
                     baseName = baseName.Substring(0, baseName.Length - 2);
-                
+
                 nvPattern = string.Format("{0}.{1}.img", baseName, nvId);
                 nvFiles = Directory.GetFiles(imagesDir, nvPattern);
                 if (nvFiles.Length > 0) return nvFiles[0];
@@ -212,10 +211,12 @@ namespace LoveAlways.Qualcomm.Services
             string[] patterns = { searchName + ".img", searchName + ".*.img", lpName + ".img" };
             foreach (var pattern in patterns)
             {
-                try {
+                try
+                {
                     var files = Directory.GetFiles(imagesDir, pattern);
                     if (files.Length > 0) return files[0];
-                } catch { }
+                }
+                catch { }
             }
 
             return null;
@@ -261,14 +262,14 @@ namespace LoveAlways.Qualcomm.Services
             try
             {
                 string fileName = Path.GetFileNameWithoutExtension(filePath); // super_meta.10010111
-                
+
                 // Match format: super_meta.{nvId} or super_def.{nvId}
                 var match = Regex.Match(fileName, @"^super_(?:meta|def)\.(\d+)$");
                 if (match.Success)
                 {
                     return match.Groups[1].Value;
                 }
-                
+
                 // Fallback matching: Any numeric part in filename
                 // Example: system.10010111 -> 10010111
                 var parts = fileName.Split('.');
@@ -283,7 +284,7 @@ namespace LoveAlways.Qualcomm.Services
                 }
             }
             catch { }
-            
+
             return null;
         }
     }

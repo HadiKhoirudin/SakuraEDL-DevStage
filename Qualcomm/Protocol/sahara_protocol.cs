@@ -8,19 +8,19 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Common;
+using LoveAlways.Qualcomm.Common;
+using LoveAlways.Qualcomm.Database;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Common;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Database;
 
 namespace LoveAlways.Qualcomm.Protocol
 {
@@ -206,7 +206,7 @@ namespace LoveAlways.Qualcomm.Protocol
         private const int MAX_BUFFER_SIZE = 4096;
         private const int READ_TIMEOUT_MS = 30000;
         private const int HELLO_TIMEOUT_MS = 30000;
-        
+
         // Watchdog configuration
         private const int WATCHDOG_TIMEOUT_SECONDS = 45;  // Watchdog timeout
         private const int WATCHDOG_STALL_THRESHOLD = 3;   // Consecutive no-response count threshold
@@ -232,19 +232,19 @@ namespace LoveAlways.Qualcomm.Protocol
 
         // Pre-read Hello data
         private byte[] _pendingHelloData = null;
-        
+
         /// <summary>
         /// Watchdog timeout event (External can subscribe for notifications)
         /// </summary>
         public event EventHandler<WatchdogTimeoutEventArgs> OnWatchdogTimeout;
-        
+
         /// <summary>
         /// Whether to skip command mode (Some devices don't support command mode, force skip to avoid InvalidCommand error)
         /// </summary>
-        public bool SkipCommandMode 
-        { 
-            get { return _skipCommandMode; } 
-            set { _skipCommandMode = value; } 
+        public bool SkipCommandMode
+        {
+            get { return _skipCommandMode; }
+            set { _skipCommandMode = value; }
         }
 
         // Transfer progress
@@ -264,11 +264,11 @@ namespace LoveAlways.Qualcomm.Protocol
             ChipHwId = "";
             ChipPkHash = "";
             ChipInfo = new QualcommChipInfo();
-            
+
             // Initialize watchdog
             InitializeWatchdog();
         }
-        
+
         /// <summary>
         /// Initialize watchdog
         /// </summary>
@@ -277,7 +277,7 @@ namespace LoveAlways.Qualcomm.Protocol
             _watchdog = new Watchdog("Sahara", TimeSpan.FromSeconds(WATCHDOG_TIMEOUT_SECONDS), _logDetail);
             _watchdog.OnTimeout += HandleWatchdogTimeout;
         }
-        
+
         /// <summary>
         /// Watchdog timeout handler
         /// </summary>
@@ -285,10 +285,10 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             _watchdogStallCount++;
             _log($"[Sahara] ⚠ Watchdog detected freeze (#{_watchdogStallCount}, waited {e.ElapsedTime.TotalSeconds:F0}s)");
-            
+
             // Notify external subscribers
             OnWatchdogTimeout?.Invoke(this, e);
-            
+
             if (_watchdogStallCount >= WATCHDOG_STALL_THRESHOLD)
             {
                 _log("[Sahara] Watchdog triggering auto reset...");
@@ -309,7 +309,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
             }
         }
-        
+
         /// <summary>
         /// Feed watchdog - Call when valid data received
         /// </summary>
@@ -338,10 +338,10 @@ namespace LoveAlways.Qualcomm.Protocol
             try
             {
                 _logDetail("[Sahara] Getting device info (without uploading Loader)...");
-                
+
                 // Read Hello packet
                 byte[] header = null;
-                
+
                 // Check if there's pre-read Hello data
                 if (_pendingHelloData != null && _pendingHelloData.Length >= 8)
                 {
@@ -362,7 +362,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 uint cmdId = BitConverter.ToUInt32(header, 0);
                 uint pktLen = BitConverter.ToUInt32(header, 4);
 
-                if ((SaharaCommand)cmdId !=SaharaCommand.Hello)
+                if ((SaharaCommand)cmdId != SaharaCommand.Hello)
                 {
                     _logDetail($"[Sahara] Received non-Hello packet: 0x{cmdId:X}");
                     return false;
@@ -370,14 +370,14 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 // Process Hello packet to get device info
                 await HandleHelloAsync(pktLen, ct);
-                
+
                 // Verify chip info obtained
                 if (ChipInfo == null || string.IsNullOrEmpty(ChipInfo.PkHash))
                 {
                     _logDetail("[Sahara] Chip info incomplete");
                     return false;
                 }
-                
+
                 _logDetail("[Sahara] ✓ Device info obtained successfully");
                 _deviceInfoObtained = true;
                 return true;
@@ -388,10 +388,10 @@ namespace LoveAlways.Qualcomm.Protocol
                 return false;
             }
         }
-        
+
         // Flag whether device info obtained
         private bool _deviceInfoObtained = false;
-        
+
         /// <summary>
         /// Continue uploading Loader (Call after GetDeviceInfoOnlyAsync)
         /// </summary>
@@ -405,20 +405,20 @@ namespace LoveAlways.Qualcomm.Protocol
                 _log("[Sahara] Please call GetDeviceInfoOnlyAsync first");
                 return false;
             }
-            
+
             if (loaderData == null || loaderData.Length == 0)
             {
                 _log("[Sahara] Loader data is empty");
                 return false;
             }
-            
+
             _log($"[Sahara] Uploading Loader ({loaderData.Length / 1024} KB)...");
-            
+
             try
             {
                 // Send Hello Response to start transfer
                 await SendHelloResponseAsync(2, 1, SaharaMode.ImageTransferPending, ct);
-                
+
                 // Continue Sahara data transfer loop
                 bool done = false;
                 int loopGuard = 0;
@@ -452,35 +452,35 @@ namespace LoveAlways.Qualcomm.Protocol
 
                     switch ((SaharaCommand)cmdId)
                     {
-                    case SaharaCommand.ReadData:
-                        await HandleReadData32Async(pktLen, loaderData, ct);
-                        break;
+                        case SaharaCommand.ReadData:
+                            await HandleReadData32Async(pktLen, loaderData, ct);
+                            break;
 
-                    case SaharaCommand.ReadData64:
-                        await HandleReadData64Async(pktLen, loaderData, ct);
-                        break;
+                        case SaharaCommand.ReadData64:
+                            await HandleReadData64Async(pktLen, loaderData, ct);
+                            break;
 
-                    case SaharaCommand.EndImageTransfer:
-                        bool success;
-                        bool isDone;
-                        int newCount;
-                        HandleEndImageTransferResult(await HandleEndImageTransferAsync(pktLen, endImageTxCount, ct), out success, out isDone, out newCount);
-                        endImageTxCount = newCount;
-                        if (!success) return false;
-                        if (isDone) done = true;
-                        break;
+                        case SaharaCommand.EndImageTransfer:
+                            bool success;
+                            bool isDone;
+                            int newCount;
+                            HandleEndImageTransferResult(await HandleEndImageTransferAsync(pktLen, endImageTxCount, ct), out success, out isDone, out newCount);
+                            endImageTxCount = newCount;
+                            if (!success) return false;
+                            if (isDone) done = true;
+                            break;
 
-                    case SaharaCommand.DoneResponse:
-                        if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        _log("[Sahara] ✅ Loader uploaded successfully");
-                        done = true;
-                        IsConnected = true;
-                        break;
+                        case SaharaCommand.DoneResponse:
+                            if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
+                            _log("[Sahara] ✅ Loader uploaded successfully");
+                            done = true;
+                            IsConnected = true;
+                            break;
 
-                    default:
-                        if (pktLen > 8)
-                            await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        break;
+                        default:
+                            if (pktLen > 8)
+                                await ReadBytesAsync((int)pktLen - 8, 1000, ct);
+                            break;
                     }
                 }
 
@@ -532,26 +532,26 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             // If watchdog triggered reset, increase extra retry count
             int effectiveMaxRetries = maxRetries;
-            
+
             // Attempt handshake, auto reset and retry on failure
             for (int attempt = 0; attempt <= effectiveMaxRetries; attempt++)
             {
                 if (ct.IsCancellationRequested) return false;
-                
+
                 if (attempt > 0)
                 {
                     // Check if reset triggered by watchdog
                     bool wasWatchdogReset = _watchdogTriggeredReset;
-                    
+
                     if (wasWatchdogReset)
                     {
                         _log($"[Sahara] Watchdog triggered reset, executing hard reset (retry #{attempt})...");
-                        
+
                         // Use more aggressive reset when watchdog triggered
                         PurgeBuffer();
                         SendHardReset(); // Send hard reset command
                         await Task.Delay(1000, ct); // Wait for device reboot
-                        
+
                         // Add extra retry opportunity
                         if (attempt == effectiveMaxRetries && effectiveMaxRetries < maxRetries + 2)
                         {
@@ -563,7 +563,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     {
                         _log(string.Format("[Sahara] Handshake failed, attempting Sahara state reset (retry #{0})...", attempt));
                     }
-                    
+
                     // Attempt Sahara state machine reset
                     bool resetOk = await TryResetSaharaAsync(ct);
                     if (resetOk)
@@ -574,7 +574,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     {
                         _log("[Sahara] State machine reset not confirmed, continuing handshake attempt...");
                     }
-                    
+
                     // Reset internal state
                     _chipInfoRead = false;
                     _pendingHelloData = null;
@@ -583,10 +583,10 @@ namespace LoveAlways.Qualcomm.Protocol
                     IsConnected = false;
                     _watchdogTriggeredReset = false;
                     _watchdogStallCount = 0;
-                    
+
                     await Task.Delay(300, ct);
                 }
-                
+
                 bool success = await HandshakeAndLoadInternalAsync(fileBytes, ct);
                 if (success)
                 {
@@ -595,7 +595,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     return true;
                 }
             }
-            
+
             _log("[Sahara] ❌ Multiple handshake attempts failed, may need to power cycle device");
             return false;
         }
@@ -614,7 +614,7 @@ namespace LoveAlways.Qualcomm.Protocol
             _watchdogTriggeredReset = false;
             _watchdogStallCount = 0;
             var sw = Stopwatch.StartNew();
-            
+
             // Start watchdog
             _watchdog?.Start("Sahara handshake");
 
@@ -624,7 +624,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     if (ct.IsCancellationRequested)
                         return false;
-                    
+
                     // Check if watchdog triggered reset
                     if (_watchdogTriggeredReset)
                     {
@@ -678,56 +678,56 @@ namespace LoveAlways.Qualcomm.Protocol
                     }
 
                     // Debug log: Display received command (Except ReadData, too frequent)
-                    if ((SaharaCommand)cmdId != SaharaCommand.ReadData && 
+                    if ((SaharaCommand)cmdId != SaharaCommand.ReadData &&
                         (SaharaCommand)cmdId != SaharaCommand.ReadData64)
                     {
-                        _logDetail(string.Format("[Sahara] Received: Cmd=0x{0:X2} ({1}), Len={2}", 
+                        _logDetail(string.Format("[Sahara] Received: Cmd=0x{0:X2} ({1}), Len={2}",
                             cmdId, (SaharaCommand)cmdId, pktLen));
                     }
 
                     switch ((SaharaCommand)cmdId)
                     {
-                    case SaharaCommand.Hello:
-                        await HandleHelloAsync(pktLen, ct);
-                        break;
+                        case SaharaCommand.Hello:
+                            await HandleHelloAsync(pktLen, ct);
+                            break;
 
-                    case SaharaCommand.ReadData:
-                        await HandleReadData32Async(pktLen, fileBytes, ct);
-                        break;
+                        case SaharaCommand.ReadData:
+                            await HandleReadData32Async(pktLen, fileBytes, ct);
+                            break;
 
-                    case SaharaCommand.ReadData64:
-                        await HandleReadData64Async(pktLen, fileBytes, ct);
-                        break;
+                        case SaharaCommand.ReadData64:
+                            await HandleReadData64Async(pktLen, fileBytes, ct);
+                            break;
 
-                    case SaharaCommand.EndImageTransfer:
-                        bool success;
-                        bool isDone;
-                        int newCount;
-                        HandleEndImageTransferResult(await HandleEndImageTransferAsync(pktLen, endImageTxCount, ct), out success, out isDone, out newCount);
-                        endImageTxCount = newCount;
-                        if (!success) return false;
-                        if (isDone) done = true;
-                        break;
+                        case SaharaCommand.EndImageTransfer:
+                            bool success;
+                            bool isDone;
+                            int newCount;
+                            HandleEndImageTransferResult(await HandleEndImageTransferAsync(pktLen, endImageTxCount, ct), out success, out isDone, out newCount);
+                            endImageTxCount = newCount;
+                            if (!success) return false;
+                            if (isDone) done = true;
+                            break;
 
-                    case SaharaCommand.DoneResponse:
-                        if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        _log("[Sahara] ✅ Boot loaded successfully");
-                        done = true;
-                        IsConnected = true;
-                        FeedWatchdog(); // Successfully completed, feed watchdog
-                        break;
+                        case SaharaCommand.DoneResponse:
+                            if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
+                            _log("[Sahara] ✅ Boot loaded successfully");
+                            done = true;
+                            IsConnected = true;
+                            FeedWatchdog(); // Successfully completed, feed watchdog
+                            break;
 
-                    case SaharaCommand.CommandReady:
-                        if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        _log("[Sahara] Received CommandReady, switching to transfer mode");
-                        SendSwitchMode(SaharaMode.ImageTransferPending);
-                        FeedWatchdog();
-                        break;
+                        case SaharaCommand.CommandReady:
+                            if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
+                            _log("[Sahara] Received CommandReady, switching to transfer mode");
+                            SendSwitchMode(SaharaMode.ImageTransferPending);
+                            FeedWatchdog();
+                            break;
 
-                    default:
-                        _log(string.Format("[Sahara] Unknown command: 0x{0:X2}", cmdId));
-                        if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
-                        break;
+                        default:
+                            _log(string.Format("[Sahara] Unknown command: 0x{0:X2}", cmdId));
+                            if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
+                            break;
                     }
                 }
 
@@ -770,7 +770,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
             ProtocolVersion = BitConverter.ToUInt32(body, 0);
             uint deviceMode = body.Length >= 12 ? BitConverter.ToUInt32(body, 12) : 0;
-            
+
             // Detailed log (Aligned with tools project)
             _logDetail(string.Format("[Sahara] Received HELLO (Version={0}, Mode={1})", ProtocolVersion, deviceMode));
 
@@ -779,7 +779,7 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 _chipInfoRead = true;
                 bool enteredCommandMode = await TryReadChipInfoSafeAsync(ct);
-                
+
                 if (enteredCommandMode)
                 {
                     // Successfully entered command mode and read info, already sent SwitchMode
@@ -812,7 +812,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
             _totalSent += length;
             double percent = (double)_totalSent * 100 / fileBytes.Length;
-            
+
             // Call progress callback (Progress bar display, no log needed)
             if (_progressCallback != null)
                 _progressCallback(percent);
@@ -836,7 +836,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
             _totalSent += (long)length;
             double percent = (double)_totalSent * 100 / fileBytes.Length;
-            
+
             // Call progress callback (Progress bar display, no log needed)
             if (_progressCallback != null)
                 _progressCallback(percent);
@@ -848,8 +848,8 @@ namespace LoveAlways.Qualcomm.Protocol
         private async Task<Tuple<bool, bool, int>> HandleEndImageTransferAsync(uint pktLen, int endImageTxCount, CancellationToken ct)
         {
             endImageTxCount++;
-            
-            if (endImageTxCount > 10) 
+
+            if (endImageTxCount > 10)
             {
                 _log("[Sahara] Received too many EndImageTransfer commands");
                 return Tuple.Create(false, false, endImageTxCount);
@@ -860,7 +860,7 @@ namespace LoveAlways.Qualcomm.Protocol
             if (pktLen >= 16)
             {
                 var body = await ReadBytesAsync(8, 5000, ct);
-                if (body != null) 
+                if (body != null)
                 {
                     imageId = BitConverter.ToUInt32(body, 0);
                     endStatus = BitConverter.ToUInt32(body, 4);
@@ -871,14 +871,14 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 var status = (SaharaStatus)endStatus;
                 _log(string.Format("[Sahara] ❌ Transfer failed: {0}", SaharaStatusHelper.GetErrorMessage(status)));
-                
+
                 // [Critical] If InvalidCommand, may be state desync caused by command mode
                 // Try skipping command mode on next connection
                 if (status == SaharaStatus.InvalidCommand)
                 {
                     _log("[Sahara] Hint: This error usually caused by device state residue, will auto-recover on retry");
                 }
-                
+
                 return Tuple.Create(false, false, endImageTxCount);
             }
 
@@ -897,7 +897,7 @@ namespace LoveAlways.Qualcomm.Protocol
         /// </summary>
         private async Task<bool> TryReadChipInfoSafeAsync(CancellationToken ct)
         {
-            if (_skipCommandMode) 
+            if (_skipCommandMode)
             {
                 _logDetail("[Sahara] Skip ping command mode");
                 return false;
@@ -911,7 +911,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 // Wait for response
                 var header = await ReadBytesAsync(8, 2000, ct);
-                if (header == null) 
+                if (header == null)
                 {
                     _logDetail("[Sahara] Command mode no response");
                     return false;
@@ -924,9 +924,9 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     if (pktLen > 8) await ReadBytesAsync((int)pktLen - 8, 1000, ct);
                     _logDetail("[Sahara] Device accepted command mode");
-                    
+
                     await ReadChipInfoCommandsAsync(ct);
-                    
+
                     // Switch back to transfer mode
                     _logDetail("[Sahara] Switching back to transfer mode...");
                     SendSwitchMode(SaharaMode.ImageTransferPending);
@@ -973,7 +973,7 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             // 1. First display protocol version
             _log(string.Format("- Sahara version  : {0}", ProtocolVersion));
-            
+
             // 2. Read serial number (cmd=0x01)
             var serialData = await ExecuteCommandSafeAsync(SaharaExecCommand.SerialNumRead, ct);
             if (serialData != null && serialData.Length >= 4)
@@ -994,7 +994,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 ChipInfo.PkHash = ChipPkHash;
                 ChipInfo.PkHashInfo = QualcommDatabase.GetPkHashInfo(ChipPkHash);
                 _log(string.Format("- OEM PKHASH : {0}", ChipPkHash));
-                
+
                 if (!string.IsNullOrEmpty(ChipInfo.PkHashInfo) && ChipInfo.PkHashInfo != "Unknown" && ChipInfo.PkHashInfo != "Custom OEM")
                 {
                     _log(string.Format("- SecBoot : {0}", ChipInfo.PkHashInfo));
@@ -1008,7 +1008,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 var hwidData = await ExecuteCommandSafeAsync(SaharaExecCommand.MsmHwIdRead, ct);
                 if (hwidData != null && hwidData.Length >= 8)
                     ProcessHwIdData(hwidData);
-                    
+
                 // V1/V2: Read SBL version (cmd=0x07), skip on failure
                 var sblVer = await ExecuteCommandSafeAsync(SaharaExecCommand.SblSwVersion, ct);
                 if (sblVer != null && sblVer.Length >= 4)
@@ -1037,7 +1037,7 @@ namespace LoveAlways.Qualcomm.Protocol
                         }
                     }
                 }
-                
+
                 // V3: Read SBL info (cmd=0x06), skip on failure
                 var sblInfo = await ExecuteCommandSafeAsync(SaharaExecCommand.SblInfoRead, ct);
                 if (sblInfo != null && sblInfo.Length >= 4)
@@ -1047,7 +1047,7 @@ namespace LoveAlways.Qualcomm.Protocol
             }
             // Note: PBL version read (cmd=0x08) removed, some devices don't support it and cause handshake failure
         }
-        
+
         /// <summary>
         /// Process SBL info (V3 specific, cmd=0x06)
         /// </summary>
@@ -1057,13 +1057,13 @@ namespace LoveAlways.Qualcomm.Protocol
             // Offset 0: Serial Number (4 bytes)
             // Offset 4: MSM HW ID (8 bytes) - V3 may include
             // Offset 12+: Other extended info
-            
+
             if (sblInfo.Length >= 4)
             {
                 uint sblSerial = BitConverter.ToUInt32(sblInfo, 0);
                 _log(string.Format("- SBL Serial : 0x{0:X8}", sblSerial));
             }
-            
+
             if (sblInfo.Length >= 8)
             {
                 uint sblVersion = BitConverter.ToUInt32(sblInfo, 4);
@@ -1072,7 +1072,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     _log(string.Format("- SBL Version : 0x{0:X8}", sblVersion));
                 }
             }
-            
+
             // If more data available, try parsing OEM info
             if (sblInfo.Length >= 16)
             {
@@ -1084,7 +1084,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 }
             }
         }
-        
+
         /// <summary>
         /// Display chip info summary before uploading boot
         /// Note: Detailed info already output in ReadChipInfoCommandsAsync
@@ -1092,7 +1092,7 @@ namespace LoveAlways.Qualcomm.Protocol
         private void LogChipInfoBeforeUpload()
         {
             if (ChipInfo == null) return;
-            
+
             // Only output summary, detailed info already output during reading
             _logDetail("[Sahara] Chip info reading complete");
         }
@@ -1125,7 +1125,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 msmId, modelId, oemId, ChipInfo.Vendor));
 
             if (ChipInfo.ChipName != "Unknown")
-                _log(string.Format("- CHIP : {0}",ChipInfo.ChipName));
+                _log(string.Format("- CHIP : {0}", ChipInfo.ChipName));
 
             _log(string.Format("- HW_ID : {0}", ChipHwId));
         }
@@ -1285,7 +1285,7 @@ namespace LoveAlways.Qualcomm.Protocol
             WriteUInt32(packet, 4, 8);
             _port.Write(packet);
         }
-        
+
         /// <summary>
         /// Send hard reset command (Reset) - Completely restart device
         /// </summary>
@@ -1296,7 +1296,7 @@ namespace LoveAlways.Qualcomm.Protocol
             WriteUInt32(packet, 4, 8);
             _port.Write(packet);
         }
-        
+
         /// <summary>
         /// Try resetting stuck Sahara state
         /// </summary>
@@ -1305,13 +1305,13 @@ namespace LoveAlways.Qualcomm.Protocol
         public async Task<bool> TryResetSaharaAsync(CancellationToken ct = default(CancellationToken))
         {
             _logDetail("[Sahara] Attempting Sahara state reset...");
-            
+
             // Method 1: Send ResetStateMachine command
             _logDetail("[Sahara] Method 1: Sending ResetStateMachine...");
             PurgeBuffer();
             SendReset();
             await Task.Delay(500, ct);
-            
+
             // Check if new Hello received
             var hello = await TryReadHelloAsync(2000, ct);
             if (hello != null)
@@ -1319,34 +1319,34 @@ namespace LoveAlways.Qualcomm.Protocol
                 _logDetail("[Sahara] ✓ Received new Hello packet, state reset");
                 return true;
             }
-            
+
             // Method 2: Send Hello Response to attempt resync
             _logDetail("[Sahara] Method 2: Sending Hello Response to attempt resync...");
             PurgeBuffer();
             await SendHelloResponseAsync(2, 1, SaharaMode.ImageTransferPending, ct);
             await Task.Delay(300, ct);
-            
+
             hello = await TryReadHelloAsync(2000, ct);
             if (hello != null)
             {
                 _logDetail("[Sahara] ✓ Received new Hello packet, state reset");
                 return true;
             }
-            
+
             // Method 3: Port signal reset (DTR/RTS)
             _logDetail("[Sahara] Method 3: Port signal reset...");
             try
             {
                 _port.Close();
                 await Task.Delay(200, ct);
-                
+
                 // Reopen port and clear buffer
                 string portName = _port.PortName;
                 if (!string.IsNullOrEmpty(portName))
                 {
                     await _port.OpenAsync(portName, 3, true, ct);
                     await Task.Delay(500, ct);
-                    
+
                     hello = await TryReadHelloAsync(3000, ct);
                     if (hello != null)
                     {
@@ -1359,11 +1359,11 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 _logDetail("[Sahara] Port reset exception: " + ex.Message);
             }
-            
+
             _log("[Sahara] ❌ Cannot reset Sahara state, device may need power cycle");
             return false;
         }
-        
+
         /// <summary>
         /// Try reading Hello packet (For detecting state reset)
         /// </summary>
@@ -1372,14 +1372,14 @@ namespace LoveAlways.Qualcomm.Protocol
             var data = await ReadBytesAsync(48, timeoutMs, ct);
             if (data == null || data.Length < 8)
                 return null;
-                
+
             uint cmd = BitConverter.ToUInt32(data, 0);
             if (cmd == (uint)SaharaCommand.Hello)
                 return data;
-                
+
             return null;
         }
-        
+
         /// <summary>
         /// Send Hello Response
         /// </summary>
@@ -1394,12 +1394,12 @@ namespace LoveAlways.Qualcomm.Protocol
                 Status = 0,
                 Mode = (uint)mode
             };
-            
+
             byte[] packet = StructToBytes(response);
             _port.Write(packet);
             await Task.Delay(50, ct);
         }
-        
+
         private static byte[] StructToBytes<T>(T obj) where T : struct
         {
             int size = Marshal.SizeOf(typeof(T));
@@ -1447,7 +1447,7 @@ namespace LoveAlways.Qualcomm.Protocol
             if (!_disposed)
             {
                 _disposed = true;
-                
+
                 // Release watchdog
                 if (_watchdog != null)
                 {

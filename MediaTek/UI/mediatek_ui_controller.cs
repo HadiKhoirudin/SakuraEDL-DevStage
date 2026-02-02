@@ -4,23 +4,21 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using LoveAlways.MediaTek.Common;
 using LoveAlways.MediaTek.Database;
-using LoveAlways.MediaTek.Exploit;
 using LoveAlways.MediaTek.Models;
 using LoveAlways.MediaTek.Protocol;
 using LoveAlways.MediaTek.Services;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LoveAlways.MediaTek.UI
 {
@@ -72,12 +70,12 @@ namespace LoveAlways.MediaTek.UI
             _portDetector = new MtkPortDetector(msg => Log(msg, Color.Gray));
             _portDetector.OnDeviceArrived += port =>
             {
-                Log($"[MTK] Device Detected: {port.ComPort} ({port.Description})", Color.Cyan);
+                Log($"[MediaTek] Device Detected: {port.ComPort} ({port.Description})", Color.Cyan);
                 OnPortDetected?.Invoke(port);
             };
             _portDetector.OnDeviceRemoved += portName =>
             {
-                Log($"[MTK] Device Removed: {portName}", Color.Orange);
+                Log($"[MediaTek] Device Removed: {portName}", Color.Orange);
                 OnPortRemoved?.Invoke(portName);
             };
         }
@@ -98,7 +96,7 @@ namespace LoveAlways.MediaTek.UI
         public void StartPortMonitoring()
         {
             _portDetector.StartMonitoring();
-            Log("[MTK] Device Monitoring Started", Color.Gray);
+            //Log("[MediaTek] Device Monitoring Started", Color.Gray);
         }
 
         /// <summary>
@@ -132,12 +130,12 @@ namespace LoveAlways.MediaTek.UI
         /// </summary>
         public async Task<bool> AutoConnectAsync(int waitTimeoutMs = 60000)
         {
-            Log("[MTK] Waiting for device connection...", Color.Cyan);
+            Log("[MediaTek] Waiting for device connection...", Color.Cyan);
 
             var port = await WaitForDeviceAsync(waitTimeoutMs);
             if (port == null)
             {
-                Log("[MTK] No device detected", Color.Red);
+                Log("[MediaTek] No device detected", Color.Red);
                 return false;
             }
 
@@ -176,6 +174,11 @@ namespace LoveAlways.MediaTek.UI
         /// </summary>
         public void SetDaFilePath(string filePath)
         {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                filePath = @"Bin\Da\MTK_AllInOne_DA.bin";
+            }
+
             _service.SetDaFilePath(filePath);
         }
 
@@ -211,7 +214,7 @@ namespace LoveAlways.MediaTek.UI
         {
             ResetOperationCts();
 
-            Log("[MTK] Connecting device and loading DA...", Color.Cyan);
+            Log("[MediaTek] Connecting device and loading DA...", Color.Cyan);
 
             if (!await _service.ConnectAsync(comPort, 115200, _operationCts.Token))
             {
@@ -275,7 +278,7 @@ namespace LoveAlways.MediaTek.UI
             ResetOperationCts();
 
             Log("========================================", Color.White);
-            Log("[MTK] Starting Flash Process", Color.Cyan);
+            Log("[MediaTek] Starting Flash Process", Color.Cyan);
             Log("========================================", Color.White);
 
             bool result = await _service.FlashMultipleAsync(partitionFiles, _operationCts.Token);
@@ -283,13 +286,13 @@ namespace LoveAlways.MediaTek.UI
             if (result)
             {
                 Log("========================================", Color.Green);
-                Log("[MTK] Flash Complete!", Color.Green);
+                Log("[MediaTek] Flash Complete!", Color.Green);
                 Log("========================================", Color.Green);
             }
             else
             {
                 Log("========================================", Color.Red);
-                Log("[MTK] Flash Failed", Color.Red);
+                Log("[MediaTek] Flash Failed", Color.Red);
                 Log("========================================", Color.Red);
             }
 
@@ -338,7 +341,7 @@ namespace LoveAlways.MediaTek.UI
             var info = await _service.GetFlashInfoAsync();
             if (info != null)
             {
-                Log($"[MTK] Flash: {info.FlashType} {info.CapacityDisplay}", Color.Cyan);
+                Log($"[MediaTek] Flash: {info.FlashType} {info.CapacityDisplay}", Color.Cyan);
             }
             return info;
         }
@@ -355,11 +358,11 @@ namespace LoveAlways.MediaTek.UI
             bool isVulnerable = _service.CheckVulnerability();
             if (isVulnerable)
             {
-                Log("[MTK] ✓ Device vulnerability detected (Carbonara), signature bypass possible", Color.Yellow);
+                Log("[MediaTek] ✓ Device vulnerability detected (Carbonara), signature bypass possible", Color.Yellow);
             }
             else
             {
-                Log("[MTK] No known vulnerability detected", Color.Gray);
+                Log("[MediaTek] No known vulnerability detected", Color.Gray);
             }
             return isVulnerable;
         }
@@ -372,11 +375,11 @@ namespace LoveAlways.MediaTek.UI
             var info = _service.GetSecurityInfo();
             if (info != null)
             {
-                Log($"[MTK] Secure Boot: {(info.SecureBootEnabled ? "Enabled" : "Disabled")}", Color.Cyan);
-                Log($"[MTK] SLA: {(info.SlaEnabled ? "Enabled" : "Disabled")}", Color.Cyan);
-                Log($"[MTK] DAA: {(info.DaaEnabled ? "Enabled" : "Disabled")}", Color.Cyan);
+                Log($"[MediaTek] Secure Boot: {(info.SecureBootEnabled ? "Enabled" : "Disabled")}", Color.Cyan);
+                Log($"[MediaTek] SLA: {(info.SlaEnabled ? "Enabled" : "Disabled")}", Color.Cyan);
+                Log($"[MediaTek] DAA: {(info.DaaEnabled ? "Enabled" : "Disabled")}", Color.Cyan);
                 if (!string.IsNullOrEmpty(info.MeId))
-                    Log($"[MTK] ME ID: {info.MeId}", Color.Gray);
+                    Log($"[MediaTek] ME ID: {info.MeId}", Color.Gray);
             }
             return info;
         }
@@ -475,21 +478,21 @@ namespace LoveAlways.MediaTek.UI
             {
                 string chipName = ChipInfo?.ChipName ?? "Unknown";
                 ushort hwCode = ChipInfo?.HwCode ?? 0;
-                Log($"[MTK] Current device {chipName} (0x{hwCode:X4}) does not support ALLINONE-SIGNATURE exploit", Color.Red);
-                Log("[MTK] This exploit only supports following chips:", Color.Yellow);
+                Log($"[MediaTek] Current device {chipName} (0x{hwCode:X4}) does not support ALLINONE-SIGNATURE exploit", Color.Red);
+                Log("[MediaTek] This exploit only supports following chips:", Color.Yellow);
                 foreach (var chip in GetAllinoneSignatureChips())
                 {
-                    Log($"[MTK]   • {chip}", Color.Yellow);
+                    Log($"[MediaTek]   • {chip}", Color.Yellow);
                 }
                 return false;
             }
 
             ResetOperationCts();
 
-            Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
-            Log($"[MTK] Starting ALLINONE-SIGNATURE Exploit", Color.Yellow);
-            Log($"[MTK] Target Chip: {ChipInfo?.ChipName} (0x{ChipInfo?.HwCode:X4})", Color.Yellow);
-            Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
+            Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+            Log($"[MediaTek] Starting ALLINONE-SIGNATURE Exploit", Color.Yellow);
+            Log($"[MediaTek] Target Chip: {ChipInfo?.ChipName} (0x{ChipInfo?.HwCode:X4})", Color.Yellow);
+            Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
 
             try
             {
@@ -500,24 +503,24 @@ namespace LoveAlways.MediaTek.UI
 
                 if (success)
                 {
-                    Log("[MTK] ✓ ALLINONE-SIGNATURE Exploit Success!", Color.Green);
-                    Log("[MTK] Device security disabled, you can now perform any operation", Color.Green);
+                    Log("[MediaTek] ✓ ALLINONE-SIGNATURE Exploit Success!", Color.Green);
+                    Log("[MediaTek] Device security disabled, you can now perform any operation", Color.Green);
                 }
                 else
                 {
-                    Log("[MTK] ✗ ALLINONE-SIGNATURE Exploit Failed", Color.Red);
+                    Log("[MediaTek] ✗ ALLINONE-SIGNATURE Exploit Failed", Color.Red);
                 }
 
                 return success;
             }
             catch (OperationCanceledException)
             {
-                Log("[MTK] Exploit operation cancelled", Color.Orange);
+                Log("[MediaTek] Exploit operation cancelled", Color.Orange);
                 return false;
             }
             catch (Exception ex)
             {
-                Log($"[MTK] Exploit Exception: {ex.Message}", Color.Red);
+                Log($"[MediaTek] Exploit Exception: {ex.Message}", Color.Red);
                 return false;
             }
         }
@@ -559,7 +562,7 @@ namespace LoveAlways.MediaTek.UI
         public void CancelOperation()
         {
             _operationCts?.Cancel();
-            Log("[MTK] Operation Cancelled", Color.Orange);
+            Log("[MediaTek] Operation Cancelled", Color.Orange);
         }
 
         private void Log(string message, Color color)

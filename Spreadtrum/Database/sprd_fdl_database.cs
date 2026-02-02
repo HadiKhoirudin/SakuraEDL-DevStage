@@ -3,11 +3,11 @@
 // 包含芯片信息、FDL 地址、设备 FDL 映射
 // ============================================================================
 
+using LoveAlways.Spreadtrum.Resources;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using LoveAlways.Spreadtrum.Resources;
 
 namespace LoveAlways.Spreadtrum.Database
 {
@@ -585,7 +585,7 @@ namespace LoveAlways.Spreadtrum.Database
             });
 
             // ========== 新增: 2024-2025 新芯片 ==========
-            
+
             // T8xx 系列 (高端 4G/5G)
             _chips.Add(new SprdChipInfo
             {
@@ -844,7 +844,7 @@ namespace LoveAlways.Spreadtrum.Database
         /// </summary>
         public static SprdChipInfo GetChipByName(string chipName)
         {
-            return Chips.FirstOrDefault(c => 
+            return Chips.FirstOrDefault(c =>
                 c.ChipName.Equals(chipName, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -969,7 +969,7 @@ namespace LoveAlways.Spreadtrum.Database
             // 1. 统一资源包
             if (!SprdPakManager.IsLoaded)
                 SprdPakManager.LoadPak();
-            
+
             if (SprdPakManager.IsLoaded)
             {
                 var data = SprdPakManager.GetFdlData(chipName, deviceName, isFdl1);
@@ -993,7 +993,7 @@ namespace LoveAlways.Spreadtrum.Database
         private static string GetFdlPathFromLocal(SprdDeviceFdl device, bool isFdl1)
         {
             string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SprdResources", "sprd_fdls");
-            
+
             // 根据芯片类型确定子目录
             string chipDir = GetChipDirectory(device.ChipName);
             if (string.IsNullOrEmpty(chipDir))
@@ -1001,7 +1001,7 @@ namespace LoveAlways.Spreadtrum.Database
 
             string fileName = isFdl1 ? device.Fdl1FileName : device.Fdl2FileName;
             string path = Path.Combine(baseDir, chipDir, device.DeviceName, fileName);
-            
+
             // 如果精确路径不存在，尝试搜索
             if (!File.Exists(path))
             {
@@ -1013,7 +1013,7 @@ namespace LoveAlways.Spreadtrum.Database
                     if (files.Length > 0)
                         return files[0];
                 }
-                
+
                 // 尝试在芯片目录下直接搜索
                 searchDir = Path.Combine(baseDir, chipDir);
                 if (Directory.Exists(searchDir))
@@ -1024,7 +1024,7 @@ namespace LoveAlways.Spreadtrum.Database
                         return files[0];
                 }
             }
-            
+
             return File.Exists(path) ? path : null;
         }
 
@@ -1050,7 +1050,7 @@ namespace LoveAlways.Spreadtrum.Database
                 case "SC9830":
                 case "SC9830A":
                     return @"sc_sp_sl\98xx_85xx\9830";
-                    
+
                 // SC77xx 系列
                 case "SC7731E":
                 case "SC7731":
@@ -1058,7 +1058,7 @@ namespace LoveAlways.Spreadtrum.Database
                     return @"sc_sp_sl\old\7731e";
                 case "SC7730":
                     return @"sc_sp_sl\old\7730";
-                    
+
                 // T 系列 4G
                 case "T310":
                     return @"t_series\t310";
@@ -1080,7 +1080,7 @@ namespace LoveAlways.Spreadtrum.Database
                     return @"t_series\t770";
                 case "T820":
                     return @"t_series\t820";
-                    
+
                 // T 系列 5G
                 case "T740":
                 case "T750":
@@ -1091,7 +1091,7 @@ namespace LoveAlways.Spreadtrum.Database
                 case "T7525":
                 case "T7530":
                     return @"t_series\5g\t75xx";
-                    
+
                 // UMS 系列
                 case "UMS312":
                     return @"ums\ums312";
@@ -1099,7 +1099,7 @@ namespace LoveAlways.Spreadtrum.Database
                     return @"ums\ums512";
                 case "UMS9230":
                     return @"ums\ums9230";
-                    
+
                 // T1xx 系列 (4G 功能机) - 参考 spreadtrum_flash
                 case "T107":
                 case "T117":
@@ -1108,7 +1108,7 @@ namespace LoveAlways.Spreadtrum.Database
                 case "UMS9117":
                 case "UMS9127":
                     return @"t_series\t1xx";
-                    
+
                 // 功能机系列
                 case "SC6531E":
                 case "SC6531":
@@ -1120,12 +1120,12 @@ namespace LoveAlways.Spreadtrum.Database
                 case "W117":
                 case "W217":
                     return @"feature_phone\w_series";
-                    
+
                 // 可穿戴系列
                 case "UWS6121":
                 case "UWS6152":
                     return @"wearable\uws";
-                    
+
                 default:
                     // 通用搜索路径
                     return chipName.ToLower();
@@ -1139,22 +1139,22 @@ namespace LoveAlways.Spreadtrum.Database
         {
             string baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SprdResources", "sprd_fdls");
             string chipDir = GetChipDirectory(chipName);
-            
+
             if (string.IsNullOrEmpty(chipDir))
                 return null;
-                
+
             string searchDir = Path.Combine(baseDir, chipDir);
             if (!Directory.Exists(searchDir))
                 return null;
-                
+
             string pattern = isFdl1 ? "fdl1*.bin" : "fdl2*.bin";
             var files = Directory.GetFiles(searchDir, pattern, SearchOption.AllDirectories);
-            
+
             // 优先返回签名版本
             var signedFile = files.FirstOrDefault(f => f.Contains("-sign"));
             if (signedFile != null)
                 return signedFile;
-                
+
             return files.FirstOrDefault();
         }
 

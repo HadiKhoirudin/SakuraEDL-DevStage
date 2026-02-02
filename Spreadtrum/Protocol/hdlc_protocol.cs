@@ -4,7 +4,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -30,16 +30,16 @@ namespace LoveAlways.Spreadtrum.Protocol
         private static readonly ushort[] CrcTableModbus = GenerateCrcTableModbus();
 
         private readonly Action<string> _log;
-        
+
         // Whether to skip receiver CRC check (Spreadtrum BROM compatibility mode)
         public bool SkipRxCrcCheck { get; set; } = true;
-        
+
         /// <summary>
         /// Validation mode: true = CRC16 (BROM phase), false = Checksum (FDL phase)
         /// BROM phase uses CRC-16-CCITT, FDL phase uses Spreadtrum proprietary checksum
         /// </summary>
         public bool UseCrc16Mode { get; set; } = true;
-        
+
         /// <summary>
         /// Transcoding mode: true = enabled (default), false = disabled
         /// When transcoding is enabled, 0x7D and 0x7E bytes are escaped
@@ -51,7 +51,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         {
             _log = log;
         }
-        
+
         /// <summary>
         /// Switch to FDL mode (uses Spreadtrum checksum)
         /// </summary>
@@ -60,7 +60,7 @@ namespace LoveAlways.Spreadtrum.Protocol
             UseCrc16Mode = false;
             _log?.Invoke("[HDLC] Switched to FDL mode (Checksum)");
         }
-        
+
         /// <summary>
         /// Switch to BROM mode (uses CRC16)
         /// </summary>
@@ -78,7 +78,7 @@ namespace LoveAlways.Spreadtrum.Protocol
             UseCrc16Mode = !UseCrc16Mode;
             _log?.Invoke($"[HDLC] Toggled checksum mode: {(UseCrc16Mode ? "CRC16" : "Checksum")}");
         }
-        
+
         /// <summary>
         /// Disable transcoding (Required step for FDL2)
         /// Reference: spd_dump.c - io->flags &= ~FLAGS_TRANSCODE
@@ -88,7 +88,7 @@ namespace LoveAlways.Spreadtrum.Protocol
             UseTranscode = false;
             _log?.Invoke("[HDLC] Transcoding disabled");
         }
-        
+
         /// <summary>
         /// Enable transcoding (default)
         /// </summary>
@@ -117,16 +117,16 @@ namespace LoveAlways.Spreadtrum.Protocol
                 // Build data part (Big-Endian format, matching Spreadtrum protocol)
                 // Format: Type(2, big-endian) + Length(2, big-endian) + Payload + CRC(2, big-endian)
                 var data = new List<byte>();
-                
+
                 // Type: 2 bytes, big-endian
                 data.Add(0x00);  // Type high byte (SubType)
                 data.Add(type);  // Type low byte (Command)
-                
+
                 // Length: 2 bytes, big-endian
                 ushort length = (ushort)payload.Length;
                 data.Add((byte)((length >> 8) & 0xFF));  // Length high byte
                 data.Add((byte)(length & 0xFF));         // Length low byte
-                
+
                 // Add payload
                 if (payload.Length > 0)
                     data.AddRange(payload);
@@ -143,7 +143,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                     // FDL mode: Use Spreadtrum proprietary checksum
                     checksum = CalculateSprdChecksum(data.ToArray());
                 }
-                
+
                 // Checksum (Big-Endian, matches open source spd_dump)
                 data.Add((byte)((checksum >> 8) & 0xFF));  // high byte (Big-Endian)
                 data.Add((byte)(checksum & 0xFF));         // low byte (Big-Endian)
@@ -178,13 +178,13 @@ namespace LoveAlways.Spreadtrum.Protocol
             {
                 // Write address (4 bytes, little-endian)
                 ms.Write(BitConverter.GetBytes(address), 0, 4);
-                
+
                 // Write data length (4 bytes)
                 ms.Write(BitConverter.GetBytes((uint)data.Length), 0, 4);
-                
+
                 // Write data
                 ms.Write(data, 0, data.Length);
-                
+
                 return BuildFrame(type, ms.ToArray());
             }
         }
@@ -268,7 +268,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                     error = HdlcParseError.PayloadMismatch;
                     return false;
                 }
-                
+
                 for (int i = 0; i < length; i++)
                     payload[i] = data[4 + i];
             }
@@ -276,35 +276,35 @@ namespace LoveAlways.Spreadtrum.Protocol
             // Validate CRC (Big-Endian, matches open source spd_dump)
             int crcOffset = 4 + length;
             ushort receivedCrc = (ushort)((data[crcOffset] << 8) | data[crcOffset + 1]);  // Big-Endian
-            
+
             // Spreadtrum BROM uses different CRC algorithms, skip validation in compatibility mode
             if (!SkipRxCrcCheck)
             {
                 byte[] crcData = data.GetRange(0, crcOffset).ToArray();
-                
+
                 // Calculate using current validation mode
-                ushort calculatedCrc = UseCrc16Mode 
-                    ? CalculateCRC16Ccitt(crcData) 
+                ushort calculatedCrc = UseCrc16Mode
+                    ? CalculateCRC16Ccitt(crcData)
                     : CalculateSprdChecksum(crcData);
-                
+
                 if (receivedCrc != calculatedCrc)
                 {
                     // Automatically try another checksum mode (Reference: SPRDClientCore)
-                    ushort alternativeCrc = UseCrc16Mode 
-                        ? CalculateSprdChecksum(crcData) 
+                    ushort alternativeCrc = UseCrc16Mode
+                        ? CalculateSprdChecksum(crcData)
                         : CalculateCRC16Ccitt(crcData);
-                    
+
                     if (receivedCrc == alternativeCrc)
                     {
                         // Auto-switch checksum mode
                         UseCrc16Mode = !UseCrc16Mode;
-                        _log?.Invoke(string.Format("[HDLC] Auto-switched checksum mode: {0}", 
+                        _log?.Invoke(string.Format("[HDLC] Auto-switched checksum mode: {0}",
                             UseCrc16Mode ? "CRC16" : "Checksum"));
                     }
                     else
                     {
-                        _log?.Invoke(string.Format("[HDLC] CRC check failed: received=0x{0:X4}, CRC16=0x{1:X4}, Checksum=0x{2:X4}", 
-                            receivedCrc, 
+                        _log?.Invoke(string.Format("[HDLC] CRC check failed: received=0x{0:X4}, CRC16=0x{1:X4}, Checksum=0x{2:X4}",
+                            receivedCrc,
                             UseCrc16Mode ? calculatedCrc : alternativeCrc,
                             UseCrc16Mode ? alternativeCrc : calculatedCrc));
                         error = HdlcParseError.CrcMismatch;
@@ -400,7 +400,7 @@ namespace LoveAlways.Spreadtrum.Protocol
             // Reference: spd_crc16 implementation in spd_dump.c
             // Polynomial: 0x1021 (CCITT), MSB-first, initial value 0
             uint crc = 0;
-            
+
             foreach (byte b in data)
             {
                 crc ^= (uint)(b << 8);
@@ -415,14 +415,14 @@ namespace LoveAlways.Spreadtrum.Protocol
 
             return (ushort)(crc & 0xFFFF);
         }
-        
+
         /// <summary>
         /// Calculate CRC-16-CCITT (Legacy LSB-first, for compatibility)
         /// </summary>
         public ushort CalculateCRC16CcittLsb(byte[] data)
         {
             ushort crc = 0;
-            
+
             foreach (byte b in data)
             {
                 crc ^= b;
@@ -463,11 +463,11 @@ namespace LoveAlways.Spreadtrum.Protocol
             // Fold to 16-bit and invert
             ctr = (ctr >> 16) + (ctr & 0xFFFF);
             ctr = ~(ctr + (ctr >> 16)) & 0xFFFF;
-            
+
             // Critical: Byte swap (consistent with sprdproto)
             return (ushort)((ctr >> 8) | ((ctr & 0xFF) << 8));
         }
-        
+
         /// <summary>
         /// Verify CRC (for debugging)
         /// </summary>
@@ -477,14 +477,14 @@ namespace LoveAlways.Spreadtrum.Protocol
             _log?.Invoke(string.Format("[HDLC] CRC Verification: Calculated=0x{0:X4}, Expected=0x{1:X4}", calculated, expectedCrc));
             return calculated == expectedCrc;
         }
-        
+
         /// <summary>
         /// Calculate CRC-16 (Legacy method, for compatibility)
         /// </summary>
         public ushort CalculateCRC16(byte[] data)
         {
             ushort crc = 0;
-            
+
             foreach (byte b in data)
             {
                 crc = (ushort)((crc >> 8) ^ CrcTable[(crc ^ b) & 0xFF]);
@@ -516,7 +516,7 @@ namespace LoveAlways.Spreadtrum.Protocol
 
             return table;
         }
-        
+
         /// <summary>
         /// Generate CRC-16-MODBUS lookup table (Legacy method, for compatibility)
         /// </summary>
@@ -551,7 +551,7 @@ namespace LoveAlways.Spreadtrum.Protocol
 
             int displayLength = Math.Min(data.Length, maxLength);
             var hex = BitConverter.ToString(data, 0, displayLength).Replace("-", " ");
-            
+
             if (data.Length > maxLength)
                 hex += string.Format(" ... ({0} bytes total)", data.Length);
 

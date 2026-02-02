@@ -183,7 +183,7 @@ namespace LoveAlways.Qualcomm.Common
             {
                 _log(string.Format("[RawprogramParser] Parsing: {0}", Path.GetFileName(file)));
                 var tasks = ParseRawprogramXml(file);
-                
+
                 foreach (var task in tasks)
                 {
                     // Deduplicate (by LUN + StartSector + Label)
@@ -199,7 +199,7 @@ namespace LoveAlways.Qualcomm.Common
                         {
                             task.Priority = 10;
                         }
-                        
+
                         info.Tasks.Add(task);
                     }
                 }
@@ -211,7 +211,7 @@ namespace LoveAlways.Qualcomm.Common
             // Load patch files
             var patchFiles = Directory.GetFiles(_basePath, "patch*.xml", SearchOption.AllDirectories)
                 .OrderBy(f => f).ToList();
-            
+
             foreach (var file in patchFiles)
             {
                 info.PatchFiles.Add(file);
@@ -220,9 +220,9 @@ namespace LoveAlways.Qualcomm.Common
             }
 
             info.MaxLun = info.Tasks.Count > 0 ? info.Tasks.Max(t => t.Lun) : 0;
-            
-            _log(string.Format("[RawprogramParser] Load completed: {0} tasks, {1} patches, slot: {2}", 
-                info.TotalTasks, info.PatchEntries.Count, 
+
+            _log(string.Format("[RawprogramParser] Load completed: {0} tasks, {1} patches, slot: {2}",
+                info.TotalTasks, info.PatchEntries.Count,
                 string.IsNullOrEmpty(info.DetectedSlot) ? "Unknown" : info.DetectedSlot));
 
             return info;
@@ -260,7 +260,7 @@ namespace LoveAlways.Qualcomm.Common
                 {
                     if (_fileCache.Count >= MAX_FILES_TO_CACHE)
                         return;
-                        
+
                     string name = Path.GetFileName(file);
                     if (!_fileCache.ContainsKey(name))
                         _fileCache[name] = file;
@@ -271,7 +271,7 @@ namespace LoveAlways.Qualcomm.Common
                 {
                     // Skip hidden directories and common irrelevant directories
                     string dirName = Path.GetFileName(subDir);
-                    if (dirName.StartsWith(".") || 
+                    if (dirName.StartsWith(".") ||
                         dirName.Equals("node_modules", StringComparison.OrdinalIgnoreCase) ||
                         dirName.Equals("__pycache__", StringComparison.OrdinalIgnoreCase))
                         continue;
@@ -289,7 +289,7 @@ namespace LoveAlways.Qualcomm.Common
         {
             var files = new List<string>();
             var patterns = new[] { "rawprogram*.xml", "rawprogram_*.xml", "rawprogram?.xml" };
-            
+
             foreach (var pattern in patterns)
             {
                 try
@@ -305,7 +305,8 @@ namespace LoveAlways.Qualcomm.Common
             }
 
             // Sort by LUN number (rawprogram0.xml, rawprogram1.xml, ...)
-            return files.OrderBy(f => {
+            return files.OrderBy(f =>
+            {
                 string name = Path.GetFileNameWithoutExtension(f);
                 int num;
                 var numStr = new string(name.Where(char.IsDigit).ToArray());
@@ -352,7 +353,7 @@ namespace LoveAlways.Qualcomm.Common
                          task.Filename.Contains("_b."))
                     slotB++;
             }
-            
+
             if (slotA > 0 && slotB == 0) return "a";
             if (slotB > 0 && slotA == 0) return "b";
             if (slotA > slotB) return "a";
@@ -409,7 +410,7 @@ namespace LoveAlways.Qualcomm.Common
         {
             string filename = GetAttr(elem, "filename", "");
             string label = GetAttr(elem, "label", "");
-            
+
             // Skip virtual filenames starting with 0:
             if (!string.IsNullOrEmpty(filename) && filename.StartsWith("0:"))
                 return null;
@@ -540,7 +541,7 @@ namespace LoveAlways.Qualcomm.Common
                 {
                     string what = GetAttr(elem, "what", "");
                     string value = GetAttr(elem, "value", "");
-                    
+
                     // Skip empty patches
                     if (string.IsNullOrWhiteSpace(value) && string.IsNullOrWhiteSpace(what))
                         continue;
@@ -558,7 +559,7 @@ namespace LoveAlways.Qualcomm.Common
 
                     patches.Add(patch);
                 }
-                
+
                 if (patches.Count > 0)
                     _log(string.Format("[RawprogramParser] {0}: {1} patches", Path.GetFileName(filePath), patches.Count));
             }
@@ -573,7 +574,7 @@ namespace LoveAlways.Qualcomm.Common
         public string FindProgrammer()
         {
             // Search by priority
-            var patterns = new[] { 
+            var patterns = new[] {
                 "prog_ufs_*.mbn", "prog_ufs_*.elf", "prog_ufs_*.melf",   // UFS
                 "prog_emmc_*.mbn", "prog_emmc_*.elf", "prog_emmc_*.melf", // eMMC
                 "prog_*.mbn", "prog_*.elf", "prog_*.melf",               // Generic
@@ -581,7 +582,7 @@ namespace LoveAlways.Qualcomm.Common
                 "firehose*.mbn", "firehose*.elf", "firehose*.melf",
                 "*firehose*.mbn", "*firehose*.elf", "*firehose*.melf"
             };
-            
+
             foreach (var pattern in patterns)
             {
                 try
@@ -667,14 +668,14 @@ namespace LoveAlways.Qualcomm.Common
         {
             var attr = elem.Attribute(name);
             if (attr == null) return defaultValue;
-            
+
             string value = attr.Value;
             int result;
-            
+
             // Handle hexadecimal
             if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 return int.TryParse(value.Substring(2), System.Globalization.NumberStyles.HexNumber, null, out result) ? result : defaultValue;
-            
+
             return int.TryParse(value, out result) ? result : defaultValue;
         }
 
@@ -694,13 +695,13 @@ namespace LoveAlways.Qualcomm.Common
                     if (long.TryParse(offsetStr, out result))
                         return -result; // Negative number means counting from the end
                 }
-                return -1; 
+                return -1;
             }
 
             // Handle hexadecimal
             if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 return long.TryParse(value.Substring(2), System.Globalization.NumberStyles.HexNumber, null, out result) ? result : defaultValue;
-            
+
             // 移除尾随点号 (如 "5.")
             if (value.EndsWith("."))
                 value = value.Substring(0, value.Length - 1);

@@ -4,17 +4,17 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Qualcomm.Protocol;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Protocol;
 
 namespace LoveAlways.Qualcomm.Authentication
 {
@@ -249,7 +249,7 @@ namespace LoveAlways.Qualcomm.Authentication
             var demacia = GenerateDemaciaToken(pk);
             string demCmd = string.Format("demacia token=\"{0}\" pk=\"{1}\"", demacia.Item2, demacia.Item1);
             string demResp = await client.SendRawXmlAsync(demCmd, ct);
-            
+
             if (!string.IsNullOrEmpty(demResp) && demResp.Contains("verify_res=\"0\""))
                 _log("[OnePlus] ✓ demacia verification successful");
 
@@ -260,10 +260,10 @@ namespace LoveAlways.Qualcomm.Authentication
             string resp = await client.SendRawXmlAsync(projCmd, ct);
 
             bool ok = !string.IsNullOrEmpty(resp) && (resp.Contains("model_check=\"0\"") || resp.Contains("ACK"));
-            if (ok) 
+            if (ok)
             {
                 _log("[OnePlus] ✓ Authentication successful! Device unlocked.");
-                
+
                 // Save token and pk to FirehoseClient for future write operations
                 client.OnePlusProgramToken = proj.Item2;  // token
                 client.OnePlusProgramPk = proj.Item1;     // pk
@@ -289,10 +289,10 @@ namespace LoveAlways.Qualcomm.Authentication
             string resp = await client.SendRawXmlAsync(swCmd, ct);
 
             bool ok = !string.IsNullOrEmpty(resp) && (resp.Contains("model_check=\"0\"") || resp.Contains("ACK"));
-            if (ok) 
+            if (ok)
             {
                 _log("[OnePlus] ✓ Authentication successful! Device unlocked.");
-                
+
                 // Save token and pk to FirehoseClient for future write operations
                 client.OnePlusProgramToken = sw.Item2;  // token
                 client.OnePlusProgramPk = sw.Item1;     // pk

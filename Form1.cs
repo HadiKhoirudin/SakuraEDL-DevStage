@@ -1,8 +1,11 @@
-using OPFlashTool.Services;
+using LoveAlways.Common;
+using LoveAlways.Fastboot.Common;
+using LoveAlways.Fastboot.UI;
+using LoveAlways.Qualcomm.Models;
+using LoveAlways.Qualcomm.UI;
 using Sunny.UI;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -10,17 +13,9 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Microsoft.VisualBasic;
-using LoveAlways.Qualcomm.UI;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Models;
-using LoveAlways.Qualcomm.Services;
-using LoveAlways.Fastboot.UI;
-using LoveAlways.Fastboot.Common;
-using LoveAlways.Qualcomm.Database;
-using LoveAlways.Common;
 
 namespace LoveAlways
 {
@@ -30,7 +25,7 @@ namespace LoveAlways
         private string selectedLocalImagePath = "";
         private string input8OriginalText = "";
         private bool isEnglish = false;
- 
+
         // Image URL History
         private List<string> urlHistory = new List<string>();
 
@@ -63,19 +58,21 @@ namespace LoveAlways
         public Form1()
         {
             InitializeComponent();
-            
+
+            this.FormClosing += Form1_FormClosing;
+
             // Enable double buffering to reduce flicker (optimized for low-end PCs)
             if (PerformanceConfig.EnableDoubleBuffering)
             {
-                SetStyle(ControlStyles.OptimizedDoubleBuffer | 
-                         ControlStyles.AllPaintingInWmPaint | 
+                SetStyle(ControlStyles.OptimizedDoubleBuffer |
+                         ControlStyles.AllPaintingInWmPaint |
                          ControlStyles.UserPaint, true);
                 UpdateStyles();
             }
-            
+
             // Initialize Log System
             InitializeLogSystem();
-            
+
             checkbox14.Checked = true;
             radio3.Checked = true;
             // Load system info (use preload data)
@@ -86,7 +83,7 @@ namespace LoveAlways
                     // Use preload system info
                     string sysInfo = PreloadManager.SystemInfo ?? "Unknown";
                     uiLabel4.Text = $"Computer: {sysInfo}";
-                    
+
                     // Write system info to log header
                     WriteLogHeader(sysInfo);
                     AppendLog("Loading...OK", Color.Green);
@@ -103,13 +100,13 @@ namespace LoveAlways
             button3.Click += Button3_Click;
             slider1.ValueChanged += Slider1_ValueChanged;
             uiComboBox4.SelectedIndexChanged += UiComboBox4_SelectedIndexChanged;
-            
+
             // Bind select3 event
             select3.SelectedIndexChanged += Select3_SelectedIndexChanged;
-            
+
             // Save original control positions and sizes
             SaveOriginalPositions();
-            
+
             // Bind checkbox17 and checkbox19 events
             checkbox17.CheckedChanged += Checkbox17_CheckedChanged;
             checkbox19.CheckedChanged += Checkbox19_CheckedChanged;
@@ -128,7 +125,7 @@ namespace LoveAlways
 
             // Initialize Fastboot Module
             InitializeFastbootModule();
-            
+
             // Initialize EDL Loader List
             InitializeEdlLoaderList();
 
@@ -137,6 +134,11 @@ namespace LoveAlways
 
             // Initialize MediaTek Module
             InitializeMediaTekModule();
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            Application.Exit();
         }
 
         #region Qualcomm Module
@@ -149,7 +151,7 @@ namespace LoveAlways
                 _qualcommController = new QualcommUIController(
                     (msg, color) => AppendLog(msg, color),
                     msg => AppendLogDetail(msg));
-                
+
                 // Subscribe to Xiaomi Auth Token event (popup display token when built-in signature fails)
                 _qualcommController.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
 
@@ -173,7 +175,7 @@ namespace LoveAlways
                     speedLabel: uiLabel7,                // Speed label
                     operationLabel: uiLabel8,            // Current operation label
                     subProgressBar: uiProcessBar2,       // Sub Progress Bar (Short) - Shows real-time progress of single operation
-                    // Device Info Labels (uiGroupBox3)
+                                                         // Device Info Labels (uiGroupBox3)
                     brandLabel: uiLabel9,                // Brand
                     chipLabel: uiLabel11,                // Chip
                     modelLabel: uiLabel3,                // Model
@@ -194,16 +196,16 @@ namespace LoveAlways
                 // ========== File Selection ==========
                 // input8 = Double click to select Loader (Programmer/Firehose)
                 input8.DoubleClick += (s, e) => QualcommSelectProgrammer();
-                
+
                 // input9 = Double click to select Digest file (For VIP Auth)
                 input9.DoubleClick += (s, e) => QualcommSelectDigest();
-                
+
                 // input7 = Double click to select Signature file (For VIP Auth)
                 input7.DoubleClick += (s, e) => QualcommSelectSignature();
-                
+
                 // input6 = Double click to select rawprogram.xml
                 input6.DoubleClick += (s, e) => QualcommSelectRawprogramXml();
-                
+
                 // button4 = Browse button next to input6 (Select Raw XML)
                 button4.Click += (s, e) => QualcommSelectRawprogramXml();
 
@@ -236,7 +238,7 @@ namespace LoveAlways
                 toolStripMenuItem5.Click += async (s, e) => await _qualcommController.RebootToSystemAsync();
                 eDL切换槽位ToolStripMenuItem.Click += async (s, e) => await QualcommSwitchSlotAsync();
                 激活LUNToolStripMenuItem.Click += async (s, e) => await QualcommSetBootLunAsync();
-                
+
                 // ========== Quick Action Menu Events (Device Manager) ==========
                 // Reboot System (ADB/Fastboot)
                 toolStripMenuItem2.Click += async (s, e) => await QuickRebootSystemAsync();
@@ -254,7 +256,7 @@ namespace LoveAlways
                 擦除谷歌锁ToolStripMenuItem.Click += async (s, e) => await QuickEraseFrpAsync();
                 // Switch Slot (Fastboot only)
                 切换槽位ToolStripMenuItem.Click += async (s, e) => await QuickSwitchSlotAsync();
-                
+
                 // ========== Other Menu Events ==========
                 // Device Manager
                 设备管理器ToolStripMenuItem.Click += (s, e) => OpenDeviceManager();
@@ -273,18 +275,19 @@ namespace LoveAlways
                 // ========== Refresh Ports ==========
                 // Refresh port list on init (silent mode)
                 //_lastEdlCount = _qualcommController.RefreshPorts(silent: true);
-                
-                //// 启动端口自动检测定时器 (每2秒检测一次，只在端口列表变化时才刷新)
-                //_portRefreshTimer = new System.Windows.Forms.Timer();
-                //_portRefreshTimer.Interval = 2000;
-                //_portRefreshTimer.Tick += (s, e) => RefreshPortsIfIdle();
-                //_portRefreshTimer.Start();
 
-                AppendLog("Qualcomm module initialized", Color.Green);
+                // 启动端口自动检测定时器 (每2秒检测一次，只在端口列表变化时才刷新)
+
+                _portRefreshTimer = new System.Windows.Forms.Timer();
+                _portRefreshTimer.Interval = 5000;
+                _portRefreshTimer.Tick += (s, e) => RefreshPortsIfIdle();
+                _portRefreshTimer.Start();
+
+                AppendLog("[Qualcomm] Module initialized", Color.Green);
             }
             catch (Exception ex)
             {
-                AppendLog($"Qualcomm module initialization failed: {ex.Message}", Color.Red);
+                AppendLog($"[Qualcomm] Module initialization failed: {ex.Message}", Color.Red);
             }
         }
 
@@ -296,44 +299,47 @@ namespace LoveAlways
         /// </summary>
         private void RefreshPortsIfIdle()
         {
-            try
+            Task.Run(() =>
             {
-                // If currently on Fastboot tab, do not refresh Qualcomm ports
-                if (_isOnFastbootTab)
-                    return;
-                    
-                // If operation in progress, do not refresh
-                if (_qualcommController != null && _qualcommController.HasPendingOperation)
-                    return;
-
-                // Get current port list for change detection
-                var ports = LoveAlways.Qualcomm.Common.PortDetector.DetectAllPorts();
-                var edlPorts = LoveAlways.Qualcomm.Common.PortDetector.DetectEdlPorts();
-                string currentPortList = string.Join(",", ports.ConvertAll(p => p.PortName));
-                
-                // Refresh only if port list changed
-                if (currentPortList != _lastPortList)
+                try
                 {
-                    bool hadEdl = _lastEdlCount > 0;
-                    bool newEdlDetected = edlPorts.Count > 0 && !hadEdl;
-                    _lastPortList = currentPortList;
-                    
-                    // Silent refresh, returns EDL port count
-                    int edlCount = _qualcommController?.RefreshPorts(silent: true) ?? 0;
-                    
-                    // Prompt when new EDL device detected
-                    if (newEdlDetected && edlPorts.Count > 0)
+                    // If currently on Fastboot tab, do not refresh Qualcomm ports
+                    if (_isOnFastbootTab)
+                        return;
+
+                    // If operation in progress, do not refresh
+                    if (_qualcommController != null && _qualcommController.HasPendingOperation)
+                        return;
+
+                    // Get current port list for change detection
+                    var ports = LoveAlways.Qualcomm.Common.PortDetector.DetectAllPorts();
+                    var edlPorts = LoveAlways.Qualcomm.Common.PortDetector.DetectEdlPorts();
+                    string currentPortList = string.Join(",", ports.ConvertAll(p => p.PortName));
+
+                    // Refresh only if port list changed
+                    if (currentPortList != _lastPortList)
                     {
-                        AppendLog($"Detected EDL Device: {edlPorts[0].PortName} - {edlPorts[0].Description}", Color.LimeGreen);
+                        bool hadEdl = _lastEdlCount > 0;
+                        bool newEdlDetected = edlPorts.Count > 0 && !hadEdl;
+                        _lastPortList = currentPortList;
+
+                        // Silent refresh, returns EDL port count
+                        int edlCount = _qualcommController?.RefreshPorts(silent: true) ?? 0;
+
+                        // Prompt when new EDL device detected
+                        if (newEdlDetected && edlPorts.Count > 0)
+                        {
+                            AppendLog($"Detected EDL Device: {edlPorts[0].PortName} - {edlPorts[0].Description}", Color.LimeGreen);
+                        }
+
+                        _lastEdlCount = edlCount;
                     }
-                    
-                    _lastEdlCount = edlCount;
                 }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"EDL 端口检测异常: {ex.Message}");
-            }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"EDL 端口检测异常: {ex.Message}");
+                }
+            });
         }
 
         private void UpdateAuthMode()
@@ -342,7 +348,7 @@ namespace LoveAlways
             {
                 checkbox19.Checked = false; // Mutually exclusive, prioritize OnePlus
             }
-            
+
             if (checkbox17.Checked)
                 _authMode = "oneplus";
             else if (checkbox19.Checked)
@@ -407,7 +413,7 @@ namespace LoveAlways
                 {
                     input7.Text = ofd.FileName;
                     AppendLog($"Selected Signature: {Path.GetFileName(ofd.FileName)}", Color.Green);
-                    
+
                     // If device connected and Digest selected, auto execute VIP auth
                     if (_qualcommController != null && _qualcommController.IsConnected)
                     {
@@ -508,7 +514,8 @@ namespace LoveAlways
                 // Match only rawprogram0.xml, rawprogram1.xml etc.
                 // Exclude _BLANK_GPT, _WIPE_PARTITIONS, _ERASE etc.
                 var siblingFiles = Directory.GetFiles(dir, "rawprogram*.xml")
-                    .Where(f => {
+                    .Where(f =>
+                    {
                         string fileName = Path.GetFileNameWithoutExtension(f).ToLower();
                         // Only accept rawprogram + digit format (e.g. rawprogram0, rawprogram1, rawprogram_unsparse)
                         // Exclude files containing blank, wipe, erase
@@ -516,7 +523,8 @@ namespace LoveAlways
                             return false;
                         return true;
                     })
-                    .OrderBy(f => {
+                    .OrderBy(f =>
+                    {
                         // Sort by digit
                         string name = Path.GetFileNameWithoutExtension(f);
                         var numStr = new string(name.Where(char.IsDigit).ToArray());
@@ -524,24 +532,24 @@ namespace LoveAlways
                         return int.TryParse(numStr, out num) ? num : 999;
                     })
                     .ToArray();
-                
+
                 if (siblingFiles.Length > 1)
                 {
                     filesToLoad = siblingFiles;
                     AppendLog($"Detected multiple LUNs, automatically loaded {siblingFiles.Length} XML files", Color.Blue);
                 }
             }
-            
+
             foreach (var xmlPath in filesToLoad)
             {
                 try
                 {
                     string dir = Path.GetDirectoryName(xmlPath);
                     var parser = new Qualcomm.Common.RawprogramParser(dir, msg => { /* Avoid excessive redundant logs */ });
-                    
+
                     // Parse current XML file
                     var tasks = parser.ParseRawprogramXml(xmlPath);
-                    
+
                     // Add only non-existing tasks (Judge by LUN + StartSector + Label)
                     foreach (var task in tasks)
                     {
@@ -552,14 +560,14 @@ namespace LoveAlways
                     }
 
                     AppendLog($"Parsing {Path.GetFileName(xmlPath)}: {tasks.Count} tasks (Total: {allTasks.Count})", Color.Blue);
-                    
+
                     // Auto identify matching patch file
                     string patchPath = FindMatchingPatchFile(xmlPath);
                     if (!string.IsNullOrEmpty(patchPath))
                     {
                         // Record to global variable or post-processing
                     }
-                    
+
                     // Auto identify matching programmer file (only once)
                     if (string.IsNullOrEmpty(programmerPath))
                     {
@@ -571,33 +579,35 @@ namespace LoveAlways
                     AppendLog($"Parsing {Path.GetFileName(xmlPath)} Failed: {ex.Message}", Color.Red);
                 }
             }
-            
+
             if (allTasks.Count > 0)
             {
                 AppendLog($"Loaded {allTasks.Count} flash tasks", Color.Green);
-                
+
                 if (!string.IsNullOrEmpty(programmerPath))
                 {
                     input8.Text = programmerPath;
                     AppendLog($"Auto-detected Loader: {Path.GetFileName(programmerPath)}", Color.Green);
                 }
-                
+
                 // Pre-check patch files
                 if (!string.IsNullOrEmpty(_selectedXmlDirectory) && Directory.Exists(_selectedXmlDirectory))
                 {
                     var patchFiles = Directory.GetFiles(_selectedXmlDirectory, "patch*.xml", SearchOption.TopDirectoryOnly)
-                        .Where(f => {
+                        .Where(f =>
+                        {
                             string fn = Path.GetFileName(f).ToLower();
                             return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
                         })
-                        .OrderBy(f => {
+                        .OrderBy(f =>
+                        {
                             string name = Path.GetFileNameWithoutExtension(f);
                             var numStr = new string(name.Where(char.IsDigit).ToArray());
                             int num;
                             return int.TryParse(numStr, out num) ? num : 999;
                         })
                         .ToList();
-                    
+
                     if (patchFiles.Count > 0)
                     {
                         AppendLog($"Detected {patchFiles.Count} Patch Files: {string.Join(", ", patchFiles.Select(f => Path.GetFileName(f)))}", Color.Blue);
@@ -607,7 +617,7 @@ namespace LoveAlways
                         AppendLog("No Patch files detected", Color.Gray);
                     }
                 }
-                
+
                 // Fill all tasks into partition list
                 FillPartitionListFromTasks(allTasks);
             }
@@ -623,19 +633,19 @@ namespace LoveAlways
             {
                 string dir = Path.GetDirectoryName(rawprogramPath);
                 string fileName = Path.GetFileName(rawprogramPath);
-                
+
                 // rawprogram0.xml -> patch0.xml, rawprogram_unsparse.xml -> patch_unsparse.xml
                 string patchName = fileName.Replace("rawprogram", "patch");
                 string patchPath = Path.Combine(dir, patchName);
-                
+
                 if (File.Exists(patchPath))
                     return patchPath;
-                
+
                 // Try other patch files
                 var patchFiles = Directory.GetFiles(dir, "patch*.xml");
                 if (patchFiles.Length > 0)
                     return patchFiles[0];
-                
+
                 return "";
             }
             catch
@@ -650,7 +660,7 @@ namespace LoveAlways
             listView2.Items.Clear();
 
             int checkedCount = 0;
-            
+
             foreach (var task in tasks)
             {
                 // Convert to PartitionInfo for unified processing
@@ -682,7 +692,7 @@ namespace LoveAlways
 
                 // Check if image file exists
                 bool fileExists = !string.IsNullOrEmpty(task.FilePath) && File.Exists(task.FilePath);
-                
+
                 // Auto CHECK if file exists (exclude sensitive partitions)
                 if (fileExists && !Qualcomm.Common.RawprogramParser.IsSensitivePartition(task.Label))
                 {
@@ -729,7 +739,7 @@ namespace LoveAlways
                         checkbox12.Checked = false; // Cancel Skip Loader
                     }
                 }
-                
+
                 // Quick reconnect failed or unavailable, try full connect
                 if (!_qualcommController.IsConnected)
                 {
@@ -778,37 +788,37 @@ namespace LoveAlways
 
             // Use custom connection logic
             return await _qualcommController.ConnectWithOptionsAsync(
-                programmerPath, 
-                _storageType, 
+                programmerPath,
+                _storageType,
                 skipSahara,
                 _authMode,
                 input9.Text?.Trim() ?? "",
                 input7.Text?.Trim() ?? ""
             );
         }
-        
+
         /// <summary>
         /// Cloud Auto Match Connection
         /// </summary>
         private async Task<bool> QualcommConnectWithCloudMatchAsync()
         {
             AppendLog("[Cloud] Getting device info...", Color.Cyan);
-            
+
             // 1. Execute Sahara Handshake to get device info (Do not upload Loader)
             var deviceInfo = await _qualcommController.GetSaharaDeviceInfoAsync();
-            
+
             if (deviceInfo == null)
             {
                 AppendLog("[Cloud] Cannot get device info, check connection", Color.Red);
                 return false;
             }
-            
+
             AppendLog($"[Cloud] Device: MSM={deviceInfo.MsmId}, OEM={deviceInfo.OemId}", Color.Blue);
             if (!string.IsNullOrEmpty(deviceInfo.PkHash) && deviceInfo.PkHash.Length >= 16)
             {
                 AppendLog($"[Cloud] PK Hash: {deviceInfo.PkHash.Substring(0, 16)}...", Color.Gray);
             }
-            
+
             // 2. Call Cloud API Match
             var cloudService = LoveAlways.Qualcomm.Services.CloudLoaderService.Instance;
             var result = await cloudService.MatchLoaderAsync(
@@ -817,12 +827,12 @@ namespace LoveAlways
                 deviceInfo.OemId,
                 _storageType
             );
-            
+
             if (result == null || result.Data == null)
             {
                 AppendLog("[Cloud] No matching Loader found", Color.Orange);
                 AppendLog("[Cloud] Please try selecting loader manually", Color.Yellow);
-                
+
                 // Report no match
                 cloudService.ReportDeviceLog(
                     deviceInfo.MsmId,
@@ -831,15 +841,15 @@ namespace LoveAlways
                     _storageType,
                     "not_found"
                 );
-                
+
                 return false;
             }
-            
+
             // 3. Match Success
             AppendLog($"[Cloud] Match Success: {result.Filename}", Color.Green);
             AppendLog($"[Cloud] Vendor: {result.Vendor}, Chip: {result.Chip}", Color.Blue);
             AppendLog($"[Cloud] Confidence: {result.Confidence}%, Match Type: {result.MatchType}", Color.Gray);
-            
+
             // 4. Select connection method based on auth type
             string authMode = result.AuthType?.ToLower() switch
             {
@@ -848,21 +858,21 @@ namespace LoveAlways
                 "vip" => "vip",
                 _ => "none"
             };
-            
+
             if (authMode != "none")
             {
                 AppendLog($"[Cloud] Auth Type: {result.AuthType}", Color.Cyan);
             }
-            
+
             // 5. Continue connect - Upload cloud matched Loader
             AppendLog($"[Cloud] Sending Loader ({result.Data.Length / 1024} KB)...", Color.Cyan);
-            
+
             bool success = await _qualcommController.ContinueConnectWithCloudLoaderAsync(
                 result.Data,
                 _storageType,
                 authMode
             );
-            
+
             // 6. Report device log
             cloudService.ReportDeviceLog(
                 deviceInfo.MsmId,
@@ -871,7 +881,7 @@ namespace LoveAlways
                 _storageType,
                 success ? "success" : "failed"
             );
-            
+
             if (success)
             {
                 AppendLog("[Cloud] Device connected successfully", Color.Green);
@@ -880,7 +890,7 @@ namespace LoveAlways
             {
                 AppendLog("[Cloud] Device connection failed", Color.Red);
             }
-            
+
             return success;
         }
 
@@ -898,13 +908,13 @@ namespace LoveAlways
                 using (var fbd = new FolderBrowserDialog())
                 {
                     fbd.Description = "Select XML Save Directory (Will generate multiple rawprogram and patch files based on LUN)";
-                    
+
                     if (fbd.ShowDialog() == DialogResult.OK)
                     {
                         string saveDir = fbd.SelectedPath;
                         var parser = new LoveAlways.Qualcomm.Common.GptParser();
-                        int sectorSize = _qualcommController.Partitions.Count > 0 
-                            ? _qualcommController.Partitions[0].SectorSize 
+                        int sectorSize = _qualcommController.Partitions.Count > 0
+                            ? _qualcommController.Partitions[0].SectorSize
                             : 4096;
 
                         // 1. Generate rawprogramX.xml
@@ -929,9 +939,9 @@ namespace LoveAlways
                         string partitionXml = parser.GeneratePartitionXml(_qualcommController.Partitions, sectorSize);
                         string pFileName = Path.Combine(saveDir, "partition.xml");
                         File.WriteAllText(pFileName, partitionXml);
-                        
+
                         AppendLog($"XML collection saved to: {saveDir}", Color.Green);
-                        
+
                         // Display Slot Info
                         string currentSlot = _qualcommController.GetCurrentSlot();
                         if (currentSlot != "nonexistent")
@@ -964,18 +974,18 @@ namespace LoveAlways
 
                 // Group by LUN to generate rawprogram XML
                 var byLun = partitions.GroupBy(p => p.Lun).ToDictionary(g => g.Key, g => g.ToList());
-                
+
                 foreach (var kv in byLun)
                 {
                     int lun = kv.Key;
                     var lunPartitions = kv.Value;
-                    
+
                     // Generate rawprogram XML for this LUN
                     var sb = new System.Text.StringBuilder();
                     sb.AppendLine("<?xml version=\"1.0\" ?>");
                     sb.AppendLine("<data>");
                     sb.AppendLine("  <!-- Generated by MultiFlash TOOL - Readback Partitions -->");
-                    
+
                     foreach (var p in lunPartitions)
                     {
                         // Generate program entry (for flashing readback partition)
@@ -984,14 +994,14 @@ namespace LoveAlways
                             "physical_partition_number=\"{3}\" start_sector=\"{4}\" />\n",
                             sectorSize, p.Name, p.NumSectors, lun, p.StartSector);
                     }
-                    
+
                     sb.AppendLine("</data>");
-                    
+
                     string fileName = Path.Combine(saveDir, $"rawprogram{lun}.xml");
                     File.WriteAllText(fileName, sb.ToString());
                     AppendLog($"Generated readback partition XML: {Path.GetFileName(fileName)}", Color.Blue);
                 }
-                
+
                 AppendLog($"Readback partition XML saved to: {saveDir}", Color.Green);
             }
             catch (Exception ex)
@@ -1020,11 +1030,11 @@ namespace LoveAlways
             using (var fbd = new FolderBrowserDialog())
             {
                 fbd.Description = checkedItems.Count == 1 ? "Select Save Location" : $"Select Save Directory (Reading {checkedItems.Count} partitions)";
-                
+
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     string saveDir = fbd.SelectedPath;
-                    
+
                     if (checkedItems.Count == 1)
                     {
                         // Single Partition
@@ -1043,7 +1053,7 @@ namespace LoveAlways
                         }
                         await _qualcommController.ReadPartitionsBatchAsync(partitionsToRead);
                     }
-                    
+
                     // After readback, if Generate XML checked, generate XML for readback partitions
                     if (checkbox11.Checked && checkedItems.Count > 0)
                     {
@@ -1056,14 +1066,14 @@ namespace LoveAlways
         private List<PartitionInfo> GetCheckedOrSelectedPartitions()
         {
             var result = new List<PartitionInfo>();
-            
+
             // Prioritize checked items
             foreach (ListViewItem item in listView2.CheckedItems)
             {
                 var p = item.Tag as PartitionInfo;
                 if (p != null) result.Add(p);
             }
-            
+
             // If no checks, use selected items
             if (result.Count == 0)
             {
@@ -1073,7 +1083,7 @@ namespace LoveAlways
                     if (p != null) result.Add(p);
                 }
             }
-            
+
             return result;
         }
 
@@ -1169,7 +1179,7 @@ namespace LoveAlways
                 // Execute Write
                 AppendLog($"Start writing {Path.GetFileName(filePath)} -> {partition.Name}", Color.Blue);
                 bool success = await _qualcommController.WritePartitionAsync(partition.Name, filePath);
-                
+
                 if (success && checkbox15.Checked)
                 {
                     AppendLog("Write complete, auto rebooting...", Color.Blue);
@@ -1190,7 +1200,7 @@ namespace LoveAlways
 
                     // Get file path (from SubItems)
                     string filePath = item.SubItems.Count > 8 ? item.SubItems[8].Text : "";
-                    
+
                     // Try finding file in current or XML dir
                     if (!string.IsNullOrEmpty(filePath) && !File.Exists(filePath))
                     {
@@ -1235,7 +1245,7 @@ namespace LoveAlways
                 {
                     // Collect Patch Files
                     List<string> patchFiles = new List<string>();
-                    
+
                     // Prioritize stored XML dir...
                     string xmlDir = _selectedXmlDirectory;
                     if (string.IsNullOrEmpty(xmlDir))
@@ -1253,16 +1263,17 @@ namespace LoveAlways
                             // 路径包含无效字符，忽略
                         }
                     }
-                    
+
                     if (!string.IsNullOrEmpty(xmlDir) && Directory.Exists(xmlDir))
                     {
                         AppendLog($"Searching for Patch files in dir: {xmlDir}", Color.Gray);
-                        
+
                         // 1. Search current dir (sibling dir)
                         try
                         {
                             var sameDir = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.TopDirectoryOnly)
-                                .Where(f => {
+                                .Where(f =>
+                                {
                                     string fn = Path.GetFileName(f).ToLower();
                                     return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
                                 })
@@ -1273,14 +1284,15 @@ namespace LoveAlways
                         {
                             System.Diagnostics.Debug.WriteLine($"Patch file search exception: {ex.Message}");
                         }
-                        
+
                         // 2. If not found in current, search subdirs
                         if (patchFiles.Count == 0)
                         {
                             try
                             {
                                 var subDirs = Directory.GetFiles(xmlDir, "patch*.xml", SearchOption.AllDirectories)
-                                    .Where(f => {
+                                    .Where(f =>
+                                    {
                                         string fn = Path.GetFileName(f).ToLower();
                                         return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
                                     })
@@ -1303,7 +1315,8 @@ namespace LoveAlways
                                 {
                                     AppendLog($"Current dir not found, searching parent: {parentDir}", Color.Gray);
                                     var parentPatches = Directory.GetFiles(parentDir, "patch*.xml", SearchOption.AllDirectories)
-                                        .Where(f => {
+                                        .Where(f =>
+                                        {
                                             string fn = Path.GetFileName(f).ToLower();
                                             return !fn.Contains("blank") && !fn.Contains("wipe") && !fn.Contains("erase");
                                         })
@@ -1316,9 +1329,10 @@ namespace LoveAlways
                                 System.Diagnostics.Debug.WriteLine($"Parent dir Patch search exception: {ex.Message}");
                             }
                         }
-                        
+
                         // Sort patch files
-                        patchFiles = patchFiles.Distinct().OrderBy(f => {
+                        patchFiles = patchFiles.Distinct().OrderBy(f =>
+                        {
                             string name = Path.GetFileNameWithoutExtension(f);
                             var numStr = new string(name.Where(char.IsDigit).ToArray());
                             int num;
@@ -1355,7 +1369,7 @@ namespace LoveAlways
                     }
 
                     int success = await _qualcommController.WritePartitionsBatchAsync(partitionsToWrite, patchFiles, activateBootLun);
-                    
+
                     if (success > 0 && checkbox15.Checked)
                     {
                         AppendLog("Batch write complete, auto rebooting...", Color.Blue);
@@ -1402,7 +1416,7 @@ namespace LoveAlways
                 {
                     // Single Erase
                     bool success = await _qualcommController.ErasePartitionAsync(checkedItems[0].Name);
-                    
+
                     if (success && checkbox15.Checked)
                     {
                         AppendLog("Erase complete, auto rebooting...", Color.Blue);
@@ -1414,7 +1428,7 @@ namespace LoveAlways
                     // Batch Erase
                     var partitionNames = checkedItems.ConvertAll(p => p.Name);
                     int success = await _qualcommController.ErasePartitionsBatchAsync(partitionNames);
-                    
+
                     if (success > 0 && checkbox15.Checked)
                     {
                         AppendLog("Batch erase complete, auto rebooting...", Color.Blue);
@@ -1466,16 +1480,16 @@ namespace LoveAlways
         private void StopCurrentOperation()
         {
             bool hasCancelled = false;
-            
+
             // Get current tab
             int currentTab = tabs1.SelectedIndex;
-            
+
             // tabPage2 (index 1) = Qualcomm
-            
+
             // Cancel operation based on current tab
             switch (currentTab)
             {
-                case 1: // Qualcomm
+                case 2: // Qualcomm
                     if (_qualcommController != null && _qualcommController.HasPendingOperation)
                     {
                         _qualcommController.CancelOperation();
@@ -1483,7 +1497,7 @@ namespace LoveAlways
                         hasCancelled = true;
                     }
                     break;
-                    
+
                 case 3: // MTK
                     if (MtkHasPendingOperation)
                     {
@@ -1491,7 +1505,7 @@ namespace LoveAlways
                         hasCancelled = true;
                     }
                     break;
-                    
+
                 case 4: // Spreadtrum
                     if (_spreadtrumController != null)
                     {
@@ -1499,9 +1513,9 @@ namespace LoveAlways
                         hasCancelled = true;
                     }
                     break;
-                    
+
                 case 0: // Fastboot (tabPage1)
-                case 2: // Fastboot (tabPage3)
+                case 1: // Fastboot (tabPage3)
                     if (_fastbootController != null)
                     {
                         try
@@ -1621,7 +1635,7 @@ namespace LoveAlways
             }
 
             string keyword = select4.Text?.Trim()?.ToLower();
-            
+
             // If search box is empty, reset all highlights
             if (string.IsNullOrEmpty(keyword))
             {
@@ -1631,35 +1645,35 @@ namespace LoveAlways
                 _currentMatchIndex = 0;
                 return;
             }
-            
+
             // If keyword is same, jump to next match
             if (keyword == _lastSearchKeyword && _searchMatches.Count > 1)
             {
                 JumpToNextMatch();
                 return;
             }
-            
+
             _lastSearchKeyword = keyword;
             _searchMatches.Clear();
             _currentMatchIndex = 0;
-            
+
             // Collect matching partition names for dropdown suggestions
             var suggestions = new List<string>();
-            
+
             listView2.BeginUpdate();
-            
-                foreach (ListViewItem item in listView2.Items)
-                {
+
+            foreach (ListViewItem item in listView2.Items)
+            {
                 string partitionName = item.Text?.ToLower() ?? "";
                 string originalName = item.Text ?? "";
                 bool isMatch = partitionName.Contains(keyword);
-                
+
                 if (isMatch)
                 {
                     // Exact match use dark color, partial match use light color
                     item.BackColor = (partitionName == keyword) ? Color.Gold : Color.LightYellow;
                     _searchMatches.Add(item);
-                    
+
                     // Add to dropdown suggestions (Max 10)
                     if (suggestions.Count < 10)
                     {
@@ -1671,18 +1685,18 @@ namespace LoveAlways
                     item.BackColor = Color.Transparent;
                 }
             }
-            
+
             listView2.EndUpdate();
-            
+
             // Update dropdown suggestions list
             UpdateSearchSuggestions(suggestions);
-            
+
             // Scroll to first match
             if (_searchMatches.Count > 0)
             {
                 _searchMatches[0].Selected = true;
                 _searchMatches[0].EnsureVisible();
-                
+
                 // Show match count (avoid redundant logs)
                 if (_searchMatches.Count > 1)
                 {
@@ -1699,13 +1713,13 @@ namespace LoveAlways
         private void JumpToNextMatch()
         {
             if (_searchMatches.Count == 0) return;
-            
+
             // Cancel current selection
             if (_currentMatchIndex < _searchMatches.Count)
             {
                 _searchMatches[_currentMatchIndex].Selected = false;
             }
-            
+
             // Jump to next
             _currentMatchIndex = (_currentMatchIndex + 1) % _searchMatches.Count;
             _searchMatches[_currentMatchIndex].Selected = true;
@@ -1726,14 +1740,14 @@ namespace LoveAlways
         {
             // Save current input text
             string currentText = select4.Text;
-            
+
             // Update dropdown items
             select4.Items.Clear();
             foreach (var name in suggestions)
             {
                 select4.Items.Add(name);
             }
-            
+
             // Restore input text (prevent clearing)
             select4.Text = currentText;
         }
@@ -1741,78 +1755,22 @@ namespace LoveAlways
         private void LocatePartitionByName(string partitionName)
         {
             ResetPartitionHighlights();
-            
+
             foreach (ListViewItem item in listView2.Items)
             {
                 if (item.Text?.ToLower() == partitionName)
-                    {
+                {
                     item.BackColor = Color.Gold;
-                        item.Selected = true;
-                        item.EnsureVisible();
-                        listView2.Focus();
-                        break;
+                    item.Selected = true;
+                    item.EnsureVisible();
+                    listView2.Focus();
+                    break;
                 }
             }
         }
 
         #endregion
-        // Clean up resources on form closing
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            base.OnFormClosing(e);
 
-            // Stop port refresh timer
-            if (_portRefreshTimer != null)
-            {
-                _portRefreshTimer.Stop();
-                _portRefreshTimer.Dispose();
-                _portRefreshTimer = null;
-            }
-
-            // Dispose Qualcomm Controller
-            if (_qualcommController != null)
-            {
-                try { _qualcommController.Dispose(); }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] Dispose Qualcomm Controller Exception: {ex.Message}"); }
-                _qualcommController = null;
-            }
-
-            // Dispose Spreadtrum Controller
-            if (_spreadtrumController != null)
-            {
-                try { _spreadtrumController.Dispose(); }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] Dispose Spreadtrum Controller Exception: {ex.Message}"); }
-                _spreadtrumController = null;
-            }
-            
-            // Dispose Fastboot Controller
-            if (_fastbootController != null)
-            {
-                try { _fastbootController.Dispose(); }
-                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[Form1] Dispose Fastboot Controller Exception: {ex.Message}"); }
-                _fastbootController = null;
-            }
-
-            // Dispose MediaTek Module
-            CleanupMediaTekModule();
-
-            // Dispose Background Image
-            if (this.BackgroundImage != null)
-            {
-                this.BackgroundImage.Dispose();
-                this.BackgroundImage = null;
-            }
-
-            // Clear Preview
-            ClearImagePreview();
-
-            // Dispose Watchdog Manager
-            LoveAlways.Common.WatchdogManager.DisposeAll();
-
-            // Optimized GC
-            GC.Collect(0, GCCollectionMode.Optimized);
-        }
-        
         /// <summary>
         /// Xiaomi Auth Token Event Handler - Pop up to show token for user to copy
         /// </summary>
@@ -1824,7 +1782,7 @@ namespace LoveAlways
                 this.BeginInvoke(new Action<string>(OnXiaomiAuthTokenRequired), token);
                 return;
             }
-            
+
             // Create popup
             using (var form = new Form())
             {
@@ -1834,8 +1792,8 @@ namespace LoveAlways
                 form.FormBorderStyle = FormBorderStyle.FixedDialog;
                 form.MaximizeBox = false;
                 form.MinimizeBox = false;
-                
-                
+
+
                 // Token TextBox
                 var textBox = new TextBox
                 {
@@ -1848,7 +1806,7 @@ namespace LoveAlways
                     ScrollBars = ScrollBars.Vertical
                 };
                 form.Controls.Add(textBox);
-                
+
                 // Copy Button
                 var copyButton = new Button
                 {
@@ -1870,7 +1828,7 @@ namespace LoveAlways
                     }
                 };
                 form.Controls.Add(copyButton);
-                
+
                 // Close Button
                 var closeButton = new Button
                 {
@@ -1881,7 +1839,7 @@ namespace LoveAlways
                     DialogResult = DialogResult.Cancel
                 };
                 form.Controls.Add(closeButton);
-                
+
                 // Tip Info
                 var tipLabel = new Label
                 {
@@ -1892,7 +1850,7 @@ namespace LoveAlways
                     Font = new Font("Microsoft YaHei UI", 8F)
                 };
                 form.Controls.Add(tipLabel);
-                
+
                 form.ShowDialog(this);
             }
         }
@@ -1944,8 +1902,8 @@ namespace LoveAlways
                 originalinput9Location = input9.Location;
                 originallistView2Location = listView2.Location;
                 originallistView2Size = listView2.Size;
-                originaluiGroupBox4Location =uiGroupBox4.Location;
-                originaluiGroupBox4Size =uiGroupBox4.Size;
+                originaluiGroupBox4Location = uiGroupBox4.Location;
+                originaluiGroupBox4Size = uiGroupBox4.Size;
 
             }
             catch (Exception ex)
@@ -2035,7 +1993,7 @@ namespace LoveAlways
             if (originalColor == Color.Cyan) return Color.FromArgb(0, 140, 160);     // Dark Cyan
             if (originalColor == Color.Yellow) return Color.FromArgb(180, 140, 0);   // Dark Yellow
             if (originalColor == Color.Magenta) return Color.FromArgb(160, 0, 160);  // Dark Purple
-            
+
             // Others remain unchanged
             return originalColor;
         }
@@ -2129,7 +2087,7 @@ namespace LoveAlways
             try
             {
                 string logFolder = Path.GetDirectoryName(logFilePath);
-                
+
                 if (!Directory.Exists(logFolder))
                 {
                     Directory.CreateDirectory(logFolder);
@@ -2201,7 +2159,7 @@ namespace LoveAlways
                         Size targetSize = Size.Empty;
                         SafeInvoke(() => targetSize = this.ClientSize);
                         if (targetSize.IsEmpty) return;
-                        
+
                         using (Bitmap resized = ResizeImageToFitWithLowMemory(original, targetSize))
                         {
                             if (resized != null)
@@ -2369,21 +2327,21 @@ namespace LoveAlways
                         url += $"?random={DateTime.Now.Ticks}";
                     }
                     else if (url.Contains("loliapi.com"))
-            {
-                // Handle loliapi.com API response specially...
-                AppendLog("Processing loliapi.com API response...", Color.Blue);
-                // Note: loliapi.com returns binary data directly, no JSON param needed
-            }
+                    {
+                        // Handle loliapi.com API response specially...
+                        AppendLog("Processing loliapi.com API response...", Color.Blue);
+                        // Note: loliapi.com returns binary data directly, no JSON param needed
+                    }
 
                     // Send request and get response
                     using (HttpResponseMessage response = await client.GetAsync(url))
                     {
                         response.EnsureSuccessStatusCode();
-                        
+
                         // Check response content type
                         string contentType = response.Content.Headers.ContentType?.MediaType ?? "";
                         AppendLog($"Response Content Type: {contentType}", Color.Blue);
-                        
+
                         // Check if it is image
                         if (contentType.StartsWith("image/"))
                         {
@@ -2395,7 +2353,7 @@ namespace LoveAlways
                             // Handle JSON response
                             string jsonContent = await response.Content.ReadAsStringAsync();
                             AppendLog($"JSON response length: {jsonContent.Length}", Color.Blue);
-                            
+
                             // Try to extract image URL from JSON
                             string imageUrl = ExtractImageUrlFromJson(jsonContent);
                             if (!string.IsNullOrEmpty(imageUrl))
@@ -2421,7 +2379,7 @@ namespace LoveAlways
                             // Maybe redirect or HTML response
                             string content = await response.Content.ReadAsStringAsync();
                             AppendLog($"Response is not image, length: {content.Length}", Color.Yellow);
-                            
+
                             // Try to extract image URL from HTML
                             string imageUrl = ExtractImageUrlFromHtml(content);
                             if (!string.IsNullOrEmpty(imageUrl))
@@ -2468,12 +2426,12 @@ namespace LoveAlways
                 if (ex.Message.Contains("参数无效") || ex.Message.Contains("Invalid parameter"))
                 {
                     AppendLog("Image format might not be supported, try other URL", Color.Yellow);
-                   // AppendLog($"Error Detail: {ex.Message}", Color.Red);
+                    // AppendLog($"Error Detail: {ex.Message}", Color.Red);
                 }
                 else
                 {
                     AppendLog($"Get wallpaper failed: {ex.Message}", Color.Red);
-                //    AppendLog($"Error details: {ex.ToString()}", Color.Yellow);
+                    //    AppendLog($"Error details: {ex.ToString()}", Color.Yellow);
                 }
             }
         }
@@ -2484,7 +2442,7 @@ namespace LoveAlways
             {
                 // Try simple JSON parsing
                 jsonContent = jsonContent.Trim();
-                
+
                 // Handle common JSON format
                 if (jsonContent.StartsWith("{") && jsonContent.EndsWith("}"))
                 {
@@ -2503,7 +2461,7 @@ namespace LoveAlways
                             }
                         }
                     }
-                    
+
                     // Try extract data field
                     int dataIndex = jsonContent.IndexOf("\"data\"", StringComparison.OrdinalIgnoreCase);
                     if (dataIndex >= 0)
@@ -2538,19 +2496,19 @@ namespace LoveAlways
                         }
                     }
                 }
-                
+
                 // Try regex extraction
                 System.Text.RegularExpressions.Regex urlRegex = new System.Text.RegularExpressions.Regex(
                     @"https?://[^\s""'<>]+?\.(?:jpg|jpeg|png|gif|webp)",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase
                 );
-                
+
                 System.Text.RegularExpressions.Match match = urlRegex.Match(jsonContent);
                 if (match.Success)
                 {
                     return match.Value;
                 }
-                
+
                 return null;
             }
             catch (Exception ex)
@@ -2566,33 +2524,33 @@ namespace LoveAlways
             {
                 // Simple Regex to extract image URL
                 System.Text.RegularExpressions.Regex regex = new System.Text.RegularExpressions.Regex(
-                    @"https?://[^\s""'<>]+?\.(?:jpg|jpeg|png|gif|webp)", 
+                    @"https?://[^\s""'<>]+?\.(?:jpg|jpeg|png|gif|webp)",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase
                 );
-                
+
                 System.Text.RegularExpressions.Match match = regex.Match(html);
                 if (match.Success)
                 {
                     return match.Value;
                 }
-                
+
                 // Try extract all possible URLs
                 System.Text.RegularExpressions.Regex urlRegex = new System.Text.RegularExpressions.Regex(
-                    @"https?://[^\s""'<>]+", 
+                    @"https?://[^\s""'<>]+",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase
                 );
-                
+
                 System.Text.RegularExpressions.MatchCollection matches = urlRegex.Matches(html);
                 foreach (System.Text.RegularExpressions.Match m in matches)
                 {
                     string url = m.Value;
-                    if (url.Contains(".jpg") || url.Contains(".jpeg") || url.Contains(".png") || 
+                    if (url.Contains(".jpg") || url.Contains(".jpeg") || url.Contains(".png") ||
                         url.Contains(".gif") || url.Contains(".webp"))
                     {
                         return url;
                     }
                 }
-                
+
                 return null;
             }
             catch (Exception ex)
@@ -2616,7 +2574,7 @@ namespace LoveAlways
                 // Check if valid image data (header)
                 string fileHeader = BitConverter.ToString(imageData, 0, Math.Min(8, imageData.Length)).ToLower();
                 bool isImage = false;
-                
+
                 // Check common image headers
                 if (fileHeader.StartsWith("89-50-4e-47") || // PNG
                     fileHeader.StartsWith("ff-d8") || // JPEG
@@ -2647,7 +2605,7 @@ namespace LoveAlways
                 using (MemoryStream ms = new MemoryStream(imageData))
                 {
                     ms.Position = 0; // Ensure at start
-                    
+
                     try
                     {
                         using (Image original = Image.FromStream(ms, false, false))
@@ -2655,7 +2613,7 @@ namespace LoveAlways
                             if (original != null)
                             {
                                 AppendLog($"Image loaded successfully, size: {original.Width}x{original.Height}", Color.Blue);
-                                
+
                                 Size targetSize = this.ClientSize;
                                 using (Bitmap resized = ResizeImageToFitWithLowMemory(original, targetSize))
                                 {
@@ -2673,9 +2631,9 @@ namespace LoveAlways
                                         this.BackgroundImageLayout = ImageLayout.Stretch;
 
                                         // 添加到预览
-                                      //  AddImageToPreview(resized.Clone() as Image, "网络图片");
+                                        //  AddImageToPreview(resized.Clone() as Image, "网络图片");
 
-                                    //    AppendLog($"网络图片设置成功（{resized.Width}x{resized.Height}）", Color.Green);
+                                        //    AppendLog($"网络图片设置成功（{resized.Width}x{resized.Height}）", Color.Green);
 
                                         // 添加到历史记录
                                         if (!urlHistory.Contains(sourceUrl))
@@ -2698,21 +2656,21 @@ namespace LoveAlways
                     {
                         // Handle "Invalid Parameter", mostly WebP support issue
                         AppendLog("Image format might not be supported, trying conversion...", Color.Yellow);
-                        
+
                         // Save as temp file and reload
                         string tempFile = Path.GetTempFileName() + (isWebP ? ".webp" : ".jpg");
                         try
                         {
                             File.WriteAllBytes(tempFile, imageData);
-                         //   AppendLog($"Temp file saved: {tempFile}", Color.Blue);
-                            
+                            //   AppendLog($"Temp file saved: {tempFile}", Color.Blue);
+
                             // Try loading with different method
                             using (Image original = Image.FromFile(tempFile))
                             {
                                 if (original != null)
                                 {
-                                  //  AppendLog($"Successfully loaded image from file, size: {original.Width}x{original.Height}", Color.Blue);
-                                    
+                                    //  AppendLog($"Successfully loaded image from file, size: {original.Width}x{original.Height}", Color.Blue);
+
                                     Size targetSize = this.ClientSize;
                                     using (Bitmap resized = ResizeImageToFitWithLowMemory(original, targetSize))
                                     {
@@ -2732,7 +2690,7 @@ namespace LoveAlways
                                             // Add to preview
                                             AddImageToPreview(resized.Clone() as Image, "Online Image");
 
-                                         //   AppendLog($"Online image set success ({resized.Width}x{resized.Height})", Color.Green);
+                                            //   AppendLog($"Online image set success ({resized.Width}x{resized.Height})", Color.Green);
 
                                             // Add to history
                                             if (!urlHistory.Contains(sourceUrl))
@@ -2752,14 +2710,14 @@ namespace LoveAlways
                             // Try GDI+ other methods
                             try
                             {
-                            //    AppendLog("Trying GDI+ direct draw...", Color.Yellow);
-                                
+                                //    AppendLog("Trying GDI+ direct draw...", Color.Yellow);
+
                                 // Create new Bitmap and draw manually
                                 using (Bitmap tempBmp = new Bitmap(800, 600))
                                 using (Graphics g = Graphics.FromImage(tempBmp))
                                 {
                                     g.Clear(Color.White);
-                                    
+
                                     // Try WebClient download and draw
                                     AppendLog("Image Load Failed", Color.Yellow);
                                     AppendLog("Please try other URL", Color.Yellow);
@@ -2789,7 +2747,7 @@ namespace LoveAlways
             {
                 AppendLog($"Process image failed: {ex.Message}", Color.Red);
                 // Print detailed error
-             //   AppendLog($"Error Detail: {ex.ToString()}", Color.Yellow);
+                //   AppendLog($"Error Detail: {ex.ToString()}", Color.Yellow);
             }
         }
 
@@ -2814,7 +2772,7 @@ namespace LoveAlways
                 // Update preview control
                 UpdateImagePreview();
 
-          //      AppendLog($"Added to preview: {description}", Color.Green);
+                //      AppendLog($"Added to preview: {description}", Color.Green);
             }
             catch (Exception ex)
             {
@@ -2928,18 +2886,18 @@ namespace LoveAlways
                 button2.Text = "Local Wallpaper";
                 button3.Text = "Apply";
                 uiComboBox3.Watermark = "URL";
-                
+
                 // Update other tabs
                 tabPage2.Text = "Home";
                 tabPage2.Text = "Qualcomm";
                 tabPage4.Text = "MTK";
                 tabPage5.Text = "Spreadtrum";
-                
+
                 // Update menu
                 快捷重启ToolStripMenuItem.Text = "Quick Restart";
                 toolStripMenuItem1.Text = "EDL Operations";
                 其他ToolStripMenuItem.Text = "Others";
-                
+
                 // Update buttons
                 uiButton2.Text = "Erase Partition";
                 uiButton3.Text = "Write Partition";
@@ -2958,18 +2916,18 @@ namespace LoveAlways
                 button2.Text = "Local Wallpaper";
                 button3.Text = "Apply";
                 uiComboBox3.Watermark = "URL";
-                
+
                 // Update other tabs
                 tabPage2.Text = "Home";
                 tabPage2.Text = "Qualcomm";
                 tabPage4.Text = "MTK";
                 tabPage5.Text = "Spreadtrum";
-                
+
                 // Update menu
                 快捷重启ToolStripMenuItem.Text = "Quick Restart";
                 toolStripMenuItem1.Text = "EDL Operations";
                 其他ToolStripMenuItem.Text = "Others";
-                
+
                 // Update buttons
                 uiButton2.Text = "Erase Partition";
                 uiButton3.Text = "Write Partition";
@@ -2989,8 +2947,8 @@ namespace LoveAlways
             if (checkbox17.Checked)
             {
                 // Auto uncheck checkbox19
-               checkbox19.Checked = false;
-                
+                checkbox19.Checked = false;
+
                 // Check if already compact layout (by check input7 visibility)
                 if (input7.Visible)
                 {
@@ -2999,7 +2957,7 @@ namespace LoveAlways
                 }
                 // If input7 invisible, means already compact
             }
-            
+
             // Update Auth mode
             UpdateAuthMode();
         }
@@ -3010,14 +2968,14 @@ namespace LoveAlways
             {
                 // Auto uncheck checkbox17
                 checkbox17.Checked = false;
-                
+
                 RestoreOriginalLayout();
             }
             else
             {
                 ApplyCompactLayout();
             }
-            
+
             // Update Auth mode
             UpdateAuthMode();
         }
@@ -3028,7 +2986,7 @@ namespace LoveAlways
             {
                 // Suspend layout update, reduce flickering
                 this.SuspendLayout();
-               uiGroupBox4.SuspendLayout();
+                uiGroupBox4.SuspendLayout();
                 listView2.SuspendLayout();
 
                 // Hide input9, input7
@@ -3044,13 +3002,13 @@ namespace LoveAlways
 
                 // Move up and resize uiGroupBox4 and listView2
                 const int VERTICAL_ADJUSTMENT = 38; // Constant adjustment
-               uiGroupBox4.Location = new Point(uiGroupBox4.Location.X,uiGroupBox4.Location.Y - VERTICAL_ADJUSTMENT);
-               uiGroupBox4.Size = new Size(uiGroupBox4.Size.Width,uiGroupBox4.Size.Height + VERTICAL_ADJUSTMENT);
+                uiGroupBox4.Location = new Point(uiGroupBox4.Location.X, uiGroupBox4.Location.Y - VERTICAL_ADJUSTMENT);
+                uiGroupBox4.Size = new Size(uiGroupBox4.Size.Width, uiGroupBox4.Size.Height + VERTICAL_ADJUSTMENT);
                 listView2.Size = new Size(listView2.Size.Width, listView2.Size.Height + VERTICAL_ADJUSTMENT);
 
                 // Resume layout
                 listView2.ResumeLayout(false);
-               uiGroupBox4.ResumeLayout(false);
+                uiGroupBox4.ResumeLayout(false);
                 this.ResumeLayout(false);
                 this.PerformLayout();
 
@@ -3067,7 +3025,7 @@ namespace LoveAlways
             {
                 // Suspend layout
                 this.SuspendLayout();
-               uiGroupBox4.SuspendLayout();
+                uiGroupBox4.SuspendLayout();
                 listView2.SuspendLayout();
 
                 // Restore input9, input7 visibility
@@ -3081,13 +3039,13 @@ namespace LoveAlways
                 checkbox13.Location = new Point(6, 25);
 
                 // Restore original size and location
-               uiGroupBox4.Location = originaluiGroupBox4Location;
-               uiGroupBox4.Size = originaluiGroupBox4Size;
+                uiGroupBox4.Location = originaluiGroupBox4Location;
+                uiGroupBox4.Size = originaluiGroupBox4Size;
                 listView2.Size = originallistView2Size;
 
                 // Resume layout
                 listView2.ResumeLayout(false);
-               uiGroupBox4.ResumeLayout(false);
+                uiGroupBox4.ResumeLayout(false);
                 this.ResumeLayout(false);
                 this.PerformLayout();
 
@@ -3118,7 +3076,7 @@ namespace LoveAlways
             string selectedItem = select3.Text;
             bool isCloudMatch = selectedItem.Contains("Cloud Auto Match");
             bool isLocalSelect = selectedItem.Contains("Local Select");
-            
+
             // Handle Cloud Auto Match
             if (isCloudMatch)
             {
@@ -3126,12 +3084,12 @@ namespace LoveAlways
                 input9.Enabled = false;
                 input8.Enabled = false;
                 input7.Enabled = false;
-                
+
                 // Show Cloud Match Hint
                 input8.Text = "[Cloud] Auto Match Loader";
                 input9.Text = "";
                 input7.Text = "";
-                
+
                 // Reset Auth Mode (Cloud detects auto)
                 checkbox17.Checked = false;
                 checkbox19.Checked = false;
@@ -3144,19 +3102,19 @@ namespace LoveAlways
                 input9.Enabled = true;
                 input8.Enabled = true;
                 input7.Enabled = true;
-                
+
                 // Clear inputs (Show placeholder)
                 input8.Text = "";
                 input9.Text = "";
                 input7.Text = "";
-                
+
                 // Reset Auth Mode
                 checkbox17.Checked = false;
                 checkbox19.Checked = false;
                 _authMode = "none";
             }
         }
-        
+
         /// <summary>
         /// Extract Loader ID from EDL selection
         /// </summary>
@@ -3165,21 +3123,21 @@ namespace LoveAlways
             // "[Huawei] 888 (Generic)" -> "Huawei_888"
             // "[Meizu] Meizu21Pro" -> "Meizu_Meizu21Pro"
             if (string.IsNullOrEmpty(selection)) return "";
-            
+
             // Extract brand and name
             int bracketEnd = selection.IndexOf(']');
             if (bracketEnd < 0) return "";
-            
+
             string brand = selection.Substring(1, bracketEnd - 1);
             string rest = selection.Substring(bracketEnd + 1).Trim();
-            
+
             // Handle Generic loader
             if (rest.EndsWith("(Generic)") || rest.EndsWith("(通用)"))
             {
                 string chip = rest.Replace("(Generic)", "").Replace("(通用)", "").Trim();
                 return $"{brand}_{chip}";
             }
-            
+
             // Handle Specific loader
             // Extract model from rest
             string model = rest.Replace($"{brand} ", "").Trim();
@@ -3189,7 +3147,7 @@ namespace LoveAlways
             {
                 model = model.Substring(0, parenIndex).Trim();
             }
-            
+
             return $"{brand}_{model}";
         }
 
@@ -3200,25 +3158,25 @@ namespace LoveAlways
         {
             // "[VIP] SM8550 - Snapdragon 8Gen2/8+Gen2" -> "SM8550"
             if (string.IsNullOrEmpty(selection)) return "";
-            
+
             // Remove "[VIP] " prefix
             string trimmed = selection.Replace("[VIP] ", "");
-            
+
             // Get part before " - "
             int dashIndex = trimmed.IndexOf(" - ");
             if (dashIndex > 0)
             {
                 return trimmed.Substring(0, dashIndex).Trim();
             }
-            
+
             return trimmed.Trim();
         }
 
         #region EDL Loader Initialization
-        
+
         // Cache EDL Loader items
         private List<string> _edlLoaderItems = null;
-        
+
         /// <summary>
         /// Initialize EDL Loader List - Cloud Auto Match + Local Select
         /// </summary>
@@ -3228,14 +3186,14 @@ namespace LoveAlways
             {
                 // Clear default items in Designer
                 select3.Items.Clear();
-                
+
                 // Add options
                 select3.Items.Add("☁️ Cloud Auto Match");
                 select3.Items.Add("📁 Local Select");
-                
+
                 // Set default to Cloud Auto Match
                 select3.SelectedIndex = 0;
-                
+
                 // Initialize Cloud Service
                 InitializeCloudLoaderService();
             }
@@ -3244,7 +3202,7 @@ namespace LoveAlways
                 System.Diagnostics.Debug.WriteLine(string.Format("Load Loader List Exception: {0}", ex.Message));
             }
         }
-        
+
         /// <summary>
         /// Initialize Cloud Loader Service
         /// </summary>
@@ -3258,7 +3216,7 @@ namespace LoveAlways
             // Config API Address (Production)
             // cloudService.ApiBase = "https://api.xiriacg.top/api";
         }
-        
+
         /// <summary>
         /// Build EDL Loader Items (Deprecated - Use Cloud Match)
         /// </summary>
@@ -3268,7 +3226,7 @@ namespace LoveAlways
             // No longer build local PAK list, fully use cloud match
             return new List<string>();
         }
-        
+
         /// <summary>
         /// Get Brand Display Name
         /// </summary>
@@ -3296,7 +3254,7 @@ namespace LoveAlways
                 default: return brand;
             }
         }
-        
+
         #endregion
 
         #region Fastboot Module
@@ -3329,7 +3287,7 @@ namespace LoveAlways
                     commandComboBox: uiComboBox2,         // Fast Command Combo (device, unlock, etc)
                     payloadTextBox: uiTextBox1,           // Payload Path
                     outputPathTextBox: input1,            // Output Path
-                    // Device Info Labels (uiGroupBox3 - Shared)
+                                                          // Device Info Labels (uiGroupBox3 - Shared)
                     brandLabel: uiLabel9,                 // Brand
                     chipLabel: uiLabel11,                 // Chip
                     modelLabel: uiLabel3,                 // Model
@@ -3337,12 +3295,12 @@ namespace LoveAlways
                     storageLabel: uiLabel13,              // Storage
                     unlockLabel: uiLabel14,               // Unlock State
                     slotLabel: uiLabel12,                 // Slot (Reuse OTA Version Label)
-                    // Time/Speed/Operation Labels (Shared)
+                                                          // Time/Speed/Operation Labels (Shared)
                     timeLabel: uiLabel6,                  // Time
                     speedLabel: uiLabel7,                 // Speed
                     operationLabel: uiLabel8,             // Current Operation
                     deviceCountLabel: uiLabel4,           // Device Count (Reuse)
-                    // Checkbox Controls
+                                                          // Checkbox Controls
                     autoRebootCheckbox: checkbox44,       // Auto Reboot
                     switchSlotCheckbox: checkbox41,       // Switch Slot A
                     eraseGoogleLockCheckbox: checkbox43,  // Erase FRP
@@ -3353,7 +3311,7 @@ namespace LoveAlways
                 );
 
                 // ========== tabPage3 Fastboot Page Button Events ==========
-                
+
                 // uiButton11 = Parse Payload (Local File or Cloud URL)
                 uiButton11.Click += (s, e) => FastbootOpenPayloadDialog();
 
@@ -3428,11 +3386,11 @@ namespace LoveAlways
                 // Bind Tab Change Event - Update Right Device Info
                 tabs1.SelectedIndexChanged += OnTabPageChanged;
 
-                AppendLog("Fastboot Module Initialized", Color.Gray);
+                AppendLog("[Fastboot] Module Initialized", Color.Gray);
             }
             catch (Exception ex)
             {
-                AppendLog($"Fastboot Module Init Failed: {ex.Message}", Color.Red);
+                AppendLog($"[Fastboot] Module Init Failed: {ex.Message}", Color.Red);
             }
         }
 
@@ -3441,121 +3399,169 @@ namespace LoveAlways
         /// </summary>
         private void OnTabPageChanged(object sender, EventArgs e)
         {
-            try
+            Task.Run(() =>
             {
-                // Get selected tab
-                int selectedIndex = tabs1.SelectedIndex;
-                var selectedTab = tabs1.Pages[selectedIndex];
+                try
+                {
+                    ClearLogs();
 
-                // tabPage3 is Fastboot
-                if (selectedTab == tabPage3)
-                {
-                    // Switch to Fastboot Tab
-                    _isOnFastbootTab = true;
-                    
-                    // Stop other monitors
-                    _portRefreshTimer?.Stop();
-                    _mtkController?.StopPortMonitoring();
-                    _spreadtrumController?.StopDeviceMonitor();
-                    
-                    // Update Fastboot Device Info
-                    if (_fastbootController != null)
+                    // Get selected tab
+                    int selectedIndex = tabs1.SelectedIndex;
+                    var selectedTab = tabs1.Pages[selectedIndex];
+
+                    // tabPage3 is Fastboot
+                    if (selectedTab == tabPage3)
                     {
-                        // Start Fastboot Monitor
-                        _fastbootController.StartDeviceMonitoring();
-                        _fastbootController.UpdateDeviceInfoLabels();
-                        
-                        // Update Device Count
-                        int deviceCount = _fastbootController.DeviceCount;
-                        if (deviceCount == 0)
-                            uiLabel4.Text = "FB Dev: 0";
-                        else if (deviceCount == 1)
-                            uiLabel4.Text = $"FB Dev: Connected";
-                        else
-                            uiLabel4.Text = $"FB Dev: {deviceCount}";
+                        // Switch to Fastboot Tab
+                        _isOnFastbootTab = true;
+
+                        // Stop other monitors
+                        _portRefreshTimer?.Stop();
+                        _mtkController?.StopPortMonitoring();
+                        ClearLogs();
+
+                        _spreadtrumController?.StopDeviceMonitor();
+                        ClearLogs();
+
+                        // Update Fastboot Device Info
+                        if (_fastbootController != null)
+                        {
+                            // Start Fastboot Monitor
+                            _fastbootController.StartDeviceMonitoring();
+                            _fastbootController.UpdateDeviceInfoLabels();
+
+                            // Update Device Count
+                            int deviceCount = _fastbootController.DeviceCount;
+                            if (deviceCount == 0)
+                            {
+                                uiLabel4.Text = "FB Dev: 0";
+                            }
+                            else if (deviceCount == 1)
+                            {
+                                uiLabel4.Text = $"FB Dev: Connected";
+                            }
+                            else
+                            {
+                                uiLabel4.Text = $"FB Dev: {deviceCount}";
+                            }
+                        }
                     }
-                }
-                // tabPage2 is Qualcomm (EDL)
-                else if (selectedTab == tabPage2)
-                {
-                    // Switch to Qualcomm Tab
-                    _isOnFastbootTab = false;
-                    
-                    // Stop other monitors
-                    _fastbootController?.StopDeviceMonitoring();
-                    _mtkController?.StopPortMonitoring();
-                    _spreadtrumController?.StopDeviceMonitor();
-                    
-                    // Start Qualcomm Port Refresh
-                    _portRefreshTimer?.Start();
-                    
-                    // Refresh Qualcomm Ports to ComboBox
-                    _qualcommController?.RefreshPorts(silent: true);
-                    
-                    // Restore Qualcomm Device Info
-                    if (_qualcommController != null && _qualcommController.IsConnected)
+                    // tabPage2 is Qualcomm (EDL)
+                    else if (selectedTab == tabPage2)
                     {
-                        // Qualcomm controller auto updates, no extra action needed
+                        // Switch to Qualcomm Tab
+                        _isOnFastbootTab = false;
+
+                        // Stop other monitors
+                        _fastbootController?.StopDeviceMonitoring();
+                        ClearLogs();
+
+                        _mtkController?.StopPortMonitoring();
+                        ClearLogs();
+
+                        _spreadtrumController?.StopDeviceMonitor();
+                        ClearLogs();
+
+                        // Start Qualcomm Port Refresh
+                        _portRefreshTimer?.Start();
+
+                        // Refresh Qualcomm Ports to ComboBox
+                        _qualcommController?.RefreshPorts(silent: true);
+
+                        // Restore Qualcomm Device Info
+                        if (_qualcommController != null && _qualcommController.IsConnected)
+                        {
+                            // Qualcomm controller auto updates, no extra action needed
+                        }
+                        else
+                        {
+                            // Reset to Wait Connection
+                            uiLabel9.Text = "Brand: Waiting";
+                            uiLabel11.Text = "Chip: Waiting";
+                            uiLabel3.Text = "Model: Waiting";
+                            uiLabel10.Text = "Serial: Waiting";
+                            uiLabel13.Text = "Storage: Waiting";
+                            uiLabel14.Text = "State: Waiting";
+                            uiLabel12.Text = "OTA: Waiting";
+                        }
+                    }
+                    // tabPage4 is MTK
+                    else if (selectedTab == tabPage4)
+                    {
+                        // Switch to MTK Tab
+                        _isOnFastbootTab = false;
+
+                        // Stop other monitors
+                        _fastbootController?.StopDeviceMonitoring();
+                        ClearLogs();
+
+                        _portRefreshTimer?.Stop();
+
+                        _spreadtrumController?.StopDeviceMonitor();
+                        ClearLogs();
+
+                        // Start MTK Port Monitor
+                        _mtkController?.StartPortMonitoring();
+
+                        // Update Right Info Panel for MTK
+                        UpdateMtkInfoPanel();
+                    }
+                    // tabPage5 is Spreadtrum
+                    else if (selectedTab == tabPage5)
+                    {
+                        // Switch to Spreadtrum Tab
+                        _isOnFastbootTab = false;
+
+                        // Stop other monitors
+                        _fastbootController?.StopDeviceMonitoring();
+                        ClearLogs();
+
+                        _portRefreshTimer?.Stop();
+
+                        _mtkController?.StopPortMonitoring();
+                        ClearLogs();
+
+                        // Start SPD Device Monitor and Refresh
+                        _spreadtrumController?.RefreshDevices();
+
+                        // Update Right Info Panel for SPD
+                        UpdateSprdInfoPanel();
                     }
                     else
                     {
-                        // Reset to Wait Connection
-                        uiLabel9.Text = "Brand: Waiting";
-                        uiLabel11.Text = "Chip: Waiting";
-                        uiLabel3.Text = "Model: Waiting";
-                        uiLabel10.Text = "Serial: Waiting";
-                        uiLabel13.Text = "Storage: Waiting";
-                        uiLabel14.Text = "State: Waiting";
-                        uiLabel12.Text = "OTA: Waiting";
+                        // Other Tabs
+                        _isOnFastbootTab = false;
+                        // Stop All Monitors
+                        _fastbootController?.StopDeviceMonitoring();
+                        ClearLogs();
+
+                        _mtkController?.StopPortMonitoring();
+                        ClearLogs();
+
+                        _spreadtrumController?.StopDeviceMonitor();
+                        ClearLogs();
                     }
                 }
-                // tabPage4 is MTK
-                else if (selectedTab == tabPage4)
+                catch (Exception ex)
                 {
-                    // Switch to MTK Tab
-                    _isOnFastbootTab = false;
-                    
-                    // Stop other monitors
-                    _fastbootController?.StopDeviceMonitoring();
-                    _portRefreshTimer?.Stop();
-                    _spreadtrumController?.StopDeviceMonitor();
-                    
-                    // Start MTK Port Monitor
-                    _mtkController?.StartPortMonitoring();
-                    
-                    // Update Right Info Panel for MTK
-                    UpdateMtkInfoPanel();
+                    System.Diagnostics.Debug.WriteLine($"Tab Switch Exception: {ex.Message}");
                 }
-                // tabPage5 is Spreadtrum
-                else if (selectedTab == tabPage5)
-                {
-                    // Switch to Spreadtrum Tab
-                    _isOnFastbootTab = false;
-                    
-                    // Stop other monitors
-                    _fastbootController?.StopDeviceMonitoring();
-                    _portRefreshTimer?.Stop();
-                    _mtkController?.StopPortMonitoring();
-                    
-                    // Start SPD Device Monitor and Refresh
-                    _spreadtrumController?.RefreshDevices();
-                    
-                    // Update Right Info Panel for SPD
-                    UpdateSprdInfoPanel();
-                }
-                else
-                {
-                    // Other Tabs
-                    _isOnFastbootTab = false;
-                    // Stop All Monitors
-                    _fastbootController?.StopDeviceMonitoring();
-                    _mtkController?.StopPortMonitoring();
-                    _spreadtrumController?.StopDeviceMonitor();
-                }
-            }
-            catch (Exception ex)
+            });
+        }
+
+        /// <summary>
+        /// Clear Logs
+        /// </summary>
+        private void ClearLogs()
+        {
+
+            if (uiRichTextBox1.InvokeRequired)
             {
-                System.Diagnostics.Debug.WriteLine($"Tab Switch Exception: {ex.Message}");
+                uiRichTextBox1.Invoke(new Action(() => uiRichTextBox1.Clear()));
+            }
+            else
+            {
+                uiRichTextBox1.Clear();
             }
         }
 
@@ -3633,7 +3639,7 @@ namespace LoveAlways
                 {
                     fbd.SelectedPath = input1.Text;
                 }
-                
+
                 if (fbd.ShowDialog() == DialogResult.OK)
                 {
                     outputDir = fbd.SelectedPath;
@@ -3702,7 +3708,7 @@ namespace LoveAlways
                 // OnePlus/OPPO Flash Mode (Support Payload/Folder/Image)
                 string modeDesc = usePureFbdMode ? "Pure FBD" : "OnePlus/OPPO";
                 AppendLog($"Using OnePlus/OPPO {modeDesc} Mode", Color.Blue);
-                
+
                 // Build Flash Partition List (Support Payload Partitions, Unpacked Folder, Script Tasks, Normal Images)
                 var partitions = _fastbootController.BuildOnePlusFlashPartitions();
                 if (partitions.Count == 0)
@@ -3967,12 +3973,12 @@ namespace LoveAlways
             if (_fastbootController == null) return;
 
             bool success = await _fastbootController.LoadPayloadAsync(payloadPath);
-            
+
             if (success)
             {
                 // Update output path to Payload directory
                 input1.Text = Path.GetDirectoryName(payloadPath);
-                
+
                 // Show Payload Summary
                 var summary = _fastbootController.PayloadSummary;
                 if (summary != null)
@@ -3990,7 +3996,7 @@ namespace LoveAlways
             if (_fastbootController == null) return;
 
             bool success = await _fastbootController.LoadPayloadFromUrlAsync(url);
-            
+
             if (success)
             {
                 // Show Remote Payload Summary
@@ -4011,12 +4017,12 @@ namespace LoveAlways
             {
                 ofd.Title = "Select Flash Script (flash_all.bat)";
                 ofd.Filter = "Flash Script|*.bat;*.sh;*.cmd|All Files|*.*";
-                
+
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     input1.Text = ofd.FileName;
                     AppendLog($"Script Selected: {Path.GetFileName(ofd.FileName)}", Color.Blue);
-                    
+
                     // Load Script
                     FastbootLoadScript(ofd.FileName);
                 }
@@ -4031,7 +4037,7 @@ namespace LoveAlways
             if (_fastbootController == null) return;
 
             bool success = _fastbootController.LoadFlashScript(scriptPath);
-            
+
             if (success)
             {
                 // Update output path to script directory
@@ -4054,14 +4060,14 @@ namespace LoveAlways
             checkbox21.Checked = false;  // Lock BL
 
             // Check script name for type
-            if (fileName.Contains("except_storage") || fileName.Contains("except-storage") || 
+            if (fileName.Contains("except_storage") || fileName.Contains("except-storage") ||
                 fileName.Contains("keep_data") || fileName.Contains("keepdata"))
             {
                 // Keep Data Script
                 checkbox50.Checked = true;
                 AppendLog("Keep Data Script detected, checked 'Keep Data'", Color.Blue);
             }
-            else if (fileName.Contains("_lock") || fileName.Contains("-lock") || 
+            else if (fileName.Contains("_lock") || fileName.Contains("-lock") ||
                      fileName.EndsWith("lock.bat") || fileName.EndsWith("lock.sh"))
             {
                 // Lock BL Script
@@ -4092,7 +4098,7 @@ namespace LoveAlways
         private void FastbootPartitionDoubleClick()
         {
             if (listView5.SelectedItems.Count == 0) return;
-            
+
             var selectedItem = listView5.SelectedItems[0];
             _fastbootController?.SelectImageForPartition(selectedItem);
         }
@@ -4121,7 +4127,7 @@ namespace LoveAlways
             }
 
             string keyword = select5.Text?.Trim()?.ToLower() ?? "";
-            
+
             // If search box empty, reset highlights
             if (string.IsNullOrEmpty(keyword))
             {
@@ -4131,33 +4137,33 @@ namespace LoveAlways
                 _fbCurrentMatchIndex = 0;
                 return;
             }
-            
+
             // If keyword same, jump to next match
             if (keyword == _fbLastSearchKeyword && _fbSearchMatches.Count > 1)
             {
                 FastbootJumpToNextMatch();
                 return;
             }
-            
+
             _fbLastSearchKeyword = keyword;
             _fbSearchMatches.Clear();
             _fbCurrentMatchIndex = 0;
-            
+
             // Collect matching partition names for suggestions
             var suggestions = new List<string>();
-            
+
             listView5.BeginUpdate();
-            
+
             foreach (ListViewItem item in listView5.Items)
             {
                 string partName = item.SubItems[0].Text.ToLower();
-                
+
                 if (partName.Contains(keyword))
                 {
                     // Highlight matched item
                     item.BackColor = Color.LightYellow;
                     _fbSearchMatches.Add(item);
-                    
+
                     // Add to suggestion list
                     if (!suggestions.Contains(item.SubItems[0].Text))
                     {
@@ -4169,12 +4175,12 @@ namespace LoveAlways
                     item.BackColor = Color.Transparent;
                 }
             }
-            
+
             listView5.EndUpdate();
-            
+
             // Update suggestion list
             FastbootUpdateSearchSuggestions(suggestions);
-            
+
             // Scroll to first match
             if (_fbSearchMatches.Count > 0)
             {
@@ -4187,16 +4193,16 @@ namespace LoveAlways
         private void FastbootJumpToNextMatch()
         {
             if (_fbSearchMatches.Count == 0) return;
-            
+
             // Deselect current item
             if (_fbCurrentMatchIndex < _fbSearchMatches.Count)
             {
                 _fbSearchMatches[_fbCurrentMatchIndex].Selected = false;
             }
-            
+
             // Move to next
             _fbCurrentMatchIndex = (_fbCurrentMatchIndex + 1) % _fbSearchMatches.Count;
-            
+
             // Select and scroll to new match
             _fbSearchMatches[_fbCurrentMatchIndex].Selected = true;
             _fbSearchMatches[_fbCurrentMatchIndex].EnsureVisible();
@@ -4215,20 +4221,20 @@ namespace LoveAlways
         private void FastbootUpdateSearchSuggestions(List<string> suggestions)
         {
             string currentText = select5.Text;
-            
+
             select5.Items.Clear();
             foreach (var name in suggestions)
             {
                 select5.Items.Add(name);
             }
-            
+
             select5.Text = currentText;
         }
 
         private void FastbootLocatePartitionByName(string partitionName)
         {
             FastbootResetPartitionHighlights();
-            
+
             foreach (ListViewItem item in listView5.Items)
             {
                 if (item.SubItems[0].Text.Equals(partitionName, StringComparison.OrdinalIgnoreCase))
@@ -4244,14 +4250,14 @@ namespace LoveAlways
         #endregion
 
         #region Quick Operations (Device Manager)
-        
+
         /// <summary>
         /// Quick Reboot System (Priority Fastboot, fallback ADB)
         /// </summary>
         private async Task QuickRebootSystemAsync()
         {
             AppendLog("Executing: Reboot System...", Color.Cyan);
-            
+
             // Priority Fastboot
             if (_fastbootController != null && _fastbootController.IsConnected)
             {
@@ -4262,7 +4268,7 @@ namespace LoveAlways
                     return;
                 }
             }
-            
+
             // Fallback ADB
             var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootAsync();
             if (result.Success)
@@ -4270,14 +4276,14 @@ namespace LoveAlways
             else
                 AppendLog($"Reboot Failed: {result.Error}", Color.Red);
         }
-        
+
         /// <summary>
         /// Quick Reboot to Bootloader (Priority Fastboot, fallback ADB)
         /// </summary>
         private async Task QuickRebootBootloaderAsync()
         {
             AppendLog("Executing: Reboot to Fastboot...", Color.Cyan);
-            
+
             // Priority Fastboot
             if (_fastbootController != null && _fastbootController.IsConnected)
             {
@@ -4288,7 +4294,7 @@ namespace LoveAlways
                     return;
                 }
             }
-            
+
             // Fallback ADB
             var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootBootloaderAsync();
             if (result.Success)
@@ -4296,14 +4302,14 @@ namespace LoveAlways
             else
                 AppendLog($"Reboot Failed: {result.Error}", Color.Red);
         }
-        
+
         /// <summary>
         /// Quick Reboot to Fastbootd (Priority Fastboot, fallback ADB)
         /// </summary>
         private async Task QuickRebootFastbootdAsync()
         {
             AppendLog("Executing: Reboot to Fastbootd...", Color.Cyan);
-            
+
             // Priority Fastboot
             if (_fastbootController != null && _fastbootController.IsConnected)
             {
@@ -4314,7 +4320,7 @@ namespace LoveAlways
                     return;
                 }
             }
-            
+
             // Fallback ADB
             var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootFastbootAsync();
             if (result.Success)
@@ -4322,14 +4328,14 @@ namespace LoveAlways
             else
                 AppendLog($"Reboot Failed: {result.Error}", Color.Red);
         }
-        
+
         /// <summary>
         /// Quick Reboot to Recovery (Priority Fastboot, fallback ADB)
         /// </summary>
         private async Task QuickRebootRecoveryAsync()
         {
             AppendLog("Executing: Reboot to Recovery...", Color.Cyan);
-            
+
             // Priority Fastboot
             if (_fastbootController != null && _fastbootController.IsConnected)
             {
@@ -4340,7 +4346,7 @@ namespace LoveAlways
                     return;
                 }
             }
-            
+
             // Fallback ADB
             var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootRecoveryAsync();
             if (result.Success)
@@ -4348,74 +4354,74 @@ namespace LoveAlways
             else
                 AppendLog($"Reboot Failed: {result.Error}", Color.Red);
         }
-        
+
         /// <summary>
         /// MI Reboot EDL - Fastboot OEM EDL (Xiaomi Only)
         /// </summary>
         private async Task QuickMiRebootEdlAsync()
         {
             AppendLog("Executing: MI Reboot EDL (fastboot oem edl)...", Color.Cyan);
-            
+
             if (_fastbootController == null || !_fastbootController.IsConnected)
             {
                 AppendLog("Please connect Fastboot device first", Color.Orange);
                 return;
             }
-            
+
             bool ok = await _fastbootController.OemEdlAsync();
             if (ok)
                 AppendLog("MI Reboot EDL: Success, device entering EDL mode", Color.Green);
             else
                 AppendLog("MI Reboot EDL: Failed, device may not support this command", Color.Red);
         }
-        
+
         /// <summary>
         /// Lenovo/Android Reboot EDL - ADB reboot edl
         /// </summary>
         private async Task QuickAdbRebootEdlAsync()
         {
             AppendLog("Executing: Android Reboot EDL (adb reboot edl)...", Color.Cyan);
-            
+
             var result = await LoveAlways.Fastboot.Common.AdbHelper.RebootEdlAsync();
             if (result.Success)
                 AppendLog("ADB: Reboot EDL Success, device entering EDL mode", Color.Green);
             else
                 AppendLog($"Reboot EDL Failed: {result.Error}", Color.Red);
         }
-        
+
         /// <summary>
         /// Erase FRP (Fastboot erase frp)
         /// </summary>
         private async Task QuickEraseFrpAsync()
         {
             AppendLog("Executing: Erase FRP (fastboot erase frp)...", Color.Cyan);
-            
+
             if (_fastbootController == null || !_fastbootController.IsConnected)
             {
                 AppendLog("Please connect Fastboot device first", Color.Orange);
                 return;
             }
-            
+
             bool ok = await _fastbootController.EraseFrpAsync();
             if (ok)
                 AppendLog("Erase FRP: Success", Color.Green);
             else
                 AppendLog("Erase FRP: Failed, device may include locked Bootloader", Color.Red);
         }
-        
+
         /// <summary>
         /// Switch Slot (Fastboot set_active)
         /// </summary>
         private async Task QuickSwitchSlotAsync()
         {
             AppendLog("Executing: Switch Slot...", Color.Cyan);
-            
+
             if (_fastbootController == null || !_fastbootController.IsConnected)
             {
                 AppendLog("Please connect Fastboot device first", Color.Orange);
                 return;
             }
-            
+
             // Get current slot
             string currentSlot = await _fastbootController.GetCurrentSlotAsync();
             if (string.IsNullOrEmpty(currentSlot))
@@ -4423,22 +4429,22 @@ namespace LoveAlways
                 AppendLog("Failed to get current slot, device may not support A/B partitions", Color.Orange);
                 return;
             }
-            
+
             // Switch to another slot
             string targetSlot = currentSlot == "a" ? "b" : "a";
             AppendLog($"Current Slot: {currentSlot}, Switching to: {targetSlot}", Color.White);
-            
+
             bool ok = await _fastbootController.SetActiveSlotAsync(targetSlot);
             if (ok)
                 AppendLog($"Switch Slot Success: {currentSlot} -> {targetSlot}", Color.Green);
             else
                 AppendLog("Switch Slot Failed", Color.Red);
         }
-        
+
         #endregion
-        
+
         #region Other Function Menu
-        
+
         /// <summary>
         /// Open Device Manager
         /// </summary>
@@ -4454,7 +4460,7 @@ namespace LoveAlways
                 AppendLog($"Open Device Manager Failed: {ex.Message}", Color.Red);
             }
         }
-        
+
         /// <summary>
         /// Open CMD Command Prompt (In App Dir, Admin)
         /// </summary>
@@ -4481,7 +4487,7 @@ namespace LoveAlways
                     AppendLog($"Open CMD Failed: {ex.Message}", Color.Red);
             }
         }
-        
+
         /// <summary>
         /// Open Driver Installer
         /// </summary>
@@ -4493,7 +4499,7 @@ namespace LoveAlways
                 string appDir = AppDomain.CurrentDomain.BaseDirectory;
                 string driverPath = null;
                 string driverName = null;
-                
+
                 switch (driverType.ToLower())
                 {
                     case "android":
@@ -4506,7 +4512,7 @@ namespace LoveAlways
                         };
                         driverPath = androidPaths.FirstOrDefault(File.Exists);
                         break;
-                        
+
                     case "mtk":
                         driverName = "MTK Driver";
                         string[] mtkPaths = {
@@ -4516,7 +4522,7 @@ namespace LoveAlways
                         };
                         driverPath = mtkPaths.FirstOrDefault(File.Exists);
                         break;
-                        
+
                     case "qualcomm":
                         driverName = "Qualcomm Driver";
                         string[] qcPaths = {
@@ -4527,15 +4533,15 @@ namespace LoveAlways
                         driverPath = qcPaths.FirstOrDefault(File.Exists);
                         break;
                 }
-                
+
                 if (string.IsNullOrEmpty(driverPath))
                 {
                     AppendLog($"{driverName} Installer not found, please install manually", Color.Orange);
-                    MessageBox.Show($"{driverName} Installer not found.\n\nPlease download driver from official website.", 
+                    MessageBox.Show($"{driverName} Installer not found.\n\nPlease download driver from official website.",
                         "Driver Not Found", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
-                
+
                 System.Diagnostics.Process.Start(driverPath);
                 AppendLog($"Started {driverName} Installer", Color.Blue);
             }

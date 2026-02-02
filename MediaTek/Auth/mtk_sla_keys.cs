@@ -7,12 +7,11 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 using System.Collections.Generic;
-using System.Numerics;
 
 namespace LoveAlways.MediaTek.Auth
 {
@@ -88,7 +87,7 @@ namespace LoveAlways.MediaTek.Auth
             });
 
             // === Real keys from mtkclient local project ===
-            
+
             // Motorola G24 (2024 model, tested to support Carbonara)
             _keys.Add(new SlaKeyRecord
             {
@@ -99,7 +98,7 @@ namespace LoveAlways.MediaTek.Auth
                 N = "00db8f46cf8da80af8cca1aec9ff7b358cfe4cc5659ade5ef9c196905caaf979658349284723bef9524532b21f460c0897468be95d0aa92682144d1bfcb84afc7712ff3b5dc34153e5efe64b465a6d8cf2bd8c2fb1bf27d9c77f26e90baa3ddada18525d3f689441ef7b6dc5c4b8c496b0a9c92f29d26dac8ff8b137d6a93cf26ad391bf6124207ff9eb26e10b65269c6bad38eff0c50aab604a0128b874f24263037c605bc9f855252f78173141d166b632dbb549370af71efdc522532cb55c48b9a39a21ee8e0cc8bb34c394aec92155a16f95b646aa9e5f88c989eaf2d7f615bf5afe619e27dfab5adbbd7999db9590ab0f30c95c98da39616cad6494be52b7",
                 E = "010001"
             });
-            
+
             // KaiOS
             _keys.Add(new SlaKeyRecord
             {

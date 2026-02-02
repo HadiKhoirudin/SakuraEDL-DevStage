@@ -7,11 +7,10 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-using System;
 using System.ComponentModel;
 using System.IO;
 
@@ -23,7 +22,7 @@ namespace LoveAlways.Qualcomm.Models
     public class PartitionInfo : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
-        
+
         protected void OnPropertyChanged(string name)
         {
             if (PropertyChanged != null)

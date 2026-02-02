@@ -4,7 +4,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -19,67 +19,67 @@ namespace LoveAlways.MediaTek.Models
     {
         /// <summary>Hardware Code (HW Code)</summary>
         public ushort HwCode { get; set; }
-        
+
         /// <summary>Hardware Version</summary>
         public ushort HwVer { get; set; }
-        
+
         /// <summary>Hardware Subcode</summary>
         public ushort HwSubCode { get; set; }
-        
+
         /// <summary>Software Version</summary>
         public ushort SwVer { get; set; }
-        
+
         /// <summary>Chip Name</summary>
         public string ChipName { get; set; }
-        
+
         /// <summary>Chip Description</summary>
         public string Description { get; set; }
-        
+
         /// <summary>Watchdog Address</summary>
         public uint WatchdogAddr { get; set; }
-        
+
         /// <summary>UART Address</summary>
         public uint UartAddr { get; set; }
-        
+
         /// <summary>BROM Payload Address</summary>
         public uint BromPayloadAddr { get; set; }
-        
+
         /// <summary>DA Payload Address</summary>
         public uint DaPayloadAddr { get; set; }
-        
+
         /// <summary>CQ_DMA Base Address</summary>
         public uint? CqDmaBase { get; set; }
-        
+
         /// <summary>DA Mode</summary>
         public int DaMode { get; set; } = 6;  // Default XML mode
-        
+
         /// <summary>Supports XFlash</summary>
         public bool SupportsXFlash { get; set; }
-        
+
         /// <summary>Requires Signature</summary>
         public bool RequiresSignature { get; set; }
-        
+
         /// <summary>Supports 64-bit</summary>
         public bool Is64Bit { get; set; }
-        
+
         /// <summary>BROM is patched</summary>
         public bool BromPatched { get; set; }
-        
+
         /// <summary>Requires V6 Loader</summary>
         public bool RequiresLoader { get; set; }
-        
+
         /// <summary>Loader Filename</summary>
         public string LoaderName { get; set; }
-        
+
         /// <summary>Codename</summary>
         public string Codename { get; set; }
-        
+
         /// <summary>Exploit Type</summary>
         public string ExploitType { get; set; }
-        
+
         /// <summary>Has available exploit</summary>
         public bool HasExploit { get; set; }
-        
+
         /// <summary>
         /// Get Chip Name (based on HW Code)
         /// </summary>
@@ -87,7 +87,7 @@ namespace LoveAlways.MediaTek.Models
         {
             if (!string.IsNullOrEmpty(ChipName))
                 return ChipName;
-                
+
             return HwCode switch
             {
                 0x0279 => "MT6797",
@@ -175,41 +175,41 @@ namespace LoveAlways.MediaTek.Models
     {
         /// <summary>Device Path/Port Name</summary>
         public string DevicePath { get; set; }
-        
+
         /// <summary>COM Port</summary>
         public string ComPort { get; set; }
-        
+
         /// <summary>USB VID</summary>
         public int Vid { get; set; }
-        
+
         /// <summary>USB PID</summary>
         public int Pid { get; set; }
-        
+
         /// <summary>Device Description</summary>
         public string Description { get; set; }
-        
+
         /// <summary>Whether in download mode</summary>
         public bool IsDownloadMode { get; set; }
-        
+
         /// <summary>Chip Info</summary>
         public MtkChipInfo ChipInfo { get; set; }
-        
+
         /// <summary>ME ID</summary>
         public byte[] MeId { get; set; }
-        
+
         /// <summary>SOC ID</summary>
         public byte[] SocId { get; set; }
-        
+
         /// <summary>
         /// ME ID Hex String
         /// </summary>
         public string MeIdHex => MeId != null ? BitConverter.ToString(MeId).Replace("-", "") : "";
-        
+
         /// <summary>
         /// SOC ID Hex String
         /// </summary>
         public string SocIdHex => SocId != null ? BitConverter.ToString(SocId).Replace("-", "") : "";
-        
+
         /// <summary>
         /// DA Mode (5 = XFlash, 6 = XML)
         /// </summary>
@@ -223,22 +223,22 @@ namespace LoveAlways.MediaTek.Models
     {
         /// <summary>DA Name</summary>
         public string Name { get; set; }
-        
+
         /// <summary>Load Address</summary>
         public uint LoadAddr { get; set; }
-        
+
         /// <summary>Signature Length</summary>
         public int SignatureLen { get; set; }
-        
+
         /// <summary>DA Data</summary>
         public byte[] Data { get; set; }
-        
+
         /// <summary>Whether 64-bit</summary>
         public bool Is64Bit { get; set; }
-        
+
         /// <summary>DA Version</summary>
         public int Version { get; set; }
-        
+
         /// <summary>DA Type (Legacy/XFlash/XML)</summary>
         public int DaType { get; set; }
     }
@@ -250,28 +250,28 @@ namespace LoveAlways.MediaTek.Models
     {
         /// <summary>Partition Name</summary>
         public string Name { get; set; }
-        
+
         /// <summary>Start Sector</summary>
         public ulong StartSector { get; set; }
-        
+
         /// <summary>Sector Count</summary>
         public ulong SectorCount { get; set; }
-        
+
         /// <summary>Partition Size (Bytes)</summary>
         public ulong Size { get; set; }
-        
+
         /// <summary>Partition Type</summary>
         public string Type { get; set; }
-        
+
         /// <summary>Partition Attributes</summary>
         public ulong Attributes { get; set; }
-        
+
         /// <summary>Whether Read-Only</summary>
         public bool IsReadOnly => (Attributes & 0x1) != 0;
-        
+
         /// <summary>Whether System Partition</summary>
         public bool IsSystem => (Attributes & 0x2) != 0;
-        
+
         /// <summary>
         /// Formatted Size Display
         /// </summary>
@@ -297,31 +297,31 @@ namespace LoveAlways.MediaTek.Models
     {
         /// <summary>Raw Config Value</summary>
         public uint RawValue { get; set; }
-        
+
         /// <summary>SBC Enabled</summary>
         public bool SbcEnabled { get; set; }
-        
+
         /// <summary>SLA Enabled</summary>
         public bool SlaEnabled { get; set; }
-        
+
         /// <summary>DAA Enabled</summary>
         public bool DaaEnabled { get; set; }
-        
+
         /// <summary>SW JTAG Enabled</summary>
         public bool SwJtagEnabled { get; set; }
-        
+
         /// <summary>EPP Enabled</summary>
         public bool EppEnabled { get; set; }
-        
+
         /// <summary>Root Cert Required</summary>
         public bool CertRequired { get; set; }
-        
+
         /// <summary>Memory Read Auth Required</summary>
         public bool MemReadAuth { get; set; }
-        
+
         /// <summary>Memory Write Auth Required</summary>
         public bool MemWriteAuth { get; set; }
-        
+
         /// <summary>CMD C8 Blocked</summary>
         public bool CmdC8Blocked { get; set; }
     }
@@ -333,22 +333,22 @@ namespace LoveAlways.MediaTek.Models
     {
         /// <summary>Flash Type (eMMC/UFS/NAND)</summary>
         public string FlashType { get; set; }
-        
+
         /// <summary>Flash Manufacturer ID</summary>
         public ushort ManufacturerId { get; set; }
-        
+
         /// <summary>Flash Capacity (Bytes)</summary>
         public ulong Capacity { get; set; }
-        
+
         /// <summary>Block Size</summary>
         public uint BlockSize { get; set; }
-        
+
         /// <summary>Page Size</summary>
         public uint PageSize { get; set; }
-        
+
         /// <summary>Flash Model</summary>
         public string Model { get; set; }
-        
+
         /// <summary>
         /// Formatted Capacity Display
         /// </summary>
@@ -374,28 +374,28 @@ namespace LoveAlways.MediaTek.Models
     {
         /// <summary>Secure Boot Enabled</summary>
         public bool SecureBootEnabled { get; set; }
-        
+
         /// <summary>Whether Unfused Device</summary>
         public bool IsUnfused { get; set; }
-        
+
         /// <summary>SLA Enabled</summary>
         public bool SlaEnabled { get; set; }
-        
+
         /// <summary>DAA Enabled</summary>
         public bool DaaEnabled { get; set; }
-        
+
         /// <summary>ME ID</summary>
         public string MeId { get; set; }
-        
+
         /// <summary>SOC ID</summary>
         public string SocId { get; set; }
-        
+
         /// <summary>Anti-rollback Version</summary>
         public uint AntiRollbackVersion { get; set; }
-        
+
         /// <summary>Locked Status</summary>
         public bool IsLocked { get; set; }
-        
+
         /// <summary>SBC Enabled</summary>
         public bool SbcEnabled { get; set; }
     }
@@ -407,19 +407,19 @@ namespace LoveAlways.MediaTek.Models
     {
         /// <summary>Unlocked</summary>
         public bool IsUnlocked { get; set; }
-        
+
         /// <summary>Unfused Device</summary>
         public bool IsUnfused { get; set; }
-        
+
         /// <summary>Secure Boot Enabled</summary>
         public bool SecureBootEnabled { get; set; }
-        
+
         /// <summary>Security Version</summary>
         public uint SecurityVersion { get; set; }
-        
+
         /// <summary>Device Model</summary>
         public string DeviceModel { get; set; }
-        
+
         /// <summary>Status Message</summary>
         public string StatusMessage
         {
@@ -441,22 +441,22 @@ namespace LoveAlways.MediaTek.Models
     {
         /// <summary>Connected</summary>
         public bool IsConnected { get; set; }
-        
+
         /// <summary>Chip Name</summary>
         public string ChipName { get; set; }
-        
+
         /// <summary>Hardware Code</summary>
         public ushort HwCode { get; set; }
-        
+
         /// <summary>Exploit Type (Carbonara, AllinoneSignature, None)</summary>
         public string ExploitType { get; set; }
-        
+
         /// <summary>Supports ALLINONE-SIGNATURE exploit</summary>
         public bool IsAllinoneSignatureSupported { get; set; }
-        
+
         /// <summary>Supports Carbonara exploit</summary>
         public bool IsCarbonaraSupported { get; set; }
-        
+
         /// <summary>List of chips supporting ALLINONE-SIGNATURE</summary>
         public MtkChipExploitInfo[] AllinoneSignatureChips { get; set; }
     }
@@ -468,10 +468,10 @@ namespace LoveAlways.MediaTek.Models
     {
         /// <summary>Chip Name</summary>
         public string ChipName { get; set; }
-        
+
         /// <summary>Hardware Code</summary>
         public ushort HwCode { get; set; }
-        
+
         /// <summary>Description</summary>
         public string Description { get; set; }
     }

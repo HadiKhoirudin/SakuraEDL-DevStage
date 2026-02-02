@@ -609,7 +609,7 @@ namespace LoveAlways.Qualcomm.Common
                         if (decompressed != null)
                         {
                             Directory.CreateDirectory(outputDir);
-                            string outputFile = Path.Combine(outputDir, 
+                            string outputFile = Path.Combine(outputDir,
                                 Path.GetFileNameWithoutExtension(archivePath));
                             File.WriteAllBytes(outputFile, decompressed);
                             progress?.Report(1.0);
@@ -640,8 +640,8 @@ namespace LoveAlways.Qualcomm.Common
 
             // 安全的大小估计: 最大 64MB，避免内存溢出
             const int MAX_ESTIMATED_SIZE = 64 * 1024 * 1024;
-            int safeEstimatedSize = expectedSize > 0 
-                ? (int)Math.Min(expectedSize, MAX_ESTIMATED_SIZE) 
+            int safeEstimatedSize = expectedSize > 0
+                ? (int)Math.Min(expectedSize, MAX_ESTIMATED_SIZE)
                 : Math.Min(compressedData.Length * 8, MAX_ESTIMATED_SIZE);
 
             switch (format)

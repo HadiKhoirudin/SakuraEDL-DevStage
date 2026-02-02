@@ -1,6 +1,6 @@
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 using System;
@@ -400,7 +400,7 @@ namespace LoveAlways.Fastboot.Common
         {
             // Remove quotes
             path = path.Trim('"', '\'');
-            
+
             // Convert forward slashes to backward slashes
             path = path.Replace("/", "\\");
 
@@ -413,7 +413,7 @@ namespace LoveAlways.Fastboot.Common
         private string ResolveFullPath(string relativePath)
         {
             // If already an absolute path, return directly            if (Path.IsPathRooted(relativePath))
-                return relativePath;
+            return relativePath;
 
             // Remove possible images\ or images/ prefix, as some scripts may already contain them
             relativePath = relativePath.TrimStart('\\', '/');

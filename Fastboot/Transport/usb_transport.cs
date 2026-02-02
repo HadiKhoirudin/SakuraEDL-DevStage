@@ -1,15 +1,15 @@
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Fastboot.Protocol;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Fastboot.Protocol;
 
 namespace LoveAlways.Fastboot.Transport
 {
@@ -24,18 +24,18 @@ namespace LoveAlways.Fastboot.Transport
         private byte _bulkInPipe;
         private byte _bulkOutPipe;
         private bool _disposed;
-        
+
         public bool IsConnected => _winusbHandle != IntPtr.Zero;
         public string DeviceId { get; private set; }
-        
+
         private readonly FastbootDeviceDescriptor _descriptor;
-        
+
         public UsbTransport(FastbootDeviceDescriptor descriptor)
         {
             _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
             DeviceId = descriptor.Serial;
         }
-        
+
         public async Task<bool> ConnectAsync(CancellationToken ct = default)
         {
             return await Task.Run(() =>
@@ -51,12 +51,12 @@ namespace LoveAlways.Fastboot.Transport
                         NativeMethods.OPEN_EXISTING,
                         NativeMethods.FILE_FLAG_OVERLAPPED,
                         IntPtr.Zero);
-                    
+
                     if (_deviceHandle == NativeMethods.INVALID_HANDLE_VALUE)
                     {
                         return false;
                     }
-                    
+
                     // Initialize WinUSB
                     if (!NativeMethods.WinUsb_Initialize(_deviceHandle, out _winusbHandle))
                     {
@@ -64,14 +64,14 @@ namespace LoveAlways.Fastboot.Transport
                         _deviceHandle = IntPtr.Zero;
                         return false;
                     }
-                    
+
                     // Find Bulk Endpoints
                     if (!FindBulkEndpoints())
                     {
                         Disconnect();
                         return false;
                     }
-                    
+
                     return true;
                 }
                 catch
@@ -81,7 +81,7 @@ namespace LoveAlways.Fastboot.Transport
                 }
             }, ct);
         }
-        
+
         private bool FindBulkEndpoints()
         {
             NativeMethods.USB_INTERFACE_DESCRIPTOR interfaceDesc;
@@ -89,7 +89,7 @@ namespace LoveAlways.Fastboot.Transport
             {
                 return false;
             }
-            
+
             for (byte i = 0; i < interfaceDesc.bNumEndpoints; i++)
             {
                 NativeMethods.WINUSB_PIPE_INFORMATION pipeInfo;
@@ -108,10 +108,10 @@ namespace LoveAlways.Fastboot.Transport
                     }
                 }
             }
-            
+
             return _bulkInPipe != 0 && _bulkOutPipe != 0;
         }
-        
+
         public void Disconnect()
         {
             if (_winusbHandle != IntPtr.Zero)
@@ -119,55 +119,55 @@ namespace LoveAlways.Fastboot.Transport
                 NativeMethods.WinUsb_Free(_winusbHandle);
                 _winusbHandle = IntPtr.Zero;
             }
-            
+
             if (_deviceHandle != IntPtr.Zero && _deviceHandle != NativeMethods.INVALID_HANDLE_VALUE)
             {
                 NativeMethods.CloseHandle(_deviceHandle);
                 _deviceHandle = IntPtr.Zero;
             }
         }
-        
+
         public async Task<int> SendAsync(byte[] data, int offset, int count, CancellationToken ct = default)
         {
             if (!IsConnected)
                 throw new InvalidOperationException("Device not connected");
-            
+
             return await Task.Run(() =>
             {
                 uint bytesWritten;
                 byte[] buffer = new byte[count];
                 Array.Copy(data, offset, buffer, 0, count);
-                
+
                 if (NativeMethods.WinUsb_WritePipe(_winusbHandle, _bulkOutPipe, buffer, (uint)count, out bytesWritten, IntPtr.Zero))
                 {
                     return (int)bytesWritten;
                 }
-                
+
                 throw new Exception($"USB write failed: {Marshal.GetLastWin32Error()}");
             }, ct);
         }
-        
+
         public async Task<int> ReceiveAsync(byte[] buffer, int offset, int count, int timeoutMs, CancellationToken ct = default)
         {
             if (!IsConnected)
                 throw new InvalidOperationException("Device not connected");
-            
+
             return await Task.Run(() =>
             {
                 // Set timeout
                 uint timeout = (uint)timeoutMs;
-                NativeMethods.WinUsb_SetPipePolicy(_winusbHandle, _bulkInPipe, 
+                NativeMethods.WinUsb_SetPipePolicy(_winusbHandle, _bulkInPipe,
                     NativeMethods.PIPE_TRANSFER_TIMEOUT, 4, ref timeout);
-                
+
                 uint bytesRead;
                 byte[] tempBuffer = new byte[count];
-                
+
                 if (NativeMethods.WinUsb_ReadPipe(_winusbHandle, _bulkInPipe, tempBuffer, (uint)count, out bytesRead, IntPtr.Zero))
                 {
                     Array.Copy(tempBuffer, 0, buffer, offset, (int)bytesRead);
                     return (int)bytesRead;
                 }
-                
+
                 int error = Marshal.GetLastWin32Error();
                 if (error == NativeMethods.ERROR_SEM_TIMEOUT)
                 {
@@ -176,26 +176,26 @@ namespace LoveAlways.Fastboot.Transport
                 throw new Exception($"USB read failed: {error}");
             }, ct);
         }
-        
+
         public async Task<byte[]> TransferAsync(byte[] command, int timeoutMs, CancellationToken ct = default)
         {
             // Send command
             await SendAsync(command, 0, command.Length, ct);
-            
+
             // Receive response
             byte[] buffer = new byte[FastbootProtocol.MAX_RESPONSE_LENGTH];
             int received = await ReceiveAsync(buffer, 0, buffer.Length, timeoutMs, ct);
-            
+
             if (received > 0)
             {
                 byte[] result = new byte[received];
                 Array.Copy(buffer, result, received);
                 return result;
             }
-            
+
             return null;
         }
-        
+
         public void Dispose()
         {
             if (!_disposed)
@@ -204,48 +204,48 @@ namespace LoveAlways.Fastboot.Transport
                 _disposed = true;
             }
         }
-        
+
         /// <summary>
         /// Enumerate all Fastboot devices
         /// </summary>
         public static List<FastbootDeviceDescriptor> EnumerateDevices()
         {
             var devices = new List<FastbootDeviceDescriptor>();
-            
+
             // Enumerate USB devices using SetupAPI
             Guid winusbGuid = new Guid("dee824ef-729b-4a0e-9c14-b7117d33a817");
-            
+
             IntPtr deviceInfoSet = NativeMethods.SetupDiGetClassDevs(
                 ref winusbGuid,
                 IntPtr.Zero,
                 IntPtr.Zero,
                 NativeMethods.DIGCF_PRESENT | NativeMethods.DIGCF_DEVICEINTERFACE);
-            
+
             if (deviceInfoSet == NativeMethods.INVALID_HANDLE_VALUE)
             {
                 return devices;
             }
-            
+
             try
             {
                 NativeMethods.SP_DEVICE_INTERFACE_DATA interfaceData = new NativeMethods.SP_DEVICE_INTERFACE_DATA();
                 interfaceData.cbSize = Marshal.SizeOf(interfaceData);
-                
+
                 for (uint i = 0; NativeMethods.SetupDiEnumDeviceInterfaces(deviceInfoSet, IntPtr.Zero, ref winusbGuid, i, ref interfaceData); i++)
                 {
                     // Get device path
                     int requiredSize = 0;
                     NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, IntPtr.Zero, 0, ref requiredSize, IntPtr.Zero);
-                    
+
                     IntPtr detailDataBuffer = Marshal.AllocHGlobal(requiredSize);
                     try
                     {
                         Marshal.WriteInt32(detailDataBuffer, IntPtr.Size == 8 ? 8 : 6);
-                        
+
                         if (NativeMethods.SetupDiGetDeviceInterfaceDetail(deviceInfoSet, ref interfaceData, detailDataBuffer, requiredSize, ref requiredSize, IntPtr.Zero))
                         {
                             string devicePath = Marshal.PtrToStringAuto(new IntPtr(detailDataBuffer.ToInt64() + 4));
-                            
+
                             // Check if it's a Fastboot device
                             if (devicePath.ToLower().Contains("vid_18d1") || // Google
                                 devicePath.ToLower().Contains("vid_2717") || // Xiaomi
@@ -258,9 +258,9 @@ namespace LoveAlways.Fastboot.Transport
                                     DevicePath = devicePath,
                                     Type = TransportType.Usb
                                 };
-                                
+
                                 // Parse VID/PID                                ParseVidPid(devicePath, descriptor);
-                                
+
                                 devices.Add(descriptor);
                             }
                         }
@@ -275,10 +275,10 @@ namespace LoveAlways.Fastboot.Transport
             {
                 NativeMethods.SetupDiDestroyDeviceInfoList(deviceInfoSet);
             }
-            
+
             return devices;
         }
-        
+
         private static void ParseVidPid(string devicePath, FastbootDeviceDescriptor descriptor)
         {
             try
@@ -286,17 +286,17 @@ namespace LoveAlways.Fastboot.Transport
                 string lower = devicePath.ToLower();
                 int vidIndex = lower.IndexOf("vid_");
                 int pidIndex = lower.IndexOf("pid_");
-                
+
                 if (vidIndex >= 0)
                 {
                     descriptor.VendorId = Convert.ToInt32(lower.Substring(vidIndex + 4, 4), 16);
                 }
-                
+
                 if (pidIndex >= 0)
                 {
                     descriptor.ProductId = Convert.ToInt32(lower.Substring(pidIndex + 4, 4), 16);
                 }
-                
+
                 // Extract serial number from device path
                 // Device path format: \\?\usb#vid_18d1&pid_d00d#SERIAL#{GUID}
                 string[] parts = devicePath.Split('#');
@@ -314,7 +314,7 @@ namespace LoveAlways.Fastboot.Transport
             catch { }
         }
     }
-    
+
     /// <summary>
     /// Windows Native Methods
     /// </summary>
@@ -327,13 +327,13 @@ namespace LoveAlways.Fastboot.Transport
         public const uint OPEN_EXISTING = 3;
         public const uint FILE_FLAG_OVERLAPPED = 0x40000000;
         public static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
-        
+
         public const uint DIGCF_PRESENT = 0x02;
         public const uint DIGCF_DEVICEINTERFACE = 0x10;
-        
+
         public const uint PIPE_TRANSFER_TIMEOUT = 0x03;
         public const int ERROR_SEM_TIMEOUT = 121;
-        
+
         public enum USBD_PIPE_TYPE
         {
             UsbdPipeTypeControl = 0,
@@ -341,7 +341,7 @@ namespace LoveAlways.Fastboot.Transport
             UsbdPipeTypeBulk = 2,
             UsbdPipeTypeInterrupt = 3
         }
-        
+
         [StructLayout(LayoutKind.Sequential)]
         public struct USB_INTERFACE_DESCRIPTOR
         {
@@ -355,7 +355,7 @@ namespace LoveAlways.Fastboot.Transport
             public byte bInterfaceProtocol;
             public byte iInterface;
         }
-        
+
         [StructLayout(LayoutKind.Sequential)]
         public struct WINUSB_PIPE_INFORMATION
         {
@@ -364,7 +364,7 @@ namespace LoveAlways.Fastboot.Transport
             public ushort MaximumPacketSize;
             public byte Interval;
         }
-        
+
         [StructLayout(LayoutKind.Sequential)]
         public struct SP_DEVICE_INTERFACE_DATA
         {
@@ -373,7 +373,7 @@ namespace LoveAlways.Fastboot.Transport
             public int Flags;
             public IntPtr Reserved;
         }
-        
+
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         public static extern IntPtr CreateFile(
             string lpFileName,
@@ -383,29 +383,29 @@ namespace LoveAlways.Fastboot.Transport
             uint dwCreationDisposition,
             uint dwFlagsAndAttributes,
             IntPtr hTemplateFile);
-        
+
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool CloseHandle(IntPtr hObject);
-        
+
         [DllImport("winusb.dll", SetLastError = true)]
         public static extern bool WinUsb_Initialize(IntPtr DeviceHandle, out IntPtr InterfaceHandle);
-        
+
         [DllImport("winusb.dll", SetLastError = true)]
         public static extern bool WinUsb_Free(IntPtr InterfaceHandle);
-        
+
         [DllImport("winusb.dll", SetLastError = true)]
         public static extern bool WinUsb_QueryInterfaceSettings(
             IntPtr InterfaceHandle,
             byte AlternateInterfaceNumber,
             out USB_INTERFACE_DESCRIPTOR UsbAltInterfaceDescriptor);
-        
+
         [DllImport("winusb.dll", SetLastError = true)]
         public static extern bool WinUsb_QueryPipe(
             IntPtr InterfaceHandle,
             byte AlternateInterfaceNumber,
             byte PipeIndex,
             out WINUSB_PIPE_INFORMATION PipeInformation);
-        
+
         [DllImport("winusb.dll", SetLastError = true)]
         public static extern bool WinUsb_SetPipePolicy(
             IntPtr InterfaceHandle,
@@ -413,7 +413,7 @@ namespace LoveAlways.Fastboot.Transport
             uint PolicyType,
             uint ValueLength,
             ref uint Value);
-        
+
         [DllImport("winusb.dll", SetLastError = true)]
         public static extern bool WinUsb_WritePipe(
             IntPtr InterfaceHandle,
@@ -422,7 +422,7 @@ namespace LoveAlways.Fastboot.Transport
             uint BufferLength,
             out uint LengthTransferred,
             IntPtr Overlapped);
-        
+
         [DllImport("winusb.dll", SetLastError = true)]
         public static extern bool WinUsb_ReadPipe(
             IntPtr InterfaceHandle,
@@ -431,14 +431,14 @@ namespace LoveAlways.Fastboot.Transport
             uint BufferLength,
             out uint LengthTransferred,
             IntPtr Overlapped);
-        
+
         [DllImport("setupapi.dll", SetLastError = true)]
         public static extern IntPtr SetupDiGetClassDevs(
             ref Guid ClassGuid,
             IntPtr Enumerator,
             IntPtr hwndParent,
             uint Flags);
-        
+
         [DllImport("setupapi.dll", SetLastError = true)]
         public static extern bool SetupDiEnumDeviceInterfaces(
             IntPtr DeviceInfoSet,
@@ -446,7 +446,7 @@ namespace LoveAlways.Fastboot.Transport
             ref Guid InterfaceClassGuid,
             uint MemberIndex,
             ref SP_DEVICE_INTERFACE_DATA DeviceInterfaceData);
-        
+
         [DllImport("setupapi.dll", SetLastError = true, CharSet = CharSet.Auto)]
         public static extern bool SetupDiGetDeviceInterfaceDetail(
             IntPtr DeviceInfoSet,
@@ -455,7 +455,7 @@ namespace LoveAlways.Fastboot.Transport
             int DeviceInterfaceDetailDataSize,
             ref int RequiredSize,
             IntPtr DeviceInfoData);
-        
+
         [DllImport("setupapi.dll", SetLastError = true)]
         public static extern bool SetupDiDestroyDeviceInfoList(IntPtr DeviceInfoSet);
     }

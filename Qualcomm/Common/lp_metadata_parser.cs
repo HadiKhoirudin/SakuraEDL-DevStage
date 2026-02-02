@@ -21,7 +21,7 @@ namespace LoveAlways.Qualcomm.Common
         public const int LP_SECTOR_SIZE = 512;
 
         // Static parse cache (results cached by data hash)
-        private static readonly ConcurrentDictionary<string, List<LpPartitionInfo>> _parseCache 
+        private static readonly ConcurrentDictionary<string, List<LpPartitionInfo>> _parseCache
             = new ConcurrentDictionary<string, List<LpPartitionInfo>>();
 
         // 缓存大小限制
@@ -31,23 +31,23 @@ namespace LoveAlways.Qualcomm.Common
         {
             public string Name { get; set; }
             public List<LpExtentInfo> Extents { get; set; } = new List<LpExtentInfo>();
-            
+
             /// <summary>
             /// Total size (LP sectors, 512 bytes per sector)
             /// </summary>
             public long TotalSizeLpSectors => Extents.Sum(e => (long)e.NumSectors);
-            
+
             /// <summary>
             /// Total size (bytes)
             /// </summary>
             public long TotalSizeBytes => TotalSizeLpSectors * LP_SECTOR_SIZE;
-            
+
             /// <summary>
             /// Physical offset of the first extent (LP sectors, 512 bytes per sector)
             /// Only valid for LINEAR type
             /// </summary>
             public long FirstLpSectorOffset => GetFirstLinearOffset();
-            
+
             private long GetFirstLinearOffset()
             {
                 // Only return LINEAR type Extent offset
@@ -58,7 +58,7 @@ namespace LoveAlways.Qualcomm.Common
                 }
                 return -1;
             }
-            
+
             /// <summary>
             /// Calculate device sector offset (considering sector size conversion)
             /// </summary>
@@ -68,12 +68,12 @@ namespace LoveAlways.Qualcomm.Common
             {
                 long lpOffset = FirstLpSectorOffset;
                 if (lpOffset < 0) return -1;
-                
+
                 // LP Metadata 使用 512B 扇区，转换为设备扇区
                 long byteOffset = lpOffset * LP_SECTOR_SIZE;
                 return byteOffset / deviceSectorSize;
             }
-            
+
             /// <summary>
             /// Has valid LINEAR extent
             /// </summary>
@@ -95,7 +95,7 @@ namespace LoveAlways.Qualcomm.Common
         {
             // 计算数据哈希用于缓存
             string cacheKey = ComputeDataHash(data);
-            
+
             // 检查缓存
             List<LpPartitionInfo> cached;
             if (_parseCache.TryGetValue(cacheKey, out cached))
@@ -103,9 +103,9 @@ namespace LoveAlways.Qualcomm.Common
                 // Return deep copy to prevent cache modification
                 return DeepCopyPartitions(cached);
             }
-            
+
             var partitions = new List<LpPartitionInfo>();
-            
+
             // 1. Find ALP0 magic (possible multiple backups, take the first valid one)
             int headerOffset = FindAlp0Header(data);
 
@@ -158,7 +158,7 @@ namespace LoveAlways.Qualcomm.Common
                         TargetSource = br.ReadUInt32()
                     };
                     allExtents.Add(ext);
-                    
+
                     // Skip remaining entry size if any
                     if (hExtentsEntrySize > 24)
                         ms.Seek(hExtentsEntrySize - 24, SeekOrigin.Current);
@@ -211,14 +211,14 @@ namespace LoveAlways.Qualcomm.Common
             // ALP0 magic bytes: 0x30 0x50 0x4C 0x41 ("0PLA" little-endian)
             // Common offset locations
             int[] commonOffsets = { 4096, 8192, 0x1000, 0x2000, 0x3000 };
-            
+
             // First check common locations
             foreach (int offset in commonOffsets)
             {
                 if (offset + 6 <= data.Length && IsAlp0Header(data, offset))
                     return offset;
             }
-            
+
             // Byte-by-byte search (limit range to avoid full scan)
             int maxSearch = Math.Min(data.Length - 4, 0x10000); // Search up to 64KB
             for (int i = 0; i < maxSearch; i++)
@@ -226,7 +226,7 @@ namespace LoveAlways.Qualcomm.Common
                 if (IsAlp0Header(data, i))
                     return i;
             }
-            
+
             return -1;
         }
 
@@ -236,12 +236,12 @@ namespace LoveAlways.Qualcomm.Common
         private static bool IsAlp0Header(byte[] data, int offset)
         {
             if (offset + 6 > data.Length) return false;
-            
+
             // Check "0PLA" magic (ALP0 in little-endian)
             if (data[offset] != 0x30 || data[offset + 1] != 0x50 ||
                 data[offset + 2] != 0x4c || data[offset + 3] != 0x41)
                 return false;
-            
+
             // Check major version == 10
             ushort major = BitConverter.ToUInt16(data, offset + 4);
             return major == 10;

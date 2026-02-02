@@ -1,6 +1,6 @@
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 using System;
@@ -60,8 +60,8 @@ namespace LoveAlways.Fastboot.Common
 
             _process = new Process();
             _process.StartInfo.FileName = fastbootExe;
-            _process.StartInfo.Arguments = string.IsNullOrEmpty(serial) 
-                ? action 
+            _process.StartInfo.Arguments = string.IsNullOrEmpty(serial)
+                ? action
                 : $"-s \"{serial}\" {action}";
             _process.StartInfo.CreateNoWindow = true;
             _process.StartInfo.RedirectStandardError = true;
@@ -101,18 +101,18 @@ namespace LoveAlways.Fastboot.Common
         /// <summary>
         /// Asynchronously execute command and return output
         /// </summary>
-        public static async Task<FastbootResult> ExecuteAsync(string serial, string action, 
+        public static async Task<FastbootResult> ExecuteAsync(string serial, string action,
             CancellationToken ct = default, Action<string> onOutput = null)
         {
             var result = new FastbootResult();
-            
+
             try
             {
                 using (var cmd = new FastbootCommand(serial, action))
                 {
                     var stdoutBuilder = new System.Text.StringBuilder();
                     var stderrBuilder = new System.Text.StringBuilder();
-                    
+
                     // Read output in real-time
                     var stdoutTask = Task.Run(async () =>
                     {
@@ -124,7 +124,7 @@ namespace LoveAlways.Fastboot.Common
                             onOutput?.Invoke(line);
                         }
                     }, ct);
-                    
+
                     var stderrTask = Task.Run(async () =>
                     {
                         string line;
@@ -138,7 +138,7 @@ namespace LoveAlways.Fastboot.Common
 
                     // Wait for process termination and output reading completion
                     await Task.WhenAll(stdoutTask, stderrTask);
-                    
+
                     // Ensure process termination
                     if (!cmd._process.HasExited)
                     {
@@ -164,23 +164,23 @@ namespace LoveAlways.Fastboot.Common
 
             return result;
         }
-        
+
         /// <summary>
         /// Asynchronously execute command with progress callback support
         /// </summary>
-        public static async Task<FastbootResult> ExecuteWithProgressAsync(string serial, string action, 
+        public static async Task<FastbootResult> ExecuteWithProgressAsync(string serial, string action,
             CancellationToken ct = default, Action<string> onOutput = null, Action<FlashProgress> onProgress = null)
         {
             var result = new FastbootResult();
             var progress = new FlashProgress();
-            
+
             try
             {
                 using (var cmd = new FastbootCommand(serial, action))
                 {
                     var stderrBuilder = new System.Text.StringBuilder();
                     var stdoutBuilder = new System.Text.StringBuilder();
-                    
+
                     // Read stderr in real-time (fastboot main output is here)
                     var stderrTask = Task.Run(async () =>
                     {
@@ -190,13 +190,13 @@ namespace LoveAlways.Fastboot.Common
                             ct.ThrowIfCancellationRequested();
                             stderrBuilder.AppendLine(line);
                             onOutput?.Invoke(line);
-                            
+
                             // Parse progress
                             ParseProgressFromLine(line, progress);
                             onProgress?.Invoke(progress);
                         }
                     }, ct);
-                    
+
                     var stdoutTask = Task.Run(async () =>
                     {
                         string line;
@@ -208,7 +208,7 @@ namespace LoveAlways.Fastboot.Common
                     }, ct);
 
                     await Task.WhenAll(stdoutTask, stderrTask);
-                    
+
                     if (!cmd._process.HasExited)
                     {
                         cmd._process.WaitForExit(5000);
@@ -233,24 +233,24 @@ namespace LoveAlways.Fastboot.Common
 
             return result;
         }
-        
+
         /// <summary>
         /// Parse progress from fastboot output line
         /// </summary>
         private static void ParseProgressFromLine(string line, FlashProgress progress)
         {
             if (string.IsNullOrEmpty(line)) return;
-            
+
             // Parse Sending line: Sending 'boot_a' (65536 KB)
             // Or Sending sparse 'system' 1/12 (393216 KB)
             var sendingMatch = System.Text.RegularExpressions.Regex.Match(
                 line, @"Sending(?:\s+sparse)?\s+'([^']+)'(?:\s+(\d+)/(\d+))?\s+\((\d+)\s*KB\)");
-            
+
             if (sendingMatch.Success)
             {
                 progress.PartitionName = sendingMatch.Groups[1].Value;
                 progress.Phase = "Sending";
-                
+
                 if (sendingMatch.Groups[2].Success && sendingMatch.Groups[3].Success)
                 {
                     progress.CurrentChunk = int.Parse(sendingMatch.Groups[2].Value);
@@ -261,11 +261,11 @@ namespace LoveAlways.Fastboot.Common
                     progress.CurrentChunk = 1;
                     progress.TotalChunks = 1;
                 }
-                
+
                 progress.SizeKB = long.Parse(sendingMatch.Groups[4].Value);
                 return;
             }
-            
+
             // Parse Writing line: Writing 'boot_a'
             var writingMatch = System.Text.RegularExpressions.Regex.Match(line, @"Writing\s+'([^']+)'");
             if (writingMatch.Success)
@@ -274,13 +274,13 @@ namespace LoveAlways.Fastboot.Common
                 progress.Phase = "Writing";
                 return;
             }
-            
+
             // Parse OKAY line: OKAY [  1.234s]
             var okayMatch = System.Text.RegularExpressions.Regex.Match(line, @"OKAY\s+\[\s*([\d.]+)s\]");
             if (okayMatch.Success)
             {
                 progress.ElapsedSeconds = double.Parse(okayMatch.Groups[1].Value);
-                
+
                 // Calculate speed
                 if (progress.Phase == "Sending" && progress.ElapsedSeconds > 0 && progress.SizeKB > 0)
                 {
@@ -356,7 +356,7 @@ namespace LoveAlways.Fastboot.Common
         /// </summary>
         public string AllOutput => string.IsNullOrEmpty(StdOut) ? StdErr : $"{StdOut}\n{StdErr}";
     }
-    
+
     /// <summary>
     /// Fastboot Flashing Progress Information
     /// </summary>
@@ -366,42 +366,42 @@ namespace LoveAlways.Fastboot.Common
         /// Partition name
         /// </summary>
         public string PartitionName { get; set; }
-        
+
         /// <summary>
         /// Current phase: Sending, Writing
         /// </summary>
         public string Phase { get; set; }
-        
+
         /// <summary>
         /// Current chunk (Sparse image)
         /// </summary>
         public int CurrentChunk { get; set; } = 1;
-        
+
         /// <summary>
         /// Total chunks (Sparse image)
         /// </summary>
         public int TotalChunks { get; set; } = 1;
-        
+
         /// <summary>
         /// Current chunk size (KB)
         /// </summary>
         public long SizeKB { get; set; }
-        
+
         /// <summary>
         /// Current operation duration (seconds)
         /// </summary>
         public double ElapsedSeconds { get; set; }
-        
+
         /// <summary>
         /// Transfer speed (KB/s)
         /// </summary>
         public double SpeedKBps { get; set; }
-        
+
         /// <summary>
         /// Progress percentage (0-100)
         /// </summary>
         public double Percent { get; set; }
-        
+
         /// <summary>
         /// Formatted speed display
         /// </summary>

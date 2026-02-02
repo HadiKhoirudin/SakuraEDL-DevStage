@@ -48,7 +48,7 @@ namespace LoveAlways.Qualcomm.Common
         {
             get { return _port != null && _port.IsOpen; }
         }
-        
+
         /// <summary>
         /// 验证端口是否真正可用 (不仅检查 IsOpen，还尝试实际访问)
         /// </summary>
@@ -58,7 +58,7 @@ namespace LoveAlways.Qualcomm.Common
             {
                 if (_port == null || !_port.IsOpen)
                     return false;
-                
+
                 try
                 {
                     // 尝试访问端口属性来验证连接
@@ -85,7 +85,7 @@ namespace LoveAlways.Qualcomm.Common
                 }
             }
         }
-        
+
         /// <summary>
         /// 检查端口是否在系统可用端口列表中
         /// </summary>
@@ -93,11 +93,11 @@ namespace LoveAlways.Qualcomm.Common
         {
             if (string.IsNullOrEmpty(_currentPortName))
                 return false;
-            
+
             var ports = SerialPort.GetPortNames();
             return Array.Exists(ports, p => p.Equals(_currentPortName, StringComparison.OrdinalIgnoreCase));
         }
-        
+
         private void OnPortDisconnected()
         {
             CloseInternal();
@@ -205,11 +205,11 @@ namespace LoveAlways.Qualcomm.Common
                         // 清空缓冲区 (忽略异常，端口可能已断开)
                         try { _port.DiscardInBuffer(); _port.DiscardOutBuffer(); }
                         catch (Exception ex) { _log(string.Format("[SerialPort] 清空缓冲区异常: {0}", ex.Message)); }
-                        
+
                         // 禁用控制信号 (忽略异常)
                         try { _port.DtrEnable = false; _port.RtsEnable = false; }
                         catch (Exception ex) { _log(string.Format("[SerialPort] 禁用控制信号异常: {0}", ex.Message)); }
-                        
+
                         Thread.Sleep(50);
                         _port.Close();
                     }

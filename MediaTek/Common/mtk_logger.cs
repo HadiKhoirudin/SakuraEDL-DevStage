@@ -6,7 +6,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -23,22 +23,22 @@ namespace LoveAlways.MediaTek.Common
     {
         /// <summary>Debug information</summary>
         Debug = 0,
-        
+
         /// <summary>Detailed information</summary>
         Verbose = 1,
-        
+
         /// <summary>General information</summary>
         Info = 2,
-        
+
         /// <summary>Success message</summary>
         Success = 3,
-        
+
         /// <summary>Warning message</summary>
         Warning = 4,
-        
+
         /// <summary>Error message</summary>
         Error = 5,
-        
+
         /// <summary>Critical error</summary>
         Critical = 6
     }
@@ -67,19 +67,19 @@ namespace LoveAlways.MediaTek.Common
     {
         /// <summary>Timestamp</summary>
         public DateTime Timestamp { get; set; }
-        
+
         /// <summary>Log level</summary>
         public LogLevel Level { get; set; }
-        
+
         /// <summary>Log category</summary>
         public LogCategory Category { get; set; }
-        
+
         /// <summary>Message content</summary>
         public string Message { get; set; }
-        
+
         /// <summary>Attached data</summary>
         public object Data { get; set; }
-        
+
         /// <summary>Exception information</summary>
         public Exception Exception { get; set; }
 
@@ -233,7 +233,7 @@ namespace LoveAlways.MediaTek.Common
             var msg = $"{label}: {hex}";
             if (data.Length > maxLength)
                 msg += $" ... ({data.Length} bytes)";
-            
+
             Log(level, LogCategory.Protocol, msg);
         }
 
@@ -287,7 +287,7 @@ namespace LoveAlways.MediaTek.Common
         {
             int totalWidth = 60;
             int padding = (totalWidth - title.Length - 2) / 2;
-            
+
             LogSeparator(borderChar, totalWidth);
             var header = new string(' ', padding) + title + new string(' ', padding);
             if (header.Length < totalWidth) header += " ";
@@ -413,7 +413,7 @@ namespace LoveAlways.MediaTek.Common
 
             int length = Math.Min(data.Length, maxLength);
             var sb = new StringBuilder();
-            
+
             for (int i = 0; i < length; i++)
             {
                 sb.Append($"{data[i]:X2}");

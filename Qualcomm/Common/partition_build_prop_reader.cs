@@ -139,7 +139,7 @@ namespace LoveAlways.Qualcomm.Common
 
                 // 2. 检测文件系统类型
                 result.FileSystemType = FileSystemFactory.DetectTypeFromHeader(header);
-                
+
                 // 3. 处理 Sparse 格式
                 if (result.FileSystemType == FileSystemType.Sparse)
                 {
@@ -176,7 +176,7 @@ namespace LoveAlways.Qualcomm.Common
         /// 从多个分区并行读取 build.prop 并合并
         /// </summary>
         public Dictionary<string, string> ReadFromMultiplePartitions(
-            IEnumerable<string> partitionNames, 
+            IEnumerable<string> partitionNames,
             string activeSlot = "",
             long superStartSector = 0)
         {
@@ -290,7 +290,7 @@ namespace LoveAlways.Qualcomm.Common
                             result.Properties = ParseBuildProp(content);
                             result.FoundPath = path;
                             result.Success = true;
-                            _log(string.Format("[{0}] 找到 {1} ({2} 属性)", 
+                            _log(string.Format("[{0}] 找到 {1} ({2} 属性)",
                                 partitionName, path, result.Properties.Count));
                             return;
                         }
@@ -385,7 +385,7 @@ namespace LoveAlways.Qualcomm.Common
                     if (innerMagic1024 == 0xE0F5E1E2)
                     {
                         // EROFS - 直接在 Sparse 数据区偏移读取
-                        ReadErofsBuildProp(result, partitionName, baseOffset + dataOffset, 
+                        ReadErofsBuildProp(result, partitionName, baseOffset + dataOffset,
                             GetSubArray(header, dataOffset, header.Length - dataOffset));
                     }
                     else if (innerMagic1080 == 0xEF53)
@@ -494,7 +494,7 @@ namespace LoveAlways.Qualcomm.Common
         {
             if (source == null || offset >= source.Length)
                 return new byte[0];
-            
+
             length = Math.Min(length, source.Length - offset);
             byte[] result = new byte[length];
             Array.Copy(source, offset, result, 0, length);
@@ -756,7 +756,7 @@ namespace LoveAlways.Qualcomm.Common
         public string Model { get; set; } = "";
         public string MarketName { get; set; } = "";
         public string Device { get; set; } = "";
-        
+
         // 版本信息
         public string AndroidVersion { get; set; } = "";
         public string SecurityPatch { get; set; } = "";
@@ -766,7 +766,7 @@ namespace LoveAlways.Qualcomm.Common
         public string BuildDescription { get; set; } = "";
         public string SdkVersion { get; set; } = "";
         public string BasebandVersion { get; set; } = "";
-        
+
         // OPLUS/OnePlus 特有
         public string OplusProject { get; set; } = "";           // 22825 (项目号)
         public string OplusNvId { get; set; } = "";              // 10010111 (NV_ID)
@@ -775,7 +775,7 @@ namespace LoveAlways.Qualcomm.Common
         public string OplusRegion { get; set; } = "";            // CN_all / ALLNET
         public string OplusManifestUuid { get; set; } = "";      // UUID
         public string ColorOsVersion { get; set; } = "";
-        
+
         // 小米/HyperOS 特有
         public string MiuiVersion { get; set; } = "";
         public string MiuiOtaVersion { get; set; } = "";
@@ -807,7 +807,7 @@ namespace LoveAlways.Qualcomm.Common
             get
             {
                 // MIUI/HyperOS 优先 (格式如 OS3.0.36.0.WPCCNXM)
-                if (!string.IsNullOrEmpty(MiuiOtaVersion) && 
+                if (!string.IsNullOrEmpty(MiuiOtaVersion) &&
                     (MiuiOtaVersion.StartsWith("OS") || MiuiOtaVersion.StartsWith("V")))
                     return MiuiOtaVersion;
                 // ColorOS
@@ -826,7 +826,7 @@ namespace LoveAlways.Qualcomm.Common
             get
             {
                 string brandLower = (Brand ?? "").ToLowerInvariant();
-                
+
                 // 小米系
                 if (brandLower.Contains("xiaomi") || brandLower.Contains("redmi") || brandLower.Contains("poco"))
                 {
@@ -837,15 +837,15 @@ namespace LoveAlways.Qualcomm.Common
                         return "HyperOS";
                     return "MIUI";
                 }
-                
+
                 // OPLUS 系
                 if (brandLower.Contains("oppo") || brandLower.Contains("oneplus") || brandLower.Contains("realme"))
                     return "ColorOS";
-                
+
                 // 联想
                 if (brandLower.Contains("lenovo") || brandLower.Contains("motorola"))
                     return "ZUI";
-                
+
                 return "Android";
             }
         }
@@ -856,19 +856,19 @@ namespace LoveAlways.Qualcomm.Common
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("           设 备 详 细 信 息            ");
             sb.AppendLine("═══════════════════════════════════════");
-            
+
             // 基本信息
             if (!string.IsNullOrEmpty(MarketName)) sb.AppendLine("  市场名称 : " + MarketName);
             if (!string.IsNullOrEmpty(Brand)) sb.AppendLine("  品    牌 : " + Brand);
             if (!string.IsNullOrEmpty(Model)) sb.AppendLine("  型    号 : " + Model);
             if (!string.IsNullOrEmpty(Device)) sb.AppendLine("  代    号 : " + Device);
-            
+
             sb.AppendLine("───────────────────────────────────────");
-            
+
             // 系统版本
             if (!string.IsNullOrEmpty(AndroidVersion)) sb.AppendLine("  Android  : " + AndroidVersion);
             if (!string.IsNullOrEmpty(SdkVersion)) sb.AppendLine("  SDK 版本 : " + SdkVersion);
-            
+
             // 系统类型 + OTA 版本 (智能显示)
             string sysType = SystemTypeName;
             string otaDisplay = FullOtaVersion;
@@ -876,24 +876,24 @@ namespace LoveAlways.Qualcomm.Common
             {
                 sb.AppendLine(string.Format("  {0,-8} : {1}", sysType, otaDisplay));
             }
-            
+
             // MIUI/HyperOS 版本名
-            if (!string.IsNullOrEmpty(MiuiVersion) && MiuiVersion != otaDisplay) 
+            if (!string.IsNullOrEmpty(MiuiVersion) && MiuiVersion != otaDisplay)
                 sb.AppendLine("  版 本 名 : " + MiuiVersion);
-            
+
             // 区域
             if (!string.IsNullOrEmpty(MiuiRegion))
                 sb.AppendLine("  区    域 : " + MiuiRegion);
-            
+
             // ColorOS (如果不同于 OTA)
-            if (!string.IsNullOrEmpty(ColorOsVersion) && ColorOsVersion != otaDisplay) 
+            if (!string.IsNullOrEmpty(ColorOsVersion) && ColorOsVersion != otaDisplay)
                 sb.AppendLine("  ColorOS  : " + ColorOsVersion);
-            
+
             if (!string.IsNullOrEmpty(SecurityPatch)) sb.AppendLine("  安全补丁 : " + SecurityPatch);
             if (!string.IsNullOrEmpty(BuildDate)) sb.AppendLine("  编译日期 : " + BuildDate);
-            
+
             sb.AppendLine("───────────────────────────────────────");
-            
+
             // 项目信息 (OPLUS/OnePlus)
             if (!string.IsNullOrEmpty(OplusProject)) sb.AppendLine("  项 目 号 : " + OplusProject);
             if (!string.IsNullOrEmpty(OplusNvId)) sb.AppendLine("  NV ID    : " + OplusNvId);
@@ -901,16 +901,16 @@ namespace LoveAlways.Qualcomm.Common
             if (!string.IsNullOrEmpty(OplusRegion)) sb.AppendLine("  区域类型 : " + OplusRegion);
             if (!string.IsNullOrEmpty(OplusFullOtaVersion) && OplusFullOtaVersion != OtaVersion)
                 sb.AppendLine("  完整 OTA : " + OplusFullOtaVersion);
-            
+
             if (!string.IsNullOrEmpty(BasebandVersion)) sb.AppendLine("  基带版本 : " + BasebandVersion);
-            
+
             // Fingerprint (截断显示)
             if (!string.IsNullOrEmpty(Fingerprint))
             {
                 string fp = Fingerprint.Length > 60 ? Fingerprint.Substring(0, 57) + "..." : Fingerprint;
                 sb.AppendLine("  Fingerprint: " + fp);
             }
-            
+
             sb.AppendLine("═══════════════════════════════════════");
             return sb.ToString();
         }

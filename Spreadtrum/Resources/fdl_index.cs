@@ -4,7 +4,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -31,43 +31,43 @@ namespace LoveAlways.Spreadtrum.Resources
         {
             /// <summary>Chip name (e.g. SC8541E)</summary>
             public string ChipName { get; set; }
- 
+
             /// <summary>Chip ID</summary>
             public uint ChipId { get; set; }
- 
+
             /// <summary>Device model (e.g. A23-Pro)</summary>
             public string DeviceModel { get; set; }
- 
+
             /// <summary>Brand (e.g. Samsung)</summary>
             public string Brand { get; set; }
- 
+
             /// <summary>Market name (e.g. Galaxy A23)</summary>
             public string MarketName { get; set; }
- 
+
             /// <summary>FDL1 filename</summary>
             public string Fdl1File { get; set; }
- 
+
             /// <summary>FDL2 filename</summary>
             public string Fdl2File { get; set; }
- 
+
             /// <summary>FDL1 load address</summary>
             public uint Fdl1Address { get; set; }
- 
+
             /// <summary>FDL2 load address</summary>
             public uint Fdl2Address { get; set; }
- 
+
             /// <summary>FDL1 file hash (for verification)</summary>
             public string Fdl1Hash { get; set; }
- 
+
             /// <summary>FDL2 file hash</summary>
             public string Fdl2Hash { get; set; }
- 
+
             /// <summary>Notes</summary>
             public string Notes { get; set; }
- 
+
             /// <summary>Whether verified and working</summary>
             public bool Verified { get; set; }
- 
+
             /// <summary>Unique key</summary>
             public string Key => $"{ChipName}/{DeviceModel}".ToLower();
         }
@@ -150,7 +150,7 @@ namespace LoveAlways.Spreadtrum.Resources
 
                 foreach (var device in devices)
                 {
-                    var chip = chips.FirstOrDefault(c => 
+                    var chip = chips.FirstOrDefault(c =>
                         c.ChipName.Equals(device.ChipName, StringComparison.OrdinalIgnoreCase));
 
                     var entry = new FdlIndexEntry
@@ -294,9 +294,9 @@ namespace LoveAlways.Spreadtrum.Resources
             if (!_initialized)
             {
                 // Try to load from default location
-                var indexPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, 
+                var indexPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
                     "SprdResources", "fdl_index.json");
-                
+
                 if (!LoadIndex(indexPath))
                 {
                     InitializeFromDatabase();

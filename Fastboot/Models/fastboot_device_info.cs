@@ -1,6 +1,6 @@
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 using System;
@@ -107,11 +107,11 @@ namespace LoveAlways.Fastboot.Models
         public string GetVariable(string key)
         {
             if (string.IsNullOrEmpty(key)) return null;
-            
+
             string lowKey = key.ToLowerInvariant();
             if (RawVariables.TryGetValue(lowKey, out string value))
                 return value;
-            
+
             return null;
         }
 
@@ -129,7 +129,7 @@ namespace LoveAlways.Fastboot.Models
             {
                 // fastboot output format: (bootloader) key: value or key: value
                 string processedLine = line.Trim();
-                
+
                 // Remove (bootloader) prefix
                 if (processedLine.StartsWith("(bootloader)"))
                 {
@@ -217,7 +217,7 @@ namespace LoveAlways.Fastboot.Models
             if (string.IsNullOrEmpty(value)) return false;
 
             value = value.Trim();
-            
+
             try
             {
                 if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))

@@ -1,8 +1,8 @@
+using LoveAlways.Qualcomm.Database;
+using OPFlashTool.Services;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Database;
-using OPFlashTool.Services;
 
 namespace LoveAlways
 {
@@ -36,7 +36,7 @@ namespace LoveAlways
                 return new List<string>();
             }
         }
-        
+
         /// <summary>
         /// VIP Loader List (Still loaded from local PAK)
         /// </summary>
@@ -66,17 +66,17 @@ namespace LoveAlways
             {
                 if (_systemInfo == null)
                 {
-                    try 
-                    { 
+                    try
+                    {
                         // Use Task.Run to avoid deadlock
-                        _systemInfo = Task.Run(async () => 
+                        _systemInfo = Task.Run(async () =>
                             await WindowsInfo.GetSystemInfoAsync().ConfigureAwait(false)
-                        ).GetAwaiter().GetResult(); 
+                        ).GetAwaiter().GetResult();
                     }
                     catch (Exception ex)
-                    { 
+                    {
                         System.Diagnostics.Debug.WriteLine($"[PreloadManager] Failed to get system info: {ex.Message}");
-                        _systemInfo = "Unknown"; 
+                        _systemInfo = "Unknown";
                     }
                 }
                 return _systemInfo;
@@ -84,7 +84,7 @@ namespace LoveAlways
         }
 
         private static bool? _edlPakAvailable = null;
-        
+
         /// <summary>
         /// Whether EDL PAK is available (Deprecated, use cloud match)
         /// </summary>
@@ -97,7 +97,7 @@ namespace LoveAlways
                 return false;
             }
         }
-        
+
         private static bool? _vipPakAvailable = null;
         public static bool VipPakAvailable
         {
@@ -161,7 +161,7 @@ namespace LoveAlways
                         try { _systemInfo = await WindowsInfo.GetSystemInfoAsync(); }
                         catch { _systemInfo = "Unknown"; }
                     }
-                    
+
                     Progress = 90;
 
                     // Phase 4: Prewarm common types (Lightweight)
@@ -191,7 +191,7 @@ namespace LoveAlways
                 _edlLoaderItems?.Clear();
                 _edlLoaderItems = null;
                 _edlLoaderItemsLoaded = false;
-                
+
                 _vipLoaderItems?.Clear();
                 _vipLoaderItems = null;
                 _vipLoaderItemsLoaded = false;
@@ -219,7 +219,7 @@ namespace LoveAlways
             // No longer builds local PAK list, EDL Loader uses cloud match
             return new List<string>();
         }
-        
+
         /// <summary>
         /// Build VIP Loader list items (OPLUS signature authentication devices)
         /// </summary>
@@ -238,7 +238,7 @@ namespace LoveAlways
                     return items;
 
                 items.Add("─── VIP Signed Devices ───");
-                
+
                 foreach (var platform in platforms)
                 {
                     if (ChimeraSignDatabase.TryGet(platform, out var signData))

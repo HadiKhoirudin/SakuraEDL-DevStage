@@ -6,15 +6,15 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.MediaTek.Models;
+using LoveAlways.MediaTek.Protocol;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.Protocol;
 
 namespace LoveAlways.MediaTek.Database
 {
@@ -37,28 +37,28 @@ namespace LoveAlways.MediaTek.Database
         public bool Is64Bit { get; set; }
         public bool HasExploit { get; set; }
         public string ExploitType { get; set; }
-        
+
         // V6 protocol related
         /// <summary>
         /// Whether BROM has been patched (kamakiri/linecode BROM exploits would be invalid)
         /// </summary>
         public bool BromPatched { get; set; }
-        
+
         /// <summary>
         /// Whether V6 Loader is required (Preloader mode)
         /// </summary>
         public bool RequiresLoader { get; set; }
-        
+
         /// <summary>
         /// Loader filename (if required)
         /// </summary>
         public string LoaderName { get; set; }
-        
+
         /// <summary>
         /// SoC version (used to distinguish versions of the same chip)
         /// </summary>
         public ushort SocVer { get; set; }
-        
+
         /// <summary>
         /// Chip code name (used for Loader matching)
         /// </summary>
@@ -71,7 +71,7 @@ namespace LoveAlways.MediaTek.Database
     public static class MtkChipDatabase
     {
         private static readonly Dictionary<ushort, MtkChipRecord> _chips = new Dictionary<ushort, MtkChipRecord>();
-        
+
         // HW Code alias mapping in Preloader mode
         // Some chips report different HW Codes in Preloader mode
         private static readonly Dictionary<ushort, ushort> _preloaderAliases = new Dictionary<ushort, ushort>
@@ -425,19 +425,18 @@ namespace LoveAlways.MediaTek.Database
             AddChip(new MtkChipRecord
             {
                 HwCode = 0x0766,
-                ChipName = "MT6877",
-                Description = "Dimensity 900",
+                ChipName = "MT6765",
+                Description = "Helio P35/G35",
                 WatchdogAddr = 0x10007000,
                 UartAddr = 0x11002000,
                 BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x200000,   // Config.xml: 0x200000
+                DaPayloadAddr = 0x201000,
                 CqDmaBase = 0x10212000,
                 DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
-                HasExploit = true,
-                ExploitType = "Carbonara"
+                HasExploit = true
             });
-            
+
             // MT6877 (Dimensity 900) - Preloader mode HW Code
             // Reference Config.xml: DA1Address=2097152 (0x200000)
             AddChip(new MtkChipRecord
@@ -650,7 +649,7 @@ namespace LoveAlways.MediaTek.Database
             // Note: HW Codes below conflict with existing chips, needs device validation
             // Temporarily commented out to avoid overwriting verified chip configurations
             // ═══════════════════════════════════════════════════════════════
-            
+
             // MT6781 (Helio G96) - HW Code 0x0788 conflicts with MT6873
             // MT6789 (Helio G99) - HW Code 0x0813 conflicts with MT6833
             // MT6855 (Dimensity 930) - HW Code 0x0886 conflicts with MT6885
@@ -768,7 +767,7 @@ namespace LoveAlways.MediaTek.Database
             // MT6752's 0x0321 conflicts with MT6735
             // MT6753's 0x0337 is independent, can be kept
             // MT6732's 0x0335 conflicts with MT6737
-            
+
             // MT6753 (MT6752 Enhanced) - Independent HW Code
             AddChip(new MtkChipRecord
             {
@@ -877,7 +876,7 @@ namespace LoveAlways.MediaTek.Database
             // ═══════════════════════════════════════════════════════════════
             // Added Preloader HW Code alias mapping (some chips have different HW Codes in different modes)
             // ═══════════════════════════════════════════════════════════════
-            
+
             // TODO: Add more verified chips
             // Chip information source:
             // 1. mtkclient project brom_config.py (Verified)
@@ -886,7 +885,7 @@ namespace LoveAlways.MediaTek.Database
             //
             // Note: Do not add unverified chips or guessed HW Codes
         }
-        
+
 
         /// <summary>
         /// Add chip record
@@ -904,17 +903,17 @@ namespace LoveAlways.MediaTek.Database
             // Direct lookup first
             if (_chips.TryGetValue(hwCode, out var chip))
                 return chip;
-            
+
             // Check Preloader alias
             if (_preloaderAliases.TryGetValue(hwCode, out var bromHwCode))
             {
                 if (_chips.TryGetValue(bromHwCode, out chip))
                     return chip;
             }
-            
+
             return null;
         }
-        
+
         /// <summary>
         /// Get chip information by HW Code (including Preloader mode detection)
         /// </summary>
@@ -923,14 +922,14 @@ namespace LoveAlways.MediaTek.Database
             // Direct lookup first
             if (_chips.TryGetValue(hwCode, out var chip))
                 return (chip, false);
-            
+
             // Check Preloader alias
             if (_preloaderAliases.TryGetValue(hwCode, out var bromHwCode))
             {
                 if (_chips.TryGetValue(bromHwCode, out chip))
                     return (chip, true);
             }
-            
+
             return (null, false);
         }
 
@@ -966,7 +965,7 @@ namespace LoveAlways.MediaTek.Database
         public static IReadOnlyList<MtkChipRecord> GetChipsByExploitType(string exploitType)
         {
             return _chips.Values
-                .Where(c => c.HasExploit && 
+                .Where(c => c.HasExploit &&
                        string.Equals(c.ExploitType, exploitType, StringComparison.OrdinalIgnoreCase))
                 .ToList().AsReadOnly();
         }
@@ -985,8 +984,8 @@ namespace LoveAlways.MediaTek.Database
         public static bool IsAllinoneSignatureSupported(ushort hwCode)
         {
             var chip = GetChip(hwCode);
-            return chip != null && 
-                   chip.HasExploit && 
+            return chip != null &&
+                   chip.HasExploit &&
                    string.Equals(chip.ExploitType, "AllinoneSignature", StringComparison.OrdinalIgnoreCase);
         }
 
@@ -1072,11 +1071,11 @@ namespace LoveAlways.MediaTek.Database
         {
             var chip = GetChip(hwCode);
             if (chip == null) return null;
-            
+
             // Return designated loader name if available
             if (!string.IsNullOrEmpty(chip.LoaderName))
                 return chip.LoaderName;
-            
+
             // Otherwise generate default name based on chip name
             return $"{chip.ChipName.ToLower()}_loader.bin";
         }

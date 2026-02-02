@@ -7,7 +7,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -24,22 +24,22 @@ namespace LoveAlways.MediaTek.Common
     {
         /// <summary>Offset position in DA file</summary>
         public uint FileOffset { get; set; }
-        
+
         /// <summary>Total length (including signature)</summary>
         public uint TotalLength { get; set; }
-        
+
         /// <summary>Memory address loaded into device</summary>
         public uint LoadAddress { get; set; }
-        
+
         /// <summary>Region length (excluding signature)</summary>
         public uint RegionLength { get; set; }
-        
+
         /// <summary>Signature length</summary>
         public uint SignatureLength { get; set; }
-        
+
         /// <summary>Actual data (excluding signature)</summary>
         public byte[] Data { get; set; }
-        
+
         /// <summary>Signature data</summary>
         public byte[] Signature { get; set; }
 
@@ -56,22 +56,22 @@ namespace LoveAlways.MediaTek.Common
     {
         /// <summary>Magic (usually "DADA")</summary>
         public ushort Magic { get; set; }
-        
+
         /// <summary>HW Code (chip code, e.g., 0x6768 for MT6768)</summary>
         public ushort HwCode { get; set; }
-        
+
         /// <summary>HW Sub Code (chip sub-code, used to distinguish revisions)</summary>
         public ushort HwSubCode { get; set; }
-        
+
         /// <summary>HW Version (chip version)</summary>
         public ushort HwVersion { get; set; }
-        
+
         /// <summary>Entry Region Index</summary>
         public ushort RegionIndex { get; set; }
-        
+
         /// <summary>Region count</summary>
         public ushort RegionCount { get; set; }
-        
+
         /// <summary>All region list</summary>
         public List<DaRegion> Regions { get; set; }
 
@@ -93,25 +93,25 @@ namespace LoveAlways.MediaTek.Common
     {
         /// <summary>DA file magic string ("MTK_DOWNLOAD_AGENT")</summary>
         public string Magic { get; set; }
-        
+
         /// <summary>DA file ID ("MTK_AllInOne_DA_v3" for XFlash, "MTK_DA_v6" for XML)</summary>
         public string FileId { get; set; }
-        
+
         /// <summary>DA version (usually 4)</summary>
         public uint Version { get; set; }
-        
+
         /// <summary>DA Magic (0x99886622)</summary>
         public uint DaMagic { get; set; }
-        
+
         /// <summary>SoC count (one DA file can contain configurations for multiple chips)</summary>
         public ushort SocCount { get; set; }
-        
+
         /// <summary>All DA Entry list</summary>
         public List<DaEntry> Entries { get; set; }
-        
+
         /// <summary>Whether it is V6 (XML) DA</summary>
         public bool IsV6 => FileId?.Contains("v6") == true;
-        
+
         /// <summary>Whether it is V5 (XFlash) DA</summary>
         public bool IsV5 => FileId?.Contains("v3") == true;  // "AllInOne_DA_v3" is actually V5
 
@@ -142,7 +142,7 @@ namespace LoveAlways.MediaTek.Common
     {
         private const string EXPECTED_MAGIC = "MTK_DOWNLOAD_AGENT";
         private const uint EXPECTED_DA_MAGIC = 0x99886622;
-        
+
         private const int LEGACY_ENTRY_SIZE = 0xD8;
         private const int XFLASH_ENTRY_SIZE = 0xDC;
         private const int REGION_SIZE = 0x20;

@@ -2,20 +2,28 @@
 // MediaTek Platform UI Integration
 // ============================================================================
 
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 using LoveAlways.MediaTek.Common;
 using LoveAlways.MediaTek.Database;
 using LoveAlways.MediaTek.Models;
 using LoveAlways.MediaTek.Protocol;
 using LoveAlways.MediaTek.Services;
 using LoveAlways.MediaTek.UI;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Management;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace LoveAlways
 {
@@ -25,7 +33,7 @@ namespace LoveAlways
         private MediatekService _mtkService;
         private CancellationTokenSource _mtkCts;
         private bool _mtkIsConnected;
-        
+
         // MTK Log Level: 0=Off, 1=Basic, 2=Detail, 3=Debug
         private int _mtkLogLevel = 2;
 
@@ -37,7 +45,7 @@ namespace LoveAlways
         private void MtkLog(string message, Color? color = null, int level = 1)
         {
             if (level > _mtkLogLevel) return;
-            AppendLog($"[MTK] {message}", color ?? Color.White);
+            AppendLog($"[MediaTek] {message}", color ?? Color.White);
         }
 
         /// <summary>
@@ -76,7 +84,7 @@ namespace LoveAlways
         private void MtkLogHex(string label, byte[] data, int maxLen = 32)
         {
             if (_mtkLogLevel < 3 || data == null) return;
-            
+
             string hex = BitConverter.ToString(data, 0, Math.Min(data.Length, maxLen)).Replace("-", " ");
             if (data.Length > maxLen) hex += $" ... ({data.Length} bytes)";
             MtkLog($"{label}: {hex}", Color.DarkGray, 3);
@@ -95,7 +103,7 @@ namespace LoveAlways
             {
                 // Load Chip List
                 LoadMtkChipList();
-                
+
                 // Load Exploit Types
                 LoadMtkExploitTypes();
 
@@ -135,7 +143,7 @@ namespace LoveAlways
                 _mtkController.OnDeviceDisconnected += MtkController_OnDeviceDisconnected;
                 _mtkController.OnPartitionTableLoaded += MtkController_OnPartitionTableLoaded;
 
-                MtkLogInfo("MediaTek Module Initialized");
+                MtkLogInfo("Module Initialized");
             }
             catch (Exception ex)
             {
@@ -216,7 +224,7 @@ namespace LoveAlways
 
             // Get Chip Exploit Type
             string exploitType = MtkChipDatabase.GetExploitType(hwCode);
-            
+
             // Auto Select based on Exploit Type
             for (int i = 0; i < mtkSelectExploitType.Items.Count; i++)
             {
@@ -231,12 +239,12 @@ namespace LoveAlways
             // Update Exploit Button State
             bool hasExploit = MtkChipDatabase.GetChip(hwCode)?.HasExploit ?? false;
             bool isAllinone = MtkChipDatabase.IsAllinoneSignatureSupported(hwCode);
-            
+
             if (isAllinone)
             {
                 mtkBtnExploit.Text = "AllInOne Exploit";
                 mtkBtnExploit.Enabled = _mtkIsConnected;
-                AppendLog($"[MTK] Chip supports ALLINONE-SIGNATURE Exploit", Color.Cyan);
+                AppendLog($"[MediaTek] Chip supports ALLINONE-SIGNATURE Exploit", Color.Cyan);
             }
             else if (hasExploit)
             {
@@ -255,15 +263,20 @@ namespace LoveAlways
         /// </summary>
         private void CleanupMediaTekModule()
         {
-            MtkDisconnect();
+
+            _mtkCts?.Cancel();
+            _mtkService?.Dispose();
+            _mtkService = null;
+            _mtkIsConnected = false;
+
             _mtkController?.Dispose();
             _mtkController = null;
-            
+
             // Dispose CancellationTokenSource
             _mtkCts?.Dispose();
             _mtkCts = null;
         }
-        
+
         /// <summary>
         /// Safe Reset MTK CancellationTokenSource
         /// </summary>
@@ -282,7 +295,7 @@ namespace LoveAlways
         {
             if (_mtkIsConnected)
             {
-                AppendLog("[MTK] Already Connected", Color.Orange);
+                AppendLog("[MediaTek] Already Connected", Color.Orange);
                 return;
             }
 
@@ -352,13 +365,13 @@ namespace LoveAlways
                         if (!string.IsNullOrEmpty(_mtkCustomDa1Path) && File.Exists(_mtkCustomDa1Path))
                         {
                             _mtkService.SetCustomDa1(_mtkCustomDa1Path);
-                            AppendLog($"[MTK] Use Custom DA1: {Path.GetFileName(_mtkCustomDa1Path)}", Color.Cyan);
+                            AppendLog($"[MediaTek] Use Custom DA1: {Path.GetFileName(_mtkCustomDa1Path)}", Color.Cyan);
                         }
-                        
+
                         if (!string.IsNullOrEmpty(_mtkCustomDa2Path) && File.Exists(_mtkCustomDa2Path))
                         {
                             _mtkService.SetCustomDa2(_mtkCustomDa2Path);
-                            AppendLog($"[MTK] Use Custom DA2: {Path.GetFileName(_mtkCustomDa2Path)}", Color.Cyan);
+                            AppendLog($"[MediaTek] Use Custom DA2: {Path.GetFileName(_mtkCustomDa2Path)}", Color.Cyan);
                         }
                     }
                     else
@@ -369,7 +382,13 @@ namespace LoveAlways
                         {
                             _mtkService.SetDaFilePath(daPath);
                         }
-                        
+
+                        if (string.IsNullOrEmpty(daPath))
+                        {
+                            daPath = @"Bin\Da\MTK_AllInOne_DA.bin";
+                            _mtkService.SetDaFilePath(daPath);
+                        }
+
                         // Compatibility: Also check separately set DA2
                         if (!string.IsNullOrEmpty(_mtkCustomDa2Path) && File.Exists(_mtkCustomDa2Path))
                         {
@@ -418,11 +437,30 @@ namespace LoveAlways
         private async Task<string> MtkWaitForDeviceAsync(CancellationToken ct)
         {
             // Use Port Detector to wait for MTK device
-            using (var detector = new MtkPortDetector())
+            return await Task.Run(() =>
             {
-                var portInfo = await detector.WaitForDeviceAsync(30000, ct);
-                return portInfo?.ComPort;
-            }
+                while (true)
+                {
+                    if (ct.IsCancellationRequested) return "";
+
+                    ManagementObjectSearcher searcher = new ManagementObjectSearcher(
+                        "root\\cimv2",
+                        "SELECT * FROM Win32_PnPEntity WHERE Name Like '%USB%' AND PNPClass = 'Ports' "
+                    );
+                    foreach (ManagementObject queryObj in searcher.Get())
+                    {
+                        var portNameData = queryObj["Name"].ToString();
+                        if (!string.IsNullOrEmpty(portNameData) && portNameData.Contains("MediaTek"))
+                        {
+                            Match match1 = Regex.Match(portNameData, "\\((COM\\d+)\\)");
+                            if (match1.Success)
+                            {
+                                return match1.Groups[1].Value;
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         private void MtkBtnDisconnect_Click(object sender, EventArgs e)
@@ -447,6 +485,8 @@ namespace LoveAlways
 
         private async void MtkBtnReadGpt_Click(object sender, EventArgs e)
         {
+            Debug.WriteLine("MediaTek Read GPT Clicked...");
+
             MtkResetCancellationToken();
             MtkStartTimer();
 
@@ -582,7 +622,7 @@ namespace LoveAlways
                 await _mtkService.LoadDaAsync(_mtkCts.Token);
             }
 
-            AppendLog("[MTK] Device Connected Success", Color.Green);
+            AppendLog("[MediaTek] Device Connected Success", Color.Green);
             UpdateMtkInfoPanel();
             return true;
         }
@@ -600,13 +640,13 @@ namespace LoveAlways
                 if (!string.IsNullOrEmpty(_mtkCustomDa1Path) && File.Exists(_mtkCustomDa1Path))
                 {
                     _mtkService.SetCustomDa1(_mtkCustomDa1Path);
-                    AppendLog($"[MTK] Use Custom DA1: {Path.GetFileName(_mtkCustomDa1Path)}", Color.Cyan);
+                    AppendLog($"[MediaTek] Use Custom DA1: {Path.GetFileName(_mtkCustomDa1Path)}", Color.Cyan);
                 }
-                
+
                 if (!string.IsNullOrEmpty(_mtkCustomDa2Path) && File.Exists(_mtkCustomDa2Path))
                 {
                     _mtkService.SetCustomDa2(_mtkCustomDa2Path);
-                    AppendLog($"[MTK] Use Custom DA2: {Path.GetFileName(_mtkCustomDa2Path)}", Color.Cyan);
+                    AppendLog($"[MediaTek] Use Custom DA2: {Path.GetFileName(_mtkCustomDa2Path)}", Color.Cyan);
                 }
             }
             else
@@ -617,7 +657,13 @@ namespace LoveAlways
                 {
                     _mtkService.SetDaFilePath(daPath);
                 }
-                
+
+                if (string.IsNullOrEmpty(daPath))
+                {
+                    daPath = @"Bin\Da\MTK_AllInOne_DA.bin";
+                    _mtkService.SetDaFilePath(daPath);
+                }
+
                 // Compatibility: Also check separately set DA2
                 if (!string.IsNullOrEmpty(_mtkCustomDa2Path) && File.Exists(_mtkCustomDa2Path))
                 {
@@ -655,7 +701,7 @@ namespace LoveAlways
                     foreach (var partition in selectedPartitions)
                     {
                         current++;
-                        
+
                         if (mtkChkSkipUserdata.Checked &&
                             (partition.Name.ToLower() == "userdata" || partition.Name.ToLower() == "data"))
                         {
@@ -825,38 +871,38 @@ namespace LoveAlways
                 MtkUpdateProgress(0, 0, "Rebooting device...");
                 await _mtkService.RebootAsync(_mtkCts.Token);
                 MtkUpdateProgress(100, 100, "Reboot Command Sent");
-                AppendLog("[MTK] Device Rebooting...", Color.Green);
+                AppendLog("[MediaTek] Device Rebooting...", Color.Green);
 
                 MtkDisconnect();
             }
             catch (Exception ex)
             {
-                AppendLog($"[MTK] Reboot Failed: {ex.Message}", Color.Red);
+                AppendLog($"[MediaTek] Reboot Failed: {ex.Message}", Color.Red);
             }
         }
 
         private void MtkBtnReadImei_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
-            AppendLog("[MTK] IMEI Read requires NVRAM access, not supported yet", Color.Orange);
+            AppendLog("[MediaTek] IMEI Read requires NVRAM access, not supported yet", Color.Orange);
         }
 
         private void MtkBtnWriteImei_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
-            AppendLog("[MTK] IMEI Write requires NVRAM access, not supported yet", Color.Orange);
+            AppendLog("[MediaTek] IMEI Write requires NVRAM access, not supported yet", Color.Orange);
         }
 
         private void MtkBtnBackupNvram_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
-            AppendLog("[MTK] NVRAM Backup not supported yet", Color.Orange);
+            AppendLog("[MediaTek] NVRAM Backup not supported yet", Color.Orange);
         }
 
         private void MtkBtnRestoreNvram_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
-            AppendLog("[MTK] NVRAM Restore not supported yet", Color.Orange);
+            AppendLog("[MediaTek] NVRAM Restore not supported yet", Color.Orange);
         }
 
         private async void MtkBtnFormatData_Click(object sender, EventArgs e)
@@ -881,11 +927,11 @@ namespace LoveAlways
                 await _mtkService.ErasePartitionAsync("userdata", _mtkCts.Token);
 
                 MtkUpdateProgress(100, 100, "Format Completed");
-                AppendLog("[MTK] Data Partition Formatted", Color.Green);
+                AppendLog("[MediaTek] Data Partition Formatted", Color.Green);
             }
             catch (Exception ex)
             {
-                AppendLog($"[MTK] Format Failed: {ex.Message}", Color.Red);
+                AppendLog($"[MediaTek] Format Failed: {ex.Message}", Color.Red);
             }
             finally
             {
@@ -896,7 +942,7 @@ namespace LoveAlways
         private void MtkBtnUnlockBl_Click(object sender, EventArgs e)
         {
             if (!MtkEnsureConnected()) return;
-            AppendLog("[MTK] Bootloader Unlock requires special permissions, not supported yet", Color.Orange);
+            AppendLog("[MediaTek] Bootloader Unlock requires special permissions, not supported yet", Color.Orange);
         }
 
         /// <summary>
@@ -915,10 +961,10 @@ namespace LoveAlways
             {
                 ushort hwCode = _mtkService?.ChipInfo?.HwCode ?? 0;
                 exploitType = MtkChipDatabase.GetExploitType(hwCode);
-                
+
                 if (exploitType == "None" || string.IsNullOrEmpty(exploitType))
                 {
-                    AppendLog("[MTK] Current chip does not support any known exploit", Color.Orange);
+                    AppendLog("[MediaTek] Current chip does not support any known exploit", Color.Orange);
                     return;
                 }
             }
@@ -937,12 +983,12 @@ namespace LoveAlways
                 }
                 else
                 {
-                    AppendLog($"[MTK] Unknown Exploit Type: {exploitType}", Color.Red);
+                    AppendLog($"[MediaTek] Unknown Exploit Type: {exploitType}", Color.Red);
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"[MTK] Exploit Exception: {ex.Message}", Color.Red);
+                AppendLog($"[MediaTek] Exploit Exception: {ex.Message}", Color.Red);
             }
             finally
             {
@@ -962,28 +1008,28 @@ namespace LoveAlways
             // Check if chip supports
             if (!MtkChipDatabase.IsAllinoneSignatureSupported(hwCode))
             {
-                AppendLog($"[MTK] Chip {chipName} (0x{hwCode:X4}) does not support ALLINONE-SIGNATURE Exploit", Color.Red);
-                AppendLog("[MTK] This exploit only supports following chips:", Color.Yellow);
-                
+                AppendLog($"[MediaTek] Chip {chipName} (0x{hwCode:X4}) does not support ALLINONE-SIGNATURE Exploit", Color.Red);
+                AppendLog("[MediaTek] This exploit only supports following chips:", Color.Yellow);
+
                 var supportedChips = MtkChipDatabase.GetAllinoneSignatureChips();
                 foreach (var chip in supportedChips)
                 {
-                    AppendLog($"[MTK]   • {chip.ChipName} - {chip.Description} (0x{chip.HwCode:X4})", Color.Yellow);
+                    AppendLog($"[MediaTek]   • {chip.ChipName} - {chip.Description} (0x{chip.HwCode:X4})", Color.Yellow);
                 }
                 return;
             }
 
-            AppendLog("[MTK] ═══════════════════════════════════════", Color.Yellow);
-            AppendLog($"[MTK] Executing ALLINONE-SIGNATURE Exploit", Color.Yellow);
-            AppendLog($"[MTK] Target Chip: {chipName} (0x{hwCode:X4})", Color.Yellow);
-            AppendLog("[MTK] ═══════════════════════════════════════", Color.Yellow);
+            AppendLog("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+            AppendLog($"[MediaTek] Executing ALLINONE-SIGNATURE Exploit", Color.Yellow);
+            AppendLog($"[MediaTek] Target Chip: {chipName} (0x{hwCode:X4})", Color.Yellow);
+            AppendLog("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
 
             MtkUpdateProgress(0, 0, "Executing Exploit...");
 
             // Check if DA2 Loaded
             if (_mtkService.State != MtkDeviceState.Da2Loaded)
             {
-                AppendLog("[MTK] Please connect device and load DA2 first", Color.Orange);
+                AppendLog("[MediaTek] Please connect device and load DA2 first", Color.Orange);
                 return;
             }
 
@@ -995,13 +1041,13 @@ namespace LoveAlways
             if (success)
             {
                 MtkUpdateProgress(100, 100, "Exploit Success");
-                AppendLog("[MTK] ✓ ALLINONE-SIGNATURE Exploit Success!", Color.Green);
-                AppendLog("[MTK] Device Security Check Disabled", Color.Green);
+                AppendLog("[MediaTek] ✓ ALLINONE-SIGNATURE Exploit Success!", Color.Green);
+                AppendLog("[MediaTek] Device Security Check Disabled", Color.Green);
             }
             else
             {
                 MtkUpdateProgress(0, 0, "Exploit Failed");
-                AppendLog("[MTK] ✗ ALLINONE-SIGNATURE Exploit Failed", Color.Red);
+                AppendLog("[MediaTek] ✗ ALLINONE-SIGNATURE Exploit Failed", Color.Red);
             }
         }
 
@@ -1014,17 +1060,17 @@ namespace LoveAlways
             ushort hwCode = _mtkService?.ChipInfo?.HwCode ?? 0;
             string chipName = _mtkService?.ChipInfo?.ChipName ?? "Unknown";
 
-            AppendLog("[MTK] ═══════════════════════════════════════", Color.Yellow);
-            AppendLog($"[MTK] Executing Carbonara Exploit", Color.Yellow);
-            AppendLog($"[MTK] Target Chip: {chipName} (0x{hwCode:X4})", Color.Yellow);
-            AppendLog("[MTK] ═══════════════════════════════════════", Color.Yellow);
+            AppendLog("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+            AppendLog($"[MediaTek] Executing Carbonara Exploit", Color.Yellow);
+            AppendLog($"[MediaTek] Target Chip: {chipName} (0x{hwCode:X4})", Color.Yellow);
+            AppendLog("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
 
             MtkUpdateProgress(0, 0, "Executing Exploit...");
 
             // Carbonara exploit auto executed in LoadDaAsync
             // Here just show info
-            AppendLog("[MTK] Carbonara Exploit will be executed automatically when connecting", Color.Cyan);
-            AppendLog("[MTK] If connection success, means exploit works", Color.Cyan);
+            AppendLog("[MediaTek] Carbonara Exploit will be executed automatically when connecting", Color.Cyan);
+            AppendLog("[MediaTek] If connection success, means exploit works", Color.Cyan);
 
             MtkUpdateProgress(100, 100, "Completed");
         }
@@ -1044,43 +1090,43 @@ namespace LoveAlways
                 openDialog.Filter = "DA Files|*.bin;*.da|All Files|*.*";
                 openDialog.Multiselect = true;  // Support Multi-Select
                 openDialog.Title = "Select DA File (Support Multi-Select DA1/DA2)";
-                
+
                 if (openDialog.ShowDialog() == DialogResult.OK)
                 {
                     // Reset Separate DA State
                     _mtkCustomDa1Path = null;
                     _mtkCustomDa2Path = null;
                     _mtkUseSeparateDa = false;
-                    
+
                     if (openDialog.FileNames.Length == 1)
                     {
                         // Single File - AllInOne or Separate DA1
                         string fileName = Path.GetFileName(openDialog.FileName).ToLower();
-                        
+
                         // Check if DA2 (If user only selected DA2)
                         if (fileName.Contains("da2") || fileName.Contains("stage2"))
                         {
                             _mtkCustomDa2Path = openDialog.FileName;
                             mtkInputDaFile.Text = openDialog.FileName;
-                            AppendLog($"[MTK] ⚠ Only selected DA2, please select DA1 together", Color.Orange);
+                            AppendLog($"[MediaTek] ⚠ Only selected DA2, please select DA1 together", Color.Orange);
                         }
                         else
                         {
                             mtkInputDaFile.Text = openDialog.FileName;
-                            AppendLog($"[MTK] DA File: {Path.GetFileName(openDialog.FileName)}", Color.Cyan);
+                            AppendLog($"[MediaTek] DA File: {Path.GetFileName(openDialog.FileName)}", Color.Cyan);
                         }
                     }
                     else
                     {
                         // Multi File - Auto Detect DA1/DA2
                         var (da1Path, da2Path, allInOnePath) = AutoDetectDaFiles(openDialog.FileNames);
-                        
+
                         if (!string.IsNullOrEmpty(allInOnePath))
                         {
                             // AllInOne DA File
                             mtkInputDaFile.Text = allInOnePath;
                             _mtkUseSeparateDa = false;
-                            AppendLog($"[MTK] Detected AllInOne DA: {Path.GetFileName(allInOnePath)}", Color.Cyan);
+                            AppendLog($"[MediaTek] Detected AllInOne DA: {Path.GetFileName(allInOnePath)}", Color.Cyan);
                         }
                         else if (!string.IsNullOrEmpty(da1Path) && !string.IsNullOrEmpty(da2Path))
                         {
@@ -1088,41 +1134,41 @@ namespace LoveAlways
                             _mtkCustomDa1Path = da1Path;
                             _mtkCustomDa2Path = da2Path;
                             _mtkUseSeparateDa = true;
-                            
+
                             // Show as "DA1 + DA2" format
                             mtkInputDaFile.Text = $"{Path.GetFileName(da1Path)} + {Path.GetFileName(da2Path)}";
-                            
-                            AppendLog($"[MTK] Detected DA1: {Path.GetFileName(da1Path)}", Color.Cyan);
-                            AppendLog($"[MTK] Detected DA2: {Path.GetFileName(da2Path)}", Color.Cyan);
-                            AppendLog("[MTK] ✓ Auto Identified DA1 + DA2 (Separate Format)", Color.Green);
+
+                            AppendLog($"[MediaTek] Detected DA1: {Path.GetFileName(da1Path)}", Color.Cyan);
+                            AppendLog($"[MediaTek] Detected DA2: {Path.GetFileName(da2Path)}", Color.Cyan);
+                            AppendLog("[MediaTek] ✓ Auto Identified DA1 + DA2 (Separate Format)", Color.Green);
                         }
                         else if (!string.IsNullOrEmpty(da1Path))
                         {
                             // Only DA1
                             mtkInputDaFile.Text = da1Path;
-                            AppendLog($"[MTK] Detected DA1: {Path.GetFileName(da1Path)}", Color.Cyan);
-                            AppendLog("[MTK] ⚠ DA2 Not Detected, some functions may be limited", Color.Orange);
+                            AppendLog($"[MediaTek] Detected DA1: {Path.GetFileName(da1Path)}", Color.Cyan);
+                            AppendLog("[MediaTek] ⚠ DA2 Not Detected, some functions may be limited", Color.Orange);
                         }
                         else if (!string.IsNullOrEmpty(da2Path))
                         {
                             // Only DA2
                             _mtkCustomDa2Path = da2Path;
                             mtkInputDaFile.Text = da2Path;
-                            AppendLog($"[MTK] Detected DA2: {Path.GetFileName(da2Path)}", Color.Cyan);
-                            AppendLog("[MTK] ⚠ DA1 Not Detected, please select DA1 together", Color.Orange);
+                            AppendLog($"[MediaTek] Detected DA2: {Path.GetFileName(da2Path)}", Color.Cyan);
+                            AppendLog("[MediaTek] ⚠ DA1 Not Detected, please select DA1 together", Color.Orange);
                         }
                     }
                 }
             }
         }
-        
+
         // Store Auto Detected DA1/DA2 Paths (Separate Format)
         private string _mtkCustomDa1Path;
         private string _mtkCustomDa2Path;
         private bool _mtkUseSeparateDa;  // Use Separate DA1/DA2
         private string _mtkScatterPath;  // Scatter Config Path
         private List<MtkScatterEntry> _mtkScatterEntries;  // Scatter Partition Config
-        
+
         /// <summary>
         /// Auto Detect DA File Type
         /// </summary>
@@ -1131,37 +1177,37 @@ namespace LoveAlways
             string da1Path = null;
             string da2Path = null;
             string allInOnePath = null;
-            
+
             foreach (var path in filePaths)
             {
                 string fileName = Path.GetFileName(path).ToLower();
-                
+
                 // Detect AllInOne DA
-                if (fileName.Contains("allinone") || fileName.Contains("all_in_one") || 
+                if (fileName.Contains("allinone") || fileName.Contains("all_in_one") ||
                     fileName.Contains("all-in-one") || fileName == "mtk_da.bin")
                 {
                     allInOnePath = path;
                     continue;
                 }
-                
+
                 // Detect DA1 (Stage1)
-                if (fileName.Contains("da1") || fileName.Contains("stage1") || 
+                if (fileName.Contains("da1") || fileName.Contains("stage1") ||
                     fileName.Contains("_1.") || fileName.Contains("-1.") ||
                     fileName.EndsWith("_da1.bin") || fileName.EndsWith("-da1.bin"))
                 {
                     da1Path = path;
                     continue;
                 }
-                
+
                 // Detect DA2 (Stage2)
-                if (fileName.Contains("da2") || fileName.Contains("stage2") || 
+                if (fileName.Contains("da2") || fileName.Contains("stage2") ||
                     fileName.Contains("_2.") || fileName.Contains("-2.") ||
                     fileName.EndsWith("_da2.bin") || fileName.EndsWith("-da2.bin"))
                 {
                     da2Path = path;
                     continue;
                 }
-                
+
                 // If filename ambiguous, check size
                 try
                 {
@@ -1184,7 +1230,7 @@ namespace LoveAlways
                 }
                 catch { }
             }
-            
+
             return (da1Path, da2Path, allInOnePath);
         }
 
@@ -1305,7 +1351,7 @@ namespace LoveAlways
         {
             if (!_mtkIsConnected || _mtkService == null)
             {
-                AppendLog("[MTK] Please connect device first", Color.Orange);
+                AppendLog("[MediaTek] Please connect device first", Color.Orange);
                 return false;
             }
             return true;
@@ -1317,7 +1363,7 @@ namespace LoveAlways
             // Connect/Disconnect buttons hidden, no longer controlling them
             // mtkBtnConnect.Enabled = !connected;
             // mtkBtnDisconnect.Enabled = connected;
-            
+
             // Read GPT always enabled, triggers auto connect
             mtkBtnReadGpt.Enabled = true;
             mtkBtnWritePartition.Enabled = connected;
@@ -1330,16 +1376,16 @@ namespace LoveAlways
             mtkBtnRestoreNvram.Enabled = connected;
             mtkBtnFormatData.Enabled = connected;
             mtkBtnUnlockBl.Enabled = connected;
-            
+
             // Update Exploit Button State
             if (connected && _mtkService?.ChipInfo != null)
             {
                 ushort hwCode = _mtkService.ChipInfo.HwCode;
                 bool hasExploit = MtkChipDatabase.GetChip(hwCode)?.HasExploit ?? false;
                 bool isAllinone = MtkChipDatabase.IsAllinoneSignatureSupported(hwCode);
-                
+
                 mtkBtnExploit.Enabled = hasExploit;
-                
+
                 if (isAllinone)
                 {
                     mtkBtnExploit.Text = "AllInOne Exploit";
@@ -1363,7 +1409,7 @@ namespace LoveAlways
         {
             // Read GPT button always controlled by enabled state (support auto connect)
             mtkBtnReadGpt.Enabled = enabled;
-            
+
             if (_mtkIsConnected)
             {
                 mtkBtnWritePartition.Enabled = enabled;
@@ -1466,7 +1512,7 @@ namespace LoveAlways
         private DateTime _mtkOperationStartTime;
         private long _mtkLastBytes;
         private DateTime _mtkLastSpeedUpdate;
-        
+
         /// <summary>
         /// Start MTK Operation Timer
         /// </summary>
@@ -1476,7 +1522,7 @@ namespace LoveAlways
             _mtkLastBytes = 0;
             _mtkLastSpeedUpdate = DateTime.Now;
         }
-        
+
         /// <summary>
         /// Get Elapsed Time
         /// </summary>
@@ -1487,7 +1533,7 @@ namespace LoveAlways
                 return $"{elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
             return $"{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
         }
-        
+
         /// <summary>
         /// Calculate Transfer Speed
         /// </summary>
@@ -1495,20 +1541,20 @@ namespace LoveAlways
         {
             var now = DateTime.Now;
             var timeDiff = (now - _mtkLastSpeedUpdate).TotalSeconds;
-            
+
             if (timeDiff < 0.5) return "";  // Update at least once every 0.5 seconds
-            
+
             var bytesDiff = currentBytes - _mtkLastBytes;
             var speed = bytesDiff / timeDiff;
-            
+
             _mtkLastBytes = currentBytes;
             _mtkLastSpeedUpdate = now;
-            
+
             if (speed < 1024) return $"{speed:F0} B/s";
             if (speed < 1024 * 1024) return $"{speed / 1024:F1} KB/s";
             return $"{speed / 1024 / 1024:F1} MB/s";
         }
-        
+
         /// <summary>
         /// Update Progress - Use Existing Dual Progress Bars
         /// </summary>
@@ -1518,17 +1564,17 @@ namespace LoveAlways
             {
                 string timeInfo = "";
                 string speedInfo = "";
-                
+
                 if (total > 0)
                 {
                     int percentage = (int)((double)current / total * 100);
                     uiProcessBar1.Value = Math.Min(percentage, 100);
                     uiProcessBar2.Value = Math.Min(percentage, 100);
-                    
+
                     // Update circular progress bars
                     progress1.Value = (float)percentage / 100f;
                     progress2.Value = (float)percentage / 100f;
-                    
+
                     // 计算时间和速度
                     timeInfo = MtkGetElapsedTime();
                     if (current > 0 && current < total)
@@ -1540,7 +1586,7 @@ namespace LoveAlways
                             timeInfo += $" / Remaining {remaining.Hours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
                         else if (remaining.TotalSeconds > 5)
                             timeInfo += $" / Remaining {remaining.Minutes:D2}:{remaining.Seconds:D2}";
-                        
+
                         // Calculate Speed (Assume current is bytes)
                         if (total > 1000)  // Only calculate if > 1KB
                         {
@@ -1564,12 +1610,12 @@ namespace LoveAlways
                         fullStatus += $" [{timeInfo}]";
                     if (!string.IsNullOrEmpty(speedInfo))
                         fullStatus += $" {speedInfo}";
-                    
+
                     mtkLblStatus.Text = $"Status: {fullStatus}";
                 }
             });
         }
-        
+
         /// <summary>
         /// Update Progress (With Bytes, for Speed Calculation)
         /// </summary>
@@ -1582,12 +1628,12 @@ namespace LoveAlways
                 uiProcessBar2.Value = Math.Min(percentage, 100);
                 progress1.Value = (float)percentage / 100f;
                 progress2.Value = (float)percentage / 100f;
-                
+
                 // Calculate Speed and Time
                 string timeInfo = MtkGetElapsedTime();
                 string speedInfo = MtkCalculateSpeed(currentBytes);
                 string sizeInfo = $"{MtkFormatSize((ulong)currentBytes)}/{MtkFormatSize((ulong)totalBytes)}";
-                
+
                 // Estimate Remaining Time
                 if (currentBytes > 0 && currentBytes < totalBytes)
                 {
@@ -1601,7 +1647,7 @@ namespace LoveAlways
                             timeInfo += $" Remaining {remaining.Minutes:D2}:{remaining.Seconds:D2}";
                     }
                 }
-                
+
                 mtkLblStatus.Text = $"{operation} {sizeInfo} [{timeInfo}] {speedInfo}";
             });
         }
@@ -1672,7 +1718,7 @@ namespace LoveAlways
 
                 if (_mtkScatterEntries != null && _mtkScatterEntries.Count > 0)
                 {
-                    AppendLog($"[MTK] Scatter Config Loaded: {_mtkScatterEntries.Count} Partitions", Color.Green);
+                    AppendLog($"[MediaTek] Scatter Config Loaded: {_mtkScatterEntries.Count} Partitions", Color.Green);
 
                     // Update Partition List Display
                     mtkListPartitions.Items.Clear();
@@ -1689,16 +1735,16 @@ namespace LoveAlways
                     }
 
                     // Show Config File Path
-                    AppendLog($"[MTK] Scatter File: {Path.GetFileName(scatterPath)}", Color.Cyan);
+                    AppendLog($"[MediaTek] Scatter File: {Path.GetFileName(scatterPath)}", Color.Cyan);
                 }
                 else
                 {
-                    AppendLog("[MTK] Scatter File Parse Failed or Empty", Color.Orange);
+                    AppendLog("[MediaTek] Scatter File Parse Failed or Empty", Color.Orange);
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"[MTK] Parse Scatter File Failed: {ex.Message}", Color.Red);
+                AppendLog($"[MediaTek] Parse Scatter File Failed: {ex.Message}", Color.Red);
             }
         }
 
@@ -1783,11 +1829,11 @@ namespace LoveAlways
                     entries.Add(currentEntry);
                 }
 
-                AppendLog($"[MTK] Scatter Parsed Success: {entries.Count} Partitions", Color.Gray);
+                AppendLog($"[MediaTek] Scatter Parsed Success: {entries.Count} Partitions", Color.Gray);
             }
             catch (Exception ex)
             {
-                AppendLog($"[MTK] check Scatter abnormal: {ex.Message}", Color.Red);
+                AppendLog($"[MediaTek] check Scatter abnormal: {ex.Message}", Color.Red);
             }
 
             return entries;
@@ -1846,14 +1892,14 @@ namespace LoveAlways
         {
             if (_mtkScatterEntries == null || _mtkScatterEntries.Count == 0)
             {
-                AppendLog("[MTK] Scatter Config Not Loaded", Color.Orange);
+                AppendLog("[MediaTek] Scatter Config Not Loaded", Color.Orange);
                 return;
             }
 
             var downloadEntries = _mtkScatterEntries.Where(e => e.IsDownload).ToList();
             if (downloadEntries.Count == 0)
             {
-                AppendLog("[MTK] No Partitions Changed to Download in Scatter", Color.Orange);
+                AppendLog("[MediaTek] No Partitions Changed to Download in Scatter", Color.Orange);
                 return;
             }
 
@@ -1884,24 +1930,24 @@ namespace LoveAlways
 
                 if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
                 {
-                    AppendLog($"[MTK] Skip {entry.Name}: Image File Not Found", Color.Gray);
+                    AppendLog($"[MediaTek] Skip {entry.Name}: Image File Not Found", Color.Gray);
                     continue;
                 }
 
                 try
                 {
-                    AppendLog($"[MTK] Flashing {entry.Name} <- {Path.GetFileName(imagePath)}", Color.Cyan);
+                    AppendLog($"[MediaTek] Flashing {entry.Name} <- {Path.GetFileName(imagePath)}", Color.Cyan);
                     await _mtkService.WritePartitionAsync(entry.Name, imagePath, _mtkCts.Token);
                     success++;
                 }
                 catch (Exception ex)
                 {
-                    AppendLog($"[MTK] Flash {entry.Name} Failed: {ex.Message}", Color.Red);
+                    AppendLog($"[MediaTek] Flash {entry.Name} Failed: {ex.Message}", Color.Red);
                 }
             }
 
             MtkUpdateProgress(100, 100, $"Completed {success}/{total}");
-            AppendLog($"[MTK] Scatter Flash Complete: {success}/{total} Success", success == total ? Color.Green : Color.Orange);
+            AppendLog($"[MediaTek] Scatter Flash Complete: {success}/{total} Success", success == total ? Color.Green : Color.Orange);
         }
 
         #endregion

@@ -45,7 +45,7 @@ namespace LoveAlways.Qualcomm.Common
         public uint s_rev_level;              // 版本级别
         public ushort s_def_resuid;           // 默认保留 UID
         public ushort s_def_resgid;           // 默认保留 GID
-        
+
         // EXT4 扩展字段
         public uint s_first_ino;              // 第一个非保留 Inode
         public ushort s_inode_size;           // Inode 大小
@@ -53,18 +53,18 @@ namespace LoveAlways.Qualcomm.Common
         public uint s_feature_compat;         // 兼容特性
         public uint s_feature_incompat;       // 不兼容特性
         public uint s_feature_ro_compat;      // 只读兼容特性
-        
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
         public byte[] s_uuid;                 // 128位 UUID
-        
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
         public byte[] s_volume_name;          // 卷标
-        
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
         public byte[] s_last_mounted;         // 最后挂载路径
-        
+
         public uint s_algorithm_usage_bitmap; // 压缩算法位图
-        
+
         // 更多字段省略...
     }
 
@@ -86,15 +86,15 @@ namespace LoveAlways.Qualcomm.Common
         public uint i_blocks_lo;              // 块数 (低32位)
         public uint i_flags;                  // 文件标志
         public uint i_osd1;                   // OS 相关字段1
-        
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 60)]
         public byte[] i_block;                // 块指针 (15 * 4 字节)
-        
+
         public uint i_generation;             // 文件版本
         public uint i_file_acl_lo;            // ACL (低32位)
         public uint i_size_high;              // 文件大小 (高32位)
         public uint i_obso_faddr;             // 废弃字段
-        
+
         // EXT4 扩展
         public ushort i_blocks_high;          // 块数 (高16位)
         public ushort i_file_acl_high;        // ACL (高16位)

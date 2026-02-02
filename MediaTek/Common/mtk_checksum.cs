@@ -6,7 +6,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -95,7 +95,7 @@ namespace LoveAlways.MediaTek.Common
         {
             if (data == null)
                 data = Array.Empty<byte>();
-            
+
             if (sigData == null)
                 sigData = Array.Empty<byte>();
 

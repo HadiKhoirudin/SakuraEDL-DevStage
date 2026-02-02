@@ -6,16 +6,15 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-using System;
+using LoveAlways.MediaTek.Models;
+using LoveAlways.MediaTek.Protocol;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.Protocol;
 
 namespace LoveAlways.MediaTek.Database
 {
@@ -26,34 +25,34 @@ namespace LoveAlways.MediaTek.Database
     {
         /// <summary>HW Code</summary>
         public ushort HwCode { get; set; }
-        
+
         /// <summary>DA Name</summary>
         public string Name { get; set; }
-        
+
         /// <summary>DA Type (Legacy/XFlash/XML)</summary>
         public int DaType { get; set; }
-        
+
         /// <summary>DA Version</summary>
         public int Version { get; set; }
-        
+
         /// <summary>DA1 Load Address</summary>
         public uint Da1Address { get; set; }
-        
+
         /// <summary>DA2 Load Address</summary>
         public uint Da2Address { get; set; }
-        
+
         /// <summary>DA1 Signature Length</summary>
         public int Da1SigLen { get; set; }
-        
+
         /// <summary>DA2 Signature Length</summary>
         public int Da2SigLen { get; set; }
-        
+
         /// <summary>Embedded DA1 Data (if available)</summary>
         public byte[] EmbeddedDa1Data { get; set; }
-        
+
         /// <summary>Embedded DA2 Data (if available)</summary>
         public byte[] EmbeddedDa2Data { get; set; }
-        
+
         /// <summary>Whether Exploit is supported</summary>
         public bool SupportsExploit { get; set; }
     }

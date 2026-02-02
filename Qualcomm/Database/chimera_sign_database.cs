@@ -5,7 +5,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -29,7 +29,7 @@ namespace LoveAlways.Qualcomm.Database
         {
             public string Platform { get; set; }
             public string Name { get; set; }
-            
+
             /// <summary>
             /// Load Digest from resource pack
             /// </summary>
@@ -37,7 +37,7 @@ namespace LoveAlways.Qualcomm.Database
             {
                 get { return LoadDigest(Platform); }
             }
-            
+
             /// <summary>
             /// Load Signature from resource pack
             /// </summary>
@@ -45,7 +45,7 @@ namespace LoveAlways.Qualcomm.Database
             {
                 get { return LoadSignature(Platform); }
             }
-            
+
             public int DigestSize { get { return Digest != null ? Digest.Length : 0; } }
             public int SignatureSize { get { return Signature != null ? Signature.Length : 0; } }
         }
@@ -158,7 +158,7 @@ namespace LoveAlways.Qualcomm.Database
             {
                 if (_tempDir == null)
                     _tempDir = Path.Combine(Path.GetTempPath(), "LoveAlways_VipAuth");
-                
+
                 if (!Directory.Exists(_tempDir))
                     Directory.CreateDirectory(_tempDir);
 
@@ -168,7 +168,7 @@ namespace LoveAlways.Qualcomm.Database
             }
             catch
             {
-                    return null;
+                return null;
             }
         }
 
@@ -296,7 +296,7 @@ namespace LoveAlways.Qualcomm.Database
                     entry.DigestOffset = br.ReadInt64();
                     entry.DigestCompSize = br.ReadInt32();
                     entry.DigestOrigSize = br.ReadInt32();
-                    
+
                     // Signature
                     entry.SignatureOffset = br.ReadInt64();
                     entry.SignatureSize = br.ReadInt32();

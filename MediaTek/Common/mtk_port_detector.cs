@@ -7,12 +7,13 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO.Ports;
 using System.Linq;
 using System.Management;
@@ -31,7 +32,7 @@ namespace LoveAlways.MediaTek.Common
         private ManagementEventWatcher _insertWatcher;
         private ManagementEventWatcher _removeWatcher;
         private CancellationTokenSource _cts;
-        private bool _isMonitoring;
+        private bool _isMonitoring { get; set; }
         private bool _disposed;
 
         // MediaTek Device VID/PID
@@ -91,7 +92,7 @@ namespace LoveAlways.MediaTek.Common
                                 ports.Add(portInfo);
                             }
                         }
-                        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[MTK Port] Detect port exception: {ex.Message}"); }
+                        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[MediaTek Port] Detect port exception: {ex.Message}"); }
                     }
                 }
 
@@ -110,7 +111,7 @@ namespace LoveAlways.MediaTek.Common
             }
             catch (Exception ex)
             {
-                _log($"[MTK Port] Port detection error: {ex.Message}");
+                _log($"[MediaTek Port] Port detection error: {ex.Message}");
             }
 
             return ports;
@@ -123,13 +124,13 @@ namespace LoveAlways.MediaTek.Common
         {
             string nameUpper = name.ToUpper();
             string captionUpper = caption.ToUpper();
-            
+
             // ========== Step 1: Hard exclude other platforms ==========
-            
+
             // Exclude Spreadtrum devices (VID 0x1782)
             if (deviceId.ToUpper().Contains("VID_1782"))
                 return null;
-            
+
             // Exclude Spreadtrum device keywords
             string[] sprdKeywords = { "SPRD", "SPREADTRUM", "UNISOC", "U2S DIAG", "SCI USB2SERIAL" };
             foreach (var kw in sprdKeywords)
@@ -137,11 +138,11 @@ namespace LoveAlways.MediaTek.Common
                 if (nameUpper.Contains(kw) || captionUpper.Contains(kw))
                     return null;
             }
-            
+
             // Exclude Qualcomm devices (VID 0x05C6)
             if (deviceId.ToUpper().Contains("VID_05C6"))
                 return null;
-            
+
             // Exclude Qualcomm device keywords
             string[] qcKeywords = { "QUALCOMM", "QDL", "QHSUSB", "QDLOADER" };
             foreach (var kw in qcKeywords)
@@ -149,13 +150,13 @@ namespace LoveAlways.MediaTek.Common
                 if (nameUpper.Contains(kw) || captionUpper.Contains(kw))
                     return null;
             }
-            
+
             // Exclude ADB/Fastboot
             if (nameUpper.Contains("ADB INTERFACE") || nameUpper.Contains("FASTBOOT"))
                 return null;
-            
+
             // ========== Step 2: Parse VID/PID ==========
-            
+
             var vidMatch = Regex.Match(deviceId, @"VID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase);
             var pidMatch = Regex.Match(deviceId, @"PID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase);
 
@@ -164,12 +165,12 @@ namespace LoveAlways.MediaTek.Common
 
             int vid = Convert.ToInt32(vidMatch.Groups[1].Value, 16);
             int pid = Convert.ToInt32(pidMatch.Groups[1].Value, 16);
-            
+
             // ========== Step 3: Double validate MediaTek device ==========
-            
+
             // MediaTek specific VID (0x0E8D)
             bool hasMtkVid = (vid == 0x0E8D);
-            
+
             // MediaTek specific device name keywords
             string[] mtkKeywords = { "MEDIATEK", "MTK", "PRELOADER", "DA USB", "BROM" };
             bool hasMtkKeyword = false;
@@ -181,7 +182,7 @@ namespace LoveAlways.MediaTek.Common
                     break;
                 }
             }
-            
+
             // Case 1: VID 0x0E8D = Confirmed MTK (no keyword needed)
             if (hasMtkVid)
             {
@@ -201,7 +202,7 @@ namespace LoveAlways.MediaTek.Common
             }
 
             // ========== Step 4: Extract COM port number ==========
-            
+
             var comMatch = Regex.Match(name, @"\(COM(\d+)\)", RegexOptions.IgnoreCase);
             if (!comMatch.Success)
             {
@@ -211,12 +212,12 @@ namespace LoveAlways.MediaTek.Common
             string comPort = comMatch.Success ? $"COM{comMatch.Groups[1].Value}" : null;
             if (string.IsNullOrEmpty(comPort))
                 return null;
-            
+
             // ========== Step 5: Determine device mode ==========
-            
+
             var knownDevice = MtkDeviceIds.FirstOrDefault(d => d.Vid == vid && d.Pid == pid);
             string description = knownDevice.Description ?? name;
-            
+
             bool isBrom = (pid == 0x0003 || pid == 0x0002) || nameUpper.Contains("BROM");
             bool isPreloader = (pid == 0x2000 || pid == 0x2001) || nameUpper.Contains("PRELOADER");
 
@@ -284,6 +285,8 @@ namespace LoveAlways.MediaTek.Common
             if (_isMonitoring)
                 return;
 
+            _isMonitoring = true;
+
             try
             {
                 _cts = new CancellationTokenSource();
@@ -308,12 +311,11 @@ namespace LoveAlways.MediaTek.Common
                 _removeWatcher.EventArrived += OnDeviceRemovedEvent;
                 _removeWatcher.Start();
 
-                _isMonitoring = true;
-                _log("[MTK Port] Device monitoring started");
+                _log("[MediaTek Port] Device monitoring started");
             }
             catch (Exception ex)
             {
-                _log($"[MTK Port] Start monitoring failed: {ex.Message}");
+                _log($"[MediaTek Port] Start monitoring failed: {ex.Message}");
             }
         }
 
@@ -328,7 +330,7 @@ namespace LoveAlways.MediaTek.Common
             try
             {
                 _cts?.Cancel();
-                
+
                 _insertWatcher?.Stop();
                 _insertWatcher?.Dispose();
                 _insertWatcher = null;
@@ -338,7 +340,7 @@ namespace LoveAlways.MediaTek.Common
                 _removeWatcher = null;
 
                 _isMonitoring = false;
-                _log("[MTK Port] Device monitoring stopped");
+                _log("[MediaTek Port] Device monitoring stopped");
             }
             catch { }
         }
@@ -350,6 +352,7 @@ namespace LoveAlways.MediaTek.Common
         {
             try
             {
+                Debug.WriteLine("MediaTek USB Inserted....");
                 var targetInstance = (ManagementBaseObject)e.NewEvent["TargetInstance"];
                 string deviceId = targetInstance["DeviceID"]?.ToString() ?? "";
                 string name = targetInstance["Name"]?.ToString() ?? "";
@@ -358,7 +361,7 @@ namespace LoveAlways.MediaTek.Common
                 var portInfo = ParseMtkDevice(deviceId, name, caption);
                 if (portInfo != null)
                 {
-                    _log($"[MTK Port] Device detected: {portInfo.ComPort} ({portInfo.Description})");
+                    _log($"[MediaTek Port] Device detected: {portInfo.ComPort} ({portInfo.Description})");
                     OnDeviceArrived?.Invoke(portInfo);
                 }
             }
@@ -379,7 +382,7 @@ namespace LoveAlways.MediaTek.Common
                 if (comMatch.Success)
                 {
                     string comPort = $"COM{comMatch.Groups[1].Value}";
-                    _log($"[MTK Port] Device removed: {comPort}");
+                    _log($"[MediaTek Port] Device removed: {comPort}");
                     OnDeviceRemoved?.Invoke(comPort);
                 }
             }
@@ -395,10 +398,10 @@ namespace LoveAlways.MediaTek.Common
         /// </summary>
         public async Task<MtkPortInfo> WaitForDeviceAsync(int timeoutMs = 60000, CancellationToken ct = default)
         {
-            _log("[MTK Port] Waiting for device connection...");
-            
+            _log("[MediaTek Port] Waiting for device connection...");
+
             var tcs = new TaskCompletionSource<MtkPortInfo>();
-            
+
             void OnArrived(MtkPortInfo info)
             {
                 tcs.TrySetResult(info);
@@ -407,13 +410,13 @@ namespace LoveAlways.MediaTek.Common
             try
             {
                 OnDeviceArrived += OnArrived;
-                StartMonitoring();
+                //StartMonitoring();
 
                 // Check if device is already connected first
                 var existingPorts = GetMtkPorts();
                 if (existingPorts.Count > 0)
                 {
-                    _log($"[MTK Port] Found connected device: {existingPorts[0].ComPort}");
+                    _log($"[MediaTek Port] Found connected device: {existingPorts[0].ComPort}");
                     return existingPorts[0];
                 }
 
@@ -421,7 +424,7 @@ namespace LoveAlways.MediaTek.Common
                 using (var cts = CancellationTokenSource.CreateLinkedTokenSource(ct))
                 {
                     cts.CancelAfter(timeoutMs);
-                    
+
                     try
                     {
                         var completedTask = await Task.WhenAny(
@@ -437,7 +440,7 @@ namespace LoveAlways.MediaTek.Common
                     catch (OperationCanceledException) { }
                 }
 
-                _log("[MTK Port] Wait for device timeout");
+                _log("[MediaTek Port] Wait for device timeout");
                 return null;
             }
             finally
@@ -452,7 +455,7 @@ namespace LoveAlways.MediaTek.Common
         public async Task<MtkPortInfo> WaitForBromDeviceAsync(int timeoutMs = 60000, CancellationToken ct = default)
         {
             var startTime = DateTime.Now;
-            
+
             while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs)
             {
                 if (ct.IsCancellationRequested)
@@ -460,10 +463,10 @@ namespace LoveAlways.MediaTek.Common
 
                 var ports = GetMtkPorts();
                 var bromPort = ports.FirstOrDefault(p => p.IsBromMode);
-                
+
                 if (bromPort != null)
                 {
-                    _log($"[MTK Port] Found BROM device: {bromPort.ComPort}");
+                    _log($"[MediaTek Port] Found BROM device: {bromPort.ComPort}");
                     return bromPort;
                 }
 
@@ -541,30 +544,30 @@ namespace LoveAlways.MediaTek.Common
     {
         /// <summary>COM port name</summary>
         public string ComPort { get; set; }
-        
+
         /// <summary>USB VID</summary>
         public int Vid { get; set; }
-        
+
         /// <summary>USB PID</summary>
         public int Pid { get; set; }
-        
+
         /// <summary>Device ID</summary>
         public string DeviceId { get; set; }
-        
+
         /// <summary>Device description</summary>
         public string Description { get; set; }
-        
+
         /// <summary>Whether in BROM mode</summary>
         public bool IsBromMode { get; set; }
-        
+
         /// <summary>Whether in Preloader mode</summary>
         public bool IsPreloaderMode { get; set; }
-        
+
         /// <summary>
         /// Display name
         /// </summary>
         public string DisplayName => $"{ComPort} - {Description}";
-        
+
         /// <summary>
         /// Mode description
         /// </summary>

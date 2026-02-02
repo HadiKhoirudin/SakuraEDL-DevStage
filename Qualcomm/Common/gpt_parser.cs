@@ -6,12 +6,11 @@
 // Function: Parse GPT partition table, supports auto sector size detection, CRC verification, slot detection
 // ============================================================================
 
+using LoveAlways.Qualcomm.Models;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
-using LoveAlways.Qualcomm.Models;
 
 namespace LoveAlways.Qualcomm.Common
 {
@@ -33,7 +32,7 @@ namespace LoveAlways.Qualcomm.Common
         public uint NumberOfPartitionEntries { get; set; }  // Number of partition entries
         public uint SizeOfPartitionEntry { get; set; }  // Size per entry (usually 128)
         public uint PartitionEntryCrc32 { get; set; }   // Partition entry CRC32
-        
+
         public bool IsValid { get; set; }
         public bool CrcValid { get; set; }
         public string GptType { get; set; }             // "gptmain" or "gptbackup"
@@ -76,10 +75,10 @@ namespace LoveAlways.Qualcomm.Common
     {
         private readonly Action<string> _log;
         private readonly Action<string> _logDetail;
-        
+
         // GPT Signature
         private static readonly byte[] GPT_SIGNATURE = Encoding.ASCII.GetBytes("EFI PART");
-        
+
         // A/B partition attribute flags
         private const int AB_FLAG_OFFSET = 6;
         private const int AB_PARTITION_ATTR_SLOT_ACTIVE = 0x1 << 2;
@@ -135,7 +134,7 @@ namespace LoveAlways.Qualcomm.Common
                     if (detectedSectorSize == 512 || detectedSectorSize == 4096)
                     {
                         header.SectorSize = detectedSectorSize;
-                        _logDetail(string.Format("[GPT] Auto detected sector size: {0} bytes (Header offset={1}, MyLBA={2})", 
+                        _logDetail(string.Format("[GPT] Auto detected sector size: {0} bytes (Header offset={1}, MyLBA={2})",
                             detectedSectorSize, headerOffset, header.MyLba));
                     }
                     else
@@ -251,42 +250,42 @@ namespace LoveAlways.Qualcomm.Common
 
                 // Revision (8-12)
                 header.Revision = BitConverter.ToUInt32(data, offset + 8);
-                
+
                 // Header size (12-16)
                 header.HeaderSize = BitConverter.ToUInt32(data, offset + 12);
-                
+
                 // Header CRC32 (16-20)
                 header.HeaderCrc32 = BitConverter.ToUInt32(data, offset + 16);
-                
+
                 // Reserved (20-24)
-                
+
                 // MyLBA (24-32)
                 header.MyLba = BitConverter.ToUInt64(data, offset + 24);
-                
+
                 // AlternateLBA (32-40)
                 header.AlternateLba = BitConverter.ToUInt64(data, offset + 32);
-                
+
                 // FirstUsableLBA (40-48)
                 header.FirstUsableLba = BitConverter.ToUInt64(data, offset + 40);
-                
+
                 // LastUsableLBA (48-56)
                 header.LastUsableLba = BitConverter.ToUInt64(data, offset + 48);
-                
+
                 // DiskGUID (56-72)
                 header.DiskGuid = FormatGuid(data, offset + 56);
-                
+
                 // PartitionEntryLBA (72-80)
                 header.PartitionEntryLba = BitConverter.ToUInt64(data, offset + 72);
-                
+
                 // NumberOfPartitionEntries (80-84)
                 header.NumberOfPartitionEntries = BitConverter.ToUInt32(data, offset + 80);
-                
+
                 // SizeOfPartitionEntry (84-88)
                 header.SizeOfPartitionEntry = BitConverter.ToUInt32(data, offset + 84);
-                
+
                 // PartitionEntryCRC32 (88-92)
                 header.PartitionEntryCrc32 = BitConverter.ToUInt32(data, offset + 88);
-                
+
                 // Determine GPT type
                 if (header.MyLba != 0 && header.AlternateLba != 0)
                 {
@@ -325,16 +324,16 @@ namespace LoveAlways.Qualcomm.Common
             try
             {
                 int sectorSize = header.SectorSize > 0 ? header.SectorSize : 4096;
-                
-                _logDetail(string.Format("[GPT] LUN{0} start parsing partition entries (data length={1}, HeaderOffset={2}, SectorSize={3})", 
+
+                _logDetail(string.Format("[GPT] LUN{0} start parsing partition entries (data length={1}, HeaderOffset={2}, SectorSize={3})",
                     lun, data.Length, headerOffset, sectorSize));
                 _logDetail(string.Format("[GPT] Header info: PartitionEntryLba={0}, NumberOfEntries={1}, EntrySize={2}, FirstUsableLba={3}",
                     header.PartitionEntryLba, header.NumberOfPartitionEntries, header.SizeOfPartitionEntry, header.FirstUsableLba));
-                
+
                 // ========== Calculate partition entry start position - Multiple strategies ==========
                 int entryOffset = -1;
                 string usedStrategy = "";
-                
+
                 // Strategy 1: Use PartitionEntryLba specified in Header
                 if (header.PartitionEntryLba > 0)
                 {
@@ -345,7 +344,7 @@ namespace LoveAlways.Qualcomm.Common
                         if (HasValidPartitionEntry(data, (int)calcOffset))
                         {
                             entryOffset = (int)calcOffset;
-                            usedStrategy = string.Format("Strategy 1 (PartitionEntryLba): {0} * {1} = {2}", 
+                            usedStrategy = string.Format("Strategy 1 (PartitionEntryLba): {0} * {1} = {2}",
                                 header.PartitionEntryLba, sectorSize, entryOffset);
                         }
                         else
@@ -354,7 +353,7 @@ namespace LoveAlways.Qualcomm.Common
                         }
                     }
                 }
-                
+
                 // Strategy 2: Try different sector size calculations
                 if (entryOffset < 0 && header.PartitionEntryLba > 0)
                 {
@@ -362,20 +361,20 @@ namespace LoveAlways.Qualcomm.Common
                     foreach (int trySectorSize in trySectorSizes)
                     {
                         if (trySectorSize == sectorSize) continue; // Skip already tried
-                        
+
                         long calcOffset = (long)header.PartitionEntryLba * trySectorSize;
                         if (calcOffset > 0 && calcOffset < data.Length - 128 && HasValidPartitionEntry(data, (int)calcOffset))
                         {
                             entryOffset = (int)calcOffset;
                             sectorSize = trySectorSize; // Update sector size
                             header.SectorSize = trySectorSize;
-                            usedStrategy = string.Format("Strategy 2 (Try sector size {0}B): {1} * {0} = {2}", 
+                            usedStrategy = string.Format("Strategy 2 (Try sector size {0}B): {1} * {0} = {2}",
                                 trySectorSize, header.PartitionEntryLba, entryOffset);
                             break;
                         }
                     }
                 }
-                
+
                 // Strategy 3: Xiaomi/OPPO devices use 512B sectors, partition entries usually at LBA 2 = 1024
                 if (entryOffset < 0)
                 {
@@ -386,7 +385,7 @@ namespace LoveAlways.Qualcomm.Common
                         usedStrategy = string.Format("Strategy 3 (512B sector standard): offset {0}", entryOffset);
                     }
                 }
-                
+
                 // Strategy 4: 4KB sectors, partition entries at LBA 2 = 8192
                 if (entryOffset < 0)
                 {
@@ -397,7 +396,7 @@ namespace LoveAlways.Qualcomm.Common
                         usedStrategy = string.Format("Strategy 4 (4KB sector standard): offset {0}", entryOffset);
                     }
                 }
-                
+
                 // Strategy 5: Partition entries follow Header (different sector sizes)
                 if (entryOffset < 0)
                 {
@@ -408,18 +407,18 @@ namespace LoveAlways.Qualcomm.Common
                         if (relativeOffset < data.Length - 128 && HasValidPartitionEntry(data, relativeOffset))
                         {
                             entryOffset = relativeOffset;
-                            usedStrategy = string.Format("Strategy 5 (Header+{0}): {1} + {0} = {2}", 
+                            usedStrategy = string.Format("Strategy 5 (Header+{0}): {1} + {0} = {2}",
                                 gap, headerOffset, entryOffset);
                             break;
                         }
                     }
                 }
-                
+
                 // Strategy 6: Brute force probe more common offsets
                 if (entryOffset < 0)
                 {
                     // Common offsets: various combinations of sector sizes and LBAs
-                    int[] commonOffsets = { 
+                    int[] commonOffsets = {
                         1024, 8192, 4096, 2048, 512,           // Basic offsets
                         4096 * 2, 512 * 4, 512 * 6,            // LBA 2 variants
                         16384, 32768,                          // Large sector/large offset
@@ -436,7 +435,7 @@ namespace LoveAlways.Qualcomm.Common
                         }
                     }
                 }
-                
+
                 // Strategy 7: Search for the first valid partition every 128 bytes after Header
                 if (entryOffset < 0)
                 {
@@ -450,74 +449,74 @@ namespace LoveAlways.Qualcomm.Common
                         }
                     }
                 }
-                
+
                 // Final check
                 if (entryOffset < 0 || entryOffset >= data.Length - 128)
                 {
                     _logDetail(string.Format("[GPT] Cannot determine valid partition entry offset, last attempted entryOffset={0}, dataLen={1}", entryOffset, data.Length));
                     return partitions;
                 }
-                
+
                 _logDetail(string.Format("[GPT] {0}", usedStrategy));
 
                 int entrySize = (int)header.SizeOfPartitionEntry;
                 if (entrySize <= 0 || entrySize > 512) entrySize = 128;
-                
+
                 // ========== Calculate number of partition entries ==========
                 int headerEntries = (int)header.NumberOfPartitionEntries;
-                
+
                 // Verify if the number of partitions specified in Header is reasonable
                 // Some device Header NumberOfPartitionEntries might be 0 or incorrect
                 if (headerEntries <= 0 || headerEntries > 1024)
                 {
                     headerEntries = 128; // Default value
-                    _logDetail(string.Format("[GPT] Header.NumberOfPartitionEntries abnormal ({0}), using default value 128", 
+                    _logDetail(string.Format("[GPT] Header.NumberOfPartitionEntries abnormal ({0}), using default value 128",
                         header.NumberOfPartitionEntries));
                 }
-                
+
                 // gpttool method: ParEntriesArea_Size = (FirstUsableLba - PartitionEntryLba) * SectorSize
                 int actualAvailableEntries = 0;
                 if (header.FirstUsableLba > header.PartitionEntryLba && header.PartitionEntryLba > 0)
                 {
                     long parEntriesAreaSize = (long)(header.FirstUsableLba - header.PartitionEntryLba) * sectorSize;
                     actualAvailableEntries = (int)(parEntriesAreaSize / entrySize);
-                    _logDetail(string.Format("[GPT] gpttool method: ({0}-{1})*{2}/{3}={4}", 
+                    _logDetail(string.Format("[GPT] gpttool method: ({0}-{1})*{2}/{3}={4}",
                         header.FirstUsableLba, header.PartitionEntryLba, sectorSize, entrySize, actualAvailableEntries));
                 }
-                
+
                 // Calculate max scannable entries from data length
                 int maxFromData = Math.Max(0, (data.Length - entryOffset) / entrySize);
-                
+
                 // ========== Comprehensive calculation of max scan quantity ==========
                 // 1. First use the number specified in Header
                 // 2. If gpttool method calculates a larger quantity, use the larger value (some device Header information is inaccurate)
                 // 3. Do not exceed data capacity
                 // 4. Reasonable upper limit 1024 (Xiaomi and other devices might have many partitions)
                 int maxEntries = headerEntries;
-                
+
                 // If the number calculated by gpttool is significantly greater than the number specified in the Header, use the gpttool value
                 if (actualAvailableEntries > headerEntries && actualAvailableEntries <= 1024)
                 {
                     maxEntries = actualAvailableEntries;
-                    _logDetail(string.Format("[GPT] Using gpttool calculated entry count {0} (greater than Header specified {1})", 
+                    _logDetail(string.Format("[GPT] Using gpttool calculated entry count {0} (greater than Header specified {1})",
                         actualAvailableEntries, headerEntries));
                 }
-                
+
                 // Ensure it does not exceed data capacity
                 maxEntries = Math.Min(maxEntries, maxFromData);
-                
+
                 // Reasonable upper limit
                 maxEntries = Math.Min(maxEntries, 1024);
-                
+
                 // Ensure at least 128 entries are scanned (standard value)
                 maxEntries = Math.Max(maxEntries, Math.Min(128, maxFromData));
-                
-                _logDetail(string.Format("[GPT] Partition entries: offset={0}, size={1}, Header count={2}, gpttool={3}, data capacity={4}, final scan={5}", 
+
+                _logDetail(string.Format("[GPT] Partition entries: offset={0}, size={1}, Header count={2}, gpttool={3}, data capacity={4}, final scan={5}",
                     entryOffset, entrySize, headerEntries, actualAvailableEntries, maxFromData, maxEntries));
 
                 int parsedCount = 0;
                 int totalEmptyCount = 0;
-                
+
                 // ========== Two-pass scan strategy ==========
                 // First pass: scan all entries, find valid partitions
                 var validEntries = new List<int>();
@@ -525,7 +524,7 @@ namespace LoveAlways.Qualcomm.Common
                 {
                     int offset = entryOffset + i * entrySize;
                     if (offset + 128 > data.Length) break;
-                    
+
                     // Check if partition type GUID is empty
                     bool isEmpty = true;
                     for (int j = 0; j < 16; j++)
@@ -536,7 +535,7 @@ namespace LoveAlways.Qualcomm.Common
                             break;
                         }
                     }
-                    
+
                     if (!isEmpty)
                     {
                         validEntries.Add(i);
@@ -546,37 +545,37 @@ namespace LoveAlways.Qualcomm.Common
                         totalEmptyCount++;
                     }
                 }
-                
-                _logDetail(string.Format("[GPT] First pass scan: found {0} non-empty entries, {1} empty entries", 
+
+                _logDetail(string.Format("[GPT] First pass scan: found {0} non-empty entries, {1} empty entries",
                     validEntries.Count, totalEmptyCount));
-                
+
                 // Second pass: parse valid partition entries
                 foreach (int i in validEntries)
                 {
                     int offset = entryOffset + i * entrySize;
-                    
+
                     // Parse partition entry
                     var partition = ParsePartitionEntry(data, offset, lun, sectorSize, i + 1);
                     if (partition != null && !string.IsNullOrWhiteSpace(partition.Name))
                     {
                         partitions.Add(partition);
                         parsedCount++;
-                        
+
                         // Detailed log: record each parsed partition
                         if (parsedCount <= 10 || parsedCount % 20 == 0)
                         {
-                            _logDetail(string.Format("[GPT] #{0}: {1} @ LBA {2}-{3} ({4})", 
-                                parsedCount, partition.Name, partition.StartSector, 
+                            _logDetail(string.Format("[GPT] #{0}: {1} @ LBA {2}-{3} ({4})",
+                                parsedCount, partition.Name, partition.StartSector,
                                 partition.StartSector + partition.NumSectors - 1, partition.FormattedSize));
                         }
                     }
                 }
-                
+
                 // If no partitions found, try fallback strategy: scan entire data without depending on Header info
                 if (parsedCount == 0 && data.Length > entryOffset + 128)
                 {
                     _logDetail("[GPT] Standard parsing failed, trying fallback strategy: brute force scan partition entries");
-                    
+
                     // Starting from entryOffset, check every 128 bytes
                     for (int offset = entryOffset; offset + 128 <= data.Length; offset += 128)
                     {
@@ -595,12 +594,12 @@ namespace LoveAlways.Qualcomm.Common
                                 }
                             }
                         }
-                        
+
                         // Prevent infinite loop
                         if (parsedCount > 256) break;
                     }
                 }
-                
+
                 _logDetail(string.Format("[GPT] LUN{0} parsing completed: {1} valid partitions", lun, parsedCount));
             }
             catch (Exception ex)
@@ -610,14 +609,14 @@ namespace LoveAlways.Qualcomm.Common
 
             return partitions;
         }
-        
+
         /// <summary>
         /// Check for valid partition entries
         /// </summary>
         private bool HasValidPartitionEntry(byte[] data, int offset)
         {
             if (offset + 128 > data.Length) return false;
-            
+
             // Check if partition type GUID is non-empty
             bool hasData = false;
             for (int i = 0; i < 16; i++)
@@ -629,7 +628,7 @@ namespace LoveAlways.Qualcomm.Common
                 }
             }
             if (!hasData) return false;
-            
+
             // Check if partition name is readable
             try
             {
@@ -651,19 +650,19 @@ namespace LoveAlways.Qualcomm.Common
             {
                 // Partition type GUID (0-16)
                 string typeGuid = FormatGuid(data, offset);
-                
+
                 // Partition unique GUID (16-32)
                 string uniqueGuid = FormatGuid(data, offset + 16);
-                
+
                 // Start LBA (32-40)
                 long startLba = BitConverter.ToInt64(data, offset + 32);
-                
+
                 // End LBA (40-48)
                 long endLba = BitConverter.ToInt64(data, offset + 40);
-                
+
                 // Attributes (48-56)
                 ulong attributes = BitConverter.ToUInt64(data, offset + 48);
-                
+
                 // Partition name UTF-16LE (56-128)
                 string name = Encoding.Unicode.GetString(data, offset + 56, 72).TrimEnd('\0');
 
@@ -705,7 +704,7 @@ namespace LoveAlways.Qualcomm.Common
                 OtherSlot = "nonexistent",
                 HasAbPartitions = false
             };
-            
+
             // Find partitions with _a or _b suffix
             var abPartitions = partitions.Where(p =>
                 p.Name.EndsWith("_a") || p.Name.EndsWith("_b")).ToList();
@@ -715,15 +714,16 @@ namespace LoveAlways.Qualcomm.Common
 
             info.HasAbPartitions = true;
             info.CurrentSlot = "undefined";
-            
+
             // Detect slot status of key partitions (boot, system, vendor, etc.)
             var keyPartitions = new[] { "boot", "system", "vendor", "abl", "xbl", "dtbo" };
-            var checkPartitions = abPartitions.Where(p => {
+            var checkPartitions = abPartitions.Where(p =>
+            {
                 string baseName = p.Name.EndsWith("_a") ? p.Name.Substring(0, p.Name.Length - 2) :
                                   p.Name.EndsWith("_b") ? p.Name.Substring(0, p.Name.Length - 2) : p.Name;
                 return keyPartitions.Contains(baseName.ToLower());
             }).ToList();
-            
+
             // If no key partitions, use all A/B partitions (exclude vendor_boot)
             if (checkPartitions.Count == 0)
             {
@@ -739,21 +739,21 @@ namespace LoveAlways.Qualcomm.Common
                 bool isActive = IsSlotActive(p.Attributes);
                 bool isSuccessful = IsSlotSuccessful(p.Attributes);
                 bool isUnbootable = IsSlotUnbootable(p.Attributes);
-                
+
                 // Debug log: print attributes of key partitions
                 if (keyPartitions.Any(k => p.Name.StartsWith(k, StringComparison.OrdinalIgnoreCase)))
                 {
                     _logDetail(string.Format("[GPT] Slot detection: {0} attr=0x{1:X16} active={2} success={3} unboot={4}",
                         p.Name, p.Attributes, isActive, isSuccessful, isUnbootable));
                 }
-                
+
                 if (p.Name.EndsWith("_a") && isActive)
                     slotAActive++;
                 else if (p.Name.EndsWith("_b") && isActive)
                     slotBActive++;
             }
-            
-            _logDetail(string.Format("[GPT] Slot statistics: A active={0}, B active={1} ({2} partitions checked)", 
+
+            _logDetail(string.Format("[GPT] Slot statistics: A active={0}, B active={1} ({2} partitions checked)",
                 slotAActive, slotBActive, checkPartitions.Count));
 
             if (slotAActive > slotBActive)
@@ -776,9 +776,9 @@ namespace LoveAlways.Qualcomm.Common
                 // No active flag, try to judge using successful flag
                 int slotASuccessful = checkPartitions.Count(p => p.Name.EndsWith("_a") && IsSlotSuccessful(p.Attributes));
                 int slotBSuccessful = checkPartitions.Count(p => p.Name.EndsWith("_b") && IsSlotSuccessful(p.Attributes));
-                
+
                 _logDetail(string.Format("[GPT] No active flag, using successful: A={0}, B={1}", slotASuccessful, slotBSuccessful));
-                
+
                 if (slotASuccessful > slotBSuccessful)
                 {
                     info.CurrentSlot = "a";
@@ -808,7 +808,7 @@ namespace LoveAlways.Qualcomm.Common
             byte flagByte = (byte)((attributes >> (AB_FLAG_OFFSET * 8)) & 0xFF);
             return (flagByte & AB_PARTITION_ATTR_SLOT_ACTIVE) == AB_PARTITION_ATTR_SLOT_ACTIVE;
         }
-        
+
         /// <summary>
         /// Check if slot successfully booted (bit 51 in attributes)
         /// </summary>
@@ -817,7 +817,7 @@ namespace LoveAlways.Qualcomm.Common
             byte flagByte = (byte)((attributes >> (AB_FLAG_OFFSET * 8)) & 0xFF);
             return (flagByte & 0x08) == 0x08;  // bit 3 in byte 6 = bit 51
         }
-        
+
         /// <summary>
         /// Check if slot is unbootable (bit 52 in attributes)
         /// </summary>
@@ -841,7 +841,7 @@ namespace LoveAlways.Qualcomm.Common
                 // Calculate Header CRC (CRC field needs to be zeroed out first)
                 byte[] headerData = new byte[header.HeaderSize];
                 Array.Copy(data, headerOffset, headerData, 0, (int)header.HeaderSize);
-                
+
                 // Zero out the CRC field
                 headerData[16] = 0;
                 headerData[17] = 0;
@@ -849,7 +849,7 @@ namespace LoveAlways.Qualcomm.Common
                 headerData[19] = 0;
 
                 uint calculatedCrc = CalculateCrc32(headerData);
-                
+
                 if (calculatedCrc != header.HeaderCrc32)
                 {
                     _logDetail(string.Format("[GPT] Header CRC mismatch: Calculated={0:X8}, Stored={1:X8}",
@@ -871,13 +871,13 @@ namespace LoveAlways.Qualcomm.Common
         private uint CalculateCrc32(byte[] data)
         {
             uint crc = 0xFFFFFFFF;
-            
+
             foreach (byte b in data)
             {
                 byte index = (byte)((crc ^ b) & 0xFF);
                 crc = (crc >> 8) ^ CRC32_TABLE[index];
             }
-            
+
             return crc ^ 0xFFFFFFFF;
         }
 
@@ -888,7 +888,7 @@ namespace LoveAlways.Qualcomm.Common
         {
             uint[] table = new uint[256];
             const uint polynomial = 0xEDB88320;
-            
+
             for (uint i = 0; i < 256; i++)
             {
                 uint crc = i;
@@ -901,7 +901,7 @@ namespace LoveAlways.Qualcomm.Common
                 }
                 table[i] = crc;
             }
-            
+
             return table;
         }
 
@@ -923,26 +923,26 @@ namespace LoveAlways.Qualcomm.Common
             for (int i = 3; i >= 0; i--)
                 sb.AppendFormat("{0:X2}", data[offset + i]);
             sb.Append("-");
-            
+
             // 第2部分 (2字节, 小端序)
             for (int i = 5; i >= 4; i--)
                 sb.AppendFormat("{0:X2}", data[offset + i]);
             sb.Append("-");
-            
+
             // 第3部分 (2字节, 小端序)
             for (int i = 7; i >= 6; i--)
                 sb.AppendFormat("{0:X2}", data[offset + i]);
             sb.Append("-");
-            
+
             // 第4部分 (2字节, 大端序)
             for (int i = 8; i <= 9; i++)
                 sb.AppendFormat("{0:X2}", data[offset + i]);
             sb.Append("-");
-            
+
             // 第5部分 (6字节, 大端序)
             for (int i = 10; i <= 15; i++)
                 sb.AppendFormat("{0:X2}", data[offset + i]);
-            
+
             return sb.ToString();
         }
 
@@ -965,7 +965,7 @@ namespace LoveAlways.Qualcomm.Common
                 long startByte = p.StartSector * (long)sectorSize;
 
                 string filename = p.Name;
-                if (!filename.EndsWith(".img", StringComparison.OrdinalIgnoreCase) && 
+                if (!filename.EndsWith(".img", StringComparison.OrdinalIgnoreCase) &&
                     !filename.EndsWith(".bin", StringComparison.OrdinalIgnoreCase))
                 {
                     filename += ".img";
@@ -1012,7 +1012,7 @@ namespace LoveAlways.Qualcomm.Common
 
                     // 规范化文件名，如果有 .img 后缀则保留，没有则加上
                     string filename = p.Name;
-                    if (!filename.EndsWith(".img", StringComparison.OrdinalIgnoreCase) && 
+                    if (!filename.EndsWith(".img", StringComparison.OrdinalIgnoreCase) &&
                         !filename.EndsWith(".bin", StringComparison.OrdinalIgnoreCase))
                     {
                         filename += ".img";

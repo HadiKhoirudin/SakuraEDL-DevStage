@@ -7,7 +7,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -58,14 +58,14 @@ namespace LoveAlways.MediaTek.Common
     {
         #region Error Code Masks
 
-        private const uint SEVERITY_MASK    = 0xC0000000;
-        private const uint DOMAIN_MASK      = 0x00FF0000;
-        private const uint CODE_MASK        = 0x0000FFFF;
+        private const uint SEVERITY_MASK = 0xC0000000;
+        private const uint DOMAIN_MASK = 0x00FF0000;
+        private const uint CODE_MASK = 0x0000FFFF;
 
-        public const uint SEVERITY_SUCCESS  = 0x00000000;
-        public const uint SEVERITY_INFO     = 0x40000000;
-        public const uint SEVERITY_WARNING  = 0x80000000;
-        public const uint SEVERITY_ERROR    = 0xC0000000;
+        public const uint SEVERITY_SUCCESS = 0x00000000;
+        public const uint SEVERITY_INFO = 0x40000000;
+        public const uint SEVERITY_WARNING = 0x80000000;
+        public const uint SEVERITY_ERROR = 0xC0000000;
 
         private const int DOMAIN_SHIFT = 16;
 
@@ -261,7 +261,7 @@ namespace LoveAlways.MediaTek.Common
 
             // Parse unknown error
             var (severity, domain, code) = ParseErrorCode(errorCode);
-            
+
             var severityStr = severity switch
             {
                 ErrorSeverity.Success => "Success",

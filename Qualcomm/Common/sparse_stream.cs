@@ -153,7 +153,7 @@ namespace LoveAlways.Qualcomm.Common
         {
             var ranges = new List<Tuple<long, long>>();
             if (_chunkIndex == null) return ranges;
-            
+
             foreach (var chunk in _chunkIndex)
             {
                 if (chunk.Type == CHUNK_TYPE_RAW || chunk.Type == CHUNK_TYPE_FILL)
@@ -547,7 +547,7 @@ namespace LoveAlways.Qualcomm.Common
         {
             if (!_isValid)
                 return null;
-            
+
             // 安全检查: 防止内存溢出
             if (_expandedLength > maxSize || _expandedLength > int.MaxValue)
             {

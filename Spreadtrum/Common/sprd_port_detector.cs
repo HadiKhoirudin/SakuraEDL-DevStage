@@ -3,17 +3,17 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Spreadtrum.Protocol;
 using System;
 using System.Collections.Generic;
 using System.Management;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Spreadtrum.Protocol;
 
 namespace LoveAlways.Spreadtrum.Common
 {
@@ -25,7 +25,7 @@ namespace LoveAlways.Spreadtrum.Common
         private ManagementEventWatcher _deviceWatcher;
         private readonly object _lock = new object();
         private bool _isWatching = false;
-        
+
         // Debounce control
         private DateTime _lastEventTime = DateTime.MinValue;
         private const int DebounceMs = 1000; // 1 second debounce
@@ -70,11 +70,11 @@ namespace LoveAlways.Spreadtrum.Common
                 // Watch for device changes
                 var query = new WqlEventQuery(
                     "SELECT * FROM Win32_DeviceChangeEvent WHERE EventType = 2 OR EventType = 3");
-                
+
                 _deviceWatcher = new ManagementEventWatcher(query);
                 _deviceWatcher.EventArrived += OnDeviceChanged;
                 _deviceWatcher.Start();
-                
+
                 _isWatching = true;
                 Log("[Port Detector] Started watching for device changes");
             }
@@ -153,7 +153,7 @@ namespace LoveAlways.Spreadtrum.Common
 
             return devices;
         }
-        
+
         /// <summary>
         /// Scan all COM port devices (for debugging)
         /// </summary>
@@ -171,16 +171,16 @@ namespace LoveAlways.Spreadtrum.Common
                         try
                         {
                             string name = obj["Name"]?.ToString() ?? "";
-                            
+
                             // Only handle devices with COM ports
                             string comPort = ExtractComPort(name);
                             if (string.IsNullOrEmpty(comPort))
                                 continue;
-                            
+
                             string deviceId = obj["DeviceID"]?.ToString() ?? "";
                             var hardwareIds = obj["HardwareID"] as string[];
                             string hwIdStr = hardwareIds != null && hardwareIds.Length > 0 ? hardwareIds[0] : "";
-                            
+
                             // Parse VID/PID
                             int vid = 0, pid = 0;
                             var vidMatch = Regex.Match(hwIdStr, @"VID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase);
@@ -189,10 +189,10 @@ namespace LoveAlways.Spreadtrum.Common
                             var pidMatch = Regex.Match(hwIdStr, @"PID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase);
                             if (pidMatch.Success)
                                 pid = Convert.ToInt32(pidMatch.Groups[1].Value, 16);
-                            
+
                             // Determine if identified as Spreadtrum
                             bool isSprd = IsSprdDevice(name, deviceId, hardwareIds);
-                            
+
                             ports.Add(new ComPortInfo
                             {
                                 ComPort = comPort,
@@ -212,7 +212,7 @@ namespace LoveAlways.Spreadtrum.Common
 
             return ports;
         }
-        
+
         /// <summary>
         /// Print all COM port device info (for debugging)
         /// </summary>
@@ -220,13 +220,13 @@ namespace LoveAlways.Spreadtrum.Common
         {
             Log("[Device Manager] Scanning all COM ports...");
             var ports = ScanAllComPorts();
-            
+
             if (ports.Count == 0)
             {
                 Log("[Device Manager] No COM ports found");
                 return;
             }
-            
+
             Log("[Device Manager] Found {0} COM ports:", ports.Count);
             foreach (var port in ports)
             {
@@ -236,7 +236,7 @@ namespace LoveAlways.Spreadtrum.Common
                 Log("    HW ID: {0}", port.HardwareId);
             }
         }
-        
+
         /// <summary>
         /// Update internal device list
         /// </summary>
@@ -279,7 +279,7 @@ namespace LoveAlways.Spreadtrum.Common
 
                 var currentDevices = ScanDevices(silent: true);
                 UpdateDeviceList(currentDevices);
-                
+
                 foreach (var dev in currentDevices)
                 {
                     if (!previousDevices.Contains(dev.ComPort))
@@ -303,11 +303,11 @@ namespace LoveAlways.Spreadtrum.Common
             string hwIdStr = hardwareIds != null && hardwareIds.Length > 0 ? hardwareIds[0].ToUpper() : "";
 
             // ========== Step 1: Hard exclude other platforms ==========
-            
+
             // Exclude MTK devices (VID 0x0E8D)
             if (deviceIdUpper.Contains("VID_0E8D") || hwIdStr.Contains("VID_0E8D"))
                 return false;
-            
+
             // Exclude MTK name keywords
             string[] mtkKeywords = { "MEDIATEK", "MTK", "PRELOADER", "DA USB" };
             foreach (var kw in mtkKeywords)
@@ -315,11 +315,11 @@ namespace LoveAlways.Spreadtrum.Common
                 if (nameUpper.Contains(kw))
                     return false;
             }
-            
+
             // Exclude Qualcomm devices (VID 0x05C6)
             if (deviceIdUpper.Contains("VID_05C6") || hwIdStr.Contains("VID_05C6"))
                 return false;
-            
+
             // Exclude Qualcomm name keywords (but keep possible Sprd DIAG)
             string[] qcKeywords = { "QUALCOMM", "QDL", "QHSUSB", "QDLOADER", "9008", "EDL" };
             foreach (var kw in qcKeywords)
@@ -327,23 +327,23 @@ namespace LoveAlways.Spreadtrum.Common
                 if (nameUpper.Contains(kw))
                     return false;
             }
-            
+
             // Exclude ADB/Fastboot (but allow Sprd ADB)
-            if ((nameUpper.Contains("ADB") || nameUpper.Contains("ANDROID DEBUG")) && 
+            if ((nameUpper.Contains("ADB") || nameUpper.Contains("ANDROID DEBUG")) &&
                 !nameUpper.Contains("SPRD") && !nameUpper.Contains("UNISOC"))
                 return false;
 
             // ========== Step 2: Spreadtrum VID detection ==========
-            
+
             // Spreadtrum specific VID (0x1782)
             bool hasSprdVid = deviceIdUpper.Contains("VID_1782") || hwIdStr.Contains("VID_1782");
-            
+
             // VID_1782 = Confirmed Spreadtrum
             if (hasSprdVid)
                 return true;
-            
+
             // ========== Step 3: Device name keyword detection ==========
-            
+
             // Sprd specific name keywords (extended list)
             string[] sprdKeywords = {
                 "SPRD", "SPREADTRUM", "UNISOC",
@@ -355,15 +355,15 @@ namespace LoveAlways.Spreadtrum.Common
                 "UMS", "UDX", "UWS",  // New platform prefixes
                 "T606", "T610", "T616", "T618", "T700", "T760", "T770"  // Common chips
             };
-            
+
             foreach (var kw in sprdKeywords)
             {
                 if (nameUpper.Contains(kw))
                     return true;
             }
-            
+
             // ========== Step 4: Check specific vendor combinations (VID + PID) ==========
-            
+
             // Samsung SPRD (VID_04E8 + specific PIDs)
             if (deviceIdUpper.Contains("VID_04E8"))
             {
@@ -375,7 +375,7 @@ namespace LoveAlways.Spreadtrum.Common
                 }
                 return false;
             }
-            
+
             // ZTE SPRD (VID_19D2 + specific PIDs)
             if (deviceIdUpper.Contains("VID_19D2"))
             {
@@ -387,7 +387,7 @@ namespace LoveAlways.Spreadtrum.Common
                 }
                 return false;
             }
-            
+
             // Alcatel/TCL SPRD (VID_1BBB + specific PIDs)
             if (deviceIdUpper.Contains("VID_1BBB"))
             {
@@ -399,7 +399,7 @@ namespace LoveAlways.Spreadtrum.Common
                 }
                 return false;
             }
-            
+
             // Huawei SPRD (VID_12D1 + specific PIDs)
             if (deviceIdUpper.Contains("VID_12D1"))
             {
@@ -411,7 +411,7 @@ namespace LoveAlways.Spreadtrum.Common
                 }
                 return false;
             }
-            
+
             // Realme/OPPO SPRD (VID_22D9)
             if (deviceIdUpper.Contains("VID_22D9"))
             {
@@ -423,7 +423,7 @@ namespace LoveAlways.Spreadtrum.Common
                 }
                 return false;
             }
-            
+
             // Nokia SPRD (VID_0421)
             if (deviceIdUpper.Contains("VID_0421"))
             {
@@ -435,14 +435,14 @@ namespace LoveAlways.Spreadtrum.Common
                 }
                 return false;
             }
-            
+
             // Infinix/Tecno/Itel (VID_2A47)
             if (deviceIdUpper.Contains("VID_2A47"))
             {
                 // Transsion devices may use Spreadtrum chips
                 return true;
             }
-            
+
             // ========== Step 5: Relaxed DIAG mode detection ==========
             // If device name contains DIAG and is not from other known platforms
             if (nameUpper.Contains("DIAG") && !nameUpper.Contains("QUALCOMM"))
@@ -451,7 +451,7 @@ namespace LoveAlways.Spreadtrum.Common
                 if (nameUpper.Contains("(COM"))
                     return true;
             }
-            
+
             // Does not match any Spreadtrum device characteristics
             return false;
         }
@@ -483,7 +483,7 @@ namespace LoveAlways.Spreadtrum.Common
 
             // Parse VID/PID
             string hwId = hardwareIds != null && hardwareIds.Length > 0 ? hardwareIds[0] : deviceId;
-            
+
             var vidMatch = Regex.Match(hwId, @"VID_([0-9A-Fa-f]{4})", RegexOptions.IgnoreCase);
             if (vidMatch.Success)
             {
@@ -513,11 +513,11 @@ namespace LoveAlways.Spreadtrum.Common
             // Download mode PID
             if (SprdUsbIds.IsDownloadPid(pid))
                 return SprdDeviceMode.Download;
-                
+
             // Diagnostic mode PID
             if (SprdUsbIds.IsDiagPid(pid))
                 return SprdDeviceMode.Diag;
-            
+
             // Other known PIDs
             switch (pid)
             {
@@ -542,7 +542,7 @@ namespace LoveAlways.Spreadtrum.Common
                 if (nameUpper.Contains(keyword))
                     return SprdDeviceMode.Download;
             }
-            
+
             // Diagnostic mode keywords
             string[] diagKeywords = { "DIAG", "DIAGNOSTIC", "CP" };
             foreach (var keyword in diagKeywords)
@@ -550,15 +550,15 @@ namespace LoveAlways.Spreadtrum.Common
                 if (nameUpper.Contains(keyword) && !nameUpper.Contains("U2S"))
                     return SprdDeviceMode.Diag;
             }
-            
+
             // ADB mode keywords
             if (nameUpper.Contains("ADB") || nameUpper.Contains("ANDROID DEBUG"))
                 return SprdDeviceMode.Adb;
-            
+
             // MTP mode keywords
             if (nameUpper.Contains("MTP") || nameUpper.Contains("MEDIA TRANSFER"))
                 return SprdDeviceMode.Mtp;
-            
+
             // CDC/ACM is usually also Download mode
             if (nameUpper.Contains("CDC") || nameUpper.Contains("ACM") || nameUpper.Contains("SERIAL"))
                 return SprdDeviceMode.Download;
@@ -579,16 +579,16 @@ namespace LoveAlways.Spreadtrum.Common
                 {
                     return; // Ignore duplicate events
                 }
-                
+
                 if (_isProcessingEvent)
                 {
                     return; // Event already being processed
                 }
-                
+
                 _lastEventTime = now;
                 _isProcessingEvent = true;
             }
-            
+
             // Delay scan, wait for device stabilization
             Task.Run(async () =>
             {
@@ -606,7 +606,7 @@ namespace LoveAlways.Spreadtrum.Common
 
                     // Silent scan, do not log
                     var currentDevices = ScanDevices(silent: true);
-                    
+
                     // Update device list
                     UpdateDeviceList(currentDevices);
 
@@ -660,9 +660,9 @@ namespace LoveAlways.Spreadtrum.Common
         }
     }
 
-        /// <summary>
-        /// Spreadtrum Device Information
-        /// </summary>
+    /// <summary>
+    /// Spreadtrum Device Information
+    /// </summary>
     public class SprdDeviceInfo
     {
         public string Name { get; set; }
@@ -708,7 +708,7 @@ namespace LoveAlways.Spreadtrum.Common
         Fastboot,   // Fastboot mode
         Normal      // Normal mode
     }
-    
+
     /// <summary>
     /// COM Port Information (for debugging)
     /// </summary>
@@ -721,7 +721,7 @@ namespace LoveAlways.Spreadtrum.Common
         public int Vid { get; set; }
         public int Pid { get; set; }
         public bool IsSprdDetected { get; set; }
-        
+
         public override string ToString()
         {
             return string.Format("{0}: {1} (VID={2:X4} PID={3:X4}) {4}",

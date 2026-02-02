@@ -73,6 +73,37 @@ namespace LoveAlways
             this.高通驱动ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.查看日志ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.tabs1 = new AntdUI.Tabs();
+            this.tabPage3 = new AntdUI.TabPage();
+            this.checkbox7 = new AntdUI.Checkbox();
+            this.uiButton10 = new Sunny.UI.UIButton();
+            this.uiTextBox1 = new Sunny.UI.UITextBox();
+            this.uiComboBox2 = new Sunny.UI.UIComboBox();
+            this.checkbox22 = new AntdUI.Checkbox();
+            this.checkbox21 = new AntdUI.Checkbox();
+            this.uiButton11 = new Sunny.UI.UIButton();
+            this.select5 = new AntdUI.Select();
+            this.uiButton22 = new Sunny.UI.UIButton();
+            this.checkbox43 = new AntdUI.Checkbox();
+            this.button9 = new AntdUI.Button();
+            this.checkbox41 = new AntdUI.Checkbox();
+            this.input1 = new AntdUI.Input();
+            this.button8 = new AntdUI.Button();
+            this.uiGroupBox7 = new Sunny.UI.UIGroupBox();
+            this.checkbox42 = new AntdUI.Checkbox();
+            this.listView5 = new System.Windows.Forms.ListView();
+            this.columnHeader37 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.columnHeader38 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.columnHeader39 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.columnHeader40 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.uiButton18 = new Sunny.UI.UIButton();
+            this.uiButton19 = new Sunny.UI.UIButton();
+            this.uiButton20 = new Sunny.UI.UIButton();
+            this.uiButton21 = new Sunny.UI.UIButton();
+            this.checkbox44 = new AntdUI.Checkbox();
+            this.checkbox45 = new AntdUI.Checkbox();
+            this.checkbox50 = new AntdUI.Checkbox();
+            this.tabPage1 = new AntdUI.TabPage();
+            this.labelDevRoot = new Sunny.UI.UILabel();
             this.tabPage2 = new AntdUI.TabPage();
             this.checkbox11 = new AntdUI.Checkbox();
             this.checkbox12 = new AntdUI.Checkbox();
@@ -108,35 +139,38 @@ namespace LoveAlways
             this.checkbox19 = new AntdUI.Checkbox();
             this.checkbox20 = new AntdUI.Checkbox();
             this.select4 = new AntdUI.Select();
-            this.tabPage3 = new AntdUI.TabPage();
-            this.checkbox7 = new AntdUI.Checkbox();
-            this.uiButton10 = new Sunny.UI.UIButton();
-            this.uiTextBox1 = new Sunny.UI.UITextBox();
-            this.uiComboBox2 = new Sunny.UI.UIComboBox();
-            this.checkbox22 = new AntdUI.Checkbox();
-            this.checkbox21 = new AntdUI.Checkbox();
-            this.uiButton11 = new Sunny.UI.UIButton();
-            this.select5 = new AntdUI.Select();
-            this.uiButton22 = new Sunny.UI.UIButton();
-            this.checkbox43 = new AntdUI.Checkbox();
-            this.button9 = new AntdUI.Button();
-            this.checkbox41 = new AntdUI.Checkbox();
-            this.input1 = new AntdUI.Input();
-            this.button8 = new AntdUI.Button();
-            this.uiGroupBox7 = new Sunny.UI.UIGroupBox();
-            this.checkbox42 = new AntdUI.Checkbox();
-            this.listView5 = new System.Windows.Forms.ListView();
-            this.columnHeader37 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.columnHeader38 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.columnHeader39 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.columnHeader40 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.uiButton18 = new Sunny.UI.UIButton();
-            this.uiButton19 = new Sunny.UI.UIButton();
-            this.uiButton20 = new Sunny.UI.UIButton();
-            this.uiButton21 = new Sunny.UI.UIButton();
-            this.checkbox44 = new AntdUI.Checkbox();
-            this.checkbox45 = new AntdUI.Checkbox();
-            this.checkbox50 = new AntdUI.Checkbox();
+            this.tabPage4 = new AntdUI.TabPage();
+            this.mtkLblDaMode = new Sunny.UI.UILabel();
+            this.mtkLblChipName = new Sunny.UI.UILabel();
+            this.mtkLblHwCode = new Sunny.UI.UILabel();
+            this.mtkLblStatus = new Sunny.UI.UILabel();
+            this.mtkChkRebootAfter = new AntdUI.Checkbox();
+            this.mtkChkSkipUserdata = new AntdUI.Checkbox();
+            this.mtkChkExploit = new AntdUI.Checkbox();
+            this.mtkBtnExploit = new AntdUI.Button();
+            this.mtkSelectExploitType = new AntdUI.Select();
+            this.mtkBtnUnlockBl = new AntdUI.Button();
+            this.mtkBtnFormatData = new AntdUI.Button();
+            this.mtkBtnRestoreNvram = new AntdUI.Button();
+            this.mtkBtnBackupNvram = new AntdUI.Button();
+            this.mtkBtnWriteImei = new AntdUI.Button();
+            this.mtkBtnReadImei = new AntdUI.Button();
+            this.mtkBtnReboot = new AntdUI.Button();
+            this.mtkBtnErasePartition = new AntdUI.Button();
+            this.mtkBtnReadPartition = new AntdUI.Button();
+            this.mtkBtnWritePartition = new AntdUI.Button();
+            this.mtkBtnReadGpt = new AntdUI.Button();
+            this.mtkInputScatterFile = new AntdUI.Input();
+            this.mtkInputDaFile = new AntdUI.Input();
+            this.mtkSelectChip = new AntdUI.Select();
+            this.mtkGrpPartitions = new Sunny.UI.UIGroupBox();
+            this.mtkChkSelectAll = new AntdUI.Checkbox();
+            this.mtkListPartitions = new System.Windows.Forms.ListView();
+            this.mtkColPartition = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.mtkColType = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.mtkColSize = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.mtkColAddress = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.mtkColFileName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.tabPage5 = new AntdUI.TabPage();
             this.input10 = new AntdUI.Input();
             this.input5 = new AntdUI.Input();
@@ -171,40 +205,6 @@ namespace LoveAlways
             this.sprdInputPac = new AntdUI.Input();
             this.sprdSelectChip = new AntdUI.Select();
             this.sprdSelectDevice = new AntdUI.Select();
-            this.tabPage4 = new AntdUI.TabPage();
-            this.mtkLblDaMode = new Sunny.UI.UILabel();
-            this.mtkLblChipName = new Sunny.UI.UILabel();
-            this.mtkLblHwCode = new Sunny.UI.UILabel();
-            this.mtkLblStatus = new Sunny.UI.UILabel();
-            this.mtkChkRebootAfter = new AntdUI.Checkbox();
-            this.mtkChkSkipUserdata = new AntdUI.Checkbox();
-            this.mtkChkExploit = new AntdUI.Checkbox();
-            this.mtkBtnExploit = new AntdUI.Button();
-            this.mtkSelectExploitType = new AntdUI.Select();
-            this.mtkBtnUnlockBl = new AntdUI.Button();
-            this.mtkBtnFormatData = new AntdUI.Button();
-            this.mtkBtnRestoreNvram = new AntdUI.Button();
-            this.mtkBtnBackupNvram = new AntdUI.Button();
-            this.mtkBtnWriteImei = new AntdUI.Button();
-            this.mtkBtnReadImei = new AntdUI.Button();
-            this.mtkBtnReboot = new AntdUI.Button();
-            this.mtkBtnErasePartition = new AntdUI.Button();
-            this.mtkBtnReadPartition = new AntdUI.Button();
-            this.mtkBtnWritePartition = new AntdUI.Button();
-            this.mtkBtnReadGpt = new AntdUI.Button();
-            this.mtkInputScatterFile = new AntdUI.Input();
-            this.mtkInputDaFile = new AntdUI.Input();
-            this.mtkSelectChip = new AntdUI.Select();
-            this.mtkGrpPartitions = new Sunny.UI.UIGroupBox();
-            this.mtkChkSelectAll = new AntdUI.Checkbox();
-            this.mtkListPartitions = new System.Windows.Forms.ListView();
-            this.mtkColPartition = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.mtkColType = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.mtkColSize = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.mtkColAddress = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.mtkColFileName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.tabPage1 = new AntdUI.TabPage();
-            this.labelDevRoot = new Sunny.UI.UILabel();
             this.tabPage6 = new AntdUI.TabPage();
             this.button7 = new AntdUI.Button();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
@@ -269,15 +269,15 @@ namespace LoveAlways
             this.uiGroupBox1.SuspendLayout();
             this.menuStrip1.SuspendLayout();
             this.tabs1.SuspendLayout();
-            this.tabPage2.SuspendLayout();
-            this.uiGroupBox4.SuspendLayout();
             this.tabPage3.SuspendLayout();
             this.uiGroupBox7.SuspendLayout();
-            this.tabPage5.SuspendLayout();
-            this.sprdGroupPartitions.SuspendLayout();
+            this.tabPage1.SuspendLayout();
+            this.tabPage2.SuspendLayout();
+            this.uiGroupBox4.SuspendLayout();
             this.tabPage4.SuspendLayout();
             this.mtkGrpPartitions.SuspendLayout();
-            this.tabPage1.SuspendLayout();
+            this.tabPage5.SuspendLayout();
+            this.sprdGroupPartitions.SuspendLayout();
             this.tabPage6.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.tabs2.SuspendLayout();
@@ -478,7 +478,7 @@ namespace LoveAlways
             this.pageHeader2.ShowButton = true;
             this.pageHeader2.Size = new System.Drawing.Size(1313, 36);
             this.pageHeader2.TabIndex = 1;
-            this.pageHeader2.Text = "MultiFlash TOOL ";
+            this.pageHeader2.Text = "MultiFlash TOOL";
             this.pageHeader2.UseSystemStyleColor = true;
             // 
             // uiComboBox1
@@ -720,18 +720,18 @@ namespace LoveAlways
             // tabs1
             // 
             this.tabs1.BackColor = System.Drawing.Color.Transparent;
-            this.tabs1.Controls.Add(this.tabPage2);
-            this.tabs1.Controls.Add(this.tabPage1);
             this.tabs1.Controls.Add(this.tabPage3);
+            this.tabs1.Controls.Add(this.tabPage1);
+            this.tabs1.Controls.Add(this.tabPage2);
             this.tabs1.Controls.Add(this.tabPage4);
             this.tabs1.Controls.Add(this.tabPage5);
             this.tabs1.Controls.Add(this.tabPage6);
-            this.tabs1.Cursor = System.Windows.Forms.Cursors.Default;
+            this.tabs1.Cursor = System.Windows.Forms.Cursors.Hand;
             this.tabs1.Location = new System.Drawing.Point(4, 60);
             this.tabs1.Name = "tabs1";
             this.tabs1.Pages.Add(this.tabPage1);
-            this.tabs1.Pages.Add(this.tabPage2);
             this.tabs1.Pages.Add(this.tabPage3);
+            this.tabs1.Pages.Add(this.tabPage2);
             this.tabs1.Pages.Add(this.tabPage4);
             this.tabs1.Pages.Add(this.tabPage5);
             this.tabs1.Pages.Add(this.tabPage6);
@@ -740,410 +740,6 @@ namespace LoveAlways
             this.tabs1.Style = styleLine1;
             this.tabs1.TabIndex = 15;
             this.tabs1.Text = "tabs1";
-            // 
-            // tabPage2
-            // 
-            this.tabPage2.Controls.Add(this.checkbox11);
-            this.tabPage2.Controls.Add(this.checkbox12);
-            this.tabPage2.Controls.Add(this.input6);
-            this.tabPage2.Controls.Add(this.button4);
-            this.tabPage2.Controls.Add(this.select3);
-            this.tabPage2.Controls.Add(this.input7);
-            this.tabPage2.Controls.Add(this.uiGroupBox4);
-            this.tabPage2.Controls.Add(this.radio3);
-            this.tabPage2.Controls.Add(this.checkbox14);
-            this.tabPage2.Controls.Add(this.uiButton6);
-            this.tabPage2.Controls.Add(this.radio4);
-            this.tabPage2.Controls.Add(this.uiButton7);
-            this.tabPage2.Controls.Add(this.input8);
-            this.tabPage2.Controls.Add(this.uiButton8);
-            this.tabPage2.Controls.Add(this.uiButton9);
-            this.tabPage2.Controls.Add(this.input9);
-            this.tabPage2.Controls.Add(this.checkbox15);
-            this.tabPage2.Controls.Add(this.checkbox16);
-            this.tabPage2.Controls.Add(this.checkbox17);
-            this.tabPage2.Controls.Add(this.checkbox18);
-            this.tabPage2.Controls.Add(this.checkbox19);
-            this.tabPage2.Controls.Add(this.checkbox20);
-            this.tabPage2.Controls.Add(this.select4);
-            this.tabPage2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage2.Location = new System.Drawing.Point(0, 33);
-            this.tabPage2.Name = "tabPage2";
-            this.tabPage2.Size = new System.Drawing.Size(829, 659);
-            this.tabPage2.TabIndex = 1;
-            this.tabPage2.Text = "Qualcomm Platform";
-            // 
-            // checkbox11
-            // 
-            this.checkbox11.Location = new System.Drawing.Point(180, 597);
-            this.checkbox11.Name = "checkbox11";
-            this.checkbox11.Size = new System.Drawing.Size(95, 24);
-            this.checkbox11.TabIndex = 106;
-            this.checkbox11.Text = "Generate XML";
-            // 
-            // checkbox12
-            // 
-            this.checkbox12.Location = new System.Drawing.Point(93, 597);
-            this.checkbox12.Name = "checkbox12";
-            this.checkbox12.Size = new System.Drawing.Size(95, 24);
-            this.checkbox12.TabIndex = 107;
-            this.checkbox12.Text = "Skip Bootloader";
-            // 
-            // input6
-            // 
-            this.input6.Location = new System.Drawing.Point(4, 118);
-            this.input6.Name = "input6";
-            this.input6.PlaceholderText = "Select Raw XML";
-            this.input6.PrefixSvg = "FolderOutlined";
-            this.input6.Size = new System.Drawing.Size(681, 35);
-            this.input6.TabIndex = 122;
-            this.input6.WaveSize = 0;
-            // 
-            // button4
-            // 
-            this.button4.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
-            this.button4.Location = new System.Drawing.Point(688, 118);
-            this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(137, 35);
-            this.button4.TabIndex = 121;
-            this.button4.Text = "Browse";
-            this.button4.WaveSize = 0;
-            // 
-            // select3
-            // 
-            this.select3.Items.AddRange(new object[] {
-            "Auto Identify or Select Loader",
-            "[VIP] SM8750 - Snapdragon 8Elite",
-            "[VIP] SM8735 - Snapdragon 8SGen4",
-            "[VIP] SM8650 - Snapdragon 8Gen3",
-            "[VIP] SM8550_1 - Snapdragon 8Gen2 V2.6",
-            "[VIP] SM8550_2 - Snapdragon 8Gen2 V2.7",
-            "[VIP] SM8475 - Snapdragon 8+Gen1",
-            "[VIP] SM8450 - Snapdragon 8Gen1",
-            "[VIP] SM8350 - Snapdragon 888/888+",
-            "[VIP] SM7550 - Snapdragon 7+Gen3",
-            "[VIP] SM7475 - Snapdragon 7+Gen2",
-            "[VIP] SM7450 - Snapdragon 7Gen1",
-            "[VIP] SM7325 - Snapdragon 6G1/7SG2",
-            "[VIP] SM6375 - Snapdragon 695/6SGen3",
-            "[VIP] SM6225 - Snapdragon 480",
-            "[VIP] SM6115 - Snapdragon 460"});
-            this.select3.List = true;
-            this.select3.Location = new System.Drawing.Point(4, 1);
-            this.select3.MaxCount = 6;
-            this.select3.Name = "select3";
-            this.select3.PrefixSvg = "HarmonyOSOutlined";
-            this.select3.SelectionColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.select3.Size = new System.Drawing.Size(585, 35);
-            this.select3.TabIndex = 115;
-            this.select3.Text = "Auto Identify or Select Loader";
-            this.select3.WaveSize = 0;
-            // 
-            // input7
-            // 
-            this.input7.Location = new System.Drawing.Point(416, 79);
-            this.input7.Name = "input7";
-            this.input7.PlaceholderText = "Double click to select Signature";
-            this.input7.PrefixSvg = "FolderOutlined";
-            this.input7.Size = new System.Drawing.Size(409, 35);
-            this.input7.TabIndex = 120;
-            this.input7.WaveSize = 0;
-            // 
-            // uiGroupBox4
-            // 
-            this.uiGroupBox4.Controls.Add(this.checkbox13);
-            this.uiGroupBox4.Controls.Add(this.listView2);
-            this.uiGroupBox4.FillColor = System.Drawing.Color.Transparent;
-            this.uiGroupBox4.FillColor2 = System.Drawing.Color.Transparent;
-            this.uiGroupBox4.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiGroupBox4.Location = new System.Drawing.Point(4, 146);
-            this.uiGroupBox4.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.uiGroupBox4.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiGroupBox4.Name = "uiGroupBox4";
-            this.uiGroupBox4.Padding = new System.Windows.Forms.Padding(0, 32, 0, 0);
-            this.uiGroupBox4.Radius = 14;
-            this.uiGroupBox4.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiGroupBox4.Size = new System.Drawing.Size(821, 449);
-            this.uiGroupBox4.TabIndex = 100;
-            this.uiGroupBox4.Text = "Partition Table";
-            this.uiGroupBox4.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
-            // checkbox13
-            // 
-            this.checkbox13.Font = new System.Drawing.Font("Microsoft YaHei", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.checkbox13.Location = new System.Drawing.Point(6, 26);
-            this.checkbox13.Name = "checkbox13";
-            this.checkbox13.Size = new System.Drawing.Size(21, 21);
-            this.checkbox13.TabIndex = 14;
-            this.checkbox13.Text = "";
-            // 
-            // listView2
-            // 
-            this.listView2.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.listView2.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.columnHeader10,
-            this.columnHeader11,
-            this.columnHeader12,
-            this.columnHeader13,
-            this.columnHeader14,
-            this.columnHeader15,
-            this.columnHeader16,
-            this.columnHeader17,
-            this.columnHeader18});
-            this.listView2.HideSelection = false;
-            this.listView2.Location = new System.Drawing.Point(4, 24);
-            this.listView2.Name = "listView2";
-            this.listView2.Size = new System.Drawing.Size(813, 421);
-            this.listView2.TabIndex = 3;
-            this.listView2.UseCompatibleStateImageBehavior = false;
-            this.listView2.View = System.Windows.Forms.View.Details;
-            // 
-            // columnHeader10
-            // 
-            this.columnHeader10.Text = "      Partition";
-            this.columnHeader10.Width = 145;
-            // 
-            // columnHeader11
-            // 
-            this.columnHeader11.Text = "LUN";
-            this.columnHeader11.Width = 70;
-            // 
-            // columnHeader12
-            // 
-            this.columnHeader12.Text = "Size";
-            // 
-            // columnHeader13
-            // 
-            this.columnHeader13.Text = "Start Sector";
-            this.columnHeader13.Width = 90;
-            // 
-            // columnHeader14
-            // 
-            this.columnHeader14.Text = "End Sector";
-            this.columnHeader14.Width = 90;
-            // 
-            // columnHeader15
-            // 
-            this.columnHeader15.Text = "Sector Count";
-            this.columnHeader15.Width = 90;
-            // 
-            // columnHeader16
-            // 
-            this.columnHeader16.Text = "Start Address";
-            this.columnHeader16.Width = 90;
-            // 
-            // columnHeader17
-            // 
-            this.columnHeader17.Text = "End Address";
-            this.columnHeader17.Width = 90;
-            // 
-            // columnHeader18
-            // 
-            this.columnHeader18.Text = "File Path";
-            this.columnHeader18.Width = 150;
-            // 
-            // radio3
-            // 
-            this.radio3.Location = new System.Drawing.Point(676, 3);
-            this.radio3.Name = "radio3";
-            this.radio3.Size = new System.Drawing.Size(60, 33);
-            this.radio3.TabIndex = 119;
-            this.radio3.Text = "UFS";
-            // 
-            // checkbox14
-            // 
-            this.checkbox14.Location = new System.Drawing.Point(587, 3);
-            this.checkbox14.Name = "checkbox14";
-            this.checkbox14.Size = new System.Drawing.Size(93, 33);
-            this.checkbox14.TabIndex = 118;
-            this.checkbox14.Text = "Auto";
-            // 
-            // uiButton6
-            // 
-            this.uiButton6.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton6.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton6.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton6.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton6.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiButton6.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton6.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton6.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton6.Location = new System.Drawing.Point(3, 623);
-            this.uiButton6.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton6.Name = "uiButton6";
-            this.uiButton6.Radius = 10;
-            this.uiButton6.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton6.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton6.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
-            this.uiButton6.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.uiButton6.Size = new System.Drawing.Size(140, 34);
-            this.uiButton6.TabIndex = 104;
-            this.uiButton6.Text = "Read GPT";
-            this.uiButton6.TipsFont = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // radio4
-            // 
-            this.radio4.Location = new System.Drawing.Point(737, 3);
-            this.radio4.Name = "radio4";
-            this.radio4.Size = new System.Drawing.Size(86, 33);
-            this.radio4.TabIndex = 116;
-            this.radio4.Text = "eMMC";
-            // 
-            // uiButton7
-            // 
-            this.uiButton7.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton7.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton7.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton7.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton7.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
-            this.uiButton7.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton7.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton7.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton7.Location = new System.Drawing.Point(148, 623);
-            this.uiButton7.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton7.Name = "uiButton7";
-            this.uiButton7.Radius = 10;
-            this.uiButton7.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton7.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton7.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
-            this.uiButton7.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.uiButton7.Size = new System.Drawing.Size(140, 34);
-            this.uiButton7.TabIndex = 103;
-            this.uiButton7.Text = "Read Partition";
-            this.uiButton7.TipsFont = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // input8
-            // 
-            this.input8.Location = new System.Drawing.Point(4, 40);
-            this.input8.Name = "input8";
-            this.input8.PlaceholderText = "Double click to select Loader";
-            this.input8.PrefixSvg = "FolderOutlined";
-            this.input8.Size = new System.Drawing.Size(821, 35);
-            this.input8.TabIndex = 114;
-            this.input8.WaveSize = 0;
-            // 
-            // uiButton8
-            // 
-            this.uiButton8.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton8.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton8.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton8.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton8.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(128)))));
-            this.uiButton8.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton8.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton8.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton8.Location = new System.Drawing.Point(294, 623);
-            this.uiButton8.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton8.Name = "uiButton8";
-            this.uiButton8.Radius = 10;
-            this.uiButton8.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton8.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton8.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(128)))));
-            this.uiButton8.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton8.Size = new System.Drawing.Size(140, 34);
-            this.uiButton8.TabIndex = 102;
-            this.uiButton8.Text = "Write Partition";
-            this.uiButton8.TipsFont = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // uiButton9
-            // 
-            this.uiButton9.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.uiButton9.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton9.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton9.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton9.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
-            this.uiButton9.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton9.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.uiButton9.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.uiButton9.Location = new System.Drawing.Point(440, 623);
-            this.uiButton9.MinimumSize = new System.Drawing.Size(1, 1);
-            this.uiButton9.Name = "uiButton9";
-            this.uiButton9.Radius = 10;
-            this.uiButton9.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton9.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
-            this.uiButton9.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
-            this.uiButton9.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.uiButton9.Size = new System.Drawing.Size(140, 34);
-            this.uiButton9.TabIndex = 101;
-            this.uiButton9.Text = "Erase Partition";
-            this.uiButton9.TipsFont = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            // 
-            // input9
-            // 
-            this.input9.Location = new System.Drawing.Point(4, 79);
-            this.input9.Name = "input9";
-            this.input9.PlaceholderText = "Double click to select Digest";
-            this.input9.PrefixSvg = "FolderOutlined";
-            this.input9.Size = new System.Drawing.Size(409, 35);
-            this.input9.TabIndex = 113;
-            this.input9.WaveSize = 0;
-            // 
-            // checkbox15
-            // 
-            this.checkbox15.Location = new System.Drawing.Point(3, 597);
-            this.checkbox15.Name = "checkbox15";
-            this.checkbox15.Size = new System.Drawing.Size(95, 24);
-            this.checkbox15.TabIndex = 105;
-            this.checkbox15.Text = "Auto Reboot";
-            // 
-            // checkbox16
-            // 
-            this.checkbox16.Location = new System.Drawing.Point(362, 597);
-            this.checkbox16.Name = "checkbox16";
-            this.checkbox16.Size = new System.Drawing.Size(100, 24);
-            this.checkbox16.TabIndex = 108;
-            this.checkbox16.Text = "Protect Partition";
-            // 
-            // checkbox17
-            // 
-            this.checkbox17.Location = new System.Drawing.Point(456, 597);
-            this.checkbox17.Name = "checkbox17";
-            this.checkbox17.Size = new System.Drawing.Size(108, 24);
-            this.checkbox17.TabIndex = 111;
-            this.checkbox17.Text = "oldoneplus";
-            // 
-            // checkbox18
-            // 
-            this.checkbox18.Location = new System.Drawing.Point(686, 597);
-            this.checkbox18.Name = "checkbox18";
-            this.checkbox18.Size = new System.Drawing.Size(117, 24);
-            this.checkbox18.TabIndex = 112;
-            this.checkbox18.Text = "MetaSuper";
-            // 
-            // checkbox19
-            // 
-            this.checkbox19.Location = new System.Drawing.Point(567, 597);
-            this.checkbox19.Name = "checkbox19";
-            this.checkbox19.Size = new System.Drawing.Size(113, 24);
-            this.checkbox19.TabIndex = 110;
-            this.checkbox19.Text = "oplus";
-            // 
-            // checkbox20
-            // 
-            this.checkbox20.Location = new System.Drawing.Point(272, 597);
-            this.checkbox20.Name = "checkbox20";
-            this.checkbox20.Size = new System.Drawing.Size(91, 24);
-            this.checkbox20.TabIndex = 109;
-            this.checkbox20.Text = "Keep Data";
-            // 
-            // select4
-            // 
-            this.select4.Items.AddRange(new object[] {
-            "boot",
-            "init_boot",
-            "super",
-            "system",
-            "vbmeta",
-            "recovery"});
-            this.select4.Location = new System.Drawing.Point(584, 623);
-            this.select4.MaxCount = 3;
-            this.select4.Name = "select4";
-            this.select4.PlaceholderText = "Find Partition";
-            this.select4.PrefixSvg = "SearchOutlined";
-            this.select4.SelectionColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
-            this.select4.Size = new System.Drawing.Size(241, 34);
-            this.select4.TabIndex = 117;
-            this.select4.WaveSize = 0;
             // 
             // tabPage3
             // 
@@ -1174,13 +770,13 @@ namespace LoveAlways
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.Size = new System.Drawing.Size(829, 659);
             this.tabPage3.TabIndex = 5;
-            this.tabPage3.Text = "Boot Mode";
+            this.tabPage3.Text = "Fastboot Mode";
             // 
             // checkbox7
             // 
-            this.checkbox7.Location = new System.Drawing.Point(288, 559);
+            this.checkbox7.Location = new System.Drawing.Point(317, 559);
             this.checkbox7.Name = "checkbox7";
-            this.checkbox7.Size = new System.Drawing.Size(91, 24);
+            this.checkbox7.Size = new System.Drawing.Size(108, 24);
             this.checkbox7.TabIndex = 154;
             this.checkbox7.Text = "Oplus Flash";
             // 
@@ -1274,18 +870,18 @@ namespace LoveAlways
             // 
             // checkbox22
             // 
-            this.checkbox22.Location = new System.Drawing.Point(498, 560);
+            this.checkbox22.Location = new System.Drawing.Point(531, 560);
             this.checkbox22.Name = "checkbox22";
-            this.checkbox22.Size = new System.Drawing.Size(91, 24);
+            this.checkbox22.Size = new System.Drawing.Size(107, 24);
             this.checkbox22.TabIndex = 109;
             this.checkbox22.Text = "Wipe Data";
             this.checkbox22.CheckedChanged += new AntdUI.BoolEventHandler(this.checkbox22_CheckedChanged);
             // 
             // checkbox21
             // 
-            this.checkbox21.Location = new System.Drawing.Point(611, 559);
+            this.checkbox21.Location = new System.Drawing.Point(639, 559);
             this.checkbox21.Name = "checkbox21";
-            this.checkbox21.Size = new System.Drawing.Size(91, 24);
+            this.checkbox21.Size = new System.Drawing.Size(84, 24);
             this.checkbox21.TabIndex = 108;
             this.checkbox21.Text = "Lock BL";
             // 
@@ -1357,7 +953,7 @@ namespace LoveAlways
             // 
             // checkbox43
             // 
-            this.checkbox43.Location = new System.Drawing.Point(708, 559);
+            this.checkbox43.Location = new System.Drawing.Point(721, 559);
             this.checkbox43.Name = "checkbox43";
             this.checkbox43.Size = new System.Drawing.Size(104, 24);
             this.checkbox43.TabIndex = 101;
@@ -1375,9 +971,9 @@ namespace LoveAlways
             // 
             // checkbox41
             // 
-            this.checkbox41.Location = new System.Drawing.Point(93, 559);
+            this.checkbox41.Location = new System.Drawing.Point(91, 559);
             this.checkbox41.Name = "checkbox41";
-            this.checkbox41.Size = new System.Drawing.Size(95, 24);
+            this.checkbox41.Size = new System.Drawing.Size(119, 24);
             this.checkbox41.TabIndex = 85;
             this.checkbox41.Text = "Switch Slot A";
             // 
@@ -1563,23 +1159,793 @@ namespace LoveAlways
             this.checkbox44.Name = "checkbox44";
             this.checkbox44.Size = new System.Drawing.Size(95, 24);
             this.checkbox44.TabIndex = 83;
-            this.checkbox44.Text = "Auto Reboot";
+            this.checkbox44.Text = "Reboot";
             // 
             // checkbox45
             // 
-            this.checkbox45.Location = new System.Drawing.Point(187, 559);
+            this.checkbox45.Location = new System.Drawing.Point(217, 559);
             this.checkbox45.Name = "checkbox45";
-            this.checkbox45.Size = new System.Drawing.Size(95, 24);
+            this.checkbox45.Size = new System.Drawing.Size(97, 24);
             this.checkbox45.TabIndex = 84;
             this.checkbox45.Text = "FBD Flash";
             // 
             // checkbox50
             // 
-            this.checkbox50.Location = new System.Drawing.Point(396, 559);
+            this.checkbox50.Location = new System.Drawing.Point(426, 559);
             this.checkbox50.Name = "checkbox50";
-            this.checkbox50.Size = new System.Drawing.Size(91, 24);
+            this.checkbox50.Size = new System.Drawing.Size(104, 24);
             this.checkbox50.TabIndex = 87;
             this.checkbox50.Text = "Keep Data";
+            // 
+            // tabPage1
+            // 
+            this.tabPage1.Controls.Add(this.labelDevRoot);
+            this.tabPage1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage1.Location = new System.Drawing.Point(0, 33);
+            this.tabPage1.Name = "tabPage1";
+            this.tabPage1.Size = new System.Drawing.Size(829, 659);
+            this.tabPage1.TabIndex = 6;
+            this.tabPage1.Text = "Auto Root";
+            // 
+            // labelDevRoot
+            // 
+            this.labelDevRoot.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.labelDevRoot.Font = new System.Drawing.Font("Microsoft YaHei", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.labelDevRoot.ForeColor = System.Drawing.Color.Silver;
+            this.labelDevRoot.Location = new System.Drawing.Point(0, 0);
+            this.labelDevRoot.Name = "labelDevRoot";
+            this.labelDevRoot.Size = new System.Drawing.Size(829, 659);
+            this.labelDevRoot.TabIndex = 0;
+            this.labelDevRoot.Text = "In Development...";
+            this.labelDevRoot.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // tabPage2
+            // 
+            this.tabPage2.Controls.Add(this.checkbox11);
+            this.tabPage2.Controls.Add(this.checkbox12);
+            this.tabPage2.Controls.Add(this.input6);
+            this.tabPage2.Controls.Add(this.button4);
+            this.tabPage2.Controls.Add(this.select3);
+            this.tabPage2.Controls.Add(this.input7);
+            this.tabPage2.Controls.Add(this.uiGroupBox4);
+            this.tabPage2.Controls.Add(this.radio3);
+            this.tabPage2.Controls.Add(this.checkbox14);
+            this.tabPage2.Controls.Add(this.uiButton6);
+            this.tabPage2.Controls.Add(this.radio4);
+            this.tabPage2.Controls.Add(this.uiButton7);
+            this.tabPage2.Controls.Add(this.input8);
+            this.tabPage2.Controls.Add(this.uiButton8);
+            this.tabPage2.Controls.Add(this.uiButton9);
+            this.tabPage2.Controls.Add(this.input9);
+            this.tabPage2.Controls.Add(this.checkbox15);
+            this.tabPage2.Controls.Add(this.checkbox16);
+            this.tabPage2.Controls.Add(this.checkbox17);
+            this.tabPage2.Controls.Add(this.checkbox18);
+            this.tabPage2.Controls.Add(this.checkbox19);
+            this.tabPage2.Controls.Add(this.checkbox20);
+            this.tabPage2.Controls.Add(this.select4);
+            this.tabPage2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage2.Location = new System.Drawing.Point(0, 33);
+            this.tabPage2.Name = "tabPage2";
+            this.tabPage2.Size = new System.Drawing.Size(829, 659);
+            this.tabPage2.TabIndex = 1;
+            this.tabPage2.Text = "Qualcomm Platform";
+            // 
+            // checkbox11
+            // 
+            this.checkbox11.Location = new System.Drawing.Point(229, 597);
+            this.checkbox11.Name = "checkbox11";
+            this.checkbox11.Size = new System.Drawing.Size(130, 24);
+            this.checkbox11.TabIndex = 106;
+            this.checkbox11.Text = "Generate XML";
+            // 
+            // checkbox12
+            // 
+            this.checkbox12.Location = new System.Drawing.Point(83, 597);
+            this.checkbox12.Name = "checkbox12";
+            this.checkbox12.Size = new System.Drawing.Size(147, 24);
+            this.checkbox12.TabIndex = 107;
+            this.checkbox12.Text = "Skip Bootloader";
+            // 
+            // input6
+            // 
+            this.input6.Location = new System.Drawing.Point(4, 118);
+            this.input6.Name = "input6";
+            this.input6.PlaceholderText = "Select Raw XML";
+            this.input6.PrefixSvg = "FolderOutlined";
+            this.input6.Size = new System.Drawing.Size(681, 35);
+            this.input6.TabIndex = 122;
+            this.input6.WaveSize = 0;
+            // 
+            // button4
+            // 
+            this.button4.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(223)))), ((int)(((byte)(200)))), ((int)(((byte)(239)))));
+            this.button4.Location = new System.Drawing.Point(688, 118);
+            this.button4.Name = "button4";
+            this.button4.Size = new System.Drawing.Size(137, 35);
+            this.button4.TabIndex = 121;
+            this.button4.Text = "Browse";
+            this.button4.WaveSize = 0;
+            // 
+            // select3
+            // 
+            this.select3.Items.AddRange(new object[] {
+            "Auto Identify or Select Loader",
+            "[VIP] SM8750 - Snapdragon 8Elite",
+            "[VIP] SM8735 - Snapdragon 8SGen4",
+            "[VIP] SM8650 - Snapdragon 8Gen3",
+            "[VIP] SM8550_1 - Snapdragon 8Gen2 V2.6",
+            "[VIP] SM8550_2 - Snapdragon 8Gen2 V2.7",
+            "[VIP] SM8475 - Snapdragon 8+Gen1",
+            "[VIP] SM8450 - Snapdragon 8Gen1",
+            "[VIP] SM8350 - Snapdragon 888/888+",
+            "[VIP] SM7550 - Snapdragon 7+Gen3",
+            "[VIP] SM7475 - Snapdragon 7+Gen2",
+            "[VIP] SM7450 - Snapdragon 7Gen1",
+            "[VIP] SM7325 - Snapdragon 6G1/7SG2",
+            "[VIP] SM6375 - Snapdragon 695/6SGen3",
+            "[VIP] SM6225 - Snapdragon 480",
+            "[VIP] SM6115 - Snapdragon 460"});
+            this.select3.List = true;
+            this.select3.Location = new System.Drawing.Point(4, 1);
+            this.select3.MaxCount = 6;
+            this.select3.Name = "select3";
+            this.select3.PrefixSvg = "HarmonyOSOutlined";
+            this.select3.SelectionColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.select3.Size = new System.Drawing.Size(585, 35);
+            this.select3.TabIndex = 115;
+            this.select3.Text = "Auto Identify or Select Loader";
+            this.select3.WaveSize = 0;
+            // 
+            // input7
+            // 
+            this.input7.Location = new System.Drawing.Point(416, 79);
+            this.input7.Name = "input7";
+            this.input7.PlaceholderText = "Double click to select Signature";
+            this.input7.PrefixSvg = "FolderOutlined";
+            this.input7.Size = new System.Drawing.Size(409, 35);
+            this.input7.TabIndex = 120;
+            this.input7.WaveSize = 0;
+            // 
+            // uiGroupBox4
+            // 
+            this.uiGroupBox4.Controls.Add(this.checkbox13);
+            this.uiGroupBox4.Controls.Add(this.listView2);
+            this.uiGroupBox4.FillColor = System.Drawing.Color.Transparent;
+            this.uiGroupBox4.FillColor2 = System.Drawing.Color.Transparent;
+            this.uiGroupBox4.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiGroupBox4.Location = new System.Drawing.Point(4, 146);
+            this.uiGroupBox4.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.uiGroupBox4.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiGroupBox4.Name = "uiGroupBox4";
+            this.uiGroupBox4.Padding = new System.Windows.Forms.Padding(0, 32, 0, 0);
+            this.uiGroupBox4.Radius = 14;
+            this.uiGroupBox4.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiGroupBox4.Size = new System.Drawing.Size(821, 449);
+            this.uiGroupBox4.TabIndex = 100;
+            this.uiGroupBox4.Text = "Partition Table";
+            this.uiGroupBox4.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // checkbox13
+            // 
+            this.checkbox13.Font = new System.Drawing.Font("Microsoft YaHei", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.checkbox13.Location = new System.Drawing.Point(6, 26);
+            this.checkbox13.Name = "checkbox13";
+            this.checkbox13.Size = new System.Drawing.Size(21, 21);
+            this.checkbox13.TabIndex = 14;
+            this.checkbox13.Text = "";
+            // 
+            // listView2
+            // 
+            this.listView2.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.listView2.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.columnHeader10,
+            this.columnHeader11,
+            this.columnHeader12,
+            this.columnHeader13,
+            this.columnHeader14,
+            this.columnHeader15,
+            this.columnHeader16,
+            this.columnHeader17,
+            this.columnHeader18});
+            this.listView2.HideSelection = false;
+            this.listView2.Location = new System.Drawing.Point(4, 24);
+            this.listView2.Name = "listView2";
+            this.listView2.Size = new System.Drawing.Size(813, 421);
+            this.listView2.TabIndex = 3;
+            this.listView2.UseCompatibleStateImageBehavior = false;
+            this.listView2.View = System.Windows.Forms.View.Details;
+            // 
+            // columnHeader10
+            // 
+            this.columnHeader10.Text = "      Partition";
+            this.columnHeader10.Width = 145;
+            // 
+            // columnHeader11
+            // 
+            this.columnHeader11.Text = "LUN";
+            this.columnHeader11.Width = 70;
+            // 
+            // columnHeader12
+            // 
+            this.columnHeader12.Text = "Size";
+            // 
+            // columnHeader13
+            // 
+            this.columnHeader13.Text = "Start";
+            this.columnHeader13.Width = 90;
+            // 
+            // columnHeader14
+            // 
+            this.columnHeader14.Text = "End";
+            this.columnHeader14.Width = 90;
+            // 
+            // columnHeader15
+            // 
+            this.columnHeader15.Text = "Sector";
+            this.columnHeader15.Width = 90;
+            // 
+            // columnHeader16
+            // 
+            this.columnHeader16.Text = "Start Addr";
+            this.columnHeader16.Width = 90;
+            // 
+            // columnHeader17
+            // 
+            this.columnHeader17.Text = "End Addr";
+            this.columnHeader17.Width = 90;
+            // 
+            // columnHeader18
+            // 
+            this.columnHeader18.Text = "File Path";
+            this.columnHeader18.Width = 150;
+            // 
+            // radio3
+            // 
+            this.radio3.Location = new System.Drawing.Point(676, 3);
+            this.radio3.Name = "radio3";
+            this.radio3.Size = new System.Drawing.Size(60, 33);
+            this.radio3.TabIndex = 119;
+            this.radio3.Text = "UFS";
+            // 
+            // checkbox14
+            // 
+            this.checkbox14.Location = new System.Drawing.Point(595, 3);
+            this.checkbox14.Name = "checkbox14";
+            this.checkbox14.Size = new System.Drawing.Size(80, 33);
+            this.checkbox14.TabIndex = 118;
+            this.checkbox14.Text = "Auto";
+            // 
+            // uiButton6
+            // 
+            this.uiButton6.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton6.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton6.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton6.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton6.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiButton6.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton6.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton6.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton6.Location = new System.Drawing.Point(3, 623);
+            this.uiButton6.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton6.Name = "uiButton6";
+            this.uiButton6.Radius = 10;
+            this.uiButton6.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton6.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton6.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(128)))), ((int)(((byte)(255)))));
+            this.uiButton6.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.uiButton6.Size = new System.Drawing.Size(140, 34);
+            this.uiButton6.TabIndex = 104;
+            this.uiButton6.Text = "Read GPT";
+            this.uiButton6.TipsFont = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // radio4
+            // 
+            this.radio4.Location = new System.Drawing.Point(737, 3);
+            this.radio4.Name = "radio4";
+            this.radio4.Size = new System.Drawing.Size(86, 33);
+            this.radio4.TabIndex = 116;
+            this.radio4.Text = "eMMC";
+            // 
+            // uiButton7
+            // 
+            this.uiButton7.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton7.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton7.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton7.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton7.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
+            this.uiButton7.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton7.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton7.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton7.Location = new System.Drawing.Point(148, 623);
+            this.uiButton7.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton7.Name = "uiButton7";
+            this.uiButton7.Radius = 10;
+            this.uiButton7.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton7.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton7.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
+            this.uiButton7.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
+            this.uiButton7.Size = new System.Drawing.Size(140, 34);
+            this.uiButton7.TabIndex = 103;
+            this.uiButton7.Text = "Read Partition";
+            this.uiButton7.TipsFont = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // input8
+            // 
+            this.input8.Location = new System.Drawing.Point(4, 40);
+            this.input8.Name = "input8";
+            this.input8.PlaceholderText = "Double click to select Loader";
+            this.input8.PrefixSvg = "FolderOutlined";
+            this.input8.Size = new System.Drawing.Size(821, 35);
+            this.input8.TabIndex = 114;
+            this.input8.WaveSize = 0;
+            // 
+            // uiButton8
+            // 
+            this.uiButton8.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton8.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton8.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton8.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton8.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(128)))));
+            this.uiButton8.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton8.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton8.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton8.Location = new System.Drawing.Point(294, 623);
+            this.uiButton8.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton8.Name = "uiButton8";
+            this.uiButton8.Radius = 10;
+            this.uiButton8.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton8.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton8.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(128)))));
+            this.uiButton8.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton8.Size = new System.Drawing.Size(140, 34);
+            this.uiButton8.TabIndex = 102;
+            this.uiButton8.Text = "Write Partition";
+            this.uiButton8.TipsFont = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // uiButton9
+            // 
+            this.uiButton9.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.uiButton9.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton9.FillColor2 = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton9.FillHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton9.FillPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
+            this.uiButton9.FillSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton9.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.uiButton9.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.uiButton9.Location = new System.Drawing.Point(440, 623);
+            this.uiButton9.MinimumSize = new System.Drawing.Size(1, 1);
+            this.uiButton9.Name = "uiButton9";
+            this.uiButton9.Radius = 10;
+            this.uiButton9.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton9.RectHoverColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(224)))), ((int)(((byte)(192)))));
+            this.uiButton9.RectPressColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
+            this.uiButton9.RectSelectedColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
+            this.uiButton9.Size = new System.Drawing.Size(140, 34);
+            this.uiButton9.TabIndex = 101;
+            this.uiButton9.Text = "Erase Partition";
+            this.uiButton9.TipsFont = new System.Drawing.Font("Microsoft YaHei", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            // 
+            // input9
+            // 
+            this.input9.Location = new System.Drawing.Point(4, 79);
+            this.input9.Name = "input9";
+            this.input9.PlaceholderText = "Double click to select Digest";
+            this.input9.PrefixSvg = "FolderOutlined";
+            this.input9.Size = new System.Drawing.Size(409, 35);
+            this.input9.TabIndex = 113;
+            this.input9.WaveSize = 0;
+            // 
+            // checkbox15
+            // 
+            this.checkbox15.Location = new System.Drawing.Point(-2, 597);
+            this.checkbox15.Name = "checkbox15";
+            this.checkbox15.Size = new System.Drawing.Size(89, 24);
+            this.checkbox15.TabIndex = 105;
+            this.checkbox15.Text = "Reboot";
+            // 
+            // checkbox16
+            // 
+            this.checkbox16.Location = new System.Drawing.Point(462, 597);
+            this.checkbox16.Name = "checkbox16";
+            this.checkbox16.Size = new System.Drawing.Size(88, 24);
+            this.checkbox16.TabIndex = 108;
+            this.checkbox16.Text = "Protect";
+            // 
+            // checkbox17
+            // 
+            this.checkbox17.Location = new System.Drawing.Point(549, 597);
+            this.checkbox17.Name = "checkbox17";
+            this.checkbox17.Size = new System.Drawing.Size(94, 24);
+            this.checkbox17.TabIndex = 111;
+            this.checkbox17.Text = "oplus old";
+            // 
+            // checkbox18
+            // 
+            this.checkbox18.Location = new System.Drawing.Point(713, 597);
+            this.checkbox18.Name = "checkbox18";
+            this.checkbox18.Size = new System.Drawing.Size(104, 24);
+            this.checkbox18.TabIndex = 112;
+            this.checkbox18.Text = "MetaSuper";
+            // 
+            // checkbox19
+            // 
+            this.checkbox19.Location = new System.Drawing.Point(644, 597);
+            this.checkbox19.Name = "checkbox19";
+            this.checkbox19.Size = new System.Drawing.Size(71, 24);
+            this.checkbox19.TabIndex = 110;
+            this.checkbox19.Text = "oplus";
+            // 
+            // checkbox20
+            // 
+            this.checkbox20.Location = new System.Drawing.Point(356, 597);
+            this.checkbox20.Name = "checkbox20";
+            this.checkbox20.Size = new System.Drawing.Size(107, 24);
+            this.checkbox20.TabIndex = 109;
+            this.checkbox20.Text = "Keep Data";
+            // 
+            // select4
+            // 
+            this.select4.Items.AddRange(new object[] {
+            "boot",
+            "init_boot",
+            "super",
+            "system",
+            "vbmeta",
+            "recovery"});
+            this.select4.Location = new System.Drawing.Point(584, 623);
+            this.select4.MaxCount = 3;
+            this.select4.Name = "select4";
+            this.select4.PlaceholderText = "Find Partition";
+            this.select4.PrefixSvg = "SearchOutlined";
+            this.select4.SelectionColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(192)))), ((int)(((byte)(255)))));
+            this.select4.Size = new System.Drawing.Size(241, 34);
+            this.select4.TabIndex = 117;
+            this.select4.WaveSize = 0;
+            // 
+            // tabPage4
+            // 
+            this.tabPage4.Controls.Add(this.mtkLblDaMode);
+            this.tabPage4.Controls.Add(this.mtkLblChipName);
+            this.tabPage4.Controls.Add(this.mtkLblHwCode);
+            this.tabPage4.Controls.Add(this.mtkLblStatus);
+            this.tabPage4.Controls.Add(this.mtkChkRebootAfter);
+            this.tabPage4.Controls.Add(this.mtkChkSkipUserdata);
+            this.tabPage4.Controls.Add(this.mtkChkExploit);
+            this.tabPage4.Controls.Add(this.mtkBtnExploit);
+            this.tabPage4.Controls.Add(this.mtkSelectExploitType);
+            this.tabPage4.Controls.Add(this.mtkBtnUnlockBl);
+            this.tabPage4.Controls.Add(this.mtkBtnFormatData);
+            this.tabPage4.Controls.Add(this.mtkBtnRestoreNvram);
+            this.tabPage4.Controls.Add(this.mtkBtnBackupNvram);
+            this.tabPage4.Controls.Add(this.mtkBtnWriteImei);
+            this.tabPage4.Controls.Add(this.mtkBtnReadImei);
+            this.tabPage4.Controls.Add(this.mtkBtnReboot);
+            this.tabPage4.Controls.Add(this.mtkBtnErasePartition);
+            this.tabPage4.Controls.Add(this.mtkBtnReadPartition);
+            this.tabPage4.Controls.Add(this.mtkBtnWritePartition);
+            this.tabPage4.Controls.Add(this.mtkBtnReadGpt);
+            this.tabPage4.Controls.Add(this.mtkInputScatterFile);
+            this.tabPage4.Controls.Add(this.mtkInputDaFile);
+            this.tabPage4.Controls.Add(this.mtkSelectChip);
+            this.tabPage4.Controls.Add(this.mtkGrpPartitions);
+            this.tabPage4.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPage4.Location = new System.Drawing.Point(0, 33);
+            this.tabPage4.Name = "tabPage4";
+            this.tabPage4.Size = new System.Drawing.Size(829, 659);
+            this.tabPage4.TabIndex = 2;
+            this.tabPage4.Text = "MediaTek Platform";
+            // 
+            // mtkLblDaMode
+            // 
+            this.mtkLblDaMode.AutoSize = true;
+            this.mtkLblDaMode.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
+            this.mtkLblDaMode.ForeColor = System.Drawing.Color.Gray;
+            this.mtkLblDaMode.Location = new System.Drawing.Point(490, 52);
+            this.mtkLblDaMode.Name = "mtkLblDaMode";
+            this.mtkLblDaMode.Size = new System.Drawing.Size(60, 17);
+            this.mtkLblDaMode.TabIndex = 24;
+            this.mtkLblDaMode.Text = "Mode: --";
+            // 
+            // mtkLblChipName
+            // 
+            this.mtkLblChipName.AutoSize = true;
+            this.mtkLblChipName.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
+            this.mtkLblChipName.ForeColor = System.Drawing.Color.Gray;
+            this.mtkLblChipName.Location = new System.Drawing.Point(400, 52);
+            this.mtkLblChipName.Name = "mtkLblChipName";
+            this.mtkLblChipName.Size = new System.Drawing.Size(51, 17);
+            this.mtkLblChipName.TabIndex = 23;
+            this.mtkLblChipName.Text = "Chip: --";
+            // 
+            // mtkLblHwCode
+            // 
+            this.mtkLblHwCode.AutoSize = true;
+            this.mtkLblHwCode.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
+            this.mtkLblHwCode.ForeColor = System.Drawing.Color.Gray;
+            this.mtkLblHwCode.Location = new System.Drawing.Point(320, 52);
+            this.mtkLblHwCode.Name = "mtkLblHwCode";
+            this.mtkLblHwCode.Size = new System.Drawing.Size(46, 17);
+            this.mtkLblHwCode.TabIndex = 22;
+            this.mtkLblHwCode.Text = "HW: --";
+            // 
+            // mtkLblStatus
+            // 
+            this.mtkLblStatus.AutoSize = true;
+            this.mtkLblStatus.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
+            this.mtkLblStatus.ForeColor = System.Drawing.Color.Gray;
+            this.mtkLblStatus.Location = new System.Drawing.Point(3, 640);
+            this.mtkLblStatus.Name = "mtkLblStatus";
+            this.mtkLblStatus.Size = new System.Drawing.Size(128, 17);
+            this.mtkLblStatus.TabIndex = 21;
+            this.mtkLblStatus.Text = "Status: Disconnected";
+            // 
+            // mtkChkRebootAfter
+            // 
+            this.mtkChkRebootAfter.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
+            this.mtkChkRebootAfter.Location = new System.Drawing.Point(210, 45);
+            this.mtkChkRebootAfter.Name = "mtkChkRebootAfter";
+            this.mtkChkRebootAfter.Size = new System.Drawing.Size(78, 35);
+            this.mtkChkRebootAfter.TabIndex = 18;
+            this.mtkChkRebootAfter.Text = "Reboot";
+            // 
+            // mtkChkSkipUserdata
+            // 
+            this.mtkChkSkipUserdata.Checked = true;
+            this.mtkChkSkipUserdata.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
+            this.mtkChkSkipUserdata.Location = new System.Drawing.Point(100, 45);
+            this.mtkChkSkipUserdata.Name = "mtkChkSkipUserdata";
+            this.mtkChkSkipUserdata.Size = new System.Drawing.Size(110, 35);
+            this.mtkChkSkipUserdata.TabIndex = 17;
+            this.mtkChkSkipUserdata.Text = "Skip Userdata";
+            // 
+            // mtkChkExploit
+            // 
+            this.mtkChkExploit.Checked = true;
+            this.mtkChkExploit.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
+            this.mtkChkExploit.Location = new System.Drawing.Point(4, 45);
+            this.mtkChkExploit.Name = "mtkChkExploit";
+            this.mtkChkExploit.Size = new System.Drawing.Size(100, 35);
+            this.mtkChkExploit.TabIndex = 16;
+            this.mtkChkExploit.Text = "Use Exploit";
+            // 
+            // mtkBtnExploit
+            // 
+            this.mtkBtnExploit.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(180)))), ((int)(((byte)(180)))));
+            this.mtkBtnExploit.Location = new System.Drawing.Point(584, 560);
+            this.mtkBtnExploit.Name = "mtkBtnExploit";
+            this.mtkBtnExploit.Size = new System.Drawing.Size(120, 35);
+            this.mtkBtnExploit.TabIndex = 20;
+            this.mtkBtnExploit.Text = "Execute Exploit";
+            this.mtkBtnExploit.Type = AntdUI.TTypeMini.Warn;
+            this.mtkBtnExploit.WaveSize = 0;
+            // 
+            // mtkSelectExploitType
+            // 
+            this.mtkSelectExploitType.Location = new System.Drawing.Point(210, 5);
+            this.mtkSelectExploitType.Name = "mtkSelectExploitType";
+            this.mtkSelectExploitType.PlaceholderText = "Exploit Type";
+            this.mtkSelectExploitType.Size = new System.Drawing.Size(159, 35);
+            this.mtkSelectExploitType.TabIndex = 21;
+            this.mtkSelectExploitType.WaveSize = 0;
+            // 
+            // mtkBtnUnlockBl
+            // 
+            this.mtkBtnUnlockBl.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(200)))), ((int)(((byte)(255)))));
+            this.mtkBtnUnlockBl.Location = new System.Drawing.Point(584, 600);
+            this.mtkBtnUnlockBl.Name = "mtkBtnUnlockBl";
+            this.mtkBtnUnlockBl.Size = new System.Drawing.Size(120, 35);
+            this.mtkBtnUnlockBl.TabIndex = 15;
+            this.mtkBtnUnlockBl.Text = "Unlock BL";
+            this.mtkBtnUnlockBl.WaveSize = 0;
+            // 
+            // mtkBtnFormatData
+            // 
+            this.mtkBtnFormatData.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(200)))), ((int)(((byte)(200)))));
+            this.mtkBtnFormatData.Location = new System.Drawing.Point(468, 600);
+            this.mtkBtnFormatData.Name = "mtkBtnFormatData";
+            this.mtkBtnFormatData.Size = new System.Drawing.Size(110, 35);
+            this.mtkBtnFormatData.TabIndex = 14;
+            this.mtkBtnFormatData.Text = "Format Data";
+            this.mtkBtnFormatData.WaveSize = 0;
+            // 
+            // mtkBtnRestoreNvram
+            // 
+            this.mtkBtnRestoreNvram.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(255)))), ((int)(((byte)(255)))));
+            this.mtkBtnRestoreNvram.Location = new System.Drawing.Point(352, 600);
+            this.mtkBtnRestoreNvram.Name = "mtkBtnRestoreNvram";
+            this.mtkBtnRestoreNvram.Size = new System.Drawing.Size(110, 35);
+            this.mtkBtnRestoreNvram.TabIndex = 13;
+            this.mtkBtnRestoreNvram.Text = "Restore NV";
+            this.mtkBtnRestoreNvram.WaveSize = 0;
+            // 
+            // mtkBtnBackupNvram
+            // 
+            this.mtkBtnBackupNvram.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(255)))), ((int)(((byte)(255)))));
+            this.mtkBtnBackupNvram.Location = new System.Drawing.Point(236, 600);
+            this.mtkBtnBackupNvram.Name = "mtkBtnBackupNvram";
+            this.mtkBtnBackupNvram.Size = new System.Drawing.Size(110, 35);
+            this.mtkBtnBackupNvram.TabIndex = 12;
+            this.mtkBtnBackupNvram.Text = "Backup NV";
+            this.mtkBtnBackupNvram.WaveSize = 0;
+            // 
+            // mtkBtnWriteImei
+            // 
+            this.mtkBtnWriteImei.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(200)))));
+            this.mtkBtnWriteImei.Location = new System.Drawing.Point(120, 600);
+            this.mtkBtnWriteImei.Name = "mtkBtnWriteImei";
+            this.mtkBtnWriteImei.Size = new System.Drawing.Size(110, 35);
+            this.mtkBtnWriteImei.TabIndex = 11;
+            this.mtkBtnWriteImei.Text = "Write IMEI";
+            this.mtkBtnWriteImei.WaveSize = 0;
+            // 
+            // mtkBtnReadImei
+            // 
+            this.mtkBtnReadImei.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(200)))));
+            this.mtkBtnReadImei.Location = new System.Drawing.Point(4, 600);
+            this.mtkBtnReadImei.Name = "mtkBtnReadImei";
+            this.mtkBtnReadImei.Size = new System.Drawing.Size(110, 35);
+            this.mtkBtnReadImei.TabIndex = 10;
+            this.mtkBtnReadImei.Text = "Read IMEI";
+            this.mtkBtnReadImei.WaveSize = 0;
+            // 
+            // mtkBtnReboot
+            // 
+            this.mtkBtnReboot.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(230)))));
+            this.mtkBtnReboot.Location = new System.Drawing.Point(468, 560);
+            this.mtkBtnReboot.Name = "mtkBtnReboot";
+            this.mtkBtnReboot.Size = new System.Drawing.Size(110, 35);
+            this.mtkBtnReboot.TabIndex = 9;
+            this.mtkBtnReboot.Text = "Reboot Device";
+            this.mtkBtnReboot.WaveSize = 0;
+            // 
+            // mtkBtnErasePartition
+            // 
+            this.mtkBtnErasePartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(220)))), ((int)(((byte)(200)))));
+            this.mtkBtnErasePartition.Location = new System.Drawing.Point(352, 560);
+            this.mtkBtnErasePartition.Name = "mtkBtnErasePartition";
+            this.mtkBtnErasePartition.Size = new System.Drawing.Size(110, 35);
+            this.mtkBtnErasePartition.TabIndex = 8;
+            this.mtkBtnErasePartition.Text = "Erase Partition";
+            this.mtkBtnErasePartition.WaveSize = 0;
+            // 
+            // mtkBtnReadPartition
+            // 
+            this.mtkBtnReadPartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(230)))));
+            this.mtkBtnReadPartition.Location = new System.Drawing.Point(236, 560);
+            this.mtkBtnReadPartition.Name = "mtkBtnReadPartition";
+            this.mtkBtnReadPartition.Size = new System.Drawing.Size(110, 35);
+            this.mtkBtnReadPartition.TabIndex = 7;
+            this.mtkBtnReadPartition.Text = "Read Partition";
+            this.mtkBtnReadPartition.WaveSize = 0;
+            // 
+            // mtkBtnWritePartition
+            // 
+            this.mtkBtnWritePartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(255)))), ((int)(((byte)(200)))));
+            this.mtkBtnWritePartition.Location = new System.Drawing.Point(120, 560);
+            this.mtkBtnWritePartition.Name = "mtkBtnWritePartition";
+            this.mtkBtnWritePartition.Size = new System.Drawing.Size(110, 35);
+            this.mtkBtnWritePartition.TabIndex = 6;
+            this.mtkBtnWritePartition.Text = "Write Partition";
+            this.mtkBtnWritePartition.WaveSize = 0;
+            // 
+            // mtkBtnReadGpt
+            // 
+            this.mtkBtnReadGpt.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(230)))), ((int)(((byte)(255)))));
+            this.mtkBtnReadGpt.Location = new System.Drawing.Point(4, 560);
+            this.mtkBtnReadGpt.Name = "mtkBtnReadGpt";
+            this.mtkBtnReadGpt.Size = new System.Drawing.Size(110, 35);
+            this.mtkBtnReadGpt.TabIndex = 5;
+            this.mtkBtnReadGpt.Text = "Read GPT";
+            this.mtkBtnReadGpt.WaveSize = 0;
+            // 
+            // mtkInputScatterFile
+            // 
+            this.mtkInputScatterFile.AllowClear = true;
+            this.mtkInputScatterFile.Location = new System.Drawing.Point(580, 43);
+            this.mtkInputScatterFile.Name = "mtkInputScatterFile";
+            this.mtkInputScatterFile.PlaceholderText = "Scatter Config File (Optional)";
+            this.mtkInputScatterFile.PrefixSvg = "FileTextOutlined";
+            this.mtkInputScatterFile.Size = new System.Drawing.Size(230, 35);
+            this.mtkInputScatterFile.SuffixText = "Browse";
+            this.mtkInputScatterFile.TabIndex = 25;
+            this.mtkInputScatterFile.WaveSize = 0;
+            // 
+            // mtkInputDaFile
+            // 
+            this.mtkInputDaFile.AllowClear = true;
+            this.mtkInputDaFile.Location = new System.Drawing.Point(375, 5);
+            this.mtkInputDaFile.Name = "mtkInputDaFile";
+            this.mtkInputDaFile.PlaceholderText = "DA File (Optional, Auto Detect)";
+            this.mtkInputDaFile.PrefixSvg = "FolderOutlined";
+            this.mtkInputDaFile.Size = new System.Drawing.Size(435, 35);
+            this.mtkInputDaFile.SuffixText = "Browse";
+            this.mtkInputDaFile.TabIndex = 2;
+            this.mtkInputDaFile.WaveSize = 0;
+            // 
+            // mtkSelectChip
+            // 
+            this.mtkSelectChip.AllowClear = true;
+            this.mtkSelectChip.Location = new System.Drawing.Point(4, 5);
+            this.mtkSelectChip.Name = "mtkSelectChip";
+            this.mtkSelectChip.PlaceholderText = "Select Chip Model";
+            this.mtkSelectChip.PrefixSvg = "AppstoreOutlined";
+            this.mtkSelectChip.Size = new System.Drawing.Size(200, 35);
+            this.mtkSelectChip.TabIndex = 1;
+            this.mtkSelectChip.WaveSize = 0;
+            // 
+            // mtkGrpPartitions
+            // 
+            this.mtkGrpPartitions.Controls.Add(this.mtkChkSelectAll);
+            this.mtkGrpPartitions.Controls.Add(this.mtkListPartitions);
+            this.mtkGrpPartitions.FillColor = System.Drawing.Color.Transparent;
+            this.mtkGrpPartitions.FillColor2 = System.Drawing.Color.Transparent;
+            this.mtkGrpPartitions.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F);
+            this.mtkGrpPartitions.Location = new System.Drawing.Point(4, 84);
+            this.mtkGrpPartitions.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.mtkGrpPartitions.MinimumSize = new System.Drawing.Size(1, 1);
+            this.mtkGrpPartitions.Name = "mtkGrpPartitions";
+            this.mtkGrpPartitions.Padding = new System.Windows.Forms.Padding(0, 32, 0, 0);
+            this.mtkGrpPartitions.Radius = 14;
+            this.mtkGrpPartitions.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(165)))), ((int)(((byte)(0)))));
+            this.mtkGrpPartitions.Size = new System.Drawing.Size(821, 470);
+            this.mtkGrpPartitions.TabIndex = 0;
+            this.mtkGrpPartitions.Text = "Partition Table";
+            this.mtkGrpPartitions.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // mtkChkSelectAll
+            // 
+            this.mtkChkSelectAll.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
+            this.mtkChkSelectAll.Location = new System.Drawing.Point(6, 26);
+            this.mtkChkSelectAll.Name = "mtkChkSelectAll";
+            this.mtkChkSelectAll.Size = new System.Drawing.Size(21, 21);
+            this.mtkChkSelectAll.TabIndex = 0;
+            this.mtkChkSelectAll.Text = "";
+            // 
+            // mtkListPartitions
+            // 
+            this.mtkListPartitions.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.mtkListPartitions.CheckBoxes = true;
+            this.mtkListPartitions.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.mtkColPartition,
+            this.mtkColType,
+            this.mtkColSize,
+            this.mtkColAddress,
+            this.mtkColFileName});
+            this.mtkListPartitions.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
+            this.mtkListPartitions.FullRowSelect = true;
+            this.mtkListPartitions.HideSelection = false;
+            this.mtkListPartitions.Location = new System.Drawing.Point(4, 24);
+            this.mtkListPartitions.Name = "mtkListPartitions";
+            this.mtkListPartitions.Size = new System.Drawing.Size(813, 441);
+            this.mtkListPartitions.TabIndex = 1;
+            this.mtkListPartitions.UseCompatibleStateImageBehavior = false;
+            this.mtkListPartitions.View = System.Windows.Forms.View.Details;
+            // 
+            // mtkColPartition
+            // 
+            this.mtkColPartition.Text = "      Partition";
+            this.mtkColPartition.Width = 140;
+            // 
+            // mtkColType
+            // 
+            this.mtkColType.Text = "Type";
+            this.mtkColType.Width = 80;
+            // 
+            // mtkColSize
+            // 
+            this.mtkColSize.Text = "Size";
+            this.mtkColSize.Width = 100;
+            // 
+            // mtkColAddress
+            // 
+            this.mtkColAddress.Text = "Address";
+            this.mtkColAddress.Width = 120;
+            // 
+            // mtkColFileName
+            // 
+            this.mtkColFileName.Text = "Filename";
+            this.mtkColFileName.Width = 180;
             // 
             // tabPage5
             // 
@@ -1616,7 +1982,7 @@ namespace LoveAlways
             // 
             // input10
             // 
-            this.input10.Location = new System.Drawing.Point(520, 45);
+            this.input10.Location = new System.Drawing.Point(501, 45);
             this.input10.Name = "input10";
             this.input10.PlaceholderText = "FDL2 Address";
             this.input10.PrefixSvg = "FolderOutlined";
@@ -1626,21 +1992,21 @@ namespace LoveAlways
             // 
             // input5
             // 
-            this.input5.Location = new System.Drawing.Point(370, 45);
+            this.input5.Location = new System.Drawing.Point(356, 45);
             this.input5.Name = "input5";
             this.input5.PlaceholderText = "FDL1 Address";
             this.input5.PrefixSvg = "FolderOutlined";
-            this.input5.Size = new System.Drawing.Size(130, 35);
+            this.input5.Size = new System.Drawing.Size(139, 35);
             this.input5.TabIndex = 16;
             this.input5.WaveSize = 0;
             // 
             // input4
             // 
-            this.input4.Location = new System.Drawing.Point(190, 45);
+            this.input4.Location = new System.Drawing.Point(186, 45);
             this.input4.Name = "input4";
             this.input4.PlaceholderText = "FDL2";
             this.input4.PrefixSvg = "FolderOutlined";
-            this.input4.Size = new System.Drawing.Size(160, 35);
+            this.input4.Size = new System.Drawing.Size(164, 35);
             this.input4.TabIndex = 15;
             this.input4.WaveSize = 0;
             // 
@@ -1650,17 +2016,17 @@ namespace LoveAlways
             this.input2.Name = "input2";
             this.input2.PlaceholderText = "FDL1";
             this.input2.PrefixSvg = "FolderOutlined";
-            this.input2.Size = new System.Drawing.Size(160, 35);
+            this.input2.Size = new System.Drawing.Size(170, 35);
             this.input2.TabIndex = 14;
             this.input2.WaveSize = 0;
             // 
             // sprdSelectSearch
             // 
-            this.sprdSelectSearch.Location = new System.Drawing.Point(652, 603);
+            this.sprdSelectSearch.Location = new System.Drawing.Point(644, 603);
             this.sprdSelectSearch.Name = "sprdSelectSearch";
             this.sprdSelectSearch.PlaceholderText = "Search Partition";
             this.sprdSelectSearch.PrefixSvg = "SearchOutlined";
-            this.sprdSelectSearch.Size = new System.Drawing.Size(171, 35);
+            this.sprdSelectSearch.Size = new System.Drawing.Size(179, 35);
             this.sprdSelectSearch.TabIndex = 11;
             this.sprdSelectSearch.WaveSize = 0;
             // 
@@ -1685,11 +2051,11 @@ namespace LoveAlways
             // sprdBtnReboot
             // 
             this.sprdBtnReboot.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(220)))), ((int)(((byte)(220)))));
-            this.sprdBtnReboot.Location = new System.Drawing.Point(544, 560);
+            this.sprdBtnReboot.Location = new System.Drawing.Point(538, 560);
             this.sprdBtnReboot.Name = "sprdBtnReboot";
             this.sprdBtnReboot.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnReboot.TabIndex = 7;
-            this.sprdBtnReboot.Text = "Reboot Device";
+            this.sprdBtnReboot.Text = "Reboot";
             this.sprdBtnReboot.WaveSize = 0;
             // 
             // sprdBtnReadGpt
@@ -1705,11 +2071,11 @@ namespace LoveAlways
             // sprdBtnWritePartition
             // 
             this.sprdBtnWritePartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.sprdBtnWritePartition.Location = new System.Drawing.Point(112, 560);
+            this.sprdBtnWritePartition.Location = new System.Drawing.Point(114, 560);
             this.sprdBtnWritePartition.Name = "sprdBtnWritePartition";
             this.sprdBtnWritePartition.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnWritePartition.TabIndex = 3;
-            this.sprdBtnWritePartition.Text = "Write Partition";
+            this.sprdBtnWritePartition.Text = "Write";
             this.sprdBtnWritePartition.WaveSize = 0;
             // 
             // sprdBtnReadPartition
@@ -1719,23 +2085,23 @@ namespace LoveAlways
             this.sprdBtnReadPartition.Name = "sprdBtnReadPartition";
             this.sprdBtnReadPartition.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnReadPartition.TabIndex = 4;
-            this.sprdBtnReadPartition.Text = "Read Partition";
+            this.sprdBtnReadPartition.Text = "Read";
             this.sprdBtnReadPartition.WaveSize = 0;
             // 
             // sprdBtnErasePartition
             // 
             this.sprdBtnErasePartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(220)))), ((int)(((byte)(192)))));
-            this.sprdBtnErasePartition.Location = new System.Drawing.Point(328, 560);
+            this.sprdBtnErasePartition.Location = new System.Drawing.Point(326, 560);
             this.sprdBtnErasePartition.Name = "sprdBtnErasePartition";
             this.sprdBtnErasePartition.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnErasePartition.TabIndex = 5;
-            this.sprdBtnErasePartition.Text = "Erase Partition";
+            this.sprdBtnErasePartition.Text = "Erase";
             this.sprdBtnErasePartition.WaveSize = 0;
             // 
             // sprdBtnExtract
             // 
             this.sprdBtnExtract.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(220)))), ((int)(((byte)(220)))));
-            this.sprdBtnExtract.Location = new System.Drawing.Point(437, 560);
+            this.sprdBtnExtract.Location = new System.Drawing.Point(432, 560);
             this.sprdBtnExtract.Name = "sprdBtnExtract";
             this.sprdBtnExtract.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnExtract.TabIndex = 6;
@@ -1755,7 +2121,7 @@ namespace LoveAlways
             // sprdBtnWriteImei
             // 
             this.sprdBtnWriteImei.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
-            this.sprdBtnWriteImei.Location = new System.Drawing.Point(112, 600);
+            this.sprdBtnWriteImei.Location = new System.Drawing.Point(114, 600);
             this.sprdBtnWriteImei.Name = "sprdBtnWriteImei";
             this.sprdBtnWriteImei.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnWriteImei.TabIndex = 17;
@@ -1769,23 +2135,23 @@ namespace LoveAlways
             this.sprdBtnBackupCalib.Name = "sprdBtnBackupCalib";
             this.sprdBtnBackupCalib.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnBackupCalib.TabIndex = 18;
-            this.sprdBtnBackupCalib.Text = "Backup Calibration";
+            this.sprdBtnBackupCalib.Text = "Backup NV";
             this.sprdBtnBackupCalib.WaveSize = 0;
             // 
             // sprdBtnRestoreCalib
             // 
             this.sprdBtnRestoreCalib.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(220)))), ((int)(((byte)(192)))));
-            this.sprdBtnRestoreCalib.Location = new System.Drawing.Point(328, 600);
+            this.sprdBtnRestoreCalib.Location = new System.Drawing.Point(326, 600);
             this.sprdBtnRestoreCalib.Name = "sprdBtnRestoreCalib";
             this.sprdBtnRestoreCalib.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnRestoreCalib.TabIndex = 19;
-            this.sprdBtnRestoreCalib.Text = "Restore Calibration";
+            this.sprdBtnRestoreCalib.Text = "Restore NV";
             this.sprdBtnRestoreCalib.WaveSize = 0;
             // 
             // sprdBtnFactoryReset
             // 
             this.sprdBtnFactoryReset.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(192)))), ((int)(((byte)(192)))));
-            this.sprdBtnFactoryReset.Location = new System.Drawing.Point(437, 600);
+            this.sprdBtnFactoryReset.Location = new System.Drawing.Point(432, 600);
             this.sprdBtnFactoryReset.Name = "sprdBtnFactoryReset";
             this.sprdBtnFactoryReset.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnFactoryReset.TabIndex = 20;
@@ -1795,7 +2161,7 @@ namespace LoveAlways
             // sprdBtnUnlockBL
             // 
             this.sprdBtnUnlockBL.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(200)))), ((int)(((byte)(255)))));
-            this.sprdBtnUnlockBL.Location = new System.Drawing.Point(544, 600);
+            this.sprdBtnUnlockBL.Location = new System.Drawing.Point(538, 600);
             this.sprdBtnUnlockBL.Name = "sprdBtnUnlockBL";
             this.sprdBtnUnlockBL.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnUnlockBL.TabIndex = 21;
@@ -1805,7 +2171,7 @@ namespace LoveAlways
             // sprdBtnNvManager
             // 
             this.sprdBtnNvManager.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(230)))), ((int)(((byte)(255)))));
-            this.sprdBtnNvManager.Location = new System.Drawing.Point(650, 562);
+            this.sprdBtnNvManager.Location = new System.Drawing.Point(644, 562);
             this.sprdBtnNvManager.Name = "sprdBtnNvManager";
             this.sprdBtnNvManager.Size = new System.Drawing.Size(100, 35);
             this.sprdBtnNvManager.TabIndex = 22;
@@ -1924,375 +2290,9 @@ namespace LoveAlways
             this.sprdSelectDevice.MaxCount = 10;
             this.sprdSelectDevice.Name = "sprdSelectDevice";
             this.sprdSelectDevice.PlaceholderText = "Device Model";
-            this.sprdSelectDevice.Size = new System.Drawing.Size(200, 35);
+            this.sprdSelectDevice.Size = new System.Drawing.Size(310, 35);
             this.sprdSelectDevice.TabIndex = 18;
             this.sprdSelectDevice.WaveSize = 0;
-            // 
-            // tabPage4
-            // 
-            this.tabPage4.Controls.Add(this.mtkLblDaMode);
-            this.tabPage4.Controls.Add(this.mtkLblChipName);
-            this.tabPage4.Controls.Add(this.mtkLblHwCode);
-            this.tabPage4.Controls.Add(this.mtkLblStatus);
-            this.tabPage4.Controls.Add(this.mtkChkRebootAfter);
-            this.tabPage4.Controls.Add(this.mtkChkSkipUserdata);
-            this.tabPage4.Controls.Add(this.mtkChkExploit);
-            this.tabPage4.Controls.Add(this.mtkBtnExploit);
-            this.tabPage4.Controls.Add(this.mtkSelectExploitType);
-            this.tabPage4.Controls.Add(this.mtkBtnUnlockBl);
-            this.tabPage4.Controls.Add(this.mtkBtnFormatData);
-            this.tabPage4.Controls.Add(this.mtkBtnRestoreNvram);
-            this.tabPage4.Controls.Add(this.mtkBtnBackupNvram);
-            this.tabPage4.Controls.Add(this.mtkBtnWriteImei);
-            this.tabPage4.Controls.Add(this.mtkBtnReadImei);
-            this.tabPage4.Controls.Add(this.mtkBtnReboot);
-            this.tabPage4.Controls.Add(this.mtkBtnErasePartition);
-            this.tabPage4.Controls.Add(this.mtkBtnReadPartition);
-            this.tabPage4.Controls.Add(this.mtkBtnWritePartition);
-            this.tabPage4.Controls.Add(this.mtkBtnReadGpt);
-            this.tabPage4.Controls.Add(this.mtkInputScatterFile);
-            this.tabPage4.Controls.Add(this.mtkInputDaFile);
-            this.tabPage4.Controls.Add(this.mtkSelectChip);
-            this.tabPage4.Controls.Add(this.mtkGrpPartitions);
-            this.tabPage4.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage4.Location = new System.Drawing.Point(0, 33);
-            this.tabPage4.Name = "tabPage4";
-            this.tabPage4.Size = new System.Drawing.Size(829, 659);
-            this.tabPage4.TabIndex = 2;
-            this.tabPage4.Text = "MTK Platform";
-            // 
-            // mtkLblDaMode
-            // 
-            this.mtkLblDaMode.AutoSize = true;
-            this.mtkLblDaMode.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
-            this.mtkLblDaMode.ForeColor = System.Drawing.Color.Gray;
-            this.mtkLblDaMode.Location = new System.Drawing.Point(490, 52);
-            this.mtkLblDaMode.Name = "mtkLblDaMode";
-            this.mtkLblDaMode.Size = new System.Drawing.Size(60, 17);
-            this.mtkLblDaMode.TabIndex = 24;
-            this.mtkLblDaMode.Text = "Mode: --";
-            // 
-            // mtkLblChipName
-            // 
-            this.mtkLblChipName.AutoSize = true;
-            this.mtkLblChipName.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
-            this.mtkLblChipName.ForeColor = System.Drawing.Color.Gray;
-            this.mtkLblChipName.Location = new System.Drawing.Point(400, 52);
-            this.mtkLblChipName.Name = "mtkLblChipName";
-            this.mtkLblChipName.Size = new System.Drawing.Size(51, 17);
-            this.mtkLblChipName.TabIndex = 23;
-            this.mtkLblChipName.Text = "Chip: --";
-            // 
-            // mtkLblHwCode
-            // 
-            this.mtkLblHwCode.AutoSize = true;
-            this.mtkLblHwCode.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
-            this.mtkLblHwCode.ForeColor = System.Drawing.Color.Gray;
-            this.mtkLblHwCode.Location = new System.Drawing.Point(320, 52);
-            this.mtkLblHwCode.Name = "mtkLblHwCode";
-            this.mtkLblHwCode.Size = new System.Drawing.Size(46, 17);
-            this.mtkLblHwCode.TabIndex = 22;
-            this.mtkLblHwCode.Text = "HW: --";
-            // 
-            // mtkLblStatus
-            // 
-            this.mtkLblStatus.AutoSize = true;
-            this.mtkLblStatus.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
-            this.mtkLblStatus.ForeColor = System.Drawing.Color.Gray;
-            this.mtkLblStatus.Location = new System.Drawing.Point(737, 16);
-            this.mtkLblStatus.Name = "mtkLblStatus";
-            this.mtkLblStatus.Size = new System.Drawing.Size(128, 17);
-            this.mtkLblStatus.TabIndex = 21;
-            this.mtkLblStatus.Text = "Status: Disconnected";
-            // 
-            // mtkChkRebootAfter
-            // 
-            this.mtkChkRebootAfter.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
-            this.mtkChkRebootAfter.Location = new System.Drawing.Point(210, 45);
-            this.mtkChkRebootAfter.Name = "mtkChkRebootAfter";
-            this.mtkChkRebootAfter.Size = new System.Drawing.Size(100, 35);
-            this.mtkChkRebootAfter.TabIndex = 18;
-            this.mtkChkRebootAfter.Text = "Reboot after completion";
-            // 
-            // mtkChkSkipUserdata
-            // 
-            this.mtkChkSkipUserdata.Checked = true;
-            this.mtkChkSkipUserdata.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
-            this.mtkChkSkipUserdata.Location = new System.Drawing.Point(100, 45);
-            this.mtkChkSkipUserdata.Name = "mtkChkSkipUserdata";
-            this.mtkChkSkipUserdata.Size = new System.Drawing.Size(110, 35);
-            this.mtkChkSkipUserdata.TabIndex = 17;
-            this.mtkChkSkipUserdata.Text = "Skip Userdata";
-            // 
-            // mtkChkExploit
-            // 
-            this.mtkChkExploit.Checked = true;
-            this.mtkChkExploit.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
-            this.mtkChkExploit.Location = new System.Drawing.Point(4, 45);
-            this.mtkChkExploit.Name = "mtkChkExploit";
-            this.mtkChkExploit.Size = new System.Drawing.Size(100, 35);
-            this.mtkChkExploit.TabIndex = 16;
-            this.mtkChkExploit.Text = "Use Exploit";
-            // 
-            // mtkBtnExploit
-            // 
-            this.mtkBtnExploit.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(180)))), ((int)(((byte)(180)))));
-            this.mtkBtnExploit.Location = new System.Drawing.Point(534, 562);
-            this.mtkBtnExploit.Name = "mtkBtnExploit";
-            this.mtkBtnExploit.Size = new System.Drawing.Size(120, 35);
-            this.mtkBtnExploit.TabIndex = 20;
-            this.mtkBtnExploit.Text = "Execute Exploit";
-            this.mtkBtnExploit.Type = AntdUI.TTypeMini.Warn;
-            this.mtkBtnExploit.WaveSize = 0;
-            // 
-            // mtkSelectExploitType
-            // 
-            this.mtkSelectExploitType.Location = new System.Drawing.Point(210, 5);
-            this.mtkSelectExploitType.Name = "mtkSelectExploitType";
-            this.mtkSelectExploitType.PlaceholderText = "Exploit Type";
-            this.mtkSelectExploitType.Size = new System.Drawing.Size(150, 35);
-            this.mtkSelectExploitType.TabIndex = 21;
-            this.mtkSelectExploitType.WaveSize = 0;
-            // 
-            // mtkBtnUnlockBl
-            // 
-            this.mtkBtnUnlockBl.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(200)))), ((int)(((byte)(255)))));
-            this.mtkBtnUnlockBl.Location = new System.Drawing.Point(534, 600);
-            this.mtkBtnUnlockBl.Name = "mtkBtnUnlockBl";
-            this.mtkBtnUnlockBl.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnUnlockBl.TabIndex = 15;
-            this.mtkBtnUnlockBl.Text = "Unlock BL";
-            this.mtkBtnUnlockBl.WaveSize = 0;
-            // 
-            // mtkBtnFormatData
-            // 
-            this.mtkBtnFormatData.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(200)))), ((int)(((byte)(200)))));
-            this.mtkBtnFormatData.Location = new System.Drawing.Point(428, 600);
-            this.mtkBtnFormatData.Name = "mtkBtnFormatData";
-            this.mtkBtnFormatData.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnFormatData.TabIndex = 14;
-            this.mtkBtnFormatData.Text = "Format Data";
-            this.mtkBtnFormatData.WaveSize = 0;
-            // 
-            // mtkBtnRestoreNvram
-            // 
-            this.mtkBtnRestoreNvram.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(255)))), ((int)(((byte)(255)))));
-            this.mtkBtnRestoreNvram.Location = new System.Drawing.Point(322, 600);
-            this.mtkBtnRestoreNvram.Name = "mtkBtnRestoreNvram";
-            this.mtkBtnRestoreNvram.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnRestoreNvram.TabIndex = 13;
-            this.mtkBtnRestoreNvram.Text = "Restore NVRAM";
-            this.mtkBtnRestoreNvram.WaveSize = 0;
-            // 
-            // mtkBtnBackupNvram
-            // 
-            this.mtkBtnBackupNvram.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(255)))), ((int)(((byte)(255)))));
-            this.mtkBtnBackupNvram.Location = new System.Drawing.Point(216, 600);
-            this.mtkBtnBackupNvram.Name = "mtkBtnBackupNvram";
-            this.mtkBtnBackupNvram.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnBackupNvram.TabIndex = 12;
-            this.mtkBtnBackupNvram.Text = "Backup NVRAM";
-            this.mtkBtnBackupNvram.WaveSize = 0;
-            // 
-            // mtkBtnWriteImei
-            // 
-            this.mtkBtnWriteImei.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(200)))));
-            this.mtkBtnWriteImei.Location = new System.Drawing.Point(110, 600);
-            this.mtkBtnWriteImei.Name = "mtkBtnWriteImei";
-            this.mtkBtnWriteImei.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnWriteImei.TabIndex = 11;
-            this.mtkBtnWriteImei.Text = "Write IMEI";
-            this.mtkBtnWriteImei.WaveSize = 0;
-            // 
-            // mtkBtnReadImei
-            // 
-            this.mtkBtnReadImei.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(200)))));
-            this.mtkBtnReadImei.Location = new System.Drawing.Point(4, 600);
-            this.mtkBtnReadImei.Name = "mtkBtnReadImei";
-            this.mtkBtnReadImei.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnReadImei.TabIndex = 10;
-            this.mtkBtnReadImei.Text = "Read IMEI";
-            this.mtkBtnReadImei.WaveSize = 0;
-            // 
-            // mtkBtnReboot
-            // 
-            this.mtkBtnReboot.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(230)))));
-            this.mtkBtnReboot.Location = new System.Drawing.Point(428, 562);
-            this.mtkBtnReboot.Name = "mtkBtnReboot";
-            this.mtkBtnReboot.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnReboot.TabIndex = 9;
-            this.mtkBtnReboot.Text = "Reboot Device";
-            this.mtkBtnReboot.WaveSize = 0;
-            // 
-            // mtkBtnErasePartition
-            // 
-            this.mtkBtnErasePartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(220)))), ((int)(((byte)(200)))));
-            this.mtkBtnErasePartition.Location = new System.Drawing.Point(322, 562);
-            this.mtkBtnErasePartition.Name = "mtkBtnErasePartition";
-            this.mtkBtnErasePartition.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnErasePartition.TabIndex = 8;
-            this.mtkBtnErasePartition.Text = "Erase Partition";
-            this.mtkBtnErasePartition.WaveSize = 0;
-            // 
-            // mtkBtnReadPartition
-            // 
-            this.mtkBtnReadPartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(230)))));
-            this.mtkBtnReadPartition.Location = new System.Drawing.Point(216, 562);
-            this.mtkBtnReadPartition.Name = "mtkBtnReadPartition";
-            this.mtkBtnReadPartition.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnReadPartition.TabIndex = 7;
-            this.mtkBtnReadPartition.Text = "Read Partition";
-            this.mtkBtnReadPartition.WaveSize = 0;
-            // 
-            // mtkBtnWritePartition
-            // 
-            this.mtkBtnWritePartition.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(255)))), ((int)(((byte)(200)))));
-            this.mtkBtnWritePartition.Location = new System.Drawing.Point(110, 562);
-            this.mtkBtnWritePartition.Name = "mtkBtnWritePartition";
-            this.mtkBtnWritePartition.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnWritePartition.TabIndex = 6;
-            this.mtkBtnWritePartition.Text = "Write Partition";
-            this.mtkBtnWritePartition.WaveSize = 0;
-            // 
-            // mtkBtnReadGpt
-            // 
-            this.mtkBtnReadGpt.DefaultBack = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(230)))), ((int)(((byte)(255)))));
-            this.mtkBtnReadGpt.Location = new System.Drawing.Point(4, 562);
-            this.mtkBtnReadGpt.Name = "mtkBtnReadGpt";
-            this.mtkBtnReadGpt.Size = new System.Drawing.Size(100, 35);
-            this.mtkBtnReadGpt.TabIndex = 5;
-            this.mtkBtnReadGpt.Text = "Read GPT";
-            this.mtkBtnReadGpt.WaveSize = 0;
-            // 
-            // mtkInputScatterFile
-            // 
-            this.mtkInputScatterFile.AllowClear = true;
-            this.mtkInputScatterFile.Location = new System.Drawing.Point(580, 43);
-            this.mtkInputScatterFile.Name = "mtkInputScatterFile";
-            this.mtkInputScatterFile.PlaceholderText = "Scatter Config File (Optional)";
-            this.mtkInputScatterFile.PrefixSvg = "FileTextOutlined";
-            this.mtkInputScatterFile.Size = new System.Drawing.Size(230, 35);
-            this.mtkInputScatterFile.SuffixText = "Browse";
-            this.mtkInputScatterFile.TabIndex = 25;
-            this.mtkInputScatterFile.WaveSize = 0;
-            // 
-            // mtkInputDaFile
-            // 
-            this.mtkInputDaFile.AllowClear = true;
-            this.mtkInputDaFile.Location = new System.Drawing.Point(375, 5);
-            this.mtkInputDaFile.Name = "mtkInputDaFile";
-            this.mtkInputDaFile.PlaceholderText = "DA File (Optional, Auto Detect)";
-            this.mtkInputDaFile.PrefixSvg = "FolderOutlined";
-            this.mtkInputDaFile.Size = new System.Drawing.Size(300, 35);
-            this.mtkInputDaFile.SuffixText = "Browse";
-            this.mtkInputDaFile.TabIndex = 2;
-            this.mtkInputDaFile.WaveSize = 0;
-            // 
-            // mtkSelectChip
-            // 
-            this.mtkSelectChip.AllowClear = true;
-            this.mtkSelectChip.Location = new System.Drawing.Point(4, 5);
-            this.mtkSelectChip.Name = "mtkSelectChip";
-            this.mtkSelectChip.PlaceholderText = "Select Chip Model";
-            this.mtkSelectChip.PrefixSvg = "AppstoreOutlined";
-            this.mtkSelectChip.Size = new System.Drawing.Size(200, 35);
-            this.mtkSelectChip.TabIndex = 1;
-            this.mtkSelectChip.WaveSize = 0;
-            // 
-            // mtkGrpPartitions
-            // 
-            this.mtkGrpPartitions.Controls.Add(this.mtkChkSelectAll);
-            this.mtkGrpPartitions.Controls.Add(this.mtkListPartitions);
-            this.mtkGrpPartitions.FillColor = System.Drawing.Color.Transparent;
-            this.mtkGrpPartitions.FillColor2 = System.Drawing.Color.Transparent;
-            this.mtkGrpPartitions.Font = new System.Drawing.Font("Microsoft YaHei", 10.5F);
-            this.mtkGrpPartitions.Location = new System.Drawing.Point(4, 84);
-            this.mtkGrpPartitions.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            this.mtkGrpPartitions.MinimumSize = new System.Drawing.Size(1, 1);
-            this.mtkGrpPartitions.Name = "mtkGrpPartitions";
-            this.mtkGrpPartitions.Padding = new System.Windows.Forms.Padding(0, 32, 0, 0);
-            this.mtkGrpPartitions.Radius = 14;
-            this.mtkGrpPartitions.RectColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(165)))), ((int)(((byte)(0)))));
-            this.mtkGrpPartitions.Size = new System.Drawing.Size(821, 470);
-            this.mtkGrpPartitions.TabIndex = 0;
-            this.mtkGrpPartitions.Text = "Partition Table";
-            this.mtkGrpPartitions.TextAlignment = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
-            // mtkChkSelectAll
-            // 
-            this.mtkChkSelectAll.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
-            this.mtkChkSelectAll.Location = new System.Drawing.Point(6, 26);
-            this.mtkChkSelectAll.Name = "mtkChkSelectAll";
-            this.mtkChkSelectAll.Size = new System.Drawing.Size(21, 21);
-            this.mtkChkSelectAll.TabIndex = 0;
-            this.mtkChkSelectAll.Text = "";
-            // 
-            // mtkListPartitions
-            // 
-            this.mtkListPartitions.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.mtkListPartitions.CheckBoxes = true;
-            this.mtkListPartitions.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.mtkColPartition,
-            this.mtkColType,
-            this.mtkColSize,
-            this.mtkColAddress,
-            this.mtkColFileName});
-            this.mtkListPartitions.Font = new System.Drawing.Font("Microsoft YaHei", 9F);
-            this.mtkListPartitions.FullRowSelect = true;
-            this.mtkListPartitions.HideSelection = false;
-            this.mtkListPartitions.Location = new System.Drawing.Point(4, 24);
-            this.mtkListPartitions.Name = "mtkListPartitions";
-            this.mtkListPartitions.Size = new System.Drawing.Size(813, 441);
-            this.mtkListPartitions.TabIndex = 1;
-            this.mtkListPartitions.UseCompatibleStateImageBehavior = false;
-            this.mtkListPartitions.View = System.Windows.Forms.View.Details;
-            // 
-            // mtkColPartition
-            // 
-            this.mtkColPartition.Text = "      Partition";
-            this.mtkColPartition.Width = 140;
-            // 
-            // mtkColType
-            // 
-            this.mtkColType.Text = "Type";
-            this.mtkColType.Width = 80;
-            // 
-            // mtkColSize
-            // 
-            this.mtkColSize.Text = "Size";
-            this.mtkColSize.Width = 100;
-            // 
-            // mtkColAddress
-            // 
-            this.mtkColAddress.Text = "Address";
-            this.mtkColAddress.Width = 120;
-            // 
-            // mtkColFileName
-            // 
-            this.mtkColFileName.Text = "Filename";
-            this.mtkColFileName.Width = 180;
-            // 
-            // tabPage1
-            // 
-            this.tabPage1.Controls.Add(this.labelDevRoot);
-            this.tabPage1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabPage1.Location = new System.Drawing.Point(0, 33);
-            this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Size = new System.Drawing.Size(829, 659);
-            this.tabPage1.TabIndex = 6;
-            this.tabPage1.Text = "Auto Root";
-            // 
-            // labelDevRoot
-            // 
-            this.labelDevRoot.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelDevRoot.Font = new System.Drawing.Font("Microsoft YaHei", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.labelDevRoot.ForeColor = System.Drawing.Color.Silver;
-            this.labelDevRoot.Location = new System.Drawing.Point(0, 0);
-            this.labelDevRoot.Name = "labelDevRoot";
-            this.labelDevRoot.Size = new System.Drawing.Size(829, 659);
-            this.labelDevRoot.TabIndex = 0;
-            this.labelDevRoot.Text = "In Development...";
-            this.labelDevRoot.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // tabPage6
             // 
@@ -3180,16 +3180,16 @@ namespace LoveAlways
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.tabs1.ResumeLayout(false);
-            this.tabPage2.ResumeLayout(false);
-            this.uiGroupBox4.ResumeLayout(false);
             this.tabPage3.ResumeLayout(false);
             this.uiGroupBox7.ResumeLayout(false);
-            this.tabPage5.ResumeLayout(false);
-            this.sprdGroupPartitions.ResumeLayout(false);
+            this.tabPage1.ResumeLayout(false);
+            this.tabPage2.ResumeLayout(false);
+            this.uiGroupBox4.ResumeLayout(false);
             this.tabPage4.ResumeLayout(false);
             this.tabPage4.PerformLayout();
             this.mtkGrpPartitions.ResumeLayout(false);
-            this.tabPage1.ResumeLayout(false);
+            this.tabPage5.ResumeLayout(false);
+            this.sprdGroupPartitions.ResumeLayout(false);
             this.tabPage6.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.tabs2.ResumeLayout(false);

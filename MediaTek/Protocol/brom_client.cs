@@ -6,18 +6,17 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.MediaTek.Common;
+using LoveAlways.MediaTek.DA;
+using LoveAlways.MediaTek.Models;
 using System;
-using System.IO;
 using System.IO.Ports;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Models;
-using LoveAlways.MediaTek.DA;
 
 namespace LoveAlways.MediaTek.Protocol
 {
@@ -32,7 +31,7 @@ namespace LoveAlways.MediaTek.Protocol
         private readonly Action<double> _progressCallback;
         private readonly MtkLogger _logger;
         private bool _disposed;
-        
+
         // Thread safety: Port lock
         private readonly SemaphoreSlim _portLock = new SemaphoreSlim(1, 1);
 
@@ -45,7 +44,7 @@ namespace LoveAlways.MediaTek.Protocol
         public bool IsConnected { get; private set; }
         public bool IsBromMode { get; private set; }
         public MtkDeviceState State { get; internal set; }
-        
+
         /// <summary>
         /// Last upload status code
         /// 0x0000 = Success
@@ -122,13 +121,13 @@ namespace LoveAlways.MediaTek.Protocol
 
                 IsConnected = true;
                 State = MtkDeviceState.Handshaking;
-                _log($"[MTK] Serial port opened: {portName}");
+                _log($"[MediaTek] Serial port opened: {portName}");
 
                 return true;
             }
             catch (Exception ex)
             {
-                _log($"[MTK] Connection failed: {ex.Message}");
+                _log($"[MediaTek] Connection failed: {ex.Message}");
                 return false;
             }
         }
@@ -147,7 +146,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _logDetail($"[MTK] Exception during disconnect: {ex.Message}");
+                _logDetail($"[MediaTek] Exception during disconnect: {ex.Message}");
             }
 
             IsConnected = false;
@@ -181,9 +180,9 @@ namespace LoveAlways.MediaTek.Protocol
             if (!IsConnected || _port == null)
                 return false;
 
-            _log("[MTK] Starting handshake...");
+            _log("[MediaTek] Starting handshake...");
             State = MtkDeviceState.Handshaking;
-            
+
             // Clear buffer before handshake to prevent interference
             _port.DiscardInBuffer();
             _port.DiscardOutBuffer();
@@ -197,7 +196,7 @@ namespace LoveAlways.MediaTek.Protocol
                 {
                     // Send handshake byte 0xA0
                     _port.Write(new byte[] { BromHandshake.HANDSHAKE_SEND }, 0, 1);
-                    
+
                     await Task.Delay(10, ct);
 
                     // Check response
@@ -215,7 +214,7 @@ namespace LoveAlways.MediaTek.Protocol
                                 bool success = await CompleteHandshakeAsync(ct);
                                 if (success)
                                 {
-                                    _log("[MTK] ✓ Handshake successful");
+                                    _log("[MediaTek] ✓ Handshake successful");
                                     // Clear buffer after success
                                     _port.DiscardInBuffer();
                                     _port.DiscardOutBuffer();
@@ -228,7 +227,7 @@ namespace LoveAlways.MediaTek.Protocol
 
                     if (tries % 20 == 0 && tries > 0)
                     {
-                        _logDetail($"[MTK] Retrying handshake... ({tries}/{maxTries})");
+                        _logDetail($"[MediaTek] Retrying handshake... ({tries}/{maxTries})");
                         // Clear buffer every 20 retries
                         _port.DiscardInBuffer();
                         _port.DiscardOutBuffer();
@@ -244,13 +243,13 @@ namespace LoveAlways.MediaTek.Protocol
                 }
                 catch (Exception ex)
                 {
-                    _logDetail($"[MTK] Handshake exception: {ex.Message}");
+                    _logDetail($"[MediaTek] Handshake exception: {ex.Message}");
                 }
             }
 
-            _log("[MTK] ❌ Handshake timeout");
+            _log("[MediaTek] ❌ Handshake timeout");
             State = MtkDeviceState.Error;
-            
+
             // Clear buffer on failure
             try
             {
@@ -258,7 +257,7 @@ namespace LoveAlways.MediaTek.Protocol
                 _port.DiscardOutBuffer();
             }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[BROM] Exception clearing buffer: {ex.Message}"); }
-            
+
             return false;
         }
 
@@ -277,7 +276,7 @@ namespace LoveAlways.MediaTek.Protocol
                 byte[] resp1 = await ReadBytesAsync(1, 1000, ct);
                 if (resp1 == null || resp1[0] != 0xF5)
                 {
-                    _logDetail($"[MTK] Handshake sequence error: expected 0xF5, received 0x{resp1?[0]:X2}");
+                    _logDetail($"[MediaTek] Handshake sequence error: expected 0xF5, received 0x{resp1?[0]:X2}");
                     return false;
                 }
 
@@ -289,7 +288,7 @@ namespace LoveAlways.MediaTek.Protocol
                 byte[] resp2 = await ReadBytesAsync(1, 1000, ct);
                 if (resp2 == null || resp2[0] != 0xAF)
                 {
-                    _logDetail($"[MTK] Handshake sequence error: expected 0xAF, received 0x{resp2?[0]:X2}");
+                    _logDetail($"[MediaTek] Handshake sequence error: expected 0xAF, received 0x{resp2?[0]:X2}");
                     return false;
                 }
 
@@ -301,7 +300,7 @@ namespace LoveAlways.MediaTek.Protocol
                 byte[] resp3 = await ReadBytesAsync(1, 1000, ct);
                 if (resp3 == null || resp3[0] != 0xFA)
                 {
-                    _logDetail($"[MTK] Handshake sequence error: expected 0xFA, received 0x{resp3?[0]:X2}");
+                    _logDetail($"[MediaTek] Handshake sequence error: expected 0xFA, received 0x{resp3?[0]:X2}");
                     return false;
                 }
 
@@ -309,7 +308,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _logDetail($"[MTK] Handshake sequence exception: {ex.Message}");
+                _logDetail($"[MediaTek] Handshake sequence exception: {ex.Message}");
                 return false;
             }
         }
@@ -335,16 +334,16 @@ namespace LoveAlways.MediaTek.Protocol
                 {
                     HwCode = hwInfo.Value.hwCode;
                     HwVer = hwInfo.Value.hwVer;
-                    _log($"[MTK] HW Code: 0x{HwCode:X4}");
-                    _log($"[MTK] HW Ver: 0x{HwVer:X4}");
-                    
+                    _log($"[MediaTek] HW Code: 0x{HwCode:X4}");
+                    _log($"[MediaTek] HW Ver: 0x{HwVer:X4}");
+
                     // Load full chip info from database
                     var chipRecord = Database.MtkChipDatabase.GetChip(HwCode);
                     if (chipRecord != null)
                     {
                         ChipInfo = Database.MtkChipDatabase.ToChipInfo(chipRecord);
                         ChipInfo.HwVer = HwVer;  // Keep device-reported version
-                        
+
                         // Output format reference mtkclient
                         _log($"\tCPU:\t{ChipInfo.ChipName}({ChipInfo.Description})");
                         _log($"\tHW version:\t0x{HwVer:X}");
@@ -365,15 +364,15 @@ namespace LoveAlways.MediaTek.Protocol
                         ChipInfo.UartAddr = 0x11002000;
                         ChipInfo.BromPayloadAddr = 0x100A00;
                         ChipInfo.DaPayloadAddr = 0x200000;  // Default address
-                        
-                        _log($"[MTK] Unknown chip: 0x{HwCode:X4} (using default config)");
+
+                        _log($"[MediaTek] Unknown chip: 0x{HwCode:X4} (using default config)");
                         _log($"\tWDT:\t\t0x{ChipInfo.WatchdogAddr:X}");
                         _log($"\tDA Payload Address:\t0x{ChipInfo.DaPayloadAddr:X}");
                     }
                 }
 
                 // 2. Send heartbeat/sync (ChimeraTool sends a0 * 20)
-                _log("[MTK] Sending synchronization heartbeat...");
+                _log("[MediaTek] Sending synchronization heartbeat...");
                 for (int i = 0; i < 20; i++)
                 {
                     try
@@ -388,28 +387,28 @@ namespace LoveAlways.MediaTek.Protocol
                     }
                     catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[BROM] Exception clearing state: {ex.Message}"); }
                 }
-                
+
                 // 3. Get target config (ChimeraTool execution)
                 var config = await GetTargetConfigAsync(ct);
                 if (config != null)
                 {
                     TargetConfig = config.Value;
-                    _log($"[MTK] Target Config: 0x{(uint)TargetConfig:X8}");
+                    _log($"[MediaTek] Target Config: 0x{(uint)TargetConfig:X8}");
                     LogTargetConfig(TargetConfig);
                 }
 
                 // 4. Get BL version (determine mode)
                 BlVer = await GetBlVerAsync(ct);
                 IsBromMode = (BlVer == BromCommands.CMD_GET_BL_VER);
-                
+
                 if (IsBromMode)
                 {
-                    _log("[MTK] Mode: BROM (Boot ROM)");
+                    _log("[MediaTek] Mode: BROM (Boot ROM)");
                     State = MtkDeviceState.Brom;
                 }
                 else
                 {
-                    _log($"[MTK] Mode: Preloader (BL Ver: {BlVer})");
+                    _log($"[MediaTek] Mode: Preloader (BL Ver: {BlVer})");
                     State = MtkDeviceState.Preloader;
                 }
 
@@ -417,9 +416,9 @@ namespace LoveAlways.MediaTek.Protocol
                 MeId = await GetMeIdAsync(ct);
                 if (MeId != null && MeId.Length > 0)
                 {
-                    _logDetail($"[MTK] ME ID: {BitConverter.ToString(MeId).Replace("-", "")}");
+                    _logDetail($"[MediaTek] ME ID: {BitConverter.ToString(MeId).Replace("-", "")}");
                 }
-                
+
                 // 6. Other info (Optional, for display)
                 BromVer = await GetBromVerAsync(ct);
                 var hwSwVer = await GetHwSwVerAsync(ct);
@@ -435,7 +434,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _log($"[MTK] Initialization failed: {ex.Message}");
+                _log($"[MediaTek] Initialization failed: {ex.Message}");
                 return false;
             }
         }
@@ -588,7 +587,7 @@ namespace LoveAlways.MediaTek.Protocol
                 // First check BL version
                 _port.Write(new byte[] { BromCommands.CMD_GET_BL_VER }, 0, 1);
                 var blResp = await ReadBytesInternalAsync(1, DEFAULT_TIMEOUT_MS, ct);
-                if (blResp == null) 
+                if (blResp == null)
                 {
                     // Clear potential residual data
                     await Task.Delay(50, ct);
@@ -649,12 +648,12 @@ namespace LoveAlways.MediaTek.Protocol
             bool sbc = config.HasFlag(TargetConfigFlags.SbcEnabled);
             bool sla = config.HasFlag(TargetConfigFlags.SlaEnabled);
             bool daa = config.HasFlag(TargetConfigFlags.DaaEnabled);
-            
+
             // Output main security status
             _log($"\tSBC (Secure Boot):\t{sbc}");
             _log($"\tSLA (Secure Link Auth):\t{sla}");
             _log($"\tDAA (Download Agent Auth):\t{daa}");
-            
+
             // Detect protection status
             if (sbc || daa)
             {
@@ -729,7 +728,7 @@ namespace LoveAlways.MediaTek.Protocol
             ushort status = MtkDataPacker.UnpackUInt16BE(statusResp, 0);
             if (!BromErrorHelper.IsSuccess(status))
             {
-                _log($"[MTK] Write32 status error: {BromErrorHelper.GetErrorMessage(status)}");
+                _log($"[MediaTek] Write32 status error: {BromErrorHelper.GetErrorMessage(status)}");
                 return false;
             }
 
@@ -766,7 +765,7 @@ namespace LoveAlways.MediaTek.Protocol
                 case 0x7686:  // MT7686
                     // 16-bit write
                     return await Write16Async(0xA2050000, new ushort[] { 0x2200 }, ct);
-                    
+
                 default:
                     // 32-bit write
                     return await Write32Async(wdtAddr, new uint[] { wdtValue }, ct);
@@ -824,19 +823,19 @@ namespace LoveAlways.MediaTek.Protocol
         {
             try
             {
-                _log($"[MTK] Sending Exploit Payload, size: {payload.Length} bytes (0x{payload.Length:X})");
+                _log($"[MediaTek] Sending Exploit Payload, size: {payload.Length} bytes (0x{payload.Length:X})");
 
                 // 1. Send SEND_CERT command (0xE0)
                 if (!await EchoAsync(BromCommands.CMD_SEND_CERT, ct))
                 {
-                    _log("[MTK] SEND_CERT command echo failed");
+                    _log("[MediaTek] SEND_CERT command echo failed");
                     return false;
                 }
 
                 // 2. Send payload length (Big-Endian)
                 if (!await EchoAsync(MtkDataPacker.PackUInt32BE((uint)payload.Length), ct))
                 {
-                    _log("[MTK] Payload length echo failed");
+                    _log("[MediaTek] Payload length echo failed");
                     return false;
                 }
 
@@ -844,16 +843,16 @@ namespace LoveAlways.MediaTek.Protocol
                 var statusResp = await ReadBytesAsync(2, DEFAULT_TIMEOUT_MS, ct);
                 if (statusResp == null)
                 {
-                    _log("[MTK] Failed to read SEND_CERT status");
+                    _log("[MediaTek] Failed to read SEND_CERT status");
                     return false;
                 }
 
                 ushort status = MtkDataPacker.UnpackUInt16BE(statusResp, 0);
-                _log($"[MTK] SEND_CERT status: 0x{status:X4}");
+                _log($"[MediaTek] SEND_CERT status: 0x{status:X4}");
 
                 if (status > 0xFF)
                 {
-                    _log($"[MTK] SEND_CERT rejected: {BromErrorHelper.GetErrorMessage(status)}");
+                    _log($"[MediaTek] SEND_CERT rejected: {BromErrorHelper.GetErrorMessage(status)}");
                     return false;
                 }
 
@@ -905,7 +904,7 @@ namespace LoveAlways.MediaTek.Protocol
                 if (checksumResp != null)
                 {
                     ushort receivedChecksum = MtkDataPacker.UnpackUInt16BE(checksumResp, 0);
-                    _log($"[MTK] Payload Checksum: received 0x{receivedChecksum:X4}, expected 0x{checksum:X4}");
+                    _log($"[MediaTek] Payload Checksum: received 0x{receivedChecksum:X4}, expected 0x{checksum:X4}");
                 }
 
                 // 9. Read final status
@@ -913,16 +912,16 @@ namespace LoveAlways.MediaTek.Protocol
                 if (finalStatusResp != null)
                 {
                     ushort finalStatus = MtkDataPacker.UnpackUInt16BE(finalStatusResp, 0);
-                    _log($"[MTK] Payload Upload Status: 0x{finalStatus:X4}");
+                    _log($"[MediaTek] Payload Upload Status: 0x{finalStatus:X4}");
 
                     if (finalStatus <= 0xFF)
                     {
-                        _log("[MTK] ✓ Exploit Payload uploaded successfully");
+                        _log("[MediaTek] ✓ Exploit Payload uploaded successfully");
                         return true;
                     }
                     else
                     {
-                        _log($"[MTK] Payload upload failed: {BromErrorHelper.GetErrorMessage(finalStatus)}");
+                        _log($"[MediaTek] Payload upload failed: {BromErrorHelper.GetErrorMessage(finalStatus)}");
                     }
                 }
 
@@ -930,7 +929,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _log($"[MTK] SendExploitPayloadAsync exception: {ex.Message}");
+                _log($"[MediaTek] SendExploitPayloadAsync exception: {ex.Message}");
                 return false;
             }
         }
@@ -946,18 +945,18 @@ namespace LoveAlways.MediaTek.Protocol
             {
                 if (!System.IO.File.Exists(payloadPath))
                 {
-                    _log($"[MTK] Payload file does not exist: {payloadPath}");
+                    _log($"[MediaTek] Payload file does not exist: {payloadPath}");
                     return false;
                 }
 
                 byte[] payload = System.IO.File.ReadAllBytes(payloadPath);
-                _log($"[MTK] Loaded Payload: {System.IO.Path.GetFileName(payloadPath)}, {payload.Length} bytes");
+                _log($"[MediaTek] Loaded Payload: {System.IO.Path.GetFileName(payloadPath)}, {payload.Length} bytes");
 
                 return await SendExploitPayloadAsync(payload, ct);
             }
             catch (Exception ex)
             {
-                _log($"[MTK] Failed to load payload: {ex.Message}");
+                _log($"[MediaTek] Failed to load payload: {ex.Message}");
                 return false;
             }
         }
@@ -973,7 +972,7 @@ namespace LoveAlways.MediaTek.Protocol
         {
             try
             {
-                _log($"[MTK] Sending DA to address 0x{address:X8}, size {data.Length} bytes, signature length: 0x{sigLen:X}");
+                _log($"[MediaTek] Sending DA to address 0x{address:X8}, size {data.Length} bytes, signature length: 0x{sigLen:X}");
 
                 // Prepare data and checksum
                 byte[] dataWithoutSig = data;
@@ -982,70 +981,70 @@ namespace LoveAlways.MediaTek.Protocol
                 {
                     if (data.Length < sigLen)
                     {
-                        _log($"[MTK] Error: Data length {data.Length} smaller than signature length {sigLen}");
+                        _log($"[MediaTek] Error: Data length {data.Length} smaller than signature length {sigLen}");
                         return false;
                     }
                     dataWithoutSig = new byte[data.Length - sigLen];
                     Array.Copy(data, 0, dataWithoutSig, 0, data.Length - sigLen);
                     signature = new byte[sigLen];
                     Array.Copy(data, data.Length - sigLen, signature, 0, sigLen);
-                    _log($"[MTK] Data split: Main {dataWithoutSig.Length} bytes, Signature {signature.Length} bytes");
+                    _log($"[MediaTek] Data split: Main {dataWithoutSig.Length} bytes, Signature {signature.Length} bytes");
                 }
                 var (checksum, processedData) = MtkChecksum.PrepareData(
                     dataWithoutSig,
                     signature,
                     data.Length - sigLen
                 );
-                _log($"[MTK] Processed data: {processedData.Length} bytes, XOR checksum: 0x{checksum:X4}");
+                _log($"[MediaTek] Processed data: {processedData.Length} bytes, XOR checksum: 0x{checksum:X4}");
 
                 // Send SEND_DA command (reference MtkPreloader.cs)
-                _log("[MTK] Sending SEND_DA command (0xD7)...");
-                
+                _log("[MediaTek] Sending SEND_DA command (0xD7)...");
+
                 // Clear residual data in buffer
                 if (_port.BytesToRead > 0)
                 {
                     byte[] junk = new byte[_port.BytesToRead];
                     _port.Read(junk, 0, junk.Length);
-                    _log($"[MTK] Clearing buffer: {junk.Length} bytes ({BitConverter.ToString(junk)})");
+                    _log($"[MediaTek] Clearing buffer: {junk.Length} bytes ({BitConverter.ToString(junk)})");
                 }
-                
+
                 // Send command and check response
                 await WriteBytesAsync(new byte[] { BromCommands.CMD_SEND_DA }, ct);
                 var cmdResp = await ReadBytesAsync(1, DEFAULT_TIMEOUT_MS, ct);
                 if (cmdResp == null || cmdResp.Length == 0)
                 {
-                    _log("[MTK] No command response");
+                    _log("[MediaTek] No command response");
                     return false;
                 }
-                
+
                 bool useAlternativeProtocol = false;
-                
+
                 if (cmdResp[0] == BromCommands.CMD_SEND_DA)
                 {
                     // Standard echo, continue normal flow
-                    _log("[MTK] ✓ SEND_DA command confirmed (Standard echo)");
+                    _log("[MediaTek] ✓ SEND_DA command confirmed (Standard echo)");
                 }
                 else if (cmdResp[0] == 0xE7)
                 {
                     // Likely status response (0xE7 might mean command accepted)
-                    _log("[MTK] Received response 0xE7, checking status...");
-                    
+                    _log("[MediaTek] Received response 0xE7, checking status...");
+
                     // Read status code
                     var statusData1 = await ReadBytesAsync(2, 500, ct);
                     if (statusData1 != null && statusData1.Length >= 2)
                     {
                         ushort respStatus1 = MtkDataPacker.UnpackUInt16BE(statusData1, 0);
-                        _log($"[MTK] Status code: 0x{respStatus1:X4}");
-                        
+                        _log($"[MediaTek] Status code: 0x{respStatus1:X4}");
+
                         if (respStatus1 == 0x0000)
                         {
                             // Status 0x0000 means command accepted, try alternative protocol
-                            _log("[MTK] Status 0x0000, trying alternative protocol flow...");
+                            _log("[MediaTek] Status 0x0000, trying alternative protocol flow...");
                             useAlternativeProtocol = true;
                         }
                         else
                         {
-                            _log($"[MTK] Command rejected, status: 0x{respStatus1:X4}");
+                            _log($"[MediaTek] Command rejected, status: 0x{respStatus1:X4}");
                             LastUploadStatus = respStatus1;
                             return false;
                         }
@@ -1058,17 +1057,17 @@ namespace LoveAlways.MediaTek.Protocol
                     if (statusData2 != null && statusData2.Length >= 1)
                     {
                         ushort respStatus2 = (ushort)((cmdResp[0] << 8) | statusData2[0]);
-                        _log($"[MTK] Device returned status: 0x{respStatus2:X4}");
+                        _log($"[MediaTek] Device returned status: 0x{respStatus2:X4}");
                         LastUploadStatus = respStatus2;
-                        
+
                         if (respStatus2 == 0x0000)
                         {
-                            _log("[MTK] Status 0x0000, trying alternative protocol flow...");
+                            _log("[MediaTek] Status 0x0000, trying alternative protocol flow...");
                             useAlternativeProtocol = true;
                         }
                         else
                         {
-                            _log($"[MTK] Command failed: 0x{respStatus2:X4}");
+                            _log($"[MediaTek] Command failed: 0x{respStatus2:X4}");
                             return false;
                         }
                     }
@@ -1076,188 +1075,188 @@ namespace LoveAlways.MediaTek.Protocol
                 }
                 else
                 {
-                    _log($"[MTK] Unknown response: 0x{cmdResp[0]:X2}");
+                    _log($"[MediaTek] Unknown response: 0x{cmdResp[0]:X2}");
                     // Try to read more data for bypass diagnosis
                     var moreData = await ReadBytesAsync(4, 200, ct);
                     if (moreData != null && moreData.Length > 0)
                     {
-                        _log($"[MTK] Extra data: {BitConverter.ToString(moreData)}");
+                        _log($"[MediaTek] Extra data: {BitConverter.ToString(moreData)}");
                     }
                     return false;
                 }
-                
+
                 if (useAlternativeProtocol)
                 {
                     // Alternative protocol: Device may already be waiting for data
                     // Try sending parameters directly (without expecting echo)
-                    _log("[MTK] Using alternative protocol: Sending parameters directly");
-                    
+                    _log("[MediaTek] Using alternative protocol: Sending parameters directly");
+
                     // Send address
                     await WriteBytesAsync(MtkDataPacker.PackUInt32BE(address), ct);
                     await Task.Delay(10, ct);
-                    
+
                     // Send size
                     await WriteBytesAsync(MtkDataPacker.PackUInt32BE((uint)processedData.Length), ct);
                     await Task.Delay(10, ct);
-                    
+
                     // Send signature length
                     await WriteBytesAsync(MtkDataPacker.PackUInt32BE((uint)sigLen), ct);
                     await Task.Delay(10, ct);
-                    
+
                     // Read status
                     var altStatus = await ReadBytesAsync(2, DEFAULT_TIMEOUT_MS, ct);
                     if (altStatus != null && altStatus.Length >= 2)
                     {
                         ushort altRespStatus = MtkDataPacker.UnpackUInt16BE(altStatus, 0);
-                        _log($"[MTK] Alternative protocol status: 0x{altRespStatus:X4}");
-                        
+                        _log($"[MediaTek] Alternative protocol status: 0x{altRespStatus:X4}");
+
                         if (altRespStatus != 0x0000)
                         {
                             LastUploadStatus = altRespStatus;
-                            _log($"[MTK] Alternative protocol failed: 0x{altRespStatus:X4}");
+                            _log($"[MediaTek] Alternative protocol failed: 0x{altRespStatus:X4}");
                             return false;
                         }
                     }
-                    
+
                     // Send data
-                    _log($"[MTK] Sending DA data ({processedData.Length} bytes)...");
+                    _log($"[MediaTek] Sending DA data ({processedData.Length} bytes)...");
                     await WriteBytesAsync(processedData, ct);
                     await Task.Delay(100, ct);
-                    
+
                     // Read checksum/status
                     var finalResp = await ReadBytesAsync(4, DEFAULT_TIMEOUT_MS, ct);
                     if (finalResp != null && finalResp.Length >= 2)
                     {
                         ushort recvChecksum = MtkDataPacker.UnpackUInt16BE(finalResp, 0);
-                        _log($"[MTK] Device checksum: 0x{recvChecksum:X4}, expected: 0x{checksum:X4}");
-                        
+                        _log($"[MediaTek] Device checksum: 0x{recvChecksum:X4}, expected: 0x{checksum:X4}");
+
                         if (finalResp.Length >= 4)
                         {
                             ushort finalStatus = MtkDataPacker.UnpackUInt16BE(finalResp, 2);
-                            _log($"[MTK] Final status: 0x{finalStatus:X4}");
+                            _log($"[MediaTek] Final status: 0x{finalStatus:X4}");
                             LastUploadStatus = finalStatus;
                             return finalStatus == 0x0000;
                         }
                         return recvChecksum == checksum;
                     }
-                    
-                    _log("[MTK] Alternative protocol: No final response");
+
+                    _log("[MediaTek] Alternative protocol: No final response");
                     return false;
                 }
 
-            // Send address and wait for echo
-            _log($"[MTK] Sending address: 0x{address:X8}");
-            if (!await EchoAsync(MtkDataPacker.PackUInt32BE(address), ct))
-            {
-                _log("[MTK] Sending address failed");
-                return false;
-            }
-
-            // Send size and wait for echo
-            _log($"[MTK] Sending size: {processedData.Length} bytes");
-            if (!await EchoAsync(MtkDataPacker.PackUInt32BE((uint)processedData.Length), ct))
-            {
-                _log("[MTK] Sending size failed");
-                return false;
-            }
-
-            // Send signature length and wait for echo
-            _log($"[MTK] Sending signature length: 0x{sigLen:X} ({sigLen} bytes)");
-            if (!await EchoAsync(MtkDataPacker.PackUInt32BE((uint)sigLen), ct))
-            {
-                _log("[MTK] Sending signature length failed");
-                return false;
-            }
-
-            // Read status (2 bytes)
-            _log("[MTK] Waiting for device response status...");
-            var statusResp = await ReadBytesAsync(2, DEFAULT_TIMEOUT_MS, ct);
-            if (statusResp == null)
-            {
-                _log("[MTK] Reading status failed (Timeout or no response)");
-                return false;
-            }
-
-            ushort status = MtkDataPacker.UnpackUInt16BE(statusResp, 0);
-            _log($"[MTK] SEND_DA status: 0x{status:X4}");
-            
-            LastUploadStatus = status;  // Save status for caller
-
-            // Check status code 0x0010 or 0x0011 (Preloader mode Auth requirement)
-            if (status == (ushort)BromStatus.AuthRequired || status == (ushort)BromStatus.PreloaderAuth)
-            {
-                _log($"[MTK] ⚠ Preloader mode requires AUTH (status: 0x{status:X4})");
-                _log("[MTK] Device has DAA protection enabled in Preloader mode");
-                _log("[MTK] Official signed DA or DA2-level exploit (ALLINONE-SIGNATURE) required");
-                LastUploadStatus = status;
-                return false;
-            }
-
-            // Check if SLA authentication required (status code 0x1D0D)
-            if (status == (ushort)BromStatus.SlaRequired)
-            {
-                _log("[MTK] SLA authentication required...");
-                
-                // Execute SLA authentication
-                var slaAuth = new MtkSlaAuth(msg => _log(msg));
-                bool authSuccess = await slaAuth.AuthenticateAsync(
-                    async (authData, len, token) => 
-                    {
-                        _port.Write(authData, 0, len);
-                        return true;
-                    },
-                    async (count, timeout, token) => await ReadBytesInternalAsync(count, timeout, token),
-                    HwCode,
-                    ct
-                );
-                
-                if (!authSuccess)
+                // Send address and wait for echo
+                _log($"[MediaTek] Sending address: 0x{address:X8}");
+                if (!await EchoAsync(MtkDataPacker.PackUInt32BE(address), ct))
                 {
-                    _log("[MTK] SLA authentication failed");
+                    _log("[MediaTek] Sending address failed");
                     return false;
                 }
-                
-                _log("[MTK] ✓ SLA authentication successful");
-                status = 0;  // Reset status after successful auth
-            }
 
-            // Status code check (mtkclient: 0 <= status <= 0xFF indicates success)
-            if (status > 0xFF)
-            {
-                _log($"[MTK] SEND_DA status error: 0x{status:X4} ({BromErrorHelper.GetErrorMessage(status)})");
-                return false;
-            }
+                // Send size and wait for echo
+                _log($"[MediaTek] Sending size: {processedData.Length} bytes");
+                if (!await EchoAsync(MtkDataPacker.PackUInt32BE((uint)processedData.Length), ct))
+                {
+                    _log("[MediaTek] Sending size failed");
+                    return false;
+                }
 
-            _log($"[MTK] ✓ SEND_DA status normal: 0x{status:X4}");
-            _log($"[MTK] Preparing to upload data: {processedData.Length} bytes, checksum: 0x{checksum:X4}");
+                // Send signature length and wait for echo
+                _log($"[MediaTek] Sending signature length: 0x{sigLen:X} ({sigLen} bytes)");
+                if (!await EchoAsync(MtkDataPacker.PackUInt32BE((uint)sigLen), ct))
+                {
+                    _log("[MediaTek] Sending signature length failed");
+                    return false;
+                }
 
-            // Upload data
-            _log("[MTK] Calling UploadDataAsync...");
-            bool uploadResult = false;
-            try
-            {
-                uploadResult = await UploadDataAsync(processedData, checksum, ct);
-            }
-            catch (Exception uploadEx)
-            {
-                _log($"[MTK] UploadDataAsync exception: {uploadEx.Message}");
-                return false;
-            }
-            _log($"[MTK] Upload data result: {uploadResult}");
-            
-            if (!uploadResult)
-            {
-                _log("[MTK] Data upload failed");
-                return false;
-            }
+                // Read status (2 bytes)
+                _log("[MediaTek] Waiting for device response status...");
+                var statusResp = await ReadBytesAsync(2, DEFAULT_TIMEOUT_MS, ct);
+                if (statusResp == null)
+                {
+                    _log("[MediaTek] Reading status failed (Timeout or no response)");
+                    return false;
+                }
 
-            _log("[MTK] ✓ DA sent successfully");
-            return true;
+                ushort status = MtkDataPacker.UnpackUInt16BE(statusResp, 0);
+                _log($"[MediaTek] SEND_DA status: 0x{status:X4}");
+
+                LastUploadStatus = status;  // Save status for caller
+
+                // Check status code 0x0010 or 0x0011 (Preloader mode Auth requirement)
+                if (status == (ushort)BromStatus.AuthRequired || status == (ushort)BromStatus.PreloaderAuth)
+                {
+                    _log($"[MediaTek] ⚠ Preloader mode requires AUTH (status: 0x{status:X4})");
+                    _log("[MediaTek] Device has DAA protection enabled in Preloader mode");
+                    _log("[MediaTek] Official signed DA or DA2-level exploit (ALLINONE-SIGNATURE) required");
+                    LastUploadStatus = status;
+                    return false;
+                }
+
+                // Check if SLA authentication required (status code 0x1D0D)
+                if (status == (ushort)BromStatus.SlaRequired)
+                {
+                    _log("[MediaTek] SLA authentication required...");
+
+                    // Execute SLA authentication
+                    var slaAuth = new MtkSlaAuth(msg => _log(msg));
+                    bool authSuccess = await slaAuth.AuthenticateAsync(
+                        async (authData, len, token) =>
+                        {
+                            _port.Write(authData, 0, len);
+                            return true;
+                        },
+                        async (count, timeout, token) => await ReadBytesInternalAsync(count, timeout, token),
+                        HwCode,
+                        ct
+                    );
+
+                    if (!authSuccess)
+                    {
+                        _log("[MediaTek] SLA authentication failed");
+                        return false;
+                    }
+
+                    _log("[MediaTek] ✓ SLA authentication successful");
+                    status = 0;  // Reset status after successful auth
+                }
+
+                // Status code check (mtkclient: 0 <= status <= 0xFF indicates success)
+                if (status > 0xFF)
+                {
+                    _log($"[MediaTek] SEND_DA status error: 0x{status:X4} ({BromErrorHelper.GetErrorMessage(status)})");
+                    return false;
+                }
+
+                _log($"[MediaTek] ✓ SEND_DA status normal: 0x{status:X4}");
+                _log($"[MediaTek] Preparing to upload data: {processedData.Length} bytes, checksum: 0x{checksum:X4}");
+
+                // Upload data
+                _log("[MediaTek] Calling UploadDataAsync...");
+                bool uploadResult = false;
+                try
+                {
+                    uploadResult = await UploadDataAsync(processedData, checksum, ct);
+                }
+                catch (Exception uploadEx)
+                {
+                    _log($"[MediaTek] UploadDataAsync exception: {uploadEx.Message}");
+                    return false;
+                }
+                _log($"[MediaTek] Upload data result: {uploadResult}");
+
+                if (!uploadResult)
+                {
+                    _log("[MediaTek] Data upload failed");
+                    return false;
+                }
+
+                _log("[MediaTek] ✓ DA sent successfully");
+                return true;
             }
             catch (Exception ex)
             {
-                _log($"[MTK] SendDaAsync exception: {ex.Message}");
-                _log($"[MTK] Stack: {ex.StackTrace}");
+                _log($"[MediaTek] SendDaAsync exception: {ex.Message}");
+                _log($"[MediaTek] Stack: {ex.StackTrace}");
                 return false;
             }
         }
@@ -1268,14 +1267,14 @@ namespace LoveAlways.MediaTek.Protocol
         /// </summary>
         public async Task<bool> JumpDaAsync(uint address, CancellationToken ct = default)
         {
-            _log($"[MTK] Jumping to DA address 0x{address:X8}");
+            _log($"[MediaTek] Jumping to DA address 0x{address:X8}");
 
             try
             {
                 // 1. Send JUMP_DA command and wait for echo
                 if (!await EchoAsync(BromCommands.CMD_JUMP_DA, ct))
                 {
-                    _log("[MTK] JUMP_DA command echo failed");
+                    _log("[MediaTek] JUMP_DA command echo failed");
                     return false;
                 }
 
@@ -1294,14 +1293,14 @@ namespace LoveAlways.MediaTek.Protocol
                 var addrResp = await ReadBytesAsync(4, DEFAULT_TIMEOUT_MS, ct);
                 if (addrResp == null)
                 {
-                    _log("[MTK] Reading address echo timeout");
+                    _log("[MediaTek] Reading address echo timeout");
                     return false;
                 }
 
                 uint respAddr = MtkDataPacker.UnpackUInt32BE(addrResp, 0);
                 if (respAddr != address)
                 {
-                    _log($"[MTK] Address mismatch: expected 0x{address:X8}, received 0x{respAddr:X8}");
+                    _log($"[MediaTek] Address mismatch: expected 0x{address:X8}, received 0x{respAddr:X8}");
                     return false;
                 }
 
@@ -1309,30 +1308,30 @@ namespace LoveAlways.MediaTek.Protocol
                 var statusResp = await ReadBytesAsync(2, DEFAULT_TIMEOUT_MS, ct);
                 if (statusResp == null)
                 {
-                    _log("[MTK] Reading status timeout");
+                    _log("[MediaTek] Reading status timeout");
                     return false;
                 }
 
                 ushort status = MtkDataPacker.UnpackUInt16BE(statusResp, 0);
-                _log($"[MTK] JUMP_DA status: 0x{status:X4}");
+                _log($"[MediaTek] JUMP_DA status: 0x{status:X4}");
 
                 // mtkclient: if status == 0: return True
                 if (status != 0)
                 {
-                    _log($"[MTK] JUMP_DA status error: 0x{status:X4} ({BromErrorHelper.GetErrorMessage(status)})");
+                    _log($"[MediaTek] JUMP_DA status error: 0x{status:X4} ({BromErrorHelper.GetErrorMessage(status)})");
                     return false;
                 }
 
                 // 5. Wait for DA to start (mtkclient: time.sleep(0.1))
                 await Task.Delay(100, ct);
 
-                _log("[MTK] ✓ JUMP_DA successful");
+                _log("[MediaTek] ✓ JUMP_DA successful");
                 State = MtkDeviceState.Da1Loaded;
                 return true;
             }
             catch (Exception ex)
             {
-                _log($"[MTK] JumpDaAsync exception: {ex.Message}");
+                _log($"[MediaTek] JumpDaAsync exception: {ex.Message}");
                 return false;
             }
         }
@@ -1349,24 +1348,24 @@ namespace LoveAlways.MediaTek.Protocol
                 {
                     // Clear receive buffer
                     _port.DiscardInBuffer();
-                    
+
                     // Try reading DA sync signal
                     // DA typically sends "SYNC" (0x434E5953) or specific byte sequence after starting
                     byte[] buffer = new byte[64];
                     int totalRead = 0;
-                    
+
                     // Wait up to 2 seconds
                     var timeout = DateTime.Now.AddMilliseconds(2000);
                     while (DateTime.Now < timeout && totalRead < buffer.Length)
                     {
                         if (ct.IsCancellationRequested)
                             return false;
-                            
+
                         if (_port.BytesToRead > 0)
                         {
                             int read = _port.Read(buffer, totalRead, Math.Min(_port.BytesToRead, buffer.Length - totalRead));
                             totalRead += read;
-                            
+
                             // Check for DA ready signals
                             // V6 DA typically sends "SYNC" or 0xC0
                             if (totalRead >= 4)
@@ -1374,25 +1373,25 @@ namespace LoveAlways.MediaTek.Protocol
                                 // Check "SYNC" magic
                                 if (buffer[0] == 'S' && buffer[1] == 'Y' && buffer[2] == 'N' && buffer[3] == 'C')
                                 {
-                                    _log("[MTK] Detected DA SYNC signal");
+                                    _log("[MediaTek] Detected DA SYNC signal");
                                     State = MtkDeviceState.Da1Loaded;
                                     return true;
                                 }
-                                
+
                                 // Check reverse SYNC
                                 uint sync = (uint)(buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]);
                                 if (sync == 0x434E5953)  // "CNYS" (little endian SYNC)
                                 {
-                                    _log("[MTK] Detected DA SYNC signal (LE)");
+                                    _log("[MediaTek] Detected DA SYNC signal (LE)");
                                     State = MtkDeviceState.Da1Loaded;
                                     return true;
                                 }
                             }
-                            
+
                             // Check single-byte ready signal
                             if (buffer[0] == 0xC0)
                             {
-                                _log("[MTK] Detected DA ready signal (0xC0)");
+                                _log("[MediaTek] Detected DA ready signal (0xC0)");
                                 State = MtkDeviceState.Da1Loaded;
                                 return true;
                             }
@@ -1402,12 +1401,12 @@ namespace LoveAlways.MediaTek.Protocol
                             await Task.Delay(50, ct);
                         }
                     }
-                    
+
                     if (totalRead > 0)
                     {
-                        _log($"[MTK] Received {totalRead} bytes: {BitConverter.ToString(buffer, 0, Math.Min(totalRead, 16))}");
+                        _log($"[MediaTek] Received {totalRead} bytes: {BitConverter.ToString(buffer, 0, Math.Min(totalRead, 16))}");
                     }
-                    
+
                     return false;
                 }
                 finally
@@ -1417,7 +1416,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _log($"[MTK] Detect DA ready exception: {ex.Message}");
+                _log($"[MediaTek] Detect DA ready exception: {ex.Message}");
                 return false;
             }
         }
@@ -1433,8 +1432,8 @@ namespace LoveAlways.MediaTek.Protocol
                 await _portLock.WaitAsync(ct);
                 try
                 {
-                    _log("[MTK] Sending DA SYNC command...");
-                    
+                    _log("[MediaTek] Sending DA SYNC command...");
+
                     // DA command format: EFEEEEFE + cmd(4B) + length(4B) + payload
                     // SYNC command: cmd=0x01, length=4, payload="SYNC"
                     byte[] syncCmd = new byte[]
@@ -1444,20 +1443,20 @@ namespace LoveAlways.MediaTek.Protocol
                         0x04, 0x00, 0x00, 0x00   // Length = 4
                     };
                     byte[] syncPayload = System.Text.Encoding.ASCII.GetBytes("SYNC");
-                    
+
                     // Send command header
                     _port.Write(syncCmd, 0, syncCmd.Length);
-                    
+
                     // Send SYNC payload
                     _port.Write(syncPayload, 0, syncPayload.Length);
-                    
+
                     // Wait for response
                     await Task.Delay(200, ct);
-                    
+
                     // Read response
                     byte[] buffer = new byte[32];
                     int totalRead = 0;
-                    
+
                     var timeout = DateTime.Now.AddMilliseconds(2000);
                     while (DateTime.Now < timeout && totalRead < buffer.Length)
                     {
@@ -1465,14 +1464,14 @@ namespace LoveAlways.MediaTek.Protocol
                         {
                             int read = _port.Read(buffer, totalRead, Math.Min(_port.BytesToRead, buffer.Length - totalRead));
                             totalRead += read;
-                            
+
                             // Check for DA response
                             if (totalRead >= 4)
                             {
                                 // Check magic
                                 if (buffer[0] == 0xEF && buffer[1] == 0xEE)
                                 {
-                                    _log($"[MTK] Received DA response: {BitConverter.ToString(buffer, 0, Math.Min(totalRead, 12))}");
+                                    _log($"[MediaTek] Received DA response: {BitConverter.ToString(buffer, 0, Math.Min(totalRead, 12))}");
                                     State = MtkDeviceState.Da1Loaded;
                                     return true;
                                 }
@@ -1483,16 +1482,16 @@ namespace LoveAlways.MediaTek.Protocol
                             await Task.Delay(50, ct);
                         }
                     }
-                    
+
                     if (totalRead > 0)
                     {
-                        _log($"[MTK] Received response but magic mismatch: {BitConverter.ToString(buffer, 0, totalRead)}");
+                        _log($"[MediaTek] Received response but magic mismatch: {BitConverter.ToString(buffer, 0, totalRead)}");
                     }
                     else
                     {
-                        _log("[MTK] DA SYNC no response");
+                        _log("[MediaTek] DA SYNC no response");
                     }
-                    
+
                     return false;
                 }
                 finally
@@ -1502,7 +1501,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _log($"[MTK] DA SYNC exception: {ex.Message}");
+                _log($"[MediaTek] DA SYNC exception: {ex.Message}");
                 return false;
             }
         }
@@ -1512,8 +1511,8 @@ namespace LoveAlways.MediaTek.Protocol
         /// </summary>
         private async Task<bool> UploadDataAsync(byte[] data, ushort expectedChecksum, CancellationToken ct = default)
         {
-            _log($"[MTK] Starting data upload: {data.Length} bytes, expected checksum: 0x{expectedChecksum:X4}");
-            
+            _log($"[MediaTek] Starting data upload: {data.Length} bytes, expected checksum: 0x{expectedChecksum:X4}");
+
             await _portLock.WaitAsync(ct);
             try
             {
@@ -1525,7 +1524,7 @@ namespace LoveAlways.MediaTek.Protocol
                 {
                     if (ct.IsCancellationRequested)
                     {
-                        _log("[MTK] Data upload cancelled");
+                        _log("[MediaTek] Data upload cancelled");
                         return false;
                     }
 
@@ -1547,8 +1546,8 @@ namespace LoveAlways.MediaTek.Protocol
                     }
                 }
 
-                _log($"[MTK] Data transmission complete: {bytesWritten} bytes");
-                
+                _log($"[MediaTek] Data transmission complete: {bytesWritten} bytes");
+
                 // mtkclient: send empty bytes after finishing then wait
                 // Note: Mtk reference implementation uses 10ms, mtkclient uses 120ms
                 // Using 10ms for speed; increase if issues occur
@@ -1559,55 +1558,55 @@ namespace LoveAlways.MediaTek.Protocol
                 var checksumResp = await ReadBytesInternalAsync(2, DEFAULT_TIMEOUT_MS * 2, ct);
                 if (checksumResp == null || checksumResp.Length < 2)
                 {
-                    _log($"[MTK] Failed to read checksum (received: {checksumResp?.Length ?? 0} bytes)");
+                    _log($"[MediaTek] Failed to read checksum (received: {checksumResp?.Length ?? 0} bytes)");
                     return false;
                 }
-                
+
                 ushort receivedChecksum = (ushort)((checksumResp[0] << 8) | checksumResp[1]);
-                _log($"[MTK] Received checksum: 0x{receivedChecksum:X4}, expected: 0x{expectedChecksum:X4}");
-                
+                _log($"[MediaTek] Received checksum: 0x{receivedChecksum:X4}, expected: 0x{expectedChecksum:X4}");
+
                 if (receivedChecksum != expectedChecksum && receivedChecksum != 0)
                 {
-                    _log($"[MTK] Warning: Checksum mismatch");
+                    _log($"[MediaTek] Warning: Checksum mismatch");
                 }
 
                 // Read final status (2 bytes)
                 var statusResp = await ReadBytesInternalAsync(2, DEFAULT_TIMEOUT_MS, ct);
                 if (statusResp == null || statusResp.Length < 2)
                 {
-                    _log($"[MTK] Failed to read status (received: {statusResp?.Length ?? 0} bytes)");
+                    _log($"[MediaTek] Failed to read status (received: {statusResp?.Length ?? 0} bytes)");
                     return false;
                 }
-                
+
                 ushort status = (ushort)((statusResp[0] << 8) | statusResp[1]);
-                _log($"[MTK] Upload status: 0x{status:X4}");
-                
+                _log($"[MediaTek] Upload status: 0x{status:X4}");
+
                 // Save upload status for subsequent use
                 LastUploadStatus = status;
 
                 // Use improved status check
                 if (!BromErrorHelper.IsSuccess(status))
                 {
-                    _log($"[MTK] Upload status error: 0x{status:X4} ({BromErrorHelper.GetErrorMessage(status)})");
+                    _log($"[MediaTek] Upload status error: 0x{status:X4} ({BromErrorHelper.GetErrorMessage(status)})");
                     return false;
                 }
-                
+
                 // Special handling: 0x7017/0x7015 indicates DAA security protection
                 if (status == 0x7017 || status == 0x7015)
                 {
-                    _log($"[MTK] Data transmission complete (Status 0x{status:X4})");
-                    _log("[MTK] ⚠ DAA Security protection triggered - device may re-enumerate");
+                    _log($"[MediaTek] Data transmission complete (Status 0x{status:X4})");
+                    _log("[MediaTek] ⚠ DAA Security protection triggered - device may re-enumerate");
                 }
                 else
                 {
-                    _log("[MTK] ✓ Data upload successful");
+                    _log("[MediaTek] ✓ Data upload successful");
                 }
-                
+
                 return true;
             }
             catch (Exception ex)
             {
-                _log($"[MTK] Data upload exception: {ex.Message}");
+                _log($"[MediaTek] Data upload exception: {ex.Message}");
                 return false;
             }
             finally
@@ -1627,25 +1626,25 @@ namespace LoveAlways.MediaTek.Protocol
         {
             if (emiConfig == null || emiConfig.Length == 0)
             {
-                _log("[MTK] EMI configuration data is empty");
+                _log("[MediaTek] EMI configuration data is empty");
                 return false;
             }
 
-            _log($"[MTK] Sending EMI configuration: {emiConfig.Length} bytes");
+            _log($"[MediaTek] Sending EMI configuration: {emiConfig.Length} bytes");
 
             try
             {
                 // Send SEND_ENV_PREPARE command (0xD9)
                 if (!await EchoAsync(BromCommands.CMD_SEND_ENV_PREPARE, ct))
                 {
-                    _log("[MTK] SEND_ENV_PREPARE command failed");
+                    _log("[MediaTek] SEND_ENV_PREPARE command failed");
                     return false;
                 }
 
                 // Send EMI configuration length
                 if (!await EchoAsync(MtkDataPacker.PackUInt32BE((uint)emiConfig.Length), ct))
                 {
-                    _log("[MTK] Failed to send EMI configuration length");
+                    _log("[MediaTek] Failed to send EMI configuration length");
                     return false;
                 }
 
@@ -1653,14 +1652,14 @@ namespace LoveAlways.MediaTek.Protocol
                 var statusResp = await ReadBytesAsync(2, DEFAULT_TIMEOUT_MS, ct);
                 if (statusResp == null)
                 {
-                    _log("[MTK] Failed to read status");
+                    _log("[MediaTek] Failed to read status");
                     return false;
                 }
 
                 ushort status = MtkDataPacker.UnpackUInt16BE(statusResp, 0);
                 if (!BromErrorHelper.IsSuccess(status))
                 {
-                    _log($"[MTK] EMI configuration status error: 0x{status:X4} ({BromErrorHelper.GetErrorMessage(status)})");
+                    _log($"[MediaTek] EMI configuration status error: 0x{status:X4} ({BromErrorHelper.GetErrorMessage(status)})");
                     return false;
                 }
 
@@ -1680,23 +1679,23 @@ namespace LoveAlways.MediaTek.Protocol
                 var finalStatus = await ReadBytesAsync(2, DEFAULT_TIMEOUT_MS, ct);
                 if (finalStatus == null)
                 {
-                    _log("[MTK] Failed to read final status");
+                    _log("[MediaTek] Failed to read final status");
                     return false;
                 }
 
                 ushort finalStatusCode = MtkDataPacker.UnpackUInt16BE(finalStatus, 0);
                 if (!BromErrorHelper.IsSuccess(finalStatusCode))
                 {
-                    _log($"[MTK] EMI configuration final status error: 0x{finalStatusCode:X4}");
+                    _log($"[MediaTek] EMI configuration final status error: 0x{finalStatusCode:X4}");
                     return false;
                 }
 
-                _log("[MTK] ✓ EMI configuration sent successfully");
+                _log("[MediaTek] ✓ EMI configuration sent successfully");
                 return true;
             }
             catch (Exception ex)
             {
-                _log($"[MTK] Exception sending EMI configuration: {ex.Message}");
+                _log($"[MediaTek] Exception sending EMI configuration: {ex.Message}");
                 return false;
             }
         }
@@ -1722,11 +1721,11 @@ namespace LoveAlways.MediaTek.Protocol
             try
             {
                 _port.Write(data, 0, data.Length);
-                
+
                 var response = await ReadBytesInternalAsync(data.Length, DEFAULT_TIMEOUT_MS, ct);
                 if (response == null)
                 {
-                    _logDetail("[MTK] Echo: Reading response timeout");
+                    _logDetail("[MediaTek] Echo: Reading response timeout");
                     return false;
                 }
 
@@ -1735,7 +1734,7 @@ namespace LoveAlways.MediaTek.Protocol
                 {
                     if (response[i] != data[i])
                     {
-                        _logDetail($"[MTK] Echo mismatch: position {i}, expected 0x{data[i]:X2}, received 0x{response[i]:X2}");
+                        _logDetail($"[MediaTek] Echo mismatch: position {i}, expected 0x{data[i]:X2}, received 0x{response[i]:X2}");
                         return false;
                     }
                 }
@@ -1744,7 +1743,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
             catch (Exception ex)
             {
-                _logDetail($"[MTK] Echo exception: {ex.Message}");
+                _logDetail($"[MediaTek] Echo exception: {ex.Message}");
                 return false;
             }
             finally
@@ -1763,11 +1762,11 @@ namespace LoveAlways.MediaTek.Protocol
             try
             {
                 _port.Write(new byte[] { cmd }, 0, 1);
-                
+
                 var response = await ReadBytesInternalAsync(1, DEFAULT_TIMEOUT_MS, ct);
                 if (response == null)
                 {
-                    _log($"[MTK] {cmdName} command failed: No response");
+                    _log($"[MediaTek] {cmdName} command failed: No response");
                     return false;
                 }
 
@@ -1785,27 +1784,27 @@ namespace LoveAlways.MediaTek.Protocol
                     if (extra != null && extra.Length > 0)
                     {
                         ushort status = (ushort)((response[0] << 8) | extra[0]);
-                        _log($"[MTK] {cmdName} command: Device returned status 0x{status:X4} (no echo)");
-                        
+                        _log($"[MediaTek] {cmdName} command: Device returned status 0x{status:X4} (no echo)");
+
                         if (status == (ushort)BromStatus.SlaRequired)
-                            _log("[MTK] Device requires SLA authentication");
+                            _log("[MediaTek] Device requires SLA authentication");
                         else if (status == (ushort)BromStatus.AuthRequired || status == (ushort)BromStatus.PreloaderAuth)
-                            _log("[MTK] Preloader requires AUTH");
+                            _log("[MediaTek] Preloader requires AUTH");
                     }
                     else
                     {
-                        _log($"[MTK] {cmdName} command rejected (DAA might be required)");
+                        _log($"[MediaTek] {cmdName} command rejected (DAA might be required)");
                     }
                 }
                 else
                 {
-                    _log($"[MTK] {cmdName} echo mismatch: expected 0x{cmd:X2}, received 0x{response[0]:X2}");
+                    _log($"[MediaTek] {cmdName} echo mismatch: expected 0x{cmd:X2}, received 0x{response[0]:X2}");
                 }
                 return false;
             }
             catch (Exception ex)
             {
-                _log($"[MTK] {cmdName} command exception: {ex.Message}");
+                _log($"[MediaTek] {cmdName} command exception: {ex.Message}");
                 return false;
             }
             finally
@@ -1899,7 +1898,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
             else
             {
-                _log($"[MTK] boot_to: 0x{address:X8} ({data?.Length ?? 0} bytes)");
+                _log($"[MediaTek] boot_to: 0x{address:X8} ({data?.Length ?? 0} bytes)");
             }
 
             // TODO: Actual boot_to command implementation
@@ -1916,7 +1915,7 @@ namespace LoveAlways.MediaTek.Protocol
             {
                 _logger.LogCommand($"DA Command", command, LogCategory.Da);
             }
-            
+
             // TODO: Actual DA command sending logic
             throw new NotImplementedException("DA command sending needs to be implemented in DA mode");
         }

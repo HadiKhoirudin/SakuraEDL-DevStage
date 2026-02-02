@@ -4,15 +4,14 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Qualcomm.Protocol;
 using System;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Protocol;
 
 namespace LoveAlways.Qualcomm.Authentication
 {
@@ -31,7 +30,7 @@ namespace LoveAlways.Qualcomm.Authentication
         /// Last obtained authorization token
         /// </summary>
         public string LastAuthToken { get; private set; }
- 
+
         // Predefined signatures (edlclient signature library)
         private static readonly string[] AuthSignsBase64 = new[]
         {
@@ -39,7 +38,7 @@ namespace LoveAlways.Qualcomm.Authentication
             "+XXYSSqF2nxshZLObdpMLTMZ1GffzOYd2d/ToryWChoK8v05ZOlfn4wUyaZJT4LHMXZ0NVUryvUbVbxjW5SkLpKDKwkMfnxnEwaOddmT" +
             "/q0ip4RpVk4aBmDW4TfVnXnDSX9tRI+ewQP4hEI8K5tfZ0mfyycYa0FTGhJPcTTP3TQzy1Krc1DAVLbZ8IqGBrW13YWN" +
             "/cMvaiEzcETNyA4N3kOaEXKWodnkwucJv2nEnJWTKNHY9NS9f5Cq3OPs4pQ==",
-            
+
             "vzXWATo51hZr4Dh+a5sA/Q4JYoP4Ee3oFZSGbPZ2tBsaMupn" +
             "+6tPbZDkXJRLUzAqHaMtlPMKaOHrEWZysCkgCJqpOPkUZNaSbEKpPQ6uiOVJpJwA" +
             "/PmxuJ72inzSPevriMAdhQrNUqgyu4ATTEsOKnoUIuJTDBmzCeuh/34SOjTdO4Pc+s3ORfMD0TX+WImeUx4c9xVdSL/xirPl" +
@@ -66,11 +65,11 @@ namespace LoveAlways.Qualcomm.Authentication
                     if (ct.IsCancellationRequested) break;
 
                     _log(string.Format("[MiAuth] Trying signature library #{0}...", index));
-                    
+
                     // Send sig command request
                     string sigCmd = "<?xml version=\"1.0\" ?><data><sig TargetName=\"sig\" size_in_bytes=\"256\" verbose=\"1\"/></data>";
                     var sigResp = await client.SendRawXmlAsync(sigCmd, ct);
-                    
+
                     if (sigResp == null || sigResp.Contains("NAK"))
                     {
                         index++;
@@ -103,7 +102,7 @@ namespace LoveAlways.Qualcomm.Authentication
                     LastAuthToken = token;
                     _log(string.Format("[MiAuth] Authorization token: {0}", token));
                     _log("[MiAuth] 💡 Please copy the token for online authorization or official application.");
-                    
+
                     // Trigger event to notify UI to display authorization window
                     OnAuthTokenRequired?.Invoke(token);
                 }
@@ -131,7 +130,7 @@ namespace LoveAlways.Qualcomm.Authentication
                 // Send request to get Challenge
                 string reqCmd = "<?xml version=\"1.0\" ?><data><sig TargetName=\"req\" /></data>";
                 string response = await client.SendRawXmlAsync(reqCmd, ct);
-                
+
                 if (string.IsNullOrEmpty(response))
                     return null;
 
@@ -210,27 +209,27 @@ namespace LoveAlways.Qualcomm.Authentication
         private string ExtractAttribute(string xml, string attrName)
         {
             if (string.IsNullOrEmpty(xml)) return null;
-            
+
             string pattern1 = attrName + "=\"";
             int start = xml.IndexOf(pattern1);
             if (start < 0) return null;
-            
+
             start += pattern1.Length;
             int end = xml.IndexOf("\"", start);
             if (end < 0) return null;
-            
+
             return xml.Substring(start, end - start);
         }
 
         private byte[] HexToBytes(string hex)
         {
             if (string.IsNullOrEmpty(hex)) return null;
-            
+
             // Remove potential prefix and spaces
             hex = hex.Replace(" ", "").Replace("0x", "").Replace("0X", "");
-            
+
             if (hex.Length % 2 != 0) return null;
-            
+
             try
             {
                 byte[] bytes = new byte[hex.Length / 2];

@@ -4,11 +4,8 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-using System;
 
 namespace LoveAlways.MediaTek.Common
 {
@@ -19,7 +16,7 @@ namespace LoveAlways.MediaTek.Common
     {
         // CRC32 lookup table (Standard polynomial 0xEDB88320)
         private static readonly uint[] CrcTable = new uint[256];
-        
+
         static MtkCrc32()
         {
             // Initialize CRC table
@@ -52,13 +49,13 @@ namespace LoveAlways.MediaTek.Common
         public static uint Compute(byte[] data, int offset, int length)
         {
             uint crc = 0xFFFFFFFF;
-            
+
             for (int i = 0; i < length; i++)
             {
                 byte b = data[offset + i];
                 crc = CrcTable[(crc ^ b) & 0xFF] ^ (crc >> 8);
             }
-            
+
             return crc ^ 0xFFFFFFFF;
         }
 

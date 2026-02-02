@@ -1,5 +1,10 @@
 # Build results
-bin/
+bin/Debug/*.dll
+bin/Debug/*.exe
+bin/Debug/*.pdb
+bin/Debug/*.config
+bin/Debug/*.xml
+bin/Debug/Logs
 obj/
 packages/
 

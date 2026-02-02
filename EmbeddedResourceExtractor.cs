@@ -42,7 +42,7 @@ namespace LoveAlways
                     try
                     {
                         string targetPath = Path.Combine(baseDir, fileName);
-                        
+
                         // 如果文件已存在且不是旧版本，跳过
                         if (File.Exists(targetPath))
                         {
@@ -81,7 +81,7 @@ namespace LoveAlways
         {
             // 资源名称格式: {命名空间}.Resources.{文件名}
             string resourceName = $"LoveAlways.Resources.{fileName.Replace("-", "_")}";
-            
+
             // 尝试不同的资源名称格式
             string[] possibleNames = new string[]
             {
@@ -104,11 +104,11 @@ namespace LoveAlways
                 // 列出所有可用资源以便调试
                 var allResources = assembly.GetManifestResourceNames();
                 System.Diagnostics.Debug.WriteLine($"可用资源: {string.Join(", ", allResources)}");
-                
+
                 // If file already exists in current directory, no need to extract
                 if (File.Exists(targetPath))
                     return;
-                    
+
                 return;
             }
 
@@ -119,7 +119,7 @@ namespace LoveAlways
                 {
                     resourceStream.CopyTo(fileStream);
                 }
-                
+
                 System.Diagnostics.Debug.WriteLine($"Extracted: {fileName}");
             }
             catch (Exception ex)

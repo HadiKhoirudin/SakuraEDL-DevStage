@@ -6,10 +6,12 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.MediaTek.Common;
+using LoveAlways.MediaTek.Models;
 using System;
 using System.IO;
 using System.IO.Ports;
@@ -17,8 +19,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Models;
 using DaEntry = LoveAlways.MediaTek.Models.DaEntry;
 
 namespace LoveAlways.MediaTek.Protocol
@@ -33,7 +33,7 @@ namespace LoveAlways.MediaTek.Protocol
         private readonly Action<string> _logDetail;
         private readonly Action<double> _progressCallback;
         private bool _disposed;
-        
+
         // Thread safety: Port lock (can be shared from BromClient)
         private readonly SemaphoreSlim _portLock;
         private readonly bool _ownsPortLock;
@@ -65,7 +65,7 @@ namespace LoveAlways.MediaTek.Protocol
             _logDetail = logDetail ?? _log;
             _progressCallback = progressCallback;
             State = MtkDeviceState.Da1Loaded;
-            
+
             // Use external lock if provided, otherwise create own
             if (portLock != null)
             {
@@ -86,7 +86,7 @@ namespace LoveAlways.MediaTek.Protocol
         {
             _port = port;
         }
-        
+
         /// <summary>
         /// Get port lock
         /// </summary>
@@ -101,9 +101,9 @@ namespace LoveAlways.MediaTek.Protocol
         {
             // Note: No longer clearing the buffer, as the device might send unsolicited messages (e.g., CMD:DOWNLOAD-FILE)
             // Clearing will cause important requests to be lost
-            
+
             byte[] data = Encoding.UTF8.GetBytes(xmlCmd);
-            
+
             // Build header: Magic (4) + DataType (4) + Length (4)
             byte[] header = new byte[12];
             MtkDataPacker.WriteUInt32LE(header, 0, XML_MAGIC);
@@ -151,7 +151,7 @@ namespace LoveAlways.MediaTek.Protocol
             {
                 _log($"[XML] Magic mismatch: 0x{magic:X8}, expected: 0x{XML_MAGIC:X8}");
                 _logDetail($"[XML] Header data: {BitConverter.ToString(header).Replace("-", " ")}");
-                
+
                 // Try to resync: Find Magic in subsequent data
                 _log("[XML] Attempting to resync protocol stream...");
                 bool synced = await TryResyncAsync(timeoutMs, ct);
@@ -160,19 +160,19 @@ namespace LoveAlways.MediaTek.Protocol
                     _log("[XML] Protocol synchronization failed");
                     return null;
                 }
-                
+
                 // Read header again
                 header = await ReadBytesInternalAsync(12, timeoutMs, ct);
                 if (header == null)
                     return null;
-                
+
                 magic = MtkDataPacker.UnpackUInt32LE(header, 0);
                 if (magic != XML_MAGIC)
                 {
                     _log("[XML] Still unable to find valid Magic after resync");
                     return null;
                 }
-                
+
                 _log("[XML] ✓ Protocol resynchronized successfully");
             }
 
@@ -211,9 +211,9 @@ namespace LoveAlways.MediaTek.Protocol
             const int maxSearchBytes = 1024;
             byte[] searchBuffer = new byte[maxSearchBytes];
             int totalRead = 0;
-            
+
             DateTime start = DateTime.Now;
-            
+
             while (totalRead < maxSearchBytes && (DateTime.Now - start).TotalMilliseconds < timeoutMs)
             {
                 if (_port.BytesToRead > 0)
@@ -221,7 +221,7 @@ namespace LoveAlways.MediaTek.Protocol
                     int toRead = Math.Min(_port.BytesToRead, maxSearchBytes - totalRead);
                     int actualRead = _port.Read(searchBuffer, totalRead, toRead);
                     totalRead += actualRead;
-                    
+
                     // Search for Magic in read data
                     for (int i = 0; i <= totalRead - 4; i++)
                     {
@@ -240,7 +240,7 @@ namespace LoveAlways.MediaTek.Protocol
                     await Task.Delay(10, ct);
                 }
             }
-            
+
             return false;
         }
 
@@ -269,7 +269,7 @@ namespace LoveAlways.MediaTek.Protocol
             try
             {
                 await XSendInternalAsync(xmlCmd, ct);
-                
+
                 string response = await XRecvInternalAsync(DEFAULT_TIMEOUT_MS, ct);
                 if (string.IsNullOrEmpty(response))
                     return null;
@@ -346,7 +346,7 @@ namespace LoveAlways.MediaTek.Protocol
                     if (!string.IsNullOrEmpty(response))
                     {
                         _logDetail($"[XML] Received: {response.Substring(0, Math.Min(100, response.Length))}...");
-                        
+
                         if (response.Contains("CMD:START") || response.Contains("ready"))
                         {
                             // Send "OK" confirmation (ChimeraTool protocol requirement)
@@ -368,7 +368,7 @@ namespace LoveAlways.MediaTek.Protocol
             _log("[XML] DA ready timeout");
             return false;
         }
-        
+
         /// <summary>
         /// Send OK confirmation message
         /// </summary>
@@ -382,10 +382,10 @@ namespace LoveAlways.MediaTek.Protocol
                 MtkDataPacker.WriteUInt32LE(header, 0, XML_MAGIC);
                 MtkDataPacker.WriteUInt32LE(header, 4, 1);  // DataType = 1
                 MtkDataPacker.WriteUInt32LE(header, 8, 2);  // Length = 2
-                
+
                 _port.Write(header, 0, 12);
                 _port.Write(Encoding.ASCII.GetBytes("OK"), 0, 2);
-                
+
                 _logDetail("[XML] Sending OK confirmation");
             }
             finally
@@ -424,11 +424,11 @@ namespace LoveAlways.MediaTek.Protocol
                     _log("[XML] Warning: Failed to read Connection Agent header");
                     return "preloader";
                 }
-                
+
                 uint magic = MtkDataPacker.UnpackUInt32LE(header, 0);
                 uint dataType = MtkDataPacker.UnpackUInt32LE(header, 4);
                 uint length = MtkDataPacker.UnpackUInt32LE(header, 8);
-                
+
                 if (magic != XML_MAGIC)
                 {
                     // Not XML format, try to parse directly
@@ -438,7 +438,7 @@ namespace LoveAlways.MediaTek.Protocol
                     if (rawStr.Contains("preloader") || rawStr.Contains("pl")) return "preloader";
                     return "preloader";
                 }
-                
+
                 // Read data part
                 if (length > 0 && length < 1024)
                 {
@@ -448,9 +448,9 @@ namespace LoveAlways.MediaTek.Protocol
                         string agent = System.Text.Encoding.ASCII.GetString(data)
                             .TrimEnd('\0', ' ', '\r', '\n')
                             .ToLower();
-                        
+
                         _logDetail($"[XML] Connection Agent data: \"{agent}\"");
-                        
+
                         if (agent.Contains("brom") && !agent.Contains("preloader"))
                         {
                             _log("[XML] ✓ Connection Agent: brom (Booted from Boot ROM)");
@@ -486,7 +486,7 @@ namespace LoveAlways.MediaTek.Protocol
         public async Task<bool> SetRuntimeParametersAsync(CancellationToken ct = default)
         {
             _logDetail("[XML] Setting runtime parameters...");
-            
+
             try
             {
                 // Command sent by ChimeraTool
@@ -505,7 +505,7 @@ namespace LoveAlways.MediaTek.Protocol
                             "<initialize_dram>YES</initialize_dram>" +
                             "</adv>" +
                             "</da>";
-                
+
                 var response = await SendCommandAsync(cmd, ct);
                 if (response != null)
                 {
@@ -519,17 +519,17 @@ namespace LoveAlways.MediaTek.Protocol
                             return true;
                         }
                     }
-                    
+
                     // Check for message node
                     var msgNode = response.SelectSingleNode("//message");
                     if (msgNode != null)
                     {
                         _logDetail($"[XML] Runtime parameter response: {msgNode.InnerText}");
                     }
-                    
+
                     return true; // Assume success even without explicit OK
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -549,7 +549,7 @@ namespace LoveAlways.MediaTek.Protocol
             // Send handshake command
             string handshakeCmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                                   "<da><version>1.0</version><command>CMD:CONNECT</command></da>";
-            
+
             var response = await SendCommandAsync(handshakeCmd, ct);
             if (response == null)
             {
@@ -670,11 +670,11 @@ namespace LoveAlways.MediaTek.Protocol
         /// Execute Carbonara exploit
         /// </summary>
         public async Task<bool> ExecuteCarbonaraAsync(
-            uint da1Address, 
-            int hashOffset, 
-            byte[] newHash, 
-            uint da2Address, 
-            byte[] patchedDa2, 
+            uint da1Address,
+            int hashOffset,
+            byte[] newHash,
+            uint da2Address,
+            byte[] patchedDa2,
             CancellationToken ct = default)
         {
             _log("[Carbonara] Starting runtime exploit...");
@@ -701,18 +701,18 @@ namespace LoveAlways.MediaTek.Protocol
             }
 
             _log("[Carbonara] ✓ Stage2 upload successful");
-            
+
             // 3. Execute SLA authentication (if needed)
             await Task.Delay(100, ct);  // Wait for DA2 initialization
-            
+
             _log("[Carbonara] Checking SLA status...");
             bool slaRequired = await CheckSlaStatusAsync(ct);
-            
+
             if (slaRequired)
             {
                 _log("[Carbonara] SLA Status: Enabled");
                 _log("[Carbonara] Executing SLA authentication...");
-                
+
                 if (!await ExecuteSlaAuthAsync(ct))
                 {
                     _log("[Carbonara] ⚠ SLA authentication failed, but continuing anyway");
@@ -727,14 +727,14 @@ namespace LoveAlways.MediaTek.Protocol
             {
                 _log("[Carbonara] SLA Status: Disabled (No authentication needed)");
             }
-            
+
             _log("[Carbonara] ✓ Runtime exploit successful!");
             State = MtkDeviceState.Da2Loaded;
             IsConnected = true;
 
             return true;
         }
-        
+
         /// <summary>
         /// Check SLA status
         /// </summary>
@@ -747,11 +747,11 @@ namespace LoveAlways.MediaTek.Protocol
                             "<da><version>1.0</version>" +
                             "<command>CMD:GET-SLA</command>" +
                             "</da>";
-                
+
                 var response = await SendCommandAsync(cmd, ct);
                 if (response != null)
                 {
-                    var statusNode = response.SelectSingleNode("//sla") ?? 
+                    var statusNode = response.SelectSingleNode("//sla") ??
                                     response.SelectSingleNode("//status");
                     if (statusNode != null)
                     {
@@ -766,7 +766,7 @@ namespace LoveAlways.MediaTek.Protocol
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Execute SLA authentication
         /// </summary>
@@ -779,19 +779,19 @@ namespace LoveAlways.MediaTek.Protocol
                 // 2. Receive challenge data
                 // 3. Sign using SLA certificate
                 // 4. Send signature response
-                
+
                 string challengeCmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                                      "<da><version>1.0</version>" +
                                      "<command>CMD:SLA-CHALLENGE</command>" +
                                      "</da>";
-                
+
                 var challengeResponse = await SendCommandAsync(challengeCmd, ct);
                 if (challengeResponse == null)
                 {
                     _logDetail("[SLA] Could not get challenge");
                     return false;
                 }
-                
+
                 // Parse challenge
                 var challengeNode = challengeResponse.SelectSingleNode("//challenge");
                 if (challengeNode == null)
@@ -805,26 +805,26 @@ namespace LoveAlways.MediaTek.Protocol
                     _logDetail("[SLA] No challenge data");
                     return false;
                 }
-                
+
                 // Get challenge data
                 string challengeHex = challengeNode.InnerText;
                 byte[] challenge = HexToBytes(challengeHex);
-                
+
                 _logDetail($"[SLA] Received challenge: {challenge.Length} bytes");
-                
+
                 // Sign challenge using built-in SLA certificate (placeholder implementation)
                 // Real implementation needs to load the correct SLA certificate based on device type
                 byte[] signature = await MtkSlaAuth.SignChallengeAsync(challenge, ct);
-                
+
                 if (signature == null || signature.Length == 0)
                 {
                     _logDetail("[SLA] Signature generation failed");
                     return false;
                 }
-                
+
                 _logDetail($"[SLA] Generated signature: {signature.Length} bytes");
                 _progressCallback?.Invoke(50);
-                
+
                 // Send signature response
                 string signatureHex = BytesToHex(signature);
                 string authCmd = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
@@ -834,10 +834,10 @@ namespace LoveAlways.MediaTek.Protocol
                                 $"<signature>{signatureHex}</signature>" +
                                 "</arg>" +
                                 "</da>";
-                
+
                 var authResponse = await SendCommandAsync(authCmd, ct);
                 _progressCallback?.Invoke(100);
-                
+
                 if (authResponse != null)
                 {
                     var resultNode = authResponse.SelectSingleNode("//status") ??
@@ -848,7 +848,7 @@ namespace LoveAlways.MediaTek.Protocol
                         return result == "OK" || result == "SUCCESS" || result == "0";
                     }
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -857,7 +857,7 @@ namespace LoveAlways.MediaTek.Protocol
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Convert Hex string to byte array
         /// </summary>
@@ -872,7 +872,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
             return bytes;
         }
-        
+
         /// <summary>
         /// Convert byte array to Hex string
         /// </summary>
@@ -936,7 +936,7 @@ namespace LoveAlways.MediaTek.Protocol
             }
 
             _log($"[XML] Uploading DA2: {da2.Data.Length} bytes");
-            
+
             // 0. Handle prior messages (CMD:END, CMD:START, etc.)
             for (int i = 0; i < 5; i++)
             {
@@ -954,7 +954,7 @@ namespace LoveAlways.MediaTek.Protocol
                 }
                 catch { }
             }
-            
+
             // 1. Send BOOT-TO command to trigger DA2 download
             _log("[XML] Sending BOOT-TO command...");
             string bootToCmd = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
@@ -967,15 +967,15 @@ namespace LoveAlways.MediaTek.Protocol
                               "<source_file>Boot to</source_file>" +
                               "</arg>" +
                               "</da>";
-            
+
             await XSendAsync(bootToCmd, ct);
-            
+
             _log("[XML] Waiting for device to request DA2...");
-            
+
             // 2. Wait for device to send CMD:DOWNLOAD-FILE request
             bool receivedRequest = false;
             int packetLength = 0x1000; // Default 4KB
-            
+
             for (int retry = 0; retry < 30 && !receivedRequest; retry++)
             {
                 try
@@ -986,14 +986,14 @@ namespace LoveAlways.MediaTek.Protocol
                     {
                         continue;
                     }
-                    
+
                     _logDetail($"[XML] Received message: {msg.Substring(0, Math.Min(100, msg.Length))}...");
-                    
+
                     // Check if it's a DOWNLOAD-FILE request
                     if (msg.Contains("CMD:DOWNLOAD-FILE") && msg.Contains("2nd-DA"))
                     {
                         _log("[XML] ✓ Received DA2 download request");
-                        
+
                         // Parse packet_length
                         var match = System.Text.RegularExpressions.Regex.Match(
                             msg, @"<packet_length>0x([0-9A-Fa-f]+)</packet_length>");
@@ -1002,11 +1002,11 @@ namespace LoveAlways.MediaTek.Protocol
                             packetLength = Convert.ToInt32(match.Groups[1].Value, 16);
                             _logDetail($"[XML] Chunk size: 0x{packetLength:X}");
                         }
-                        
+
                         // Important: Send OK to confirm DOWNLOAD-FILE request
                         _log("[XML] Sending OK to confirm DOWNLOAD-FILE...");
                         await SendOkAsync(ct);
-                        
+
                         receivedRequest = true;
                     }
                     else if (msg.Contains("CMD:START") || msg.Contains("CMD:PROGRESS-REPORT"))
@@ -1025,17 +1025,17 @@ namespace LoveAlways.MediaTek.Protocol
                     // Continue waiting
                 }
             }
-            
+
             if (!receivedRequest)
             {
                 _log("[XML] Timeout: Did not receive DA2 download request");
                 return false;
             }
-            
+
             // 2. Respond with OK@<size> (inform device regarding file size)
             string sizeResponse = $"OK@{da2.Data.Length} ";
             _log($"[XML] Sending size response: {sizeResponse}");
-            
+
             // Construct and send manually (more precise control)
             byte[] sizePayload = Encoding.ASCII.GetBytes(sizeResponse);
             byte[] sizeHeader = new byte[12];
@@ -1044,10 +1044,10 @@ namespace LoveAlways.MediaTek.Protocol
             sizeHeader[8] = (byte)(sizePayload.Length & 0xFF);
             sizeHeader[9] = (byte)((sizePayload.Length >> 8) & 0xFF);
             sizeHeader[10] = 0; sizeHeader[11] = 0;
-            
+
             _logDetail($"[XML] Sending header: {BitConverter.ToString(sizeHeader).Replace("-", " ")}");
             _logDetail($"[XML] Sending data: {BitConverter.ToString(sizePayload).Replace("-", " ")}");
-            
+
             await _portLock.WaitAsync(ct);
             try
             {
@@ -1060,28 +1060,28 @@ namespace LoveAlways.MediaTek.Protocol
             {
                 _portLock.Release();
             }
-            
+
             // Wait for device to process
             await Task.Delay(100, ct);
-            
+
             // Check if serial port has data
             _log($"[XML] Serial port buffer: {_port.BytesToRead} bytes");
-            
+
             bool deviceReady = false;
-            
+
             if (_port.BytesToRead > 0)
             {
                 byte[] rawResp = new byte[Math.Min(_port.BytesToRead, 256)];
                 int rawRead = _port.Read(rawResp, 0, rawResp.Length);
                 _log($"[XML] Raw response ({rawRead} bytes): {BitConverter.ToString(rawResp, 0, rawRead).Replace("-", " ")}");
-                
+
                 // Check for "OK" response
                 if (rawRead >= 3 && rawResp[0] == 0xEF && rawResp[1] == 0xEE)
                 {
                     _log("[XML] ✓ Received device confirmation");
                     // Send OK reply
                     await SendOkAsync(ct);
-                    
+
                     // Wait for second confirmation
                     await Task.Delay(50, ct);
                     if (_port.BytesToRead > 0)
@@ -1090,70 +1090,70 @@ namespace LoveAlways.MediaTek.Protocol
                         _port.Read(ack2, 0, ack2.Length);
                         _logDetail($"[XML] Second response: {BitConverter.ToString(ack2).Replace("-", " ")}");
                     }
-                    
+
                     deviceReady = true;
                 }
             }
-            
+
             if (!deviceReady)
             {
                 _log("[XML] ⚠ Device not responding, attempting to continue sending data anyway...");
             }
-            
+
             // Start sending data immediately
-            
+
             // 4. Send DA2 data in chunks
             _log($"[XML] Starting DA2 data transmission: {da2.Data.Length} bytes, chunk size: {packetLength}");
-            
+
             int offset = 0;
             int totalChunks = (da2.Data.Length + packetLength - 1) / packetLength;
             int chunkIndex = 0;
-            
+
             while (offset < da2.Data.Length)
             {
                 int remaining = da2.Data.Length - offset;
                 int chunkSize = Math.Min(remaining, packetLength);
-                
+
                 byte[] chunk = new byte[chunkSize];
                 Array.Copy(da2.Data, offset, chunk, 0, chunkSize);
-                
+
                 // First block: show more info
                 if (chunkIndex == 0)
                 {
                     _log($"[XML] Sending first chunk: {chunkSize} bytes");
                     _logDetail($"[XML] First 16 bytes: {BitConverter.ToString(chunk, 0, Math.Min(16, chunk.Length)).Replace("-", " ")}");
                 }
-                
+
                 // Send data block using XML header format
                 await XSendBinaryAsync(chunk, ct);
-                
+
                 offset += chunkSize;
                 chunkIndex++;
-                
+
                 if (chunkIndex % 20 == 0 || offset >= da2.Data.Length)
                 {
                     _log($"[XML] Sent: {offset}/{da2.Data.Length} ({100 * offset / da2.Data.Length}%)");
                 }
-                
+
                 // Wait for device ACK
                 await Task.Delay(10, ct); // Brief wait
-                
+
                 if (_port.BytesToRead > 0)
                 {
                     byte[] rawAck = new byte[Math.Min(_port.BytesToRead, 64)];
                     int ackRead = _port.Read(rawAck, 0, rawAck.Length);
                     string ackStr = Encoding.ASCII.GetString(rawAck, 0, ackRead).TrimEnd('\0');
-                    
+
                     if (chunkIndex <= 3)
                     {
                         _log($"[XML] Chunk {chunkIndex} ACK ({ackRead} bytes): {BitConverter.ToString(rawAck, 0, ackRead).Replace("-", " ")}");
                     }
-                    
+
                     // Check for ERR
                     if (ackStr.Contains("ERR"))
                     {
                         _log($"[XML] ✗ Device returned error");
-                        
+
                         // Attempt to read complete error message (may be XML)
                         await Task.Delay(100, ct);
                         if (_port.BytesToRead > 0)
@@ -1163,7 +1163,7 @@ namespace LoveAlways.MediaTek.Protocol
                             string errStr = Encoding.UTF8.GetString(errMsg, 0, errRead);
                             _log($"[XML] Error details: {errStr}");
                         }
-                        
+
                         // Check if rawAck already contains XML error message
                         // Format: OK(15) + ERR(16) + XML(header 12 + data)
                         if (ackRead > 31)
@@ -1171,11 +1171,11 @@ namespace LoveAlways.MediaTek.Protocol
                             // Parse XML part - find XML header (skip OK + ERR packets)
                             for (int i = 0; i < ackRead - 12; i++)
                             {
-                                if (rawAck[i] == 0xEF && rawAck[i+1] == 0xEE && rawAck[i+2] == 0xEE && rawAck[i+3] == 0xFE)
+                                if (rawAck[i] == 0xEF && rawAck[i + 1] == 0xEE && rawAck[i + 2] == 0xEE && rawAck[i + 3] == 0xFE)
                                 {
                                     if (i + 12 < ackRead)
                                     {
-                                        int xmlLen = rawAck[i+8] | (rawAck[i+9] << 8) | (rawAck[i+10] << 16) | (rawAck[i+11] << 24);
+                                        int xmlLen = rawAck[i + 8] | (rawAck[i + 9] << 8) | (rawAck[i + 10] << 16) | (rawAck[i + 11] << 24);
                                         int payloadStart = i + 12;
                                         int payloadLen = Math.Min(xmlLen, ackRead - payloadStart);
                                         if (payloadLen > 0)
@@ -1188,16 +1188,16 @@ namespace LoveAlways.MediaTek.Protocol
                                 }
                             }
                         }
-                        
+
                         return false;
                     }
-                    
+
                     // Check if OK ACK (EF EE EE FE ... 4F 4B 00)
                     if (ackRead >= 12 && rawAck[0] == 0xEF && rawAck[1] == 0xEE)
                     {
                         // Send OK confirmation
                         await SendOkAsync(ct);
-                        
+
                         // Wait for second ACK
                         await Task.Delay(10, ct);
                         if (_port.BytesToRead > 0)
@@ -1207,7 +1207,7 @@ namespace LoveAlways.MediaTek.Protocol
                             // Continue to next chunk
                         }
                     }
-                    
+
                     // Check if CMD:END
                     if (ackStr.Contains("CMD:END"))
                     {
@@ -1217,9 +1217,9 @@ namespace LoveAlways.MediaTek.Protocol
                     }
                 }
             }
-            
+
             _log($"[XML] DA2 data transmission complete: {offset} bytes");
-            
+
             // 4. Wait for final confirmation
             for (int i = 0; i < 10; i++)
             {
@@ -1227,11 +1227,11 @@ namespace LoveAlways.MediaTek.Protocol
                 if (!string.IsNullOrEmpty(finalMsg))
                 {
                     _logDetail($"[XML] Final response: {finalMsg.Substring(0, Math.Min(100, finalMsg.Length))}...");
-                    
+
                     if (finalMsg.Contains("CMD:END"))
                     {
                         await SendOkAsync(ct);
-                        
+
                         if (finalMsg.Contains("OK") || finalMsg.Contains("result>OK"))
                         {
                             _log("[XML] ✓ DA2 upload successful");
@@ -1245,31 +1245,31 @@ namespace LoveAlways.MediaTek.Protocol
                     }
                 }
             }
-            
+
             _log("[XML] ✓ DA2 upload complete (assuming success)");
             State = MtkDeviceState.Da2Loaded;
             return true;
         }
-        
+
         /// <summary>
         /// Send raw string (with XML header)
         /// </summary>
         private async Task XSendRawAsync(string data, CancellationToken ct = default)
         {
             byte[] payload = Encoding.ASCII.GetBytes(data);
-            
+
             // Build header: magic(4) + dataType(4) + length(4)
             byte[] header = new byte[12];
             header[0] = 0xEF; header[1] = 0xEE; header[2] = 0xEE; header[3] = 0xFE; // Magic
             header[4] = 0x01; header[5] = 0x00; header[6] = 0x00; header[7] = 0x00; // DataType = 1
-            
+
             // Length (little-endian)
             int len = payload.Length;
             header[8] = (byte)(len & 0xFF);
             header[9] = (byte)((len >> 8) & 0xFF);
             header[10] = (byte)((len >> 16) & 0xFF);
             header[11] = (byte)((len >> 24) & 0xFF);
-            
+
             await _portLock.WaitAsync(ct);
             try
             {
@@ -1283,7 +1283,7 @@ namespace LoveAlways.MediaTek.Protocol
                 _portLock.Release();
             }
         }
-        
+
         /// <summary>
         /// Send binary data (with XML header)
         /// ChimeraTool sends header and data as two separate USB transactions
@@ -1294,24 +1294,24 @@ namespace LoveAlways.MediaTek.Protocol
             byte[] header = new byte[12];
             header[0] = 0xEF; header[1] = 0xEE; header[2] = 0xEE; header[3] = 0xFE; // Magic
             header[4] = 0x01; header[5] = 0x00; header[6] = 0x00; header[7] = 0x00; // DataType = 1
-            
+
             // Length (little-endian)
             int len = data.Length;
             header[8] = (byte)(len & 0xFF);
             header[9] = (byte)((len >> 8) & 0xFF);
             header[10] = (byte)((len >> 16) & 0xFF);
             header[11] = (byte)((len >> 24) & 0xFF);
-            
+
             await _portLock.WaitAsync(ct);
             try
             {
                 // Send header and data separately (simulating two USB transactions)
                 _port.Write(header, 0, 12);
                 _port.BaseStream.Flush();
-                
+
                 // Short delay to ensure separate transfer
                 await Task.Delay(1, ct);
-                
+
                 _port.Write(data, 0, data.Length);
                 _port.BaseStream.Flush();
             }
@@ -1682,13 +1682,13 @@ namespace LoveAlways.MediaTek.Protocol
             if (!_disposed)
             {
                 IsConnected = false;
-                
+
                 // Only dispose if we own the lock
                 if (_ownsPortLock)
                 {
                     _portLock?.Dispose();
                 }
-                
+
                 _disposed = true;
             }
         }

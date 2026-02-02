@@ -7,7 +7,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -37,21 +37,21 @@ namespace LoveAlways.MediaTek.Common
     public class MtkSlaAuth
     {
         private readonly Action<string> _log;
-        
+
         // SLA Commands
         private const byte CMD_SLA_CHALLENGE = 0xB4;
         private const byte CMD_SLA_AUTH = 0xB5;
-        
+
         // Default auth data length
         private const int CHALLENGE_LEN = 16;
         private const int AUTH_LEN = 256;
-        
+
         // Authentication status
         public SlaAuthStatus Status { get; private set; } = SlaAuthStatus.NotRequired;
-        
+
         // Auth data path
         public string AuthFilePath { get; set; }
-        
+
         // Whether to use default auth
         public bool UseDefaultAuth { get; set; } = true;
 
@@ -165,7 +165,7 @@ namespace LoveAlways.MediaTek.Common
                 _log($"[SLA] Using database key: {keyRecord.Vendor} - {keyRecord.Name}");
                 return SignChallengeWithRsaKey(challenge, keyRecord);
             }
-            
+
             // 2. Try loading auth data from file
             if (!string.IsNullOrEmpty(AuthFilePath) && File.Exists(AuthFilePath))
             {
@@ -192,7 +192,7 @@ namespace LoveAlways.MediaTek.Common
                 if (result != null)
                     return result;
             }
-            
+
             // 4. Try using default auth (Simplified algorithm, for dev devices only)
             if (UseDefaultAuth)
             {
@@ -207,7 +207,7 @@ namespace LoveAlways.MediaTek.Common
             _log("[SLA] No available auth data");
             return null;
         }
-        
+
         /// <summary>
         /// Sign challenge with RSA key
         /// </summary>
@@ -220,12 +220,12 @@ namespace LoveAlways.MediaTek.Common
                     _log("[SLA] Key data incomplete");
                     return null;
                 }
-                
+
                 // Convert from Hex string to byte array
                 var d = HexToBytes(keyRecord.D);
                 var n = HexToBytes(keyRecord.N);
                 var e = HexToBytes(keyRecord.E);
-                
+
                 // Create RSA parameters
                 var rsaParams = new System.Security.Cryptography.RSAParameters
                 {
@@ -233,21 +233,21 @@ namespace LoveAlways.MediaTek.Common
                     Modulus = n,
                     Exponent = e
                 };
-                
+
                 // Create RSA instance
                 using (var rsa = System.Security.Cryptography.RSA.Create())
                 {
                     rsa.ImportParameters(rsaParams);
-                    
+
                     // RSA-PSS Signature
                     var signature = rsa.SignData(
                         challenge,
                         System.Security.Cryptography.HashAlgorithmName.SHA256,
                         System.Security.Cryptography.RSASignaturePadding.Pss
                     );
-                    
+
                     _log($"[SLA] RSA signed successful: {signature.Length} bytes");
-                    
+
                     // Extend to AUTH_LEN (if needed)
                     if (signature.Length < AUTH_LEN)
                     {
@@ -255,7 +255,7 @@ namespace LoveAlways.MediaTek.Common
                         Array.Copy(signature, result, signature.Length);
                         return result;
                     }
-                    
+
                     return signature;
                 }
             }
@@ -265,7 +265,7 @@ namespace LoveAlways.MediaTek.Common
                 return null;
             }
         }
-        
+
         /// <summary>
         /// Hex string to byte array
         /// </summary>
@@ -273,18 +273,18 @@ namespace LoveAlways.MediaTek.Common
         {
             if (string.IsNullOrEmpty(hex))
                 return new byte[0];
-            
+
             hex = hex.Replace(" ", "").Replace("-", "").Replace("0x", "").Replace("0X", "");
-            
+
             if (hex.Length % 2 != 0)
                 hex = "0" + hex;
-            
+
             byte[] bytes = new byte[hex.Length / 2];
             for (int i = 0; i < bytes.Length; i++)
             {
                 bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
             }
-            
+
             return bytes;
         }
 
@@ -306,21 +306,21 @@ namespace LoveAlways.MediaTek.Common
             {
                 _log($"[SLA] RSA signature failed: {ex.Message}");
             }
-            
+
             // Fallback: simple HMAC-SHA256 signature (for dev devices only)
             _log("[SLA] Warning: Using simplified signature algorithm (dev devices only)");
             using (var hmac = new HMACSHA256(authKey))
             {
                 byte[] signature = hmac.ComputeHash(challenge);
-                
+
                 // Extend to auth length
                 byte[] response = new byte[AUTH_LEN];
                 Array.Copy(signature, 0, response, 0, Math.Min(signature.Length, AUTH_LEN));
-                
+
                 return response;
             }
         }
-        
+
         /// <summary>
         /// Try to load RSA key from byte array
         /// </summary>
@@ -328,14 +328,14 @@ namespace LoveAlways.MediaTek.Common
         {
             if (keyData == null || keyData.Length < 32)
                 return null;
-            
+
             try
             {
                 // TODO: .NET Framework 4.8 does not support ImportRSAPrivateKey
                 // Need to implement PKCS#8/PKCS#1 parsing or use BouncyCastle library
                 // Temporarily return null, use built-in certificate
                 return null;
-                
+
                 // var rsa = System.Security.Cryptography.RSA.Create();
                 // rsa.ImportRSAPrivateKey(keyData, out _);
                 // return rsa;
@@ -345,7 +345,7 @@ namespace LoveAlways.MediaTek.Common
                 return null;
             }
         }
-        
+
         /// <summary>
         /// RSA-PSS Sign (Algorithm used by MTK SLA)
         /// </summary>
@@ -357,7 +357,7 @@ namespace LoveAlways.MediaTek.Common
                 System.Security.Cryptography.HashAlgorithmName.SHA256,
                 System.Security.Cryptography.RSASignaturePadding.Pss
             );
-            
+
             return signature;
         }
 
@@ -368,16 +368,16 @@ namespace LoveAlways.MediaTek.Common
         {
             // For some chips, default/generic auth data can be used
             // This is usually blank or a known test key
-            
+
             // Generate chip-specific default key
             byte[] key = new byte[32];
             byte[] hwBytes = BitConverter.GetBytes(hwCode);
-            
+
             for (int i = 0; i < key.Length; i++)
             {
                 key[i] = (byte)(0x5A ^ hwBytes[i % hwBytes.Length] ^ i);
             }
-            
+
             return key;
         }
 
@@ -503,9 +503,9 @@ namespace LoveAlways.MediaTek.Common
         }
 
         #endregion
-        
+
         #region Static Methods
-        
+
         /// <summary>
         /// Sign challenge (Static method, for XML DA protocol)
         /// </summary>
@@ -515,36 +515,36 @@ namespace LoveAlways.MediaTek.Common
             {
                 if (challenge == null || challenge.Length == 0)
                     return null;
-                
+
                 // Generate default key
                 byte[] key = new byte[32];
                 for (int i = 0; i < key.Length; i++)
                 {
                     key[i] = (byte)(0x5A ^ (challenge[i % challenge.Length]) ^ i);
                 }
-                
+
                 // Use HMAC-SHA256 signature
                 using (var hmac = new HMACSHA256(key))
                 {
                     byte[] hash = hmac.ComputeHash(challenge);
-                    
+
                     // Generate 2KB signature data (matches 2KB write in screenshot)
                     byte[] signature = new byte[2048];
-                    
+
                     // Copy hash to start of signature
                     Array.Copy(hash, 0, signature, 0, hash.Length);
-                    
+
                     // Fill remaining part
                     for (int i = hash.Length; i < signature.Length; i++)
                     {
                         signature[i] = (byte)(hash[i % hash.Length] ^ (i >> 8));
                     }
-                    
+
                     return signature;
                 }
             }, ct);
         }
-        
+
         #endregion
     }
 }

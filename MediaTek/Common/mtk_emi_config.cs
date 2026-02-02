@@ -6,7 +6,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -14,7 +14,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using LoveAlways.MediaTek.Models;
 
 namespace LoveAlways.MediaTek.Common
 {
@@ -63,7 +62,7 @@ namespace LoveAlways.MediaTek.Common
         public uint DramcDrvctl0;      // DRAMC_DRVCTL0
         public uint DramcDrvctl1;      // DRAMC_DRVCTL1
         public uint DramcDdr2Ctl2;     // DRAMC_DDR2CTL2
-        
+
         public DramType DramType;      // DRAM Type
         public uint DramRank;          // DRAM Rank
         public uint DramDensity;       // DRAM Density
@@ -107,7 +106,7 @@ namespace LoveAlways.MediaTek.Common
         public uint Reserved1;
         public uint Reserved2;
         public uint Reserved3;
-        
+
         public DramType DramType;
         public uint DramRank;
         public uint DramDensity;
@@ -120,28 +119,28 @@ namespace LoveAlways.MediaTek.Common
     {
         /// <summary>Chip HW Code</summary>
         public ushort HwCode { get; set; }
-        
+
         /// <summary>Chip Name</summary>
         public string ChipName { get; set; }
-        
+
         /// <summary>EMI configuration data</summary>
         public byte[] ConfigData { get; set; }
-        
+
         /// <summary>Configuration length</summary>
         public int ConfigLength => ConfigData?.Length ?? 0;
-        
+
         /// <summary>Whether EMI configuration is required</summary>
         public bool Required { get; set; }
-        
+
         /// <summary>EMI settings version</summary>
         public int Version { get; set; } = 1;
-        
+
         /// <summary>DRAM type</summary>
         public DramType DramType { get; set; } = DramType.LPDDR4;
-        
+
         /// <summary>DRAM size (MB)</summary>
         public uint DramSizeMB { get; set; }
-        
+
         /// <summary>DRAM rank count</summary>
         public int DramRanks { get; set; } = 2;
     }
@@ -152,10 +151,10 @@ namespace LoveAlways.MediaTek.Common
     public static class MtkEmiConfig
     {
         private static readonly Dictionary<ushort, EmiConfigRecord> _configs = new Dictionary<ushort, EmiConfigRecord>();
-        
+
         // Mapping of whether a chip requires EMI configuration
         private static readonly Dictionary<ushort, bool> _requiresEmi = new Dictionary<ushort, bool>();
-        
+
         // DRAM type mapping
         private static readonly Dictionary<ushort, DramType> _dramTypes = new Dictionary<ushort, DramType>();
 
@@ -170,7 +169,7 @@ namespace LoveAlways.MediaTek.Common
             // EMI Configuration Requirements Mapping
             // Reference: mtkclient emi_config.py
             // ═══════════════════════════════════════════════════════════════
-            
+
             // Legacy chips - Requires EMI configuration
             SetChipEmiRequirement(0x6572, true, DramType.LPDDR2);   // MT6572
             SetChipEmiRequirement(0x6582, true, DramType.LPDDR2);   // MT6582
@@ -182,7 +181,7 @@ namespace LoveAlways.MediaTek.Common
             SetChipEmiRequirement(0x0326, true, DramType.LPDDR3);   // MT6755
             SetChipEmiRequirement(0x0601, true, DramType.LPDDR3);   // MT6757
             SetChipEmiRequirement(0x0279, true, DramType.LPDDR3);   // MT6797
-            
+
             // Mid-range chips - Requires EMI configuration
             SetChipEmiRequirement(0x0562, true, DramType.LPDDR4);   // MT6761
             SetChipEmiRequirement(0x0707, true, DramType.LPDDR4);   // MT6762
@@ -194,7 +193,7 @@ namespace LoveAlways.MediaTek.Common
             SetChipEmiRequirement(0x0507, true, DramType.LPDDR4X);  // MT6779
             SetChipEmiRequirement(0x0588, true, DramType.LPDDR4X);  // MT6785
             SetChipEmiRequirement(0x0699, true, DramType.LPDDR4);   // MT6739
-            
+
             // Modern chips - Requires EMI configuration (V2)
             SetChipEmiRequirement(0x0813, true, DramType.LPDDR4X);  // MT6833
             SetChipEmiRequirement(0x0600, true, DramType.LPDDR4X);  // MT6853
@@ -207,7 +206,7 @@ namespace LoveAlways.MediaTek.Common
             SetChipEmiRequirement(0x0900, true, DramType.LPDDR5);   // MT6983
             SetChipEmiRequirement(0x0930, true, DramType.LPDDR5);   // MT6985
             SetChipEmiRequirement(0x0950, true, DramType.LPDDR5);   // MT6989
-            
+
             // Tablet chips
             SetChipEmiRequirement(0x8127, true, DramType.LPDDR3);   // MT8127
             SetChipEmiRequirement(0x8163, true, DramType.LPDDR3);   // MT8163
@@ -217,7 +216,7 @@ namespace LoveAlways.MediaTek.Common
             SetChipEmiRequirement(0x8183, true, DramType.LPDDR4X);  // MT8183
             SetChipEmiRequirement(0x8195, true, DramType.LPDDR5);   // MT8195
         }
-        
+
         private static void SetChipEmiRequirement(ushort hwCode, bool required, DramType dramType)
         {
             _requiresEmi[hwCode] = required;
@@ -231,7 +230,7 @@ namespace LoveAlways.MediaTek.Common
         {
             if (_configs.TryGetValue(hwCode, out var config))
                 return config;
-            
+
             // Generate default configuration
             var dramType = GetDramType(hwCode);
             return new EmiConfigRecord
@@ -254,7 +253,7 @@ namespace LoveAlways.MediaTek.Common
                 return required;
             return false;
         }
-        
+
         /// <summary>
         /// Get chip DRAM type
         /// </summary>
@@ -264,7 +263,7 @@ namespace LoveAlways.MediaTek.Common
                 return dramType;
             return DramType.LPDDR4;  // LPDDR4 default
         }
-        
+
         /// <summary>
         /// Get EMI settings version
         /// </summary>
@@ -281,7 +280,7 @@ namespace LoveAlways.MediaTek.Common
         {
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
                 return null;
-            
+
             try
             {
                 return File.ReadAllBytes(filePath);
@@ -291,7 +290,7 @@ namespace LoveAlways.MediaTek.Common
                 return null;
             }
         }
-        
+
         /// <summary>
         /// Extract EMI configuration from Preloader
         /// </summary>
@@ -299,10 +298,10 @@ namespace LoveAlways.MediaTek.Common
         {
             if (preloaderData == null || preloaderData.Length < 0x1000)
                 return null;
-            
+
             // EMI configuration signature
             byte[] signature = new byte[] { 0x4D, 0x45, 0x4D, 0x49 };  // "MEMI"
-            
+
             for (int i = 0; i < preloaderData.Length - 256; i += 4)
             {
                 bool found = true;
@@ -314,7 +313,7 @@ namespace LoveAlways.MediaTek.Common
                         break;
                     }
                 }
-                
+
                 if (found)
                 {
                     // Found EMI configuration header
@@ -327,7 +326,7 @@ namespace LoveAlways.MediaTek.Common
                     }
                 }
             }
-            
+
             return null;
         }
 
@@ -338,7 +337,7 @@ namespace LoveAlways.MediaTek.Common
         {
             var dramType = GetDramType(hwCode);
             var version = GetEmiVersion(hwCode);
-            
+
             if (version == 2)
             {
                 // LPDDR4/4X/5 Config
@@ -352,7 +351,7 @@ namespace LoveAlways.MediaTek.Common
                     DramRank = 2,
                     DramDensity = 0x1000  // 4GB default
                 };
-                
+
                 return StructToBytes(settings);
             }
             else
@@ -366,7 +365,7 @@ namespace LoveAlways.MediaTek.Common
                     DramRank = 2,
                     DramDensity = 0x0400  // 1GB default
                 };
-                
+
                 return StructToBytes(settings);
             }
         }
@@ -378,18 +377,18 @@ namespace LoveAlways.MediaTek.Common
         {
             if (configData == null || configData.Length == 0)
                 return false;
-            
+
             // EMI configuration is usually 4-byte aligned
             if (configData.Length % 4 != 0)
                 return false;
-            
+
             // Minimum length check (at least 4 register configurations)
             if (configData.Length < 16)
                 return false;
-            
+
             return true;
         }
-        
+
         /// <summary>
         /// Convert structure to byte array
         /// </summary>
@@ -409,7 +408,7 @@ namespace LoveAlways.MediaTek.Common
             }
             return arr;
         }
-        
+
         /// <summary>
         /// Convert byte array to structure
         /// </summary>
@@ -418,7 +417,7 @@ namespace LoveAlways.MediaTek.Common
             int size = Marshal.SizeOf(typeof(T));
             if (arr.Length < size)
                 throw new ArgumentException("Insufficient data length");
-            
+
             IntPtr ptr = Marshal.AllocHGlobal(size);
             try
             {
@@ -430,7 +429,7 @@ namespace LoveAlways.MediaTek.Common
                 Marshal.FreeHGlobal(ptr);
             }
         }
-        
+
         /// <summary>
         /// Get list of chips supporting EMI configuration
         /// </summary>
@@ -438,7 +437,7 @@ namespace LoveAlways.MediaTek.Common
         {
             return new List<ushort>(_requiresEmi.Keys).AsReadOnly();
         }
-        
+
         /// <summary>
         /// Get statistical information
         /// </summary>
@@ -446,7 +445,7 @@ namespace LoveAlways.MediaTek.Common
         {
             int total = _requiresEmi.Count;
             int lpddr2 = 0, lpddr3 = 0, lpddr4 = 0, lpddr4x = 0, lpddr5 = 0;
-            
+
             foreach (var kv in _dramTypes)
             {
                 switch (kv.Value)
@@ -458,7 +457,7 @@ namespace LoveAlways.MediaTek.Common
                     case DramType.LPDDR5: lpddr5++; break;
                 }
             }
-            
+
             return $"EMI Configuration Statistics:\n" +
                    $"  Total chips: {total}\n" +
                    $"  LPDDR2: {lpddr2}\n" +

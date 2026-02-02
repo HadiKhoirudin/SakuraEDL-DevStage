@@ -8,10 +8,12 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Qualcomm.Common;
+using LoveAlways.Qualcomm.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -22,8 +24,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Models;
 
 namespace LoveAlways.Qualcomm.Protocol
 {
@@ -209,20 +209,20 @@ namespace LoveAlways.Qualcomm.Protocol
         public string StorageType { get; private set; }
         public int SectorSize { get { return _sectorSize; } }
         public int MaxPayloadSize { get { return _maxPayloadSize; } }
-        
+
         /// <summary>
         /// Get current effective chunk size
         /// </summary>
-        public int EffectiveChunkSize 
-        { 
-            get 
-            { 
+        public int EffectiveChunkSize
+        {
+            get
+            {
                 if (_customChunkSize > 0)
                     return Math.Min(_customChunkSize, _maxPayloadSize);
                 return _maxPayloadSize;
-            } 
+            }
         }
-        
+
         /// <summary>
         /// Set custom chunk size (0 = Use default)
         /// </summary>
@@ -231,25 +231,25 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             if (chunkSize < 0)
                 throw new ArgumentException("Chunk size cannot be negative");
-                
+
             if (chunkSize > 0)
             {
                 // Ensure multiple of sector size
                 chunkSize = (chunkSize / _sectorSize) * _sectorSize;
                 if (chunkSize < _sectorSize)
                     chunkSize = _sectorSize;
-                    
+
                 // Cannot exceed device max payload
                 chunkSize = Math.Min(chunkSize, _maxPayloadSize);
             }
-            
+
             _customChunkSize = chunkSize;
             if (chunkSize == 0)
                 _logDetail(string.Format("[Firehose] Chunk mode: Off (Using device max {0})", FormatSize(_maxPayloadSize)));
             else
                 _logDetail(string.Format("[Firehose] Chunk mode: On ({0}/chunk)", FormatSize(chunkSize)));
         }
-        
+
         /// <summary>
         /// Set chunk size (In MB)
         /// </summary>
@@ -257,7 +257,7 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             SetChunkSize(megabytes * 1024 * 1024);
         }
-        
+
         /// <summary>
         /// Format size display
         /// </summary>
@@ -302,18 +302,18 @@ namespace LoveAlways.Qualcomm.Protocol
         public long ResolveNegativeSector(int lun, long sector)
         {
             if (sector >= 0) return sector;
-            
+
             long totalSectors = GetLunTotalSectors(lun);
             if (totalSectors <= 0)
             {
                 _logDetail(string.Format("[GPT] Cannot resolve negative sector: LUN{0} total sectors unknown", lun));
                 return -1;
             }
-            
+
             // Negative sector means count from end
             // Example: -5 means totalSectors - 5
             long absoluteSector = totalSectors + sector;
-            _logDetail(string.Format("[GPT] Negative sector conversion: LUN{0} sector {1} -> {2} (Total sectors: {3})", 
+            _logDetail(string.Format("[GPT] Negative sector conversion: LUN{0} sector {1} -> {2} (Total sectors: {3})",
                 lun, sector, absoluteSector, totalSectors));
             return absoluteSector;
         }
@@ -499,7 +499,7 @@ namespace LoveAlways.Qualcomm.Protocol
         public async Task<List<PartitionInfo>> ReadGptPartitionsAsync(bool useVipMode = false, CancellationToken ct = default(CancellationToken), IProgress<int> lunProgress = null)
         {
             var partitions = new List<PartitionInfo>();
-            
+
             // Reset slot detection state, prepare to merge results from all LUNs
             ResetSlotDetection();
 
@@ -524,9 +524,9 @@ namespace LoveAlways.Qualcomm.Protocol
                     // ⚠️ OPPO/Realme devices MUST prioritize BackupGPT masquerade, otherwise will freeze
                     // UFS devices only need to read 6 sectors (24KB), eMMC read 34 sectors
                     int vipGptSectors = (_sectorSize == 4096) ? 6 : 34;
-                    
+
                     _log(string.Format("[GPT] VIP mode reading LUN{0} ({1} sectors, sector size={2})...", lun, vipGptSectors, _sectorSize));
-                    
+
                     var readStrategies = new string[,]
                     {
                         { "BackupGPT", string.Format("gpt_backup{0}.bin", lun) },  // Priority 1
@@ -555,7 +555,7 @@ namespace LoveAlways.Qualcomm.Protocol
                         {
                             _logDetail(string.Format("[GPT] LUN{0} strategy {1} exception: {2}", lun, readStrategies[i, 0], ex.Message));
                         }
-                        
+
                         await Task.Delay(200, ct); // Strategy switch interval increased to 200ms
                     }
                 }
@@ -594,11 +594,11 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 _cachedPartitions = partitions;
                 _log(string.Format("[Firehose] Total {0} partitions read", partitions.Count));
-                
+
                 // Output merged slot state
                 if (_mergedSlot != "nonexistent")
                 {
-                    _logDetail(string.Format("[Firehose] Device slot: {0} (A active={1}, B active={2})", 
+                    _logDetail(string.Format("[Firehose] Device slot: {0} (A active={1}, B active={2})",
                         _mergedSlot, _slotACount, _slotBCount));
                 }
             }
@@ -635,7 +635,7 @@ namespace LoveAlways.Qualcomm.Protocol
             _port.Write(Encoding.UTF8.GetBytes(xml));
 
             var buffer = new byte[numSectors * _sectorSize];
-            
+
             // Use timeout protection to prevent hanging if device does not respond
             using (var timeoutCts = new CancellationTokenSource(timeoutMs))
             using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token))
@@ -645,15 +645,15 @@ namespace LoveAlways.Qualcomm.Protocol
                     // Use receiving method with timeout
                     var receiveTask = ReceiveDataAfterAckAsync(buffer, linkedCts.Token);
                     var delayTask = Task.Delay(timeoutMs, ct);
-                    
+
                     var completedTask = await Task.WhenAny(receiveTask, delayTask);
-                    
+
                     if (completedTask == delayTask)
                     {
                         _logDetail(string.Format("[GPT] LUN{0} read timeout ({1}ms)", lun, timeoutMs));
                         throw new TimeoutException(string.Format("GPT read timeout: LUN{0}", lun));
                     }
-                    
+
                     if (await receiveTask)
                     {
                         await WaitForAckAsync(linkedCts.Token, 10);
@@ -716,23 +716,23 @@ namespace LoveAlways.Qualcomm.Protocol
         private void MergeSlotInfo(GptParseResult result)
         {
             if (result?.SlotInfo == null) return;
-            
+
             var slotInfo = result.SlotInfo;
-            
+
             // If this LUN has A/B partitions
             if (slotInfo.HasAbPartitions)
             {
                 // At least one A/B partition exists
                 if (_mergedSlot == "nonexistent")
                     _mergedSlot = "undefined";
-                
+
                 // Count active slots
                 if (slotInfo.CurrentSlot == "a")
                     _slotACount++;
                 else if (slotInfo.CurrentSlot == "b")
                     _slotBCount++;
             }
-            
+
             // Determine final slot based on statistics
             if (_slotACount > _slotBCount && _slotACount > 0)
                 _mergedSlot = "a";
@@ -750,10 +750,10 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             var parser = new GptParser(_log, _logDetail);
             var result = parser.Parse(gptData, lun, _sectorSize);
-            
+
             // Save parsing result
             LastGptResult = result;
-            
+
             // Merge slot detection results
             MergeSlotInfo(result);
 
@@ -771,10 +771,10 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 // Output detailed info (to log file only)
                 _logDetail(string.Format("[GPT] Disk GUID: {0}", result.Header.DiskGuid));
-                _logDetail(string.Format("[GPT] Partition Data Area: LBA {0} - {1}", 
+                _logDetail(string.Format("[GPT] Partition Data Area: LBA {0} - {1}",
                     result.Header.FirstUsableLba, result.Header.LastUsableLba));
                 _logDetail(string.Format("[GPT] CRC: {0}", result.Header.CrcValid ? "Valid" : "Invalid"));
-                
+
                 if (result.SlotInfo.HasAbPartitions)
                 {
                     _logDetail(string.Format("[GPT] Current Slot: {0}", result.SlotInfo.CurrentSlot));
@@ -823,11 +823,11 @@ namespace LoveAlways.Qualcomm.Protocol
         /// <param name="savePath">Save path</param>
         /// <param name="ct">Cancellation token</param>
         /// <param name="chunkProgress">Chunk progress callback (current chunk index, total chunks, chunk bytes)</param>
-        public async Task<bool> ReadPartitionAsync(PartitionInfo partition, string savePath, 
+        public async Task<bool> ReadPartitionAsync(PartitionInfo partition, string savePath,
             CancellationToken ct = default(CancellationToken),
             Action<int, int, long> chunkProgress = null)
         {
-            return await ReadPartitionChunkedAsync(partition.Lun, partition.StartSector, 
+            return await ReadPartitionChunkedAsync(partition.Lun, partition.StartSector,
                 partition.NumSectors, partition.SectorSize, savePath, partition.Name, ct, chunkProgress);
         }
 
@@ -842,7 +842,7 @@ namespace LoveAlways.Qualcomm.Protocol
         /// <param name="label">Partition name (for logging)</param>
         /// <param name="ct">Cancellation token</param>
         /// <param name="chunkProgress">Chunk progress callback</param>
-        public async Task<bool> ReadPartitionChunkedAsync(int lun, long startSector, long numSectors, 
+        public async Task<bool> ReadPartitionChunkedAsync(int lun, long startSector, long numSectors,
             int sectorSize, string savePath, string label,
             CancellationToken ct = default(CancellationToken),
             Action<int, int, long> chunkProgress = null)
@@ -852,16 +852,16 @@ namespace LoveAlways.Qualcomm.Protocol
             // Use effective chunk size (default use device max, no chunking)
             int chunkSize = EffectiveChunkSize;
             long sectorsPerChunk = chunkSize / sectorSize;
-            
+
             // Calculate total chunks
             int totalChunks = (int)Math.Ceiling((double)numSectors / sectorsPerChunk);
             long totalSize = numSectors * sectorSize;
             long totalRead = 0L;
-            
+
             // Only show chunk info when custom chunking is enabled
             if (_customChunkSize > 0)
             {
-                _logDetail(string.Format("[Firehose] Chunk transfer: {0}/chunk, total {1} chunks", 
+                _logDetail(string.Format("[Firehose] Chunk transfer: {0}/chunk, total {1} chunks",
                     FormatSize(chunkSize), totalChunks));
             }
 
@@ -871,7 +871,7 @@ namespace LoveAlways.Qualcomm.Protocol
             {
                 for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
                 {
-                    if (ct.IsCancellationRequested) 
+                    if (ct.IsCancellationRequested)
                     {
                         _log("[Firehose] Read cancelled");
                         return false;
@@ -887,7 +887,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     var data = await ReadSectorsAsync(lun, currentStartSector, (int)sectorsToRead, ct);
                     if (data == null)
                     {
-                        _log(string.Format("[Firehose] Read failed @ chunk {0}/{1}, sector {2}", 
+                        _log(string.Format("[Firehose] Read failed @ chunk {0}/{1}, sector {2}",
                             chunkIndex + 1, totalChunks, currentStartSector));
                         return false;
                     }
@@ -908,11 +908,11 @@ namespace LoveAlways.Qualcomm.Protocol
         /// <summary>
         /// Read to memory in chunks (Suitable for small partitions)
         /// </summary>
-        public async Task<byte[]> ReadPartitionToMemoryAsync(PartitionInfo partition, 
+        public async Task<byte[]> ReadPartitionToMemoryAsync(PartitionInfo partition,
             CancellationToken ct = default(CancellationToken),
             Action<int, int, long> chunkProgress = null)
         {
-            return await ReadToMemoryChunkedAsync(partition.Lun, partition.StartSector, 
+            return await ReadToMemoryChunkedAsync(partition.Lun, partition.StartSector,
                 partition.NumSectors, partition.Name, ct, chunkProgress);
         }
 
@@ -1059,19 +1059,19 @@ namespace LoveAlways.Qualcomm.Protocol
         /// <param name="useOppoMode">Whether to use OPPO mode</param>
         /// <param name="ct">Cancellation token</param>
         /// <param name="chunkProgress">Chunk progress callback (current chunk index, total chunks, chunk bytes)</param>
-        public async Task<bool> WritePartitionAsync(PartitionInfo partition, string imagePath, 
+        public async Task<bool> WritePartitionAsync(PartitionInfo partition, string imagePath,
             bool useOppoMode = false, CancellationToken ct = default(CancellationToken),
             Action<int, int, long> chunkProgress = null)
         {
-            return await WritePartitionChunkedAsync(partition.Lun, partition.StartSector, _sectorSize, 
+            return await WritePartitionChunkedAsync(partition.Lun, partition.StartSector, _sectorSize,
                 imagePath, partition.Name, useOppoMode, ct, chunkProgress);
         }
 
         /// <summary>
         /// Write partition data in chunks (Core implementation)
         /// </summary>
-        public async Task<bool> WritePartitionChunkedAsync(int lun, long startSector, int sectorSize, 
-            string imagePath, string label = "Partition", bool useOppoMode = false, 
+        public async Task<bool> WritePartitionChunkedAsync(int lun, long startSector, int sectorSize,
+            string imagePath, string label = "Partition", bool useOppoMode = false,
             CancellationToken ct = default(CancellationToken),
             Action<int, int, long> chunkProgress = null)
         {
@@ -1080,13 +1080,13 @@ namespace LoveAlways.Qualcomm.Protocol
 
             // Check if it is a Sparse image
             bool isSparse = SparseStream.IsSparseFile(imagePath);
-            
+
             if (isSparse)
             {
                 // Smart Sparse write: only write parts with data, skip DONT_CARE
                 return await WriteSparsePartitionSmartAsync(lun, startSector, sectorSize, imagePath, label, useOppoMode, ct);
             }
-            
+
             long fileSize = new FileInfo(imagePath).Length;
             _log(string.Format("[Firehose] Writing: {0} ({1})", label, FormatSize(fileSize)));
 
@@ -1094,14 +1094,14 @@ namespace LoveAlways.Qualcomm.Protocol
             int chunkSize = EffectiveChunkSize;
             long sectorsPerChunk = chunkSize / sectorSize;
             long bytesPerChunk = sectorsPerChunk * sectorSize;
-            
+
             // Calculate total chunks
             int totalChunks = (int)Math.Ceiling((double)fileSize / bytesPerChunk);
-            
+
             // Only show chunk info when custom chunking is enabled
             if (_customChunkSize > 0)
             {
-                _logDetail(string.Format("[Firehose] Chunk transfer: {0}/chunk, total {1} chunks", 
+                _logDetail(string.Format("[Firehose] Chunk transfer: {0}/chunk, total {1} chunks",
                     FormatSize(chunkSize), totalChunks));
             }
 
@@ -1121,7 +1121,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                     while (totalWritten < totalBytes)
                     {
-                        if (ct.IsCancellationRequested) 
+                        if (ct.IsCancellationRequested)
                         {
                             _log("[Firehose] Write cancelled");
                             return false;
@@ -1144,7 +1144,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                         if (!await WriteSectorsAsync(lun, currentSector, buffer, paddedSize, label, useOppoMode, ct))
                         {
-                            _log(string.Format("[Firehose] Write failed @ chunk {0}/{1}, sector {2}", 
+                            _log(string.Format("[Firehose] Write failed @ chunk {0}/{1}, sector {2}",
                                 currentChunk, totalChunks, currentSector));
                             return false;
                         }
@@ -1177,14 +1177,14 @@ namespace LoveAlways.Qualcomm.Protocol
                 var totalExpandedSize = sparse.Length;
                 var realDataSize = sparse.GetRealDataSize();
                 var dataRanges = sparse.GetDataRanges();
-                
+
                 // Main log shows write info
                 _log(string.Format("[Firehose] Writing: {0} ({1}) [Sparse]", label, FormatFileSize(realDataSize)));
-                _logDetail(string.Format("[Sparse] Expanded size: {0:N0} MB, Real data: {1:N0} MB, Saved: {2:P1}", 
-                    totalExpandedSize / 1024.0 / 1024.0, 
+                _logDetail(string.Format("[Sparse] Expanded size: {0:N0} MB, Real data: {1:N0} MB, Saved: {2:P1}",
+                    totalExpandedSize / 1024.0 / 1024.0,
                     realDataSize / 1024.0 / 1024.0,
                     1.0 - (double)realDataSize / totalExpandedSize));
-                
+
                 if (dataRanges.Count == 0)
                 {
                     // Empty Sparse image: use erase command to clear partition
@@ -1197,13 +1197,13 @@ namespace LoveAlways.Qualcomm.Protocol
                         _log(string.Format("[Sparse] Partition {0} erase failed", label));
                     return eraseOk;
                 }
-                
+
                 var sectorsPerChunk = _maxPayloadSize / sectorSize;
                 var bytesPerChunk = sectorsPerChunk * sectorSize;
                 var totalWritten = 0L;
-                
+
                 StartTransferTimer(realDataSize);
-                
+
                 // Use SimpleBufferPool to reduce GC pressure
                 var buffer = SimpleBufferPool.Rent(bytesPerChunk);
                 try
@@ -1212,47 +1212,47 @@ namespace LoveAlways.Qualcomm.Protocol
                     foreach (var range in dataRanges)
                     {
                         if (ct.IsCancellationRequested) return false;
-                        
+
                         var rangeOffset = range.Item1;
                         var rangeSize = range.Item2;
                         var rangeStartSector = startSector + (rangeOffset / sectorSize);
-                        
+
                         // Seek to the range
                         sparse.Seek(rangeOffset, SeekOrigin.Begin);
                         var rangeWritten = 0L;
-                        
+
                         while (rangeWritten < rangeSize)
                         {
                             if (ct.IsCancellationRequested) return false;
-                            
+
                             var bytesToRead = (int)Math.Min(bytesPerChunk, rangeSize - rangeWritten);
                             var bytesRead = sparse.Read(buffer, 0, bytesToRead);
                             if (bytesRead == 0) break;
-                            
+
                             // Pad to sector boundary
                             var paddedSize = ((bytesRead + sectorSize - 1) / sectorSize) * sectorSize;
                             if (paddedSize > bytesRead)
                                 Array.Clear(buffer, bytesRead, paddedSize - bytesRead);
-                            
+
                             var sectorsToWrite = paddedSize / sectorSize;
                             var currentSector = rangeStartSector + (rangeWritten / sectorSize);
-                            
+
                             if (!await WriteSectorsAsync(lun, currentSector, buffer, paddedSize, label, useOppoMode, ct))
                             {
                                 _log(string.Format("[Firehose] Write failed @ sector {0}", currentSector));
                                 return false;
                             }
-                            
+
                             rangeWritten += bytesRead;
                             totalWritten += bytesRead;
-                            
+
                             if (_progress != null)
                                 _progress(totalWritten, realDataSize);
                         }
                     }
-                    
+
                     StopTransferTimer("Write", totalWritten);
-                    _logDetail(string.Format("[Firehose] {0} complete: {1:N0} bytes (skipped {2:N0} MB blank)", 
+                    _logDetail(string.Format("[Firehose] {0} complete: {1:N0} bytes (skipped {2:N0} MB blank)",
                         label, totalWritten, (totalExpandedSize - realDataSize) / 1024.0 / 1024.0));
                     return true;
                 }
@@ -1269,7 +1269,7 @@ namespace LoveAlways.Qualcomm.Protocol
         private async Task<bool> WriteSectorsAsync(int lun, long startSector, byte[] data, int length, string label, bool useOppoMode, CancellationToken ct)
         {
             int numSectors = length / _sectorSize;
-            
+
             // Use the actual partition name instead of hardcoded GPT values
             string xml = string.Format(
                 "<?xml version=\"1.0\" ?><data>" +
@@ -1311,20 +1311,20 @@ namespace LoveAlways.Qualcomm.Protocol
 
             // Check if it's a Sparse image
             bool isSparse = SparseStream.IsSparseFile(filePath);
-            
+
             // Sparse image uses smart write, skipping DONT_CARE
             if (isSparse)
             {
                 return await FlashSparsePartitionSmartAsync(partitionName, filePath, lun, startSector, progress, ct, useVipMode);
             }
-            
+
             // Regular write for Raw image
             using (Stream sourceStream = File.OpenRead(filePath))
             {
                 long fileSize = sourceStream.Length;
                 int numSectors = (int)Math.Ceiling((double)fileSize / _sectorSize);
 
-                _log(string.Format("Firehose: Flashing {0} -> {1} ({2}){3}", 
+                _log(string.Format("Firehose: Flashing {0} -> {1} ({2}){3}",
                     Path.GetFileName(filePath), partitionName, FormatFileSize(fileSize),
                     useVipMode ? " [VIP Mode]" : ""));
 
@@ -1389,7 +1389,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 _log("Firehose: Negative sector format does not support Sparse image");
                 return false;
             }
-            
+
             using (Stream sourceStream = File.OpenRead(filePath))
             {
                 long fileSize = sourceStream.Length;
@@ -1406,7 +1406,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     startSectorStr = startSector.ToString();
                 }
 
-                _log(string.Format("Firehose: Flashing {0} -> {1} ({2}) @ {3}", 
+                _log(string.Format("Firehose: Flashing {0} -> {1} ({2}) @ {3}",
                     Path.GetFileName(filePath), partitionName, FormatFileSize(fileSize), startSectorStr));
 
                 // Construct program XML using official negative sector format
@@ -1439,15 +1439,15 @@ namespace LoveAlways.Qualcomm.Protocol
                 var totalExpandedSize = sparse.Length;
                 var realDataSize = sparse.GetRealDataSize();
                 var dataRanges = sparse.GetDataRanges();
-                
+
                 // Main log shows flashing info
-                _log(string.Format("Firehose: Flashing {0} -> {1} ({2}) [Sparse]{3}", 
+                _log(string.Format("Firehose: Flashing {0} -> {1} ({2}) [Sparse]{3}",
                     Path.GetFileName(filePath), partitionName, FormatFileSize(realDataSize), useVipMode ? " [VIP]" : ""));
-                _logDetail(string.Format("[Sparse] Expanded: {0:F2} MB, Real data: {1:F2} MB, Saved: {2:P1}", 
-                    totalExpandedSize / 1024.0 / 1024.0, 
+                _logDetail(string.Format("[Sparse] Expanded: {0:F2} MB, Real data: {1:F2} MB, Saved: {2:P1}",
+                    totalExpandedSize / 1024.0 / 1024.0,
                     realDataSize / 1024.0 / 1024.0,
                     realDataSize > 0 ? (1.0 - (double)realDataSize / totalExpandedSize) : 1.0));
-                
+
                 if (dataRanges.Count == 0)
                 {
                     // Empty Sparse image (e.g., userdata): use erase command to clear partition
@@ -1461,24 +1461,24 @@ namespace LoveAlways.Qualcomm.Protocol
                         _log(string.Format("[Sparse] Partition {0} erase failed", partitionName));
                     return eraseOk;
                 }
-                
+
                 var totalWritten = 0L;
                 var rangeIndex = 0;
-                
+
                 // Write data ranges one by one
                 foreach (var range in dataRanges)
                 {
                     if (ct.IsCancellationRequested) return false;
                     rangeIndex++;
-                    
+
                     var rangeOffset = range.Item1;
                     var rangeSize = range.Item2;
                     var rangeStartSector = startSector + (rangeOffset / _sectorSize);
                     var numSectors = (int)Math.Ceiling((double)rangeSize / _sectorSize);
-                    
+
                     // Seek to the range
                     sparse.Seek(rangeOffset, SeekOrigin.Begin);
-                    
+
                     // Construct program command
                     string xml;
                     if (useVipMode)
@@ -1510,15 +1510,15 @@ namespace LoveAlways.Qualcomm.Protocol
                             "read_back_verify=\"true\"/></data>",
                             _sectorSize, numSectors, lun, rangeStartSector, partitionName);
                     }
-                    
+
                     _port.Write(Encoding.UTF8.GetBytes(xml));
-                    
+
                     if (!await WaitForRawDataModeAsync(ct))
                     {
                         _logDetail(string.Format("[Sparse] Segment {0}/{1} Program command rejected", rangeIndex, dataRanges.Count));
                         return false;
                     }
-                    
+
                     // Send data for this range (using optimized block size for maximum performance)
                     var sent = 0L;
                     // Use 4MB block size to improve USB 3.0 transmission efficiency
@@ -1526,26 +1526,26 @@ namespace LoveAlways.Qualcomm.Protocol
                     var chunkSize = Math.Min(OPTIMAL_CHUNK, _maxPayloadSize);
                     var buffer = new byte[chunkSize];
                     DateTime lastProgressTime = DateTime.MinValue;
-                    
+
                     while (sent < rangeSize)
                     {
                         if (ct.IsCancellationRequested) return false;
-                        
+
                         var toRead = (int)Math.Min(chunkSize, rangeSize - sent);
                         var read = sparse.Read(buffer, 0, toRead);
                         if (read == 0) break;
-                        
+
                         // Pad to sector boundary
                         var paddedSize = ((read + _sectorSize - 1) / _sectorSize) * _sectorSize;
                         if (paddedSize > read)
                             Array.Clear(buffer, read, paddedSize - read);
-                        
+
                         // Use synchronous write to improve efficiency
                         _port.Write(buffer, 0, paddedSize);
-                        
+
                         sent += read;
                         totalWritten += read;
-                        
+
                         // Throttle progress reports
                         var now = DateTime.Now;
                         if (progress != null && realDataSize > 0 && (now - lastProgressTime).TotalMilliseconds > 200)
@@ -1554,15 +1554,15 @@ namespace LoveAlways.Qualcomm.Protocol
                             lastProgressTime = now;
                         }
                     }
-                    
+
                     if (!await WaitForAckAsync(ct, 30))
                     {
                         _logDetail(string.Format("[Sparse] Segment {0}/{1} write unacknowledged", rangeIndex, dataRanges.Count));
                         return false;
                     }
                 }
-                
-                _logDetail(string.Format("[Sparse] {0} Write complete: {1:N0} bytes (skipped {2:N0} MB blank)", 
+
+                _logDetail(string.Format("[Sparse] {0} Write complete: {1:N0} bytes (skipped {2:N0} MB blank)",
                     partitionName, totalWritten, (totalExpandedSize - realDataSize) / 1024.0 / 1024.0));
                 return true;
             }
@@ -1575,7 +1575,7 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             // Get masquerade strategy
             var strategies = GetDynamicSpoofStrategies(lun, startSector, partitionName, false);
-            
+
             foreach (var strategy in strategies)
             {
                 if (ct.IsCancellationRequested) break;
@@ -1599,7 +1599,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 if (await WaitForRawDataModeAsync(ct))
                 {
                     _logDetail(string.Format("[VIP Write] Masquerade {0} success, starting data transfer...", spoofLabel));
-                    
+
                     // Reset stream position before each attempt
                     sourceStream.Position = 0;
                     bool success = await SendStreamDataAsync(sourceStream, fileSize, progress, ct);
@@ -1628,22 +1628,22 @@ namespace LoveAlways.Qualcomm.Protocol
         private async Task<bool> SendStreamDataAsync(Stream stream, long streamSize, IProgress<double> progress, CancellationToken ct)
         {
             long sent = 0;
-            
+
             // Use double buffering for read/write parallelism
             // Chunk size optimization: 4MB is the optimal chunk size for USB 3.0 environments
             // 2MB is better for USB 2.0 environments, but 4MB also works normally
             const int OPTIMAL_CHUNK_SIZE = 4 * 1024 * 1024; // 4MB chunk (Increased from 2MB)
             int chunkSize = Math.Min(OPTIMAL_CHUNK_SIZE, _maxPayloadSize);
-            
+
             byte[] buffer1 = new byte[chunkSize];
             byte[] buffer2 = new byte[chunkSize];
             byte[] currentBuffer = buffer1;
             byte[] nextBuffer = buffer2;
-            
+
             double lastPercent = -1;
             DateTime lastProgressTime = DateTime.MinValue;
             const int PROGRESS_INTERVAL_MS = 200; // Reduce progress update frequency to 200ms
-            
+
             // Pre-read the first chunk
             int currentRead = stream.Read(currentBuffer, 0, (int)Math.Min(chunkSize, streamSize));
             if (currentRead <= 0) return await WaitForAckAsync(ct, 60);
@@ -1654,7 +1654,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                 // Calculate remaining data
                 long remaining = streamSize - sent - currentRead;
-                
+
                 // Start asynchronous read of the next chunk (if there is still data)
                 Task<int> readTask = null;
                 if (remaining > 0)
@@ -1691,7 +1691,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     if (_progress != null) _progress(sent, streamSize);
                     if (progress != null) progress.Report(currentPercent);
-                    
+
                     lastPercent = currentPercent;
                     lastProgressTime = now;
                 }
@@ -1701,7 +1701,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     currentRead = await readTask;
                     if (currentRead <= 0) break;
-                    
+
                     // Swap buffers
                     var temp = currentBuffer;
                     currentBuffer = nextBuffer;
@@ -1940,7 +1940,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
             string activeSuffix = "_" + targetSlot;
             string inactiveSuffix = targetSlot == "a" ? "_b" : "_a";
-            
+
             int patchCount = 0;
             int failCount = 0;
 
@@ -1970,7 +1970,7 @@ namespace LoveAlways.Qualcomm.Protocol
             // 3. Fix GPT to save changes
             _log("[Firehose] Saving GPT changes...");
             bool fixResult = await FixGptAsync(-1, false, ct);
-            
+
             if (fixResult)
                 _log(string.Format("[Firehose] Active slot switched to: {0}", targetSlot));
             else
@@ -1983,19 +1983,19 @@ namespace LoveAlways.Qualcomm.Protocol
         /// Modify attributes for a pair of A/B partitions
         /// </summary>
         /// <returns>Number of partitions modified, -1 for failure</returns>
-        private async Task<int> PatchSlotPairAsync(string baseName, string activeSuffix, string inactiveSuffix, 
+        private async Task<int> PatchSlotPairAsync(string baseName, string activeSuffix, string inactiveSuffix,
             CancellationToken ct, bool optional = false)
         {
             int count = 0;
 
             // Activate target slot
-            var activePart = _cachedPartitions.Find(p => 
+            var activePart = _cachedPartitions.Find(p =>
                 p.Name.Equals(baseName + activeSuffix, StringComparison.OrdinalIgnoreCase));
-            
+
             if (activePart != null)
             {
                 ulong newAttr = SetSlotFlags(activePart.Attributes, active: true, priority: 3, successful: false, unbootable: false);
-                
+
                 if (await PatchPartitionAttributesAsync(activePart, newAttr, ct))
                 {
                     _logDetail(string.Format("[Firehose] {0}: Activated (attr=0x{1:X16})", activePart.Name, newAttr));
@@ -2009,13 +2009,13 @@ namespace LoveAlways.Qualcomm.Protocol
             }
 
             // Deactivate the other slot
-            var inactivePart = _cachedPartitions.Find(p => 
+            var inactivePart = _cachedPartitions.Find(p =>
                 p.Name.Equals(baseName + inactiveSuffix, StringComparison.OrdinalIgnoreCase));
-            
+
             if (inactivePart != null)
             {
                 ulong newAttr = SetSlotFlags(inactivePart.Attributes, active: false, priority: 1, successful: null, unbootable: null);
-                
+
                 if (await PatchPartitionAttributesAsync(inactivePart, newAttr, ct))
                 {
                     _logDetail(string.Format("[Firehose] {0}: Deactivated (attr=0x{1:X16})", inactivePart.Name, newAttr));
@@ -2038,10 +2038,10 @@ namespace LoveAlways.Qualcomm.Protocol
             // Offset 40-47: End LBA (8 bytes)
             // Offset 48-55: Attributes (8 bytes) <-- We modify here
             // Offset 56-127: Name (72 bytes)
-            
+
             const int GPT_ENTRY_SIZE = 128;
             const int ATTR_OFFSET_IN_ENTRY = 48;
-            
+
             // Convert attributes to little-endian hex string
             byte[] attrBytes = BitConverter.GetBytes(newAttributes);
             string attrHex = BitConverter.ToString(attrBytes).Replace("-", "");
@@ -2069,12 +2069,12 @@ namespace LoveAlways.Qualcomm.Protocol
                 long gptEntriesStartByte = partition.GptEntriesStartSector * _sectorSize;
                 long entryByteOffset = gptEntriesStartByte + (partition.EntryIndex * GPT_ENTRY_SIZE);
                 long attrByteOffset = entryByteOffset + ATTR_OFFSET_IN_ENTRY;
-                
+
                 // Calculate sector and byte offset
                 long startSector = attrByteOffset / _sectorSize;
                 int byteOffset = (int)(attrByteOffset % _sectorSize);
 
-                _logDetail(string.Format("[Firehose] Patch {0}: Entry#{1}, Sector={2}, Offset={3}", 
+                _logDetail(string.Format("[Firehose] Patch {0}: Entry#{1}, Sector={2}, Offset={3}",
                     partition.Name, partition.EntryIndex, startSector, byteOffset));
 
                 string xml2 = string.Format(
@@ -2125,7 +2125,7 @@ namespace LoveAlways.Qualcomm.Protocol
         /// <param name="priority">Priority 0-3 (null = no change)</param>
         /// <param name="successful">Successful boot flag (null = no change)</param>
         /// <param name="unbootable">Unbootable flag (null = no change)</param>
-        private ulong SetSlotFlags(ulong attr, bool? active = null, int? priority = null, 
+        private ulong SetSlotFlags(ulong attr, bool? active = null, int? priority = null,
             bool? successful = null, bool? unbootable = null)
         {
             // A/B attribute bit layout (in Attributes field bits 48-55):
@@ -2133,7 +2133,7 @@ namespace LoveAlways.Qualcomm.Protocol
             // Bit 50: Active
             // Bit 51: Successful
             // Bit 52: Unbootable
-            
+
             const ulong PRIORITY_MASK = 3UL << 48;
             const ulong ACTIVE_BIT = 1UL << 50;
             const ulong SUCCESSFUL_BIT = 1UL << 51;
@@ -2250,7 +2250,7 @@ namespace LoveAlways.Qualcomm.Protocol
             }
 
             _log(string.Format("[Provision] Sending UFS global config (LUN count={0}, Boot={1})...", bNumberLU, bBootEnable));
-            
+
             var xml = string.Format(
                 "<?xml version=\"1.0\" ?><data><ufs bNumberLU=\"{0}\" bBootEnable=\"{1}\" " +
                 "bDescrAccessEn=\"{2}\" bInitPowerMode=\"{3}\" bHighPriorityLUN=\"{4}\" " +
@@ -2259,16 +2259,16 @@ namespace LoveAlways.Qualcomm.Protocol
                 bNumberLU, bBootEnable, bDescrAccessEn, bInitPowerMode,
                 bHighPriorityLUN, bSecureRemovalType, bInitActiveICCLevel,
                 wPeriodicRTCUpdate, bConfigDescrLock);
-            
+
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
-            
+
             bool ack = await WaitForAckAsync(ct, 30); // 30s timeout
             if (ack)
                 _logDetail("[Provision] Global config sent");
             else
                 _log("[Provision] Global config send failed");
-            
+
             return ack;
         }
 
@@ -2288,13 +2288,13 @@ namespace LoveAlways.Qualcomm.Protocol
                 return false;
             }
 
-            string sizeStr = sizeInKB >= 1024 * 1024 ? 
-                string.Format("{0:F1}GB", sizeInKB / (1024.0 * 1024)) : 
+            string sizeStr = sizeInKB >= 1024 * 1024 ?
+                string.Format("{0:F1}GB", sizeInKB / (1024.0 * 1024)) :
                 string.Format("{0}MB", sizeInKB / 1024);
-            
+
             _logDetail(string.Format("[Provision] Config LUN{0}: {1}, Enable={2}, Boot={3}",
                 luNum, sizeStr, bLUEnable, bBootLunID));
-            
+
             var xml = string.Format(
                 "<?xml version=\"1.0\" ?><data><ufs LUNum=\"{0}\" bLUEnable=\"{1}\" " +
                 "bBootLunID=\"{2}\" size_in_kb=\"{3}\" bDataReliability=\"{4}\" " +
@@ -2303,10 +2303,10 @@ namespace LoveAlways.Qualcomm.Protocol
                 luNum, bLUEnable, bBootLunID, sizeInKB,
                 bDataReliability, bLUWriteProtect, bMemoryType,
                 bLogicalBlockSize, bProvisioningType, wContextCapabilities);
-            
+
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
-            
+
             return await WaitForAckAsync(ct, 30);
         }
 
@@ -2323,18 +2323,18 @@ namespace LoveAlways.Qualcomm.Protocol
             }
 
             _log("[Provision] Committing UFS config (This operation may be irreversible!)...");
-            
+
             var xml = "<?xml version=\"1.0\" ?><data><ufs commit=\"true\" /></data>";
-            
+
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
-            
+
             bool ack = await WaitForAckAsync(ct, 60); // 60s timeout, Provision may be slow
             if (ack)
                 _log("[Provision] UFS configuration committed successfully");
             else
                 _log("[Provision] UFS configuration commit failed");
-            
+
             return ack;
         }
 
@@ -2344,18 +2344,18 @@ namespace LoveAlways.Qualcomm.Protocol
         public async Task<bool> GetStorageInfoAsync(CancellationToken ct = default(CancellationToken))
         {
             _log("[Provision] Reading storage info...");
-            
+
             // Try getstorageinfo command (not all devices support it)
             var xml = "<?xml version=\"1.0\" ?><data><getstorageinfo /></data>";
-            
+
             PurgeBuffer();
             _port.Write(Encoding.UTF8.GetBytes(xml));
-            
+
             // Wait for response
             bool result = await WaitForAckAsync(ct, 10);
             if (!result)
                 _logDetail("[Provision] getstorageinfo command may not be supported");
-            
+
             return result;
         }
 
@@ -2423,10 +2423,10 @@ namespace LoveAlways.Qualcomm.Protocol
 
                     int lun = 0;
                     int.TryParse(elem.Attribute("physical_partition_number")?.Value ?? "0", out lun);
-                    
+
                     long startSector = 0;
                     var startSectorAttr = elem.Attribute("start_sector")?.Value ?? "0";
-                    
+
                     // Handle negative sectors in NUM_DISK_SECTORS-N format (keep negative, let ApplyPatchAsync send using official format)
                     if (startSectorAttr.Contains("NUM_DISK_SECTORS"))
                     {
@@ -2594,7 +2594,7 @@ namespace LoveAlways.Qualcomm.Protocol
             int emptyCount = 0;
             int totalWaitMs = 0;
             const int MAX_WAIT_MS = 30000; // Max wait 30 seconds
-            
+
             for (int i = 0; i < maxRetries && totalWaitMs < MAX_WAIT_MS; i++)
             {
                 if (ct.IsCancellationRequested) return false;
@@ -2673,7 +2673,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 // Increase probe buffer (256KB) - Many devices send response header + data at once
                 byte[] probeBuf = new byte[256 * 1024];
                 int probeIdx = 0;
-                
+
                 // Patterns for fast byte matching
                 byte[] rawmodePattern = Encoding.ASCII.GetBytes("rawmode=\"true\"");
                 byte[] dataEndPattern = Encoding.ASCII.GetBytes("</data>");
@@ -2691,7 +2691,7 @@ namespace LoveAlways.Qualcomm.Protocol
                         // 1. Find XML header - Batch read
                         int toRead = probeBuf.Length - probeIdx;
                         if (toRead <= 0) { probeIdx = 0; toRead = probeBuf.Length; }
-                        
+
                         int read = await _port.ReadAsync(probeBuf, probeIdx, toRead, ct);
                         if (read <= 0)
                         {
@@ -2703,7 +2703,7 @@ namespace LoveAlways.Qualcomm.Protocol
 
                         // Fast byte-level scanning - avoid string conversion overhead
                         int ackIndex = IndexOfPattern(probeBuf, 0, probeIdx, rawmodePattern);
-                        
+
                         if (ackIndex >= 0)
                         {
                             int xmlEndIndex = IndexOfPattern(probeBuf, ackIndex, probeIdx - ackIndex, dataEndPattern);
@@ -2711,7 +2711,7 @@ namespace LoveAlways.Qualcomm.Protocol
                             {
                                 headerFound = true;
                                 int dataStart = xmlEndIndex + dataEndPattern.Length;
-                                
+
                                 // Skip whitespace (newlines, etc.)
                                 while (dataStart < probeIdx && (probeBuf[dataStart] == '\n' || probeBuf[dataStart] == '\r' || probeBuf[dataStart] == ' '))
                                     dataStart++;
@@ -2738,7 +2738,7 @@ namespace LoveAlways.Qualcomm.Protocol
                         // USB 3.0 theoretical bandwidth is 5Gbps, actual throughput approx 400MB/s
                         // Using large blocks maximizes USB bandwidth utilization
                         int toRead = Math.Min(totalBytes - received, 8 * 1024 * 1024);
-                        
+
                         int read = await _port.ReadAsync(buffer, received, toRead, ct);
                         if (read <= 0)
                         {
@@ -2749,7 +2749,7 @@ namespace LoveAlways.Qualcomm.Protocol
                         received += read;
                     }
                 }
-                
+
                 return received >= totalBytes;
             }
             catch (OperationCanceledException)
@@ -2762,14 +2762,14 @@ namespace LoveAlways.Qualcomm.Protocol
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Efficient byte pattern matching (Boyer-Moore simplified version)
         /// </summary>
         private static int IndexOfPattern(byte[] data, int start, int length, byte[] pattern)
         {
             if (pattern.Length == 0 || length < pattern.Length) return -1;
-            
+
             int end = start + length - pattern.Length;
             for (int i = start; i <= end; i++)
             {
@@ -2805,7 +2805,7 @@ namespace LoveAlways.Qualcomm.Protocol
                     int bufferPos = 0;
                     var sw = Stopwatch.StartNew();
                     int spinCount = 0;
-                    
+
                     // Predefine byte patterns (avoid runtime allocation)
                     byte[] rawmodePattern = { (byte)'r', (byte)'a', (byte)'w', (byte)'m', (byte)'o', (byte)'d', (byte)'e', (byte)'=', (byte)'"', (byte)'t', (byte)'r', (byte)'u', (byte)'e', (byte)'"' };
                     byte[] dataEndPattern = { (byte)'<', (byte)'/', (byte)'d', (byte)'a', (byte)'t', (byte)'a', (byte)'>' };
@@ -2827,12 +2827,12 @@ namespace LoveAlways.Qualcomm.Protocol
                                 bufferPos = 0;
                                 toRead = Math.Min(buffer.Length, bytesAvailable);
                             }
-                            
+
                             int read = _port.Read(buffer, bufferPos, toRead);
                             if (read > 0)
                             {
                                 bufferPos += read;
-                                
+
                                 // Fast byte-level check
                                 if (IndexOfPattern(buffer, 0, bufferPos, nakPattern) >= 0)
                                 {
@@ -2844,10 +2844,10 @@ namespace LoveAlways.Qualcomm.Protocol
                                 bool hasRawMode = IndexOfPattern(buffer, 0, bufferPos, rawmodePattern) >= 0;
                                 bool hasAck = IndexOfPattern(buffer, 0, bufferPos, ackPattern) >= 0;
                                 bool hasDataEnd = IndexOfPattern(buffer, 0, bufferPos, dataEndPattern) >= 0;
-                                
+
                                 if ((hasRawMode || hasAck) && hasDataEnd)
                                     return true;
-                                
+
                                 spinCount = 0;
                             }
                         }
@@ -3027,10 +3027,10 @@ namespace LoveAlways.Qualcomm.Protocol
             _log("[VIP] Performing security verification...");
             _logDetail(string.Format("[VIP] Digest: {0}", digestPath));
             _logDetail(string.Format("[VIP] Signature: {0}", signaturePath));
-            
+
             bool hasError = false;
             string errorDetail = "";
-            
+
             try
             {
                 // Purge buffers
@@ -3078,11 +3078,11 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     _logDetail(string.Format("[VIP] Signature header: {0}", BitConverter.ToString(sigData, 0, 16)));
                 }
-                
+
                 // When rawmode="true", device expects data to be received at sector size (4096 bytes)
                 bool isRawMode = resp3.Contains("rawmode=\"true\"");
                 int targetSize = isRawMode ? 4096 : sigData.Length;
-                
+
                 byte[] sigDataPadded;
                 if (sigData.Length < targetSize)
                 {
@@ -3094,12 +3094,12 @@ namespace LoveAlways.Qualcomm.Protocol
                 {
                     sigDataPadded = sigData;
                 }
-                
+
                 await _port.WriteAsync(sigDataPadded, 0, sigDataPadded.Length, ct);
                 await Task.Delay(500, ct);
                 string resp4 = await ReadAndLogDeviceResponseAsync(ct, 3000);
                 _logDetail(string.Format("[VIP] Step 4 response: {0}", TruncateResponse(resp4)));
-                
+
                 // Check response - distinguish real errors from warnings
                 if (resp4.Contains("NAK"))
                 {
@@ -3275,7 +3275,7 @@ namespace LoveAlways.Qualcomm.Protocol
                 Array.Copy(signatureData, 0, sig, 0, signatureData.Length);
                 _log(string.Format("[VIP] Warning: Signature data less than 256 bytes (actual {0})", signatureData.Length));
             }
-            
+
             // Device expects 4096 bytes (sector size) in rawmode
             byte[] sigPadded;
             if (padTo4096 && sig.Length < 4096)
@@ -3289,12 +3289,12 @@ namespace LoveAlways.Qualcomm.Protocol
                 sigPadded = sig;
                 _log(string.Format("[VIP] Step 4: Sending Signature ({0} bytes)...", sig.Length));
             }
-            
+
             await _port.WriteAsync(sigPadded, 0, sigPadded.Length, ct);
             await Task.Delay(500, ct);
 
             string resp = await ReadAndLogDeviceResponseAsync(ct, 3000);
-            
+
             // Check response - distinguish real errors from warnings
             bool success = false;
             if (resp.Contains("NAK"))
@@ -3344,7 +3344,7 @@ namespace LoveAlways.Qualcomm.Protocol
             _log("[VIP] VIP verification process complete");
             return true;
         }
-        
+
         /// <summary>
         /// Truncate response string for log display
         /// </summary>
@@ -3352,14 +3352,14 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             if (string.IsNullOrEmpty(response))
                 return "(Empty)";
-            
+
             // Remove newlines for easier display
             string clean = response.Replace("\r", "").Replace("\n", " ").Trim();
-            
+
             // Truncate overly long response
             if (clean.Length > 300)
                 return clean.Substring(0, 300) + "...";
-            
+
             return clean;
         }
 
@@ -3370,24 +3370,24 @@ namespace LoveAlways.Qualcomm.Protocol
         {
             var startTime = DateTime.Now;
             var sb = new StringBuilder();
-            
+
             while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs)
             {
                 ct.ThrowIfCancellationRequested();
-                
+
                 // Check for available data
                 int bytesToRead = _port.BytesToRead;
                 if (bytesToRead > 0)
                 {
                     byte[] buffer = new byte[bytesToRead];
                     int read = _port.Read(buffer, 0, bytesToRead);
-                    
+
                     if (read > 0)
                     {
                         sb.Append(Encoding.UTF8.GetString(buffer, 0, read));
-                        
+
                         var content = sb.ToString();
-                        
+
                         // Extract device logs (detailed logs, not displayed on main interface)
                         var logMatches = Regex.Matches(content, @"<log value=""([^""]*)""\s*/>");
                         foreach (Match m in logMatches)
@@ -3395,7 +3395,7 @@ namespace LoveAlways.Qualcomm.Protocol
                             if (m.Groups.Count > 1)
                                 _logDetail(string.Format("[Device] {0}", m.Groups[1].Value));
                         }
-                        
+
                         // Check response
                         if (content.Contains("<response") || content.Contains("</data>"))
                         {
@@ -3410,10 +3410,10 @@ namespace LoveAlways.Qualcomm.Protocol
                         }
                     }
                 }
-                
+
                 await Task.Delay(50, ct);
             }
-            
+
             return sb.ToString();
         }
 

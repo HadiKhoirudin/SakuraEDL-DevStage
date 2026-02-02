@@ -4,21 +4,21 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
 using LoveAlways.MediaTek.Database;
 using LoveAlways.MediaTek.Exploit;
 using LoveAlways.MediaTek.Models;
 using LoveAlways.MediaTek.Protocol;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DaEntry = LoveAlways.MediaTek.Models.DaEntry;
 
 namespace LoveAlways.MediaTek.Services
@@ -97,25 +97,25 @@ namespace LoveAlways.MediaTek.Services
         {
             try
             {
-                Log($"[MTK] Connecting device: {comPort}", Color.Cyan);
+                Log($"[MediaTek] Connecting device: {comPort}", Color.Cyan);
 
                 if (!await _bromClient.ConnectAsync(comPort, baudRate, ct))
                 {
-                    Log("[MTK] Failed to open serial port", Color.Red);
+                    Log("[MediaTek] Failed to open serial port", Color.Red);
                     return false;
                 }
 
                 // Execute handshake
                 if (!await _bromClient.HandshakeAsync(100, ct))
                 {
-                    Log("[MTK] BROM handshake failed", Color.Red);
+                    Log("[MediaTek] BROM handshake failed", Color.Red);
                     return false;
                 }
 
                 // Initialize device
                 if (!await _bromClient.InitializeAsync(false, ct))
                 {
-                    Log("[MTK] Device initialization failed", Color.Red);
+                    Log("[MediaTek] Device initialization failed", Color.Red);
                     return false;
                 }
 
@@ -129,27 +129,27 @@ namespace LoveAlways.MediaTek.Services
                     SocId = _bromClient.SocId
                 };
 
-                Log($"[MTK] ✓ Connection successful: {_bromClient.ChipInfo.GetChipName()}", Color.Green);
-                
+                Log($"[MediaTek] ✓ Connection successful: {_bromClient.ChipInfo.GetChipName()}", Color.Green);
+
                 // Check DAA status and notify user
                 bool daaEnabled = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.DaaEnabled);
                 bool slaEnabled = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.SlaEnabled);
                 bool sbcEnabled = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.SbcEnabled);
-                
+
                 if (daaEnabled)
                 {
-                    Log("[MTK] ⚠ Warning: Device enabled DAA (Download Agent Authentication)", Color.Orange);
-                    Log("[MTK] ⚠ Requires officially signed DA or bypass via exploit", Color.Orange);
+                    Log("[MediaTek] ⚠ Warning: Device enabled DAA (Download Agent Authentication)", Color.Orange);
+                    Log("[MediaTek] ⚠ Requires officially signed DA or bypass via exploit", Color.Orange);
                 }
                 if (slaEnabled)
                 {
-                    Log("[MTK] ⚠ Warning: Device enabled SLA (Secure Link Auth)", Color.Yellow);
+                    Log("[MediaTek] ⚠ Warning: Device enabled SLA (Secure Link Auth)", Color.Yellow);
                 }
                 if (sbcEnabled && !_bromClient.IsBromMode)
                 {
-                    Log("[MTK] Note: Preloader mode + SBC enabled, might need Carbonara exploit", Color.Cyan);
+                    Log("[MediaTek] Note: Preloader mode + SBC enabled, might need Carbonara exploit", Color.Cyan);
                 }
-                
+
                 OnDeviceConnected?.Invoke(CurrentDevice);
                 OnStateChanged?.Invoke(_bromClient.State);
 
@@ -157,7 +157,7 @@ namespace LoveAlways.MediaTek.Services
             }
             catch (Exception ex)
             {
-                Log($"[MTK] Connection exception: {ex.Message}", Color.Red);
+                Log($"[MediaTek] Connection exception: {ex.Message}", Color.Red);
                 return false;
             }
         }
@@ -181,7 +181,7 @@ namespace LoveAlways.MediaTek.Services
                 CurrentDevice = null;
             }
 
-            Log("[MTK] Disconnected", Color.Gray);
+            Log("[MediaTek] Disconnected", Color.Gray);
         }
 
         /// <summary>
@@ -190,7 +190,7 @@ namespace LoveAlways.MediaTek.Services
         public void SetProtocol(MtkProtocolType protocol)
         {
             _protocolType = protocol;
-            Log($"[MTK] Protocol set: {protocol}", Color.Cyan);
+            Log($"[MediaTek] Protocol set: {protocol}", Color.Cyan);
         }
 
         /// <summary>
@@ -213,14 +213,14 @@ namespace LoveAlways.MediaTek.Services
             // Decide whether to use XFlash based on protocol settings
             if (_protocolType == MtkProtocolType.Xml)
             {
-                Log("[MTK] Using XML protocol (user specified)", Color.Gray);
+                Log("[MediaTek] Using XML protocol (user specified)", Color.Gray);
                 _useXFlash = false;
                 return;
             }
 
             try
             {
-                Log("[MTK] Initializing XFlash client...", Color.Gray);
+                Log("[MediaTek] Initializing XFlash client...", Color.Gray);
 
                 // Create XFlash client (shared port lock)
                 _xflashClient = new XFlashClient(
@@ -233,25 +233,25 @@ namespace LoveAlways.MediaTek.Services
                 // Try to detect storage type
                 if (await _xflashClient.DetectStorageAsync(ct))
                 {
-                    Log($"[MTK] ✓ XFlash client ready (Storage: {_xflashClient.Storage})", Color.Green);
-                    
+                    Log($"[MediaTek] ✓ XFlash client ready (Storage: {_xflashClient.Storage})", Color.Green);
+
                     // Get packet length
                     int packetLen = await _xflashClient.GetPacketLengthAsync(ct);
                     if (packetLen > 0)
                     {
-                        Log($"[MTK] Packet size: {packetLen} bytes", Color.Gray);
+                        Log($"[MediaTek] Packet size: {packetLen} bytes", Color.Gray);
                     }
 
                     // If auto mode, enable XFlash
                     if (_protocolType == MtkProtocolType.Auto || _protocolType == MtkProtocolType.XFlash)
                     {
                         _useXFlash = true;
-                        Log("[MTK] ✓ XFlash binary protocol enabled", Color.Cyan);
+                        Log("[MediaTek] ✓ XFlash binary protocol enabled", Color.Cyan);
                     }
                 }
                 else
                 {
-                    Log("[MTK] XFlash storage detection failed, using XML protocol", Color.Orange);
+                    Log("[MediaTek] XFlash storage detection failed, using XML protocol", Color.Orange);
                     _useXFlash = false;
                     _xflashClient?.Dispose();
                     _xflashClient = null;
@@ -259,8 +259,8 @@ namespace LoveAlways.MediaTek.Services
             }
             catch (Exception ex)
             {
-                Log($"[MTK] XFlash initialization failed: {ex.Message}", Color.Orange);
-                Log("[MTK] Falling back to XML protocol", Color.Gray);
+                Log($"[MediaTek] XFlash initialization failed: {ex.Message}", Color.Orange);
+                Log("[MediaTek] Falling back to XML protocol", Color.Gray);
                 _useXFlash = false;
                 _xflashClient?.Dispose();
                 _xflashClient = null;
@@ -275,7 +275,7 @@ namespace LoveAlways.MediaTek.Services
             if (_xflashClient != null && _xflashClient.IsConnected)
             {
                 _useXFlash = true;
-                Log("[MTK] Switched to XFlash protocol", Color.Cyan);
+                Log("[MediaTek] Switched to XFlash protocol", Color.Cyan);
                 return true;
             }
 
@@ -292,7 +292,7 @@ namespace LoveAlways.MediaTek.Services
         {
             _useXFlash = false;
             _protocolType = MtkProtocolType.Xml;
-            Log("[MTK] Switched to XML protocol", Color.Cyan);
+            Log("[MediaTek] Switched to XML protocol", Color.Cyan);
         }
 
         #endregion
@@ -308,34 +308,34 @@ namespace LoveAlways.MediaTek.Services
         {
             if (!IsConnected || _bromClient.HwCode == 0)
             {
-                Log("[MTK] Device not connected", Color.Red);
+                Log("[MediaTek] Device not connected", Color.Red);
                 return false;
             }
 
             ushort hwCode = _bromClient.HwCode;
             uint targetConfig = (uint)_bromClient.TargetConfig;
 
-            Log($"[MTK] ═══════════════════════════════════════", Color.Yellow);
-            Log($"[MTK] Current Target Config: 0x{targetConfig:X8}", Color.Yellow);
-            Log($"[MTK] ═══════════════════════════════════════", Color.Yellow);
+            Log($"[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+            Log($"[MediaTek] Current Target Config: 0x{targetConfig:X8}", Color.Yellow);
+            Log($"[MediaTek] ═══════════════════════════════════════", Color.Yellow);
 
             // Check device mode - BROM Exploit can only be executed in BROM mode
             if (!_bromClient.IsBromMode)
             {
-                Log("[MTK] ⚠ Device in Preloader mode, BROM Exploit (SEND_CERT) not applicable", Color.Orange);
-                Log("[MTK] Note: Preloader mode requires DA2 level exploit (e.g. ALLINONE-SIGNATURE)", Color.Yellow);
-                Log("[MTK] Note: Or try setting device into BROM mode (short TP)", Color.Yellow);
+                Log("[MediaTek] ⚠ Device in Preloader mode, BROM Exploit (SEND_CERT) not applicable", Color.Orange);
+                Log("[MediaTek] Note: Preloader mode requires DA2 level exploit (e.g. ALLINONE-SIGNATURE)", Color.Yellow);
+                Log("[MediaTek] Note: Or try setting device into BROM mode (short TP)", Color.Yellow);
                 return false;  // Not an error, just not applicable
             }
 
             // Check if exploit is needed
             if (targetConfig == 0)
             {
-                Log("[MTK] ✓ Device has no security protection, no Exploit needed", Color.Green);
+                Log("[MediaTek] ✓ Device has no security protection, no Exploit needed", Color.Green);
                 return true;
             }
 
-            Log("[MTK] Device in BROM mode, trying BROM Exploit...", Color.Cyan);
+            Log("[MediaTek] Device in BROM mode, trying BROM Exploit...", Color.Cyan);
 
             // Set Payload Manager logger
             ExploitPayloadManager.SetLogger(msg => Log(msg, Color.Gray));
@@ -344,12 +344,12 @@ namespace LoveAlways.MediaTek.Services
             byte[] payload = ExploitPayloadManager.GetPayload(hwCode);
             if (payload == null || payload.Length == 0)
             {
-                Log($"[MTK] ⚠ Could not find Exploit Payload for HW Code 0x{hwCode:X4} ({ExploitPayloadManager.GetChipName(hwCode)})", Color.Orange);
-                Log("[MTK] ⚠ Attempting to continue, might fail", Color.Orange);
+                Log($"[MediaTek] ⚠ Could not find Exploit Payload for HW Code 0x{hwCode:X4} ({ExploitPayloadManager.GetChipName(hwCode)})", Color.Orange);
+                Log("[MediaTek] ⚠ Attempting to continue, might fail", Color.Orange);
                 return false;
             }
 
-            Log($"[MTK] Using Payload: {ExploitPayloadManager.GetChipName(hwCode)} ({payload.Length} bytes)", Color.Cyan);
+            Log($"[MediaTek] Using Payload: {ExploitPayloadManager.GetChipName(hwCode)} ({payload.Length} bytes)", Color.Cyan);
 
             // Save current port info
             string originalPort = _bromClient.PortName;
@@ -358,11 +358,11 @@ namespace LoveAlways.MediaTek.Services
             bool sendResult = await _bromClient.SendExploitPayloadAsync(payload, ct);
             if (!sendResult)
             {
-                Log("[MTK] Failed to send Exploit Payload", Color.Red);
+                Log("[MediaTek] Failed to send Exploit Payload", Color.Red);
                 return false;
             }
 
-            Log("[MTK] ✓ Exploit Payload sent, waiting for device re-enumeration...", Color.Yellow);
+            Log("[MediaTek] ✓ Exploit Payload sent, waiting for device re-enumeration...", Color.Yellow);
 
             // Disconnect current connection
             _bromClient.Disconnect();
@@ -371,46 +371,46 @@ namespace LoveAlways.MediaTek.Services
             await Task.Delay(2000, ct);
 
             // Try to reconnect
-            Log("[MTK] Attempting to reconnect...", Color.Cyan);
-            
+            Log("[MediaTek] Attempting to reconnect...", Color.Cyan);
+
             string newPort = await WaitForNewMtkPortAsync(ct, 10000);
             if (string.IsNullOrEmpty(newPort))
             {
-                Log("[MTK] ⚠ No new port detected, trying to reconnect using original port", Color.Yellow);
+                Log("[MediaTek] ⚠ No new port detected, trying to reconnect using original port", Color.Yellow);
                 newPort = originalPort;
             }
             else
             {
-                Log($"[MTK] Detected new port: {newPort}", Color.Cyan);
+                Log($"[MediaTek] Detected new port: {newPort}", Color.Cyan);
             }
 
             // Reconnect
             bool reconnected = await ConnectAsync(newPort, 115200, ct);
             if (!reconnected)
             {
-                Log("[MTK] Reconnection failed", Color.Red);
+                Log("[MediaTek] Reconnection failed", Color.Red);
                 return false;
             }
 
             // Check new Target Config
             uint newTargetConfig = (uint)_bromClient.TargetConfig;
-            Log($"[MTK] ═══════════════════════════════════════", Color.Green);
-            Log($"[MTK] New Target Config: 0x{newTargetConfig:X8}", Color.Green);
-            Log($"[MTK] ═══════════════════════════════════════", Color.Green);
+            Log($"[MediaTek] ═══════════════════════════════════════", Color.Green);
+            Log($"[MediaTek] New Target Config: 0x{newTargetConfig:X8}", Color.Green);
+            Log($"[MediaTek] ═══════════════════════════════════════", Color.Green);
 
             if (newTargetConfig == 0)
             {
-                Log("[MTK] ✓ Exploit successful! Security protection disabled", Color.Green);
+                Log("[MediaTek] ✓ Exploit successful! Security protection disabled", Color.Green);
                 return true;
             }
             else if (newTargetConfig < targetConfig)
             {
-                Log("[MTK] ✓ Exploit partially successful, some protection disabled", Color.Yellow);
+                Log("[MediaTek] ✓ Exploit partially successful, some protection disabled", Color.Yellow);
                 return true;
             }
             else
             {
-                Log("[MTK] ⚠ Exploit might not have taken effect, Target Config unchanged", Color.Orange);
+                Log("[MediaTek] ⚠ Exploit might not have taken effect, Target Config unchanged", Color.Orange);
                 return false;
             }
         }
@@ -426,9 +426,14 @@ namespace LoveAlways.MediaTek.Services
         {
             if (File.Exists(filePath))
             {
+                Debug.WriteLine($"Da File : {filePath}");
                 DaFilePath = filePath;
                 MtkDaDatabase.SetDaFilePath(filePath);
-                Log($"[MTK] DA file: {Path.GetFileName(filePath)}", Color.Cyan);
+                Log($"[MediaTek] DA file: {Path.GetFileName(filePath)}", Color.Cyan);
+            }
+            else
+            {
+                Debug.WriteLine($"Da File : Not found!");
             }
         }
 
@@ -440,7 +445,7 @@ namespace LoveAlways.MediaTek.Services
             if (File.Exists(filePath))
             {
                 CustomDa1Path = filePath;
-                Log($"[MTK] Custom DA1: {Path.GetFileName(filePath)}", Color.Cyan);
+                Log($"[MediaTek] Custom DA1: {Path.GetFileName(filePath)}", Color.Cyan);
             }
         }
 
@@ -452,7 +457,7 @@ namespace LoveAlways.MediaTek.Services
             if (File.Exists(filePath))
             {
                 CustomDa2Path = filePath;
-                Log($"[MTK] Custom DA2: {Path.GetFileName(filePath)}", Color.Cyan);
+                Log($"[MediaTek] Custom DA2: {Path.GetFileName(filePath)}", Color.Cyan);
             }
         }
 
@@ -463,12 +468,12 @@ namespace LoveAlways.MediaTek.Services
         {
             if (!IsConnected || _bromClient.HwCode == 0)
             {
-                Log("[MTK] Device not connected", Color.Red);
+                Log("[MediaTek] Device not connected", Color.Red);
                 return false;
             }
 
             ushort hwCode = _bromClient.HwCode;
-            Log($"[MTK] Loading DA (HW Code: 0x{hwCode:X4})", Color.Cyan);
+            Log($"[MediaTek] Loading DA (HW Code: 0x{hwCode:X4})", Color.Cyan);
 
             DaEntry da1 = null;
             DaEntry da2 = null;
@@ -477,26 +482,26 @@ namespace LoveAlways.MediaTek.Services
             if (!string.IsNullOrEmpty(CustomDa1Path) && File.Exists(CustomDa1Path))
             {
                 byte[] da1Data = File.ReadAllBytes(CustomDa1Path);
-                
+
                 // Process DA data (send full file, do not truncate)
                 // According to ChimeraTool packet analysis: although declared size is small, full file is sent
                 da1Data = ProcessDaData(da1Data);
-                
+
                 // Detect DA format (Legacy vs V6)
                 // Legacy DA: Starts with ARM instructions (0xEA = B instruction, 0xEB = BL instruction)
                 // V6 DA: Usually begins with "MTK_", "hvea" or other signatures
                 // ELF DA: Starts with 0x7F 'E' 'L' 'F'
-                
+
                 bool isLegacyDa = false;
                 bool isElfDa = false;
-                
+
                 if (da1Data.Length > 4)
                 {
                     // Check if it is ELF format
                     if (da1Data[0] == 0x7F && da1Data[1] == 'E' && da1Data[2] == 'L' && da1Data[3] == 'F')
                     {
                         isElfDa = true;
-                        Log("[MTK] Detected ELF DA format", Color.Yellow);
+                        Log("[MediaTek] Detected ELF DA format", Color.Yellow);
                     }
                     // Check if it is ARM branch instruction (Legacy DA feature)
                     else if (da1Data[3] == 0xEA || da1Data[3] == 0xEB)
@@ -509,26 +514,26 @@ namespace LoveAlways.MediaTek.Services
                         string header = System.Text.Encoding.ASCII.GetString(da1Data, 0, Math.Min(8, da1Data.Length));
                         if (header.Contains("MTK") || header.Contains("hvea"))
                         {
-                            Log($"[MTK] Detected V6 DA feature: {header.Substring(0, 4)}", Color.Yellow);
+                            Log($"[MediaTek] Detected V6 DA feature: {header.Substring(0, 4)}", Color.Yellow);
                         }
                     }
                 }
-                
+
                 int sigLen;
                 int daType;
-                
+
                 // Detect signature length: check if there is a valid signature at the end of the file
                 // Official signed DA usually has 0x1000 (4096) bytes signature
                 sigLen = DetectDaSignatureLength(da1Data);
-                Log($"[MTK] Signature detection result: 0x{sigLen:X} ({sigLen} bytes)", Color.Gray);
-                
+                Log($"[MediaTek] Signature detection result: 0x{sigLen:X} ({sigLen} bytes)", Color.Gray);
+
                 // Prioritize judgment of format based on signature length
                 if (sigLen == 0x1000)
                 {
                     // Official signed DA (e.g. extracted from SP Flash Tool)
                     // Even if its header looks like Legacy (ARM branch), it should be handled as V6
                     daType = (int)DaMode.Xml;
-                    Log($"[MTK] DA Format: Official signed DA (V6, Signature length: 0x{sigLen:X})", Color.Yellow);
+                    Log($"[MediaTek] DA Format: Official signed DA (V6, Signature length: 0x{sigLen:X})", Color.Yellow);
                 }
                 else if (isElfDa)
                 {
@@ -536,14 +541,14 @@ namespace LoveAlways.MediaTek.Services
                     if (sigLen == 0)
                         sigLen = MtkDaDatabase.GetSignatureLength(hwCode, false);
                     daType = (int)MtkDaDatabase.GetDaMode(hwCode);
-                    Log($"[MTK] DA Format: ELF/V6 (Signature length: 0x{sigLen:X})", Color.Yellow);
+                    Log($"[MediaTek] DA Format: ELF/V6 (Signature length: 0x{sigLen:X})", Color.Yellow);
                 }
                 else if (isLegacyDa && sigLen == 0)
                 {
                     // Pure Legacy DA (ARM header, no official signature)
                     sigLen = 0x100;
                     daType = (int)DaMode.Legacy;
-                    Log("[MTK] DA Format: Legacy (Signature length: 0x100)", Color.Yellow);
+                    Log("[MediaTek] DA Format: Legacy (Signature length: 0x100)", Color.Yellow);
                 }
                 else
                 {
@@ -551,14 +556,14 @@ namespace LoveAlways.MediaTek.Services
                     if (sigLen == 0)
                         sigLen = MtkDaDatabase.GetSignatureLength(hwCode, false);
                     daType = (int)MtkDaDatabase.GetDaMode(hwCode);
-                    Log($"[MTK] DA Format: Auto detected {(DaMode)daType} (Signature length: 0x{sigLen:X})", Color.Yellow);
+                    Log($"[MediaTek] DA Format: Auto detected {(DaMode)daType} (Signature length: 0x{sigLen:X})", Color.Yellow);
                 }
-                
+
                 // Prioritize device-reported address, fallback to database address
                 uint da1Addr = _bromClient.ChipInfo?.DaPayloadAddr ?? MtkDaDatabase.GetDa1Address(hwCode);
                 if (da1Addr == 0)
                     da1Addr = MtkDaDatabase.GetDa1Address(hwCode);
-                    
+
                 da1 = new DaEntry
                 {
                     Name = "Custom_DA1",
@@ -567,39 +572,39 @@ namespace LoveAlways.MediaTek.Services
                     Data = da1Data,
                     DaType = daType
                 };
-                Log($"[MTK] Using custom DA1 (Load address: 0x{da1Addr:X})", Color.Yellow);
+                Log($"[MediaTek] Using custom DA1 (Load address: 0x{da1Addr:X})", Color.Yellow);
             }
 
             if (!string.IsNullOrEmpty(CustomDa2Path) && File.Exists(CustomDa2Path))
             {
                 byte[] da2Data = File.ReadAllBytes(CustomDa2Path);
-                
+
                 // DA2 format is determined by DA1 mode, not the header
                 // V6/XML protocol: DA2 is uploaded via XML commands, no separate signature
                 // Legacy protocol: DA2 is uploaded via BROM, might have signature
-                
+
                 int sigLen;
                 int daType;
-                
+
                 // Get chip's DA mode
                 var da2ChipMode = MtkDaDatabase.GetDaMode(hwCode);
-                
+
                 if (da2ChipMode == DaMode.Xml || da2ChipMode == DaMode.XFlash)
                 {
                     // V6/XFlash: DA2 is uploaded via XML boot_to or UPLOAD_DA commands
                     // No separate signature (signature verification is done in DA1)
                     sigLen = 0;
                     daType = (int)da2ChipMode;
-                    Log($"[MTK] DA2 Format: V6/XML (No separate signature, uploaded via XML protocol)", Color.Yellow);
+                    Log($"[MediaTek] DA2 Format: V6/XML (No separate signature, uploaded via XML protocol)", Color.Yellow);
                 }
                 else
                 {
                     // Legacy: DA2 might have a signature
                     sigLen = MtkDaDatabase.GetSignatureLength(hwCode, true);
                     daType = (int)DaMode.Legacy;
-                    Log($"[MTK] DA2 Format: Legacy (Signature: 0x{sigLen:X})", Color.Yellow);
+                    Log($"[MediaTek] DA2 Format: Legacy (Signature: 0x{sigLen:X})", Color.Yellow);
                 }
-                
+
                 da2 = new DaEntry
                 {
                     Name = "Custom_DA2",
@@ -608,7 +613,7 @@ namespace LoveAlways.MediaTek.Services
                     Data = da2Data,
                     DaType = daType
                 };
-                Log($"[MTK] Using custom DA2: {da2Data.Length} bytes, Address: 0x{da2.LoadAddr:X8}", Color.Yellow);
+                Log($"[MediaTek] Using custom DA2: {da2Data.Length} bytes, Address: 0x{da2.LoadAddr:X8}", Color.Yellow);
             }
 
             // 2. If no custom DA, extract from AllInOne DA file
@@ -624,21 +629,21 @@ namespace LoveAlways.MediaTek.Services
 
             if (da1 == null)
             {
-                Log("[MTK] No available DA1 found", Color.Red);
+                Log("[MediaTek] No available DA1 found", Color.Red);
                 return false;
             }
 
             // Check if DA mode matches
             var chipDaMode = MtkDaDatabase.GetDaMode(hwCode);
             var daDaMode = (DaMode)da1.DaType;
-            
+
             if (daDaMode != chipDaMode)
             {
-                Log($"[MTK] ⚠ DA mode mismatch: Chip requires {chipDaMode}, DA file is {daDaMode}", Color.Orange);
-                Log("[MTK] Suggest using correct format DA file", Color.Orange);
+                Log($"[MediaTek] ⚠ DA mode mismatch: Chip requires {chipDaMode}, DA file is {daDaMode}", Color.Orange);
+                Log("[MediaTek] Suggest using correct format DA file", Color.Orange);
             }
-            
-            Log($"[MTK] DA Mode: {daDaMode}, Load address: 0x{da1.LoadAddr:X8}", Color.Gray);
+
+            Log($"[MediaTek] DA Mode: {daDaMode}, Load address: 0x{da1.LoadAddr:X8}", Color.Gray);
 
             // ═══════════════════════════════════════════════════════════════════
             // Correct flow (Reference: SP Flash Tool and mtkclient):
@@ -651,18 +656,18 @@ namespace LoveAlways.MediaTek.Services
             // 0. Check if BROM Exploit needs to be executed
             uint targetConfig = (uint)_bromClient.TargetConfig;
             bool isBromMode = _bromClient.IsBromMode;
-            
+
             if (targetConfig != 0)
             {
-                Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
-                Log($"[MTK] Security protection detected (Target Config: 0x{targetConfig:X8})", Color.Yellow);
-                
+                Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+                Log($"[MediaTek] Security protection detected (Target Config: 0x{targetConfig:X8})", Color.Yellow);
+
                 if (isBromMode)
                 {
                     // BROM mode: Try BROM Exploit
-                    Log("[MTK] Attempting BROM Exploit to disable protection...", Color.Yellow);
-                    Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
-                    
+                    Log("[MediaTek] Attempting BROM Exploit to disable protection...", Color.Yellow);
+                    Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+
                     bool exploitResult = await RunBromExploitAsync(ct);
                     if (exploitResult)
                     {
@@ -670,76 +675,76 @@ namespace LoveAlways.MediaTek.Services
                         targetConfig = (uint)_bromClient.TargetConfig;
                         if (targetConfig == 0)
                         {
-                            Log("[MTK] ✓ Security protection successfully disabled!", Color.Green);
+                            Log("[MediaTek] ✓ Security protection successfully disabled!", Color.Green);
                         }
                     }
                     else
                     {
-                        Log("[MTK] ⚠ BROM Exploit failed, proceeding with DA upload...", Color.Orange);
-                        Log("[MTK] ⚠ Might fail if device has DAA enabled", Color.Orange);
+                        Log("[MediaTek] ⚠ BROM Exploit failed, proceeding with DA upload...", Color.Orange);
+                        Log("[MediaTek] ⚠ Might fail if device has DAA enabled", Color.Orange);
                     }
                 }
                 else
                 {
                     // Preloader mode: BROM Exploit not applicable
-                    Log("[MTK] Device mode: Preloader (BROM Exploit not applicable)", Color.Yellow);
-                    Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
-                    
+                    Log("[MediaTek] Device mode: Preloader (BROM Exploit not applicable)", Color.Yellow);
+                    Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+
                     // Check for DA2 level exploit support
                     string exploitType = MtkChipDatabase.GetExploitType(_bromClient.HwCode);
                     if (!string.IsNullOrEmpty(exploitType))
                     {
-                        Log($"[MTK] ✓ This chip supports {exploitType} exploit (DA2 level)", Color.Green);
-                        Log("[MTK] Attempting to upload DA, DA2 exploit can be executed after successful upload...", Color.Cyan);
+                        Log($"[MediaTek] ✓ This chip supports {exploitType} exploit (DA2 level)", Color.Green);
+                        Log("[MediaTek] Attempting to upload DA, DA2 exploit can be executed after successful upload...", Color.Cyan);
                     }
                     else
                     {
-                        Log("[MTK] ⚠ Preloader mode + DAA enabled", Color.Orange);
-                        Log("[MTK] Requires officially signed DA or setting device into BROM mode", Color.Orange);
+                        Log("[MediaTek] ⚠ Preloader mode + DAA enabled", Color.Orange);
+                        Log("[MediaTek] Requires officially signed DA or setting device into BROM mode", Color.Orange);
                     }
                 }
             }
 
             // Record initial mode (detected during handshake)
             bool initialIsBrom = _bromClient.IsBromMode;
-            Log($"[MTK] Initial mode: {(initialIsBrom ? "BROM" : "Preloader")}", Color.Gray);
+            Log($"[MediaTek] Initial mode: {(initialIsBrom ? "BROM" : "Preloader")}", Color.Gray);
 
             // 1. Upload DA1 (Both modes require this!)
-            Log("[MTK] Uploading Stage1 DA...", Color.Cyan);
+            Log("[MediaTek] Uploading Stage1 DA...", Color.Cyan);
             if (!await _daLoader.UploadDa1Async(da1, ct))
             {
-                Log("[MTK] DA1 upload failed", Color.Red);
+                Log("[MediaTek] DA1 upload failed", Color.Red);
                 return false;
             }
 
-            Log("[MTK] ✓ Stage1 DA upload successful", Color.Green);
+            Log("[MediaTek] ✓ Stage1 DA upload successful", Color.Green);
 
             // 2. Check if port is still open (might be closed due to USB re-enumeration)
             if (!_bromClient.IsPortOpen)
             {
-                Log("[MTK] ⚠ Port closed, device is re-enumerating USB...", Color.Yellow);
-                Log("[MTK] Waiting for new COM port...", Color.Gray);
-                
+                Log("[MediaTek] ⚠ Port closed, device is re-enumerating USB...", Color.Yellow);
+                Log("[MediaTek] Waiting for new COM port...", Color.Gray);
+
                 // Wait for new port and reconnect
                 string newPort = await WaitForNewMtkPortAsync(ct, 15000);
                 if (string.IsNullOrEmpty(newPort))
                 {
-                    Log("[MTK] No new MTK port detected", Color.Red);
+                    Log("[MediaTek] No new MTK port detected", Color.Red);
                     return false;
                 }
-                
-                Log($"[MTK] Detected new port: {newPort}", Color.Cyan);
-                
+
+                Log($"[MediaTek] Detected new port: {newPort}", Color.Cyan);
+
                 // Reconnect to new port (no handshake needed, directly to DA)
                 if (!await _bromClient.ConnectAsync(newPort, 115200, ct))
                 {
-                    Log("[MTK] Reconnection failed", Color.Red);
+                    Log("[MediaTek] Reconnection failed", Color.Red);
                     return false;
                 }
-                
+
                 // Set state to DA1 loaded
                 _bromClient.State = MtkDeviceState.Da1Loaded;
-                Log("[MTK] ✓ Reconnected successful (DA mode)", Color.Green);
+                Log("[MediaTek] ✓ Reconnected successful (DA mode)", Color.Green);
             }
 
             // 3. Create XML DA client (shared port lock to ensure thread safety)
@@ -752,67 +757,67 @@ namespace LoveAlways.MediaTek.Services
             );
 
             // 4. Wait for DA1 ready (waiting for sync signal)
-            Log("[MTK] Waiting for DA1 ready...", Color.Gray);
+            Log("[MediaTek] Waiting for DA1 ready...", Color.Gray);
             if (!await _xmlClient.WaitForDaReadyAsync(30000, ct))
             {
-                Log("[MTK] Timeout waiting for DA1 ready", Color.Red);
+                Log("[MediaTek] Timeout waiting for DA1 ready", Color.Red);
                 return false;
             }
 
-            Log("[MTK] ✓ DA1 ready", Color.Green);
+            Log("[MediaTek] ✓ DA1 ready", Color.Green);
 
             // 4. Send runtime parameters (Required, reference: ChimeraTool)
-            Log("[MTK] Sending runtime parameters...", Color.Gray);
+            Log("[MediaTek] Sending runtime parameters...", Color.Gray);
             bool runtimeParamsSet = await _xmlClient.SetRuntimeParametersAsync(ct);
             if (!runtimeParamsSet)
             {
-                Log("[MTK] ⚠ Failed to set runtime parameters, continuing...", Color.Orange);
+                Log("[MediaTek] ⚠ Failed to set runtime parameters, continuing...", Color.Orange);
             }
-            
+
             // 5. Judge device source based on initial handshake mode
             // Preloader mode means starting from Preloader
             bool isPreloaderSource = !_bromClient.IsBromMode;
-            
-            Log($"[MTK] Device source: {(isPreloaderSource ? "Preloader" : "BROM")}", Color.Cyan);
-            
+
+            Log($"[MediaTek] Device source: {(isPreloaderSource ? "Preloader" : "BROM")}", Color.Cyan);
+
             if (isPreloaderSource)
             {
-                Log("[MTK] DA1 detected: Device started from Preloader", Color.Yellow);
+                Log("[MediaTek] DA1 detected: Device started from Preloader", Color.Yellow);
             }
             else
             {
-                Log("[MTK] DA1 detected: Device started from BROM", Color.Cyan);
-                
+                Log("[MediaTek] DA1 detected: Device started from BROM", Color.Cyan);
+
                 // BROM boot requires sending EMI configuration (DRAM initialization)
                 if (Common.MtkEmiConfig.IsRequired(hwCode))
                 {
-                    Log("[MTK] Detected EMI configuration needed...", Color.Yellow);
-                    
+                    Log("[MediaTek] Detected EMI configuration needed...", Color.Yellow);
+
                     var emiConfig = Common.MtkEmiConfig.GetConfig(hwCode);
                     if (emiConfig != null && emiConfig.ConfigData.Length > 0)
                     {
-                        Log($"[MTK] Sending EMI config: {emiConfig.ConfigLength} bytes", Color.Cyan);
-                        
+                        Log($"[MediaTek] Sending EMI config: {emiConfig.ConfigLength} bytes", Color.Cyan);
+
                         bool emiSuccess = await _bromClient.SendEmiConfigAsync(emiConfig.ConfigData, ct);
                         if (!emiSuccess)
                         {
-                            Log("[MTK] Warning: Failed to send EMI config, device might not work correctly", Color.Orange);
+                            Log("[MediaTek] Warning: Failed to send EMI config, device might not work correctly", Color.Orange);
                             // Do not terminate flow, as some devices might continue even if EMI fails
                         }
                         else
                         {
-                            Log("[MTK] ✓ EMI config sent successful", Color.Green);
+                            Log("[MediaTek] ✓ EMI config sent successful", Color.Green);
                         }
                     }
                     else
                     {
-                        Log("[MTK] Warning: EMI configuration data not found", Color.Orange);
-                        Log("[MTK] Note: If device doesn't work, please provide device EMI config file", Color.Gray);
+                        Log("[MediaTek] Warning: EMI configuration data not found", Color.Orange);
+                        Log("[MediaTek] Note: If device doesn't work, please provide device EMI config file", Color.Gray);
                     }
                 }
                 else
                 {
-                    Log("[MTK] This chip does not require EMI config", Color.Gray);
+                    Log("[MediaTek] This chip does not require EMI config", Color.Gray);
                 }
             }
 
@@ -820,22 +825,22 @@ namespace LoveAlways.MediaTek.Services
             // Conditions: connagent=="preloader" AND SBC enabled AND DA2 available
             bool sbcEnabled = _bromClient.TargetConfig.HasFlag(TargetConfigFlags.SbcEnabled);
             bool useExploit = isPreloaderSource && sbcEnabled && da2 != null;
-            
-            Log($"[MTK] SBC Status: {(sbcEnabled ? "Enabled" : "Disabled")}", Color.Gray);
-            
+
+            Log($"[MediaTek] SBC Status: {(sbcEnabled ? "Enabled" : "Disabled")}", Color.Gray);
+
             if (useExploit)
             {
-                Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
-                Log("[MTK] Carbonara conditions met: Preloader + SBC", Color.Yellow);
-                Log("[MTK] Executing Carbonara runtime exploit...", Color.Yellow);
-                Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
-                
+                Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+                Log("[MediaTek] Carbonara conditions met: Preloader + SBC", Color.Yellow);
+                Log("[MediaTek] Executing Carbonara runtime exploit...", Color.Yellow);
+                Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+
                 var exploit = new CarbonaraExploit(msg => Log(msg, Color.Yellow));
-                
+
                 // Check if device is patched by vendor
                 if (exploit.IsDevicePatched(da1.Data))
                 {
-                    Log("[MTK] ⚠ DA1 has been patched by vendor, trying normal DA2 upload", Color.Orange);
+                    Log("[MediaTek] ⚠ DA1 has been patched by vendor, trying normal DA2 upload", Color.Orange);
                     useExploit = false;
                 }
                 else
@@ -866,19 +871,19 @@ namespace LoveAlways.MediaTek.Services
 
                         if (exploitSuccess)
                         {
-                            Log("[MTK] ✓ Carbonara exploit successful", Color.Green);
+                            Log("[MediaTek] ✓ Carbonara exploit successful", Color.Green);
                             OnStateChanged?.Invoke(MtkDeviceState.Da2Loaded);
                             return true;
                         }
                         else
                         {
-                            Log("[MTK] Carbonara exploit failed, trying normal upload", Color.Orange);
+                            Log("[MediaTek] Carbonara exploit failed, trying normal upload", Color.Orange);
                             useExploit = false;
                         }
                     }
                     else
                     {
-                        Log("[MTK] Could not prepare exploit data, trying normal upload", Color.Orange);
+                        Log("[MediaTek] Could not prepare exploit data, trying normal upload", Color.Orange);
                         useExploit = false;
                     }
                 }
@@ -887,42 +892,42 @@ namespace LoveAlways.MediaTek.Services
             // 6. Normal upload DA2 (if exploit not used or failed)
             if (!useExploit && da2 != null)
             {
-                Log("[MTK] Uploading Stage2 DA (normal mode)...", Color.Cyan);
+                Log("[MediaTek] Uploading Stage2 DA (normal mode)...", Color.Cyan);
                 if (!await _daLoader.UploadDa2Async(da2, _xmlClient, ct))
                 {
-                    Log("[MTK] DA2 upload failed", Color.Red);
+                    Log("[MediaTek] DA2 upload failed", Color.Red);
                     return false;
                 }
             }
-            
-            Log("[MTK] ✓ DA loading completed", Color.Green);
+
+            Log("[MediaTek] ✓ DA loading completed", Color.Green);
             OnStateChanged?.Invoke(MtkDeviceState.Da2Loaded);
 
             // 7. Initialize XFlash client (if needed)
             await InitializeXFlashClientAsync(ct);
-            
+
             // 8. Check and execute AllinoneSignature exploit (DA2 level)
             string chipExploitType = MtkChipDatabase.GetExploitType(_bromClient.HwCode);
             if (chipExploitType == "AllinoneSignature" && IsAllinoneSignatureVulnerable())
             {
-                Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
-                Log("[MTK] Supported exploit detected: AllinoneSignature", Color.Yellow);
-                Log("[MTK] Attempting DA2 level exploit...", Color.Yellow);
-                Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
-                
+                Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+                Log("[MediaTek] Supported exploit detected: AllinoneSignature", Color.Yellow);
+                Log("[MediaTek] Attempting DA2 level exploit...", Color.Yellow);
+                Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+
                 bool exploitSuccess = await RunAllinoneSignatureExploitAsync(null, null, ct);
                 if (exploitSuccess)
                 {
-                    Log("[MTK] ✓ AllinoneSignature exploit successful", Color.Green);
-                    Log("[MTK] Device security restrictions disabled", Color.Green);
+                    Log("[MediaTek] ✓ AllinoneSignature exploit successful", Color.Green);
+                    Log("[MediaTek] Device security restrictions disabled", Color.Green);
                 }
                 else
                 {
-                    Log("[MTK] ⚠ AllinoneSignature exploit failed", Color.Orange);
-                    Log("[MTK] Continuing with normal operations...", Color.Gray);
+                    Log("[MediaTek] ⚠ AllinoneSignature exploit failed", Color.Orange);
+                    Log("[MediaTek] Continuing with normal operations...", Color.Gray);
                 }
             }
-            
+
             return true;
         }
 
@@ -938,11 +943,11 @@ namespace LoveAlways.MediaTek.Services
             // Prioritize XFlash binary protocol
             if (_useXFlash && _xflashClient != null)
             {
-                Log("[MTK] Reading partition table using XFlash protocol...", Color.Gray);
+                Log("[MediaTek] Reading partition table using XFlash protocol...", Color.Gray);
                 var xflashPartitions = await _xflashClient.ReadPartitionTableAsync(ct);
                 if (xflashPartitions != null)
                 {
-                    Log($"[MTK] ✓ Read {xflashPartitions.Count} partitions (XFlash)", Color.Cyan);
+                    Log($"[MediaTek] ✓ Read {xflashPartitions.Count} partitions (XFlash)", Color.Cyan);
                     return xflashPartitions;
                 }
             }
@@ -950,15 +955,15 @@ namespace LoveAlways.MediaTek.Services
             // Fallback to XML protocol
             if (_xmlClient == null || !_xmlClient.IsConnected)
             {
-                Log("[MTK] DA not loaded", Color.Red);
+                Log("[MediaTek] DA not loaded", Color.Red);
                 return null;
             }
 
-            Log("[MTK] Reading partition table using XML protocol...", Color.Gray);
+            Log("[MediaTek] Reading partition table using XML protocol...", Color.Gray);
             var partitions = await _xmlClient.ReadPartitionTableAsync(ct);
             if (partitions != null)
             {
-                Log($"[MTK] ✓ Read {partitions.Length} partitions (XML)", Color.Cyan);
+                Log($"[MediaTek] ✓ Read {partitions.Length} partitions (XML)", Color.Cyan);
                 return new List<MtkPartitionInfo>(partitions);
             }
 
@@ -970,35 +975,35 @@ namespace LoveAlways.MediaTek.Services
         /// </summary>
         public async Task<bool> ReadPartitionAsync(string partitionName, string outputPath, ulong size, CancellationToken ct = default)
         {
-            Log($"[MTK] Reading partition: {partitionName} ({FormatSize(size)})", Color.Cyan);
+            Log($"[MediaTek] Reading partition: {partitionName} ({FormatSize(size)})", Color.Cyan);
 
             byte[] data = null;
 
             // Prioritize XFlash binary protocol
             if (_useXFlash && _xflashClient != null)
             {
-                Log("[MTK] Using XFlash protocol...", Color.Gray);
+                Log("[MediaTek] Using XFlash protocol...", Color.Gray);
                 data = await _xflashClient.ReadPartitionAsync(partitionName, 0, size, EmmcPartitionType.User, ct);
             }
             else if (_xmlClient != null && _xmlClient.IsConnected)
             {
-                Log("[MTK] Using XML protocol...", Color.Gray);
+                Log("[MediaTek] Using XML protocol...", Color.Gray);
                 data = await _xmlClient.ReadPartitionAsync(partitionName, size, ct);
             }
             else
             {
-                Log("[MTK] DA not loaded", Color.Red);
+                Log("[MediaTek] DA not loaded", Color.Red);
                 return false;
             }
 
             if (data != null && data.Length > 0)
             {
                 File.WriteAllBytes(outputPath, data);
-                Log($"[MTK] ✓ Partition {partitionName} saved ({FormatSize((ulong)data.Length)})", Color.Green);
+                Log($"[MediaTek] ✓ Partition {partitionName} saved ({FormatSize((ulong)data.Length)})", Color.Green);
                 return true;
             }
 
-            Log($"[MTK] Failed to read partition {partitionName}", Color.Red);
+            Log($"[MediaTek] Failed to read partition {partitionName}", Color.Red);
             return false;
         }
 
@@ -1009,39 +1014,39 @@ namespace LoveAlways.MediaTek.Services
         {
             if (!File.Exists(filePath))
             {
-                Log($"[MTK] File not found: {filePath}", Color.Red);
+                Log($"[MediaTek] File not found: {filePath}", Color.Red);
                 return false;
             }
 
             byte[] data = File.ReadAllBytes(filePath);
-            Log($"[MTK] Writing partition: {partitionName} ({FormatSize((ulong)data.Length)})", Color.Cyan);
+            Log($"[MediaTek] Writing partition: {partitionName} ({FormatSize((ulong)data.Length)})", Color.Cyan);
 
             bool success = false;
 
             // Prioritize XFlash binary protocol
             if (_useXFlash && _xflashClient != null)
             {
-                Log("[MTK] Using XFlash protocol...", Color.Gray);
+                Log("[MediaTek] Using XFlash protocol...", Color.Gray);
                 success = await _xflashClient.WritePartitionAsync(partitionName, 0, data, EmmcPartitionType.User, ct);
             }
             else if (_xmlClient != null && _xmlClient.IsConnected)
             {
-                Log("[MTK] Using XML protocol...", Color.Gray);
+                Log("[MediaTek] Using XML protocol...", Color.Gray);
                 success = await _xmlClient.WritePartitionAsync(partitionName, data, ct);
             }
             else
             {
-                Log("[MTK] DA not loaded", Color.Red);
+                Log("[MediaTek] DA not loaded", Color.Red);
                 return false;
             }
 
             if (success)
             {
-                Log($"[MTK] ✓ Partition {partitionName} written successfully", Color.Green);
+                Log($"[MediaTek] ✓ Partition {partitionName} written successfully", Color.Green);
             }
             else
             {
-                Log($"[MTK] Failed to write partition {partitionName}", Color.Red);
+                Log($"[MediaTek] Failed to write partition {partitionName}", Color.Red);
             }
 
             return success;
@@ -1070,7 +1075,7 @@ namespace LoveAlways.MediaTek.Services
         /// </summary>
         public async Task<bool> ErasePartitionAsync(string partitionName, CancellationToken ct = default)
         {
-            Log($"[MTK] Erasing partition: {partitionName}", Color.Yellow);
+            Log($"[MediaTek] Erasing partition: {partitionName}", Color.Yellow);
 
             bool success = false;
 
@@ -1085,17 +1090,17 @@ namespace LoveAlways.MediaTek.Services
             }
             else
             {
-                Log("[MTK] DA not loaded", Color.Red);
+                Log("[MediaTek] DA not loaded", Color.Red);
                 return false;
             }
 
             if (success)
             {
-                Log($"[MTK] ✓ Partition {partitionName} erased", Color.Green);
+                Log($"[MediaTek] ✓ Partition {partitionName} erased", Color.Green);
             }
             else
             {
-                Log($"[MTK] Failed to erase partition {partitionName}", Color.Red);
+                Log($"[MediaTek] Failed to erase partition {partitionName}", Color.Red);
             }
 
             return success;
@@ -1108,11 +1113,11 @@ namespace LoveAlways.MediaTek.Services
         {
             if (_xmlClient == null || !_xmlClient.IsConnected)
             {
-                Log("[MTK] DA not loaded", Color.Red);
+                Log("[MediaTek] DA not loaded", Color.Red);
                 return false;
             }
 
-            Log($"[MTK] Starting flashing of {partitionFiles.Count} partitions...", Color.Cyan);
+            Log($"[MediaTek] Starting flashing of {partitionFiles.Count} partitions...", Color.Cyan);
 
             int success = 0;
             int total = partitionFiles.Count;
@@ -1121,7 +1126,7 @@ namespace LoveAlways.MediaTek.Services
             {
                 if (ct.IsCancellationRequested)
                 {
-                    Log("[MTK] Flashing cancelled", Color.Orange);
+                    Log("[MediaTek] Flashing cancelled", Color.Orange);
                     break;
                 }
 
@@ -1133,7 +1138,7 @@ namespace LoveAlways.MediaTek.Services
                 OnProgress?.Invoke(success, total);
             }
 
-            Log($"[MTK] Flashing completed: {success}/{total}", success == total ? Color.Green : Color.Orange);
+            Log($"[MediaTek] Flashing completed: {success}/{total}", success == total ? Color.Green : Color.Orange);
             return success == total;
         }
 
@@ -1148,7 +1153,7 @@ namespace LoveAlways.MediaTek.Services
         {
             if (_xmlClient != null && _xmlClient.IsConnected)
             {
-                Log("[MTK] Rebooting device...", Color.Cyan);
+                Log("[MediaTek] Rebooting device...", Color.Cyan);
                 return await _xmlClient.RebootAsync(ct);
             }
             return false;
@@ -1161,7 +1166,7 @@ namespace LoveAlways.MediaTek.Services
         {
             if (_xmlClient != null && _xmlClient.IsConnected)
             {
-                Log("[MTK] Shutting down device...", Color.Cyan);
+                Log("[MediaTek] Shutting down device...", Color.Cyan);
                 return await _xmlClient.ShutdownAsync(ct);
             }
             return false;
@@ -1228,13 +1233,13 @@ namespace LoveAlways.MediaTek.Services
         {
             if (_xmlClient == null || !_xmlClient.IsConnected)
             {
-                Log("[MTK] DA2 not loaded, cannot execute ALLINONE-SIGNATURE exploit", Color.Red);
+                Log("[MediaTek] DA2 not loaded, cannot execute ALLINONE-SIGNATURE exploit", Color.Red);
                 return false;
             }
 
-            Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
-            Log("[MTK] Executing ALLINONE-SIGNATURE exploit...", Color.Yellow);
-            Log("[MTK] ═══════════════════════════════════════", Color.Yellow);
+            Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
+            Log("[MediaTek] Executing ALLINONE-SIGNATURE exploit...", Color.Yellow);
+            Log("[MediaTek] ═══════════════════════════════════════", Color.Yellow);
 
             try
             {
@@ -1252,19 +1257,19 @@ namespace LoveAlways.MediaTek.Services
 
                 if (success)
                 {
-                    Log("[MTK] ✓ ALLINONE-SIGNATURE exploit successful", Color.Green);
-                    Log("[MTK] Device security checks disabled", Color.Green);
+                    Log("[MediaTek] ✓ ALLINONE-SIGNATURE exploit successful", Color.Green);
+                    Log("[MediaTek] Device security checks disabled", Color.Green);
                 }
                 else
                 {
-                    Log("[MTK] ✗ ALLINONE-SIGNATURE exploit failed", Color.Red);
+                    Log("[MediaTek] ✗ ALLINONE-SIGNATURE exploit failed", Color.Red);
                 }
 
                 return success;
             }
             catch (Exception ex)
             {
-                Log($"[MTK] ALLINONE-SIGNATURE exploit exception: {ex.Message}", Color.Red);
+                Log($"[MediaTek] ALLINONE-SIGNATURE exploit exception: {ex.Message}", Color.Red);
                 return false;
             }
         }
@@ -1296,7 +1301,7 @@ namespace LoveAlways.MediaTek.Services
         {
             // Do not truncate, return full data
             // ChimeraTool although declares 863728 bytes, but actually sent 864752 bytes
-            Log($"[MTK] DA data size: {daData.Length} bytes (sent in full)", Color.Gray);
+            Log($"[MediaTek] DA data size: {daData.Length} bytes (sent in full)", Color.Gray);
             return daData;
         }
 
@@ -1313,21 +1318,21 @@ namespace LoveAlways.MediaTek.Services
         {
             if (daData == null || daData.Length < 0x200)
                 return 0;
-            
+
             // Method 1: Check if file size matches known DA size + signature
             // DA extracted from SP Flash Tool is usually: DA code + 0x1000 signature
             // Our extracted DA1 is 216440 bytes, where signature is 4096 bytes
-            
+
             // Method 2: Check characteristics of the last 0x1000 bytes
             if (daData.Length >= 0x1000)
             {
                 int sigStart = daData.Length - 0x1000;
-                
+
                 // Stat signature area characteristics
                 int zeroCount = 0;
                 int ffCount = 0;
                 var seen = new System.Collections.Generic.HashSet<byte>();
-                
+
                 // Check multiple sampling points
                 int sampleSize = Math.Min(512, 0x1000);
                 for (int i = 0; i < sampleSize; i++)
@@ -1337,16 +1342,16 @@ namespace LoveAlways.MediaTek.Services
                     if (b == 0xFF) ffCount++;
                     seen.Add(b);
                 }
-                
+
                 int uniqueBytes = seen.Count;
-                
+
                 // Signature data characteristics:
                 // 1. Enough diversity (uniqueBytes > 30)
                 // 2. Not all padding values (0x00 or 0xFF not exceeding 80%)
-                bool looksLikeSignature = uniqueBytes > 30 && 
-                                          zeroCount < sampleSize * 0.8 && 
+                bool looksLikeSignature = uniqueBytes > 30 &&
+                                          zeroCount < sampleSize * 0.8 &&
                                           ffCount < sampleSize * 0.8;
-                
+
                 if (looksLikeSignature)
                 {
                     // Extra check: before signature should be code end or padding
@@ -1354,7 +1359,7 @@ namespace LoveAlways.MediaTek.Services
                     return 0x1000;
                 }
             }
-            
+
             // Method 3: Check 0x100 signature (Legacy)
             if (daData.Length >= 0x100)
             {
@@ -1362,7 +1367,7 @@ namespace LoveAlways.MediaTek.Services
                 var seen = new System.Collections.Generic.HashSet<byte>();
                 int zeroCount = 0;
                 int ffCount = 0;
-                
+
                 for (int i = sigStart; i < daData.Length; i++)
                 {
                     byte b = daData[i];
@@ -1370,15 +1375,15 @@ namespace LoveAlways.MediaTek.Services
                     if (b == 0xFF) ffCount++;
                     seen.Add(b);
                 }
-                
+
                 int uniqueBytes = seen.Count;
-                
+
                 if (uniqueBytes > 20 && zeroCount < 200 && ffCount < 200)
                 {
                     return 0x100;
                 }
             }
-            
+
             return 0;  // Detection failed, let caller decide
         }
 
@@ -1389,24 +1394,24 @@ namespace LoveAlways.MediaTek.Services
         {
             var startTime = DateTime.Now;
             string oldPort = _bromClient.PortName;
-            
+
             // Wait for old port to disappear first
             await Task.Delay(500, ct);
-            
+
             while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs)
             {
                 if (ct.IsCancellationRequested)
                     return null;
-                
+
                 // Get all current COM ports
                 string[] ports = System.IO.Ports.SerialPort.GetPortNames();
-                
+
                 foreach (string port in ports)
                 {
                     // Skip old port
                     if (port == oldPort)
                         continue;
-                    
+
                     try
                     {
                         // Try to open port and detect if it is MTK device
@@ -1415,10 +1420,10 @@ namespace LoveAlways.MediaTek.Services
                             testPort.ReadTimeout = 500;
                             testPort.WriteTimeout = 500;
                             testPort.Open();
-                            
+
                             // Wait a short time for device stabilization
                             await Task.Delay(100, ct);
-                            
+
                             // Try to send simple probe command or directly return port
                             // DA will respond on specific port after running
                             // Simplified here, assuming any new port is DA port
@@ -1431,10 +1436,10 @@ namespace LoveAlways.MediaTek.Services
                         // Port unavailable, continue to next one
                     }
                 }
-                
+
                 await Task.Delay(500, ct);
             }
-            
+
             return null;
         }
 
@@ -1447,11 +1452,11 @@ namespace LoveAlways.MediaTek.Services
         {
             if (_cts != null)
             {
-                try { _cts.Cancel(); } 
+                try { _cts.Cancel(); }
                 catch (ObjectDisposedException) { /* Disposed, ignore */ }
-                catch (Exception ex) { Log($"[MTK] Cancel token exception: {ex.Message}", Color.Gray); }
-                try { _cts.Dispose(); } 
-                catch (Exception ex) { Log($"[MTK] Dispose token exception: {ex.Message}", Color.Gray); }
+                catch (Exception ex) { Log($"[MediaTek] Cancel token exception: {ex.Message}", Color.Gray); }
+                try { _cts.Dispose(); }
+                catch (Exception ex) { Log($"[MediaTek] Dispose token exception: {ex.Message}", Color.Gray); }
             }
             _cts = new CancellationTokenSource();
         }

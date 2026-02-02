@@ -3,10 +3,14 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Qualcomm.Common;
+using LoveAlways.Qualcomm.Database;
+using LoveAlways.Qualcomm.Models;
+using LoveAlways.Qualcomm.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,10 +21,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Database;
-using LoveAlways.Qualcomm.Models;
-using LoveAlways.Qualcomm.Services;
 
 namespace LoveAlways.Qualcomm.UI
 {
@@ -42,12 +42,12 @@ namespace LoveAlways.Qualcomm.UI
         private dynamic _protectPartitionsCheckbox;
         private dynamic _programmerPathTextbox;
         private dynamic _outputPathTextbox;
-        
+
         // Time/Speed/Operation Status Labels
         private dynamic _timeLabel;
         private dynamic _speedLabel;
         private dynamic _operationLabel;
-        
+
         // Device Info Labels
         private dynamic _brandLabel;         // Brand
         private dynamic _chipLabel;          // Chip
@@ -56,17 +56,17 @@ namespace LoveAlways.Qualcomm.UI
         private dynamic _storageLabel;       // Storage Type
         private dynamic _unlockLabel;        // Device Model 2 (Second Model Label)
         private dynamic _otaVersionLabel;    // OTA Version
-        
+
         // Timer and Speed Calculation
         private Stopwatch _operationStopwatch;
         private long _lastBytes;
         private DateTime _lastSpeedUpdate;
         private double _currentSpeed; // Current Speed (bytes/s)
-        
+
         // Port Status Monitor Timer
         private System.Windows.Forms.Timer _portMonitorTimer;
         private string _connectedPortName; // Currently Connected Port Name
-        
+
         // Total Progress Tracking
         private int _totalSteps;
         private int _currentStep;
@@ -79,12 +79,12 @@ namespace LoveAlways.Qualcomm.UI
         /// Quick check connection status (without triggering port validation to avoid accidental disconnection)
         /// </summary>
         public bool IsConnected { get { return _service != null && _service.IsConnectedFast; } }
-        
+
         /// <summary>
         /// Check if quick reconnect is possible (port released but Firehose still available)
         /// </summary>
         public bool CanQuickReconnect { get { return _service != null && _service.IsPortReleased && _service.State == QualcommConnectionState.Ready; } }
-        
+
         public bool IsBusy { get; private set; }
         public List<PartitionInfo> Partitions { get; private set; }
 
@@ -99,13 +99,13 @@ namespace LoveAlways.Qualcomm.UI
 
         public event EventHandler<bool> ConnectionStateChanged;
         public event EventHandler<List<PartitionInfo>> PartitionsLoaded;
-        
+
         /// <summary>
         /// Xiaomi Auth Token Event (Triggered when built-in signature fails, requires popup to show token)
         /// Token Format: Base64 string starting with VQ
         /// </summary>
         public event Action<string> XiaomiAuthTokenRequired;
-        
+
         /// <summary>
         /// Xiaomi Auth Token Event Handler (Triggered when built-in signature fails)
         /// </summary>
@@ -113,11 +113,11 @@ namespace LoveAlways.Qualcomm.UI
         {
             Log("[Xiaomi Auth] Built-in signature invalid, online authorization required", Color.Orange);
             Log(string.Format("[Xiaomi Auth] Token: {0}", token), Color.Cyan);
-            
+
             // Trigger public event to let Form1 show popup
             XiaomiAuthTokenRequired?.Invoke(token);
         }
-        
+
         /// <summary>
         /// Port Disconnected Event Handler (Triggered when device disconnects itself)
         /// </summary>
@@ -129,15 +129,15 @@ namespace LoveAlways.Qualcomm.UI
                 _partitionListView.BeginInvoke(new Action(() => OnServicePortDisconnected(sender, e)));
                 return;
             }
-            
+
             // Stop port monitoring
             StopPortMonitor();
-            
+
             Log("Device disconnected, full reconfiguration required", Color.Red);
-            
+
             // Cancel ongoing operation
             CancelOperation();
-            
+
             // Disconnect service and release resources
             if (_service != null)
             {
@@ -147,13 +147,13 @@ namespace LoveAlways.Qualcomm.UI
                     _service.Disconnect();
                     _service.Dispose();
                 }
-                catch (Exception ex) 
-                { 
-                    _logDetail?.Invoke($"[UI] Disconnect service exception: {ex.Message}"); 
+                catch (Exception ex)
+                {
+                    _logDetail?.Invoke($"[UI] Disconnect service exception: {ex.Message}");
                 }
                 _service = null;
             }
-            
+
             // Clear partition list
             Partitions?.Clear();
             if (_partitionListView != null)
@@ -162,24 +162,24 @@ namespace LoveAlways.Qualcomm.UI
                 _partitionListView.Items.Clear();
                 _partitionListView.EndUpdate();
             }
-            
+
             // Reset progress bar
             UpdateProgressBarDirect(_progressBar, 0);
             UpdateProgressBarDirect(_subProgressBar, 0);
-            
+
             // Automatically uncheck "Skip Loader", full reconfiguration required after device disconnection
             SetSkipSaharaChecked(false);
-            
+
             // Update UI status
             ConnectionStateChanged?.Invoke(this, false);
             ClearDeviceInfoLabels();
-            
+
             // Refresh port list, wait for device reconnection
             RefreshPorts();
-            
+
             Log("Please wait for the device to re-enter EDL mode before reconnecting", Color.Orange);
         }
-        
+
         /// <summary>
         /// Validate connection status (Call before operation)
         /// </summary>
@@ -190,7 +190,7 @@ namespace LoveAlways.Qualcomm.UI
                 Log("Device not connected", Color.Red);
                 return false;
             }
-            
+
             if (!_service.ValidateConnection())
             {
                 Log("Device connection lost, full reconfiguration required", Color.Red);
@@ -201,7 +201,7 @@ namespace LoveAlways.Qualcomm.UI
                 RefreshPorts();
                 return false;
             }
-            
+
             return true;
         }
 
@@ -246,7 +246,7 @@ namespace LoveAlways.Qualcomm.UI
             _timeLabel = timeLabel;
             _speedLabel = speedLabel;
             _operationLabel = operationLabel;
-            
+
             // Bind Device Info Labels
             _brandLabel = brandLabel;
             _chipLabel = chipLabel;
@@ -255,13 +255,13 @@ namespace LoveAlways.Qualcomm.UI
             _storageLabel = storageLabel;
             _unlockLabel = unlockLabel;
             _otaVersionLabel = otaVersionLabel;
-            
+
             // Initialize port status monitor timer (Check every 2 seconds)
             _portMonitorTimer = new System.Windows.Forms.Timer();
             _portMonitorTimer.Interval = 2000;
             _portMonitorTimer.Tick += OnPortMonitorTick;
         }
-        
+
         /// <summary>
         /// Port Status Monitor Timer Callback
         /// </summary>
@@ -270,25 +270,25 @@ namespace LoveAlways.Qualcomm.UI
             // If not connected, no need to check
             if (string.IsNullOrEmpty(_connectedPortName) || _service == null)
                 return;
-            
+
             // Check if port still exists in Device Manager
             var availablePorts = System.IO.Ports.SerialPort.GetPortNames();
-            bool portExists = Array.Exists(availablePorts, p => 
+            bool portExists = Array.Exists(availablePorts, p =>
                 p.Equals(_connectedPortName, StringComparison.OrdinalIgnoreCase));
-            
+
             if (!portExists)
             {
                 // Port disappeared from Device Manager - Show in main log
                 Log(string.Format("Detected port {0} disconnected", _connectedPortName), Color.Orange);
-                
+
                 // Stop timer
                 _portMonitorTimer.Stop();
-                
+
                 // Trigger disconnect handling
                 OnServicePortDisconnected(this, EventArgs.Empty);
             }
         }
-        
+
         /// <summary>
         /// Start Port Monitoring
         /// </summary>
@@ -301,7 +301,7 @@ namespace LoveAlways.Qualcomm.UI
                 _logDetail(string.Format("[Port Monitor] Start monitoring port: {0}", portName));
             }
         }
-        
+
         /// <summary>
         /// Stop Port Monitoring
         /// </summary>
@@ -328,10 +328,10 @@ namespace LoveAlways.Qualcomm.UI
             {
                 var ports = PortDetector.DetectAllPorts();
                 var edlPorts = PortDetector.DetectEdlPorts();
-                
+
                 // Save currently selected port name
                 string previousSelectedPort = GetSelectedPortName();
-                
+
                 _portComboBox.Items.Clear();
 
                 if (ports.Count == 0)
@@ -353,9 +353,9 @@ namespace LoveAlways.Qualcomm.UI
                     // 1. Prioritize restoring previous selection (if exists)
                     // 2. Otherwise select the first EDL port
                     // 3. Otherwise select the first port
-                    
+
                     int selectedIndex = -1;
-                    
+
                     // Try to restore previous selection
                     if (!string.IsNullOrEmpty(previousSelectedPort))
                     {
@@ -368,7 +368,7 @@ namespace LoveAlways.Qualcomm.UI
                             }
                         }
                     }
-                    
+
                     // If no previous selection or selected port no longer exists, select EDL port
                     if (selectedIndex < 0 && edlPorts.Count > 0)
                     {
@@ -381,13 +381,13 @@ namespace LoveAlways.Qualcomm.UI
                             }
                         }
                     }
-                    
+
                     // Default select the first one
                     if (selectedIndex < 0 && _portComboBox.Items.Count > 0)
                     {
                         selectedIndex = 0;
                     }
-                    
+
                     // Set selection
                     if (selectedIndex >= 0)
                     {
@@ -411,7 +411,7 @@ namespace LoveAlways.Qualcomm.UI
         {
             return await ConnectWithOptionsAsync("", "ufs", IsSkipSaharaEnabled(), "none");
         }
-        
+
         /// <summary>
         /// Get Sahara Device Info Only (For cloud auto-matching)
         /// </summary>
@@ -435,7 +435,7 @@ namespace LoveAlways.Qualcomm.UI
                 );
 
                 var chipInfo = await _service.GetSaharaDeviceInfoOnlyAsync(portName, _cts.Token);
-                
+
                 if (chipInfo == null)
                 {
                     Log("Unable to get device info", Color.Red);
@@ -463,7 +463,7 @@ namespace LoveAlways.Qualcomm.UI
                 IsBusy = false;
             }
         }
-        
+
         /// <summary>
         /// Continue connection with cloud-matched Loader
         /// </summary>
@@ -483,12 +483,12 @@ namespace LoveAlways.Qualcomm.UI
                     string portName = GetSelectedPortName();
                     Log("Connected successfully!", Color.Green);
                     UpdateDeviceInfoLabels();
-                    
+
                     _service.PortDisconnected += OnServicePortDisconnected;
                     _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
                     StartPortMonitor(portName);
                     SetSkipSaharaChecked(true);
-                    
+
                     ConnectionStateChanged?.Invoke(this, true);
                 }
                 else
@@ -526,7 +526,7 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                
+
                 // Start progress bar - Connection process has 4 stages: Sahara(40%) -> Firehose Config(20%) -> Auth(20%) -> Complete(20%)
                 StartOperationTimer("Connect Device", 100, 0);
                 UpdateProgressBarDirect(_progressBar, 0);
@@ -534,7 +534,8 @@ namespace LoveAlways.Qualcomm.UI
 
                 _service = new QualcommService(
                     msg => Log(msg, null),
-                    (current, total) => {
+                    (current, total) =>
+                    {
                         // Sahara stage progress mapped to 0-40%
                         if (total > 0)
                         {
@@ -557,10 +558,10 @@ namespace LoveAlways.Qualcomm.UI
                 {
                     Log(string.Format("Connecting device (Storage: {0}, Auth: {1})...", storageType, authMode), Color.Blue);
                     // Pass auth mode and file path to ConnectAsync, auth is executed internally in correct order
-                    success = await _service.ConnectAsync(portName, programmerPath, storageType, 
+                    success = await _service.ConnectAsync(portName, programmerPath, storageType,
                         authMode, digestPath, signaturePath, _cts.Token);
                     UpdateProgressBarDirect(_progressBar, 80); // Sahara + Auth + Firehose Config complete
-                    
+
                     if (success)
                         SetSkipSaharaChecked(true);
                 }
@@ -571,16 +572,16 @@ namespace LoveAlways.Qualcomm.UI
                     UpdateProgressBarDirect(_progressBar, 100);
                     UpdateProgressBarDirect(_subProgressBar, 100);
                     UpdateDeviceInfoLabels();
-                    
+
                     // Register port disconnected event (Triggered when device disconnects itself)
                     _service.PortDisconnected += OnServicePortDisconnected;
-                    
+
                     // Register Xiaomi Auth Token event
                     _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
-                    
+
                     // Start port monitor (Check port status in Device Manager)
                     StartPortMonitor(portName);
-                    
+
                     ConnectionStateChanged?.Invoke(this, true);
                 }
                 else
@@ -632,7 +633,7 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                
+
                 // Start progress bar
                 StartOperationTimer("VIP Connect", 100, 0);
                 UpdateProgressBarDirect(_progressBar, 0);
@@ -640,7 +641,7 @@ namespace LoveAlways.Qualcomm.UI
 
                 Log(string.Format("[VIP] Platform: {0}", platform), Color.Blue);
                 Log(string.Format("[VIP] Loader: {0} KB (Resource Pack)", loaderData.Length / 1024), Color.Gray);
-                
+
                 if (hasAuth)
                 {
                     var digestInfo = new FileInfo(digestPath);
@@ -655,7 +656,8 @@ namespace LoveAlways.Qualcomm.UI
 
                 _service = new QualcommService(
                     msg => Log(msg, null),
-                    (current, total) => {
+                    (current, total) =>
+                    {
                         if (total > 0)
                         {
                             // Sahara stage progress mapped to 0-40%
@@ -671,7 +673,7 @@ namespace LoveAlways.Qualcomm.UI
                 // Important: VIP Auth must be executed before Firehose Config
                 UpdateProgressBarDirect(_progressBar, 5);
                 Log("[VIP] Connecting (Loader + Auth + Config)...", Color.Blue);
-                
+
                 // Perform VIP Auth using file paths
                 bool connectOk = await _service.ConnectWithVipAuthAsync(portName, loaderData, digestPath ?? "", signaturePath ?? "", storageType, _cts.Token);
                 UpdateProgressBarDirect(_progressBar, 85);
@@ -682,18 +684,18 @@ namespace LoveAlways.Qualcomm.UI
                     UpdateProgressBarDirect(_progressBar, 100);
                     UpdateProgressBarDirect(_subProgressBar, 100);
                     UpdateDeviceInfoLabels();
-                    
+
                     _service.PortDisconnected += OnServicePortDisconnected;
                     _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
-                    
+
                     // Start port monitor (Check port status in Device Manager)
                     StartPortMonitor(portName);
-                    
+
                     ConnectionStateChanged?.Invoke(this, true);
-                    
+
                     // Automatically check Skip Sahara (Can connect directly next time)
                     SetSkipSaharaChecked(true);
-                    
+
                     return true;
                 }
                 else
@@ -740,7 +742,7 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                
+
                 // Start progress bar
                 StartOperationTimer("EDL Connect", 100, 0);
                 UpdateProgressBarDirect(_progressBar, 0);
@@ -751,7 +753,8 @@ namespace LoveAlways.Qualcomm.UI
 
                 _service = new QualcommService(
                     msg => Log(msg, null),
-                    (current, total) => {
+                    (current, total) =>
+                    {
                         if (total > 0)
                         {
                             double percent = 70.0 * current / total;
@@ -764,9 +767,9 @@ namespace LoveAlways.Qualcomm.UI
 
                 // Upload Loader via Sahara
                 Log("[EDL] Uploading Loader (Sahara)...", Color.Cyan);
-                
+
                 bool success = await _service.ConnectWithLoaderDataAsync(portName, loaderData, storageType, _cts.Token);
-                
+
                 if (!success)
                 {
                     Log("[EDL] Sahara handshake/Loader upload failed", Color.Red);
@@ -774,19 +777,19 @@ namespace LoveAlways.Qualcomm.UI
                     UpdateProgressBarDirect(_subProgressBar, 0);
                     return false;
                 }
-                
+
                 UpdateProgressBarDirect(_progressBar, 75);
                 Log("[EDL] Loader uploaded successfully, entered Firehose mode", Color.Green);
-                
+
                 // Execute brand-specific auth
                 string authLower = authMode.ToLowerInvariant();
-                
+
                 if (authLower == "oneplus")
                 {
                     Log("[EDL] Performing OnePlus Auth...", Color.Cyan);
                     bool authOk = await _service.PerformOnePlusAuthAsync(_cts.Token);
                     UpdateProgressBarDirect(_progressBar, 90);
-                    
+
                     if (authOk)
                     {
                         Log("[EDL] OnePlus Auth success", Color.Green);
@@ -801,7 +804,7 @@ namespace LoveAlways.Qualcomm.UI
                     Log("[EDL] Performing Xiaomi Auth...", Color.Cyan);
                     bool authOk = await _service.PerformXiaomiAuthAsync(_cts.Token);
                     UpdateProgressBarDirect(_progressBar, 90);
-                    
+
                     if (authOk)
                     {
                         Log("[EDL] Xiaomi Auth success", Color.Green);
@@ -817,7 +820,7 @@ namespace LoveAlways.Qualcomm.UI
                     Log("[EDL] Xiaomi device detected, performing auto auth...", Color.Cyan);
                     bool authOk = await _service.PerformXiaomiAuthAsync(_cts.Token);
                     UpdateProgressBarDirect(_progressBar, 90);
-                    
+
                     if (authOk)
                     {
                         Log("[EDL] Xiaomi auto auth success", Color.Green);
@@ -827,20 +830,20 @@ namespace LoveAlways.Qualcomm.UI
                         Log("[EDL] Xiaomi auto auth failed, some features may be restricted", Color.Orange);
                     }
                 }
-                
+
                 Log("[EDL] Connected successfully!", Color.Green);
                 UpdateProgressBarDirect(_progressBar, 100);
                 UpdateProgressBarDirect(_subProgressBar, 100);
                 UpdateDeviceInfoLabels();
-                
+
                 _service.PortDisconnected += OnServicePortDisconnected;
                 _service.XiaomiAuthTokenRequired += OnXiaomiAuthTokenRequired;
-                
+
                 // Start port monitor (Check port status in Device Manager)
                 StartPortMonitor(portName);
-                
+
                 ConnectionStateChanged?.Invoke(this, true);
-                
+
                 // Automatically check Skip Sahara
                 SetSkipSaharaChecked(true);
 
@@ -870,7 +873,7 @@ namespace LoveAlways.Qualcomm.UI
             ClearDeviceInfoLabels();
             Log("Disconnected", Color.Gray);
         }
-        
+
         /// <summary>
         /// Reset stuck Sahara state
         /// Used when device is stuck in Sahara mode due to software or loader errors
@@ -883,20 +886,20 @@ namespace LoveAlways.Qualcomm.UI
                 Log("Please select a port", Color.Red);
                 return false;
             }
-            
+
             if (IsBusy)
             {
                 Log("Operation in progress", Color.Orange);
                 return false;
             }
-            
+
             try
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                
+
                 Log("Resetting Sahara state...", Color.Blue);
-                
+
                 // Ensure service exists
                 if (_service == null)
                 {
@@ -906,16 +909,16 @@ namespace LoveAlways.Qualcomm.UI
                         _logDetail
                     );
                 }
-                
+
                 bool success = await _service.ResetSaharaAsync(portName, _cts.Token);
-                
+
                 if (success)
                 {
                     Log("------------------------------------------------", Color.Gray);
                     Log("✓ Sahara state reset successfully!", Color.Green);
                     Log("Please click [Connect] button to reconnect device", Color.Blue);
                     Log("------------------------------------------------", Color.Gray);
-                    
+
                     // Uncheck "Skip Loader", full handshake required
                     SetSkipSaharaChecked(false);
                     // Refresh ports
@@ -935,7 +938,7 @@ namespace LoveAlways.Qualcomm.UI
                     Log("  3. Reconnect USB", Color.Orange);
                     Log("------------------------------------------------", Color.Gray);
                 }
-                
+
                 return success;
             }
             catch (OperationCanceledException)
@@ -954,7 +957,7 @@ namespace LoveAlways.Qualcomm.UI
                 _cts = null;
             }
         }
-        
+
         /// <summary>
         /// Hard Reset Device (Full Reboot)
         /// </summary>
@@ -966,20 +969,20 @@ namespace LoveAlways.Qualcomm.UI
                 Log("Please select a port", Color.Red);
                 return false;
             }
-            
+
             if (IsBusy)
             {
                 Log("Operation in progress", Color.Orange);
                 return false;
             }
-            
+
             try
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                
+
                 Log("Sending hard reset command...", Color.Blue);
-                
+
                 if (_service == null)
                 {
                     _service = new QualcommService(
@@ -988,16 +991,16 @@ namespace LoveAlways.Qualcomm.UI
                         _logDetail
                     );
                 }
-                
+
                 bool success = await _service.HardResetDeviceAsync(portName, _cts.Token);
-                
+
                 if (success)
                 {
                     Log("Device is rebooting, please wait for device to re-enter EDL mode", Color.Green);
                     ConnectionStateChanged?.Invoke(this, false);
                     ClearDeviceInfoLabels();
                     SetSkipSaharaChecked(false);
-                    
+
                     // Wait a moment before refreshing ports
                     await Task.Delay(2000);
                     RefreshPorts();
@@ -1006,7 +1009,7 @@ namespace LoveAlways.Qualcomm.UI
                 {
                     Log("Hard reset failed", Color.Red);
                 }
-                
+
                 return success;
             }
             catch (OperationCanceledException)
@@ -1067,7 +1070,7 @@ namespace LoveAlways.Qualcomm.UI
             _currentDeviceInfo = _deviceInfoService.GetInfoFromQualcommService(_service);
 
             var chipInfo = _service.ChipInfo;
-            
+
             // Info obtained from Sahara mode
             if (chipInfo != null)
             {
@@ -1079,10 +1082,10 @@ namespace LoveAlways.Qualcomm.UI
                     _currentDeviceInfo.Vendor = brand;
                 }
                 UpdateLabelSafe(_brandLabel, "Brand: " + (brand != "Unknown" ? brand : "Identifying..."));
-                
+
                 // Chip Model - Map from Sahara read MSM ID using database
                 string chipDisplay = "Identifying...";
-                
+
                 // Prioritize using database mapped chip codename
                 string chipCodename = QualcommDatabase.GetChipCodename(chipInfo.MsmId);
                 if (!string.IsNullOrEmpty(chipCodename))
@@ -1105,12 +1108,12 @@ namespace LoveAlways.Qualcomm.UI
                     // Show HWID
                     chipDisplay = chipInfo.HwIdHex.StartsWith("0x") ? chipInfo.HwIdHex : "0x" + chipInfo.HwIdHex;
                 }
-                
+
                 UpdateLabelSafe(_chipLabel, "Chip: " + chipDisplay);
-                
+
                 // Serial Number - Forced lock to Sahara read chip serial
                 UpdateLabelSafe(_serialLabel, "Chip Serial: " + (!string.IsNullOrEmpty(chipInfo.SerialHex) ? chipInfo.SerialHex : "Not Obtained"));
-                
+
                 // Device Model - Requires reading partition info from Firehose
                 UpdateLabelSafe(_modelLabel, "Model: Deep Scan Pending");
             }
@@ -1122,15 +1125,15 @@ namespace LoveAlways.Qualcomm.UI
                 UpdateLabelSafe(_serialLabel, "Chip Serial: Not Obtained");
                 UpdateLabelSafe(_modelLabel, "Model: Deep Scan Pending");
             }
-            
+
             // Info obtained from Firehose mode
             string storageType = _service.StorageType ?? "UFS";
             int sectorSize = _service.SectorSize;
             UpdateLabelSafe(_storageLabel, string.Format("Storage: {0} ({1}B)", storageType.ToUpper(), sectorSize));
-            
+
             // Device Model (Deep Scan Pending)
             UpdateLabelSafe(_unlockLabel, "Model: Deep Scan Pending");
-            
+
             // OTA Version
             UpdateLabelSafe(_otaVersionLabel, "Version: Deep Scan Pending");
         }
@@ -1148,7 +1151,8 @@ namespace LoveAlways.Qualcomm.UI
             }
 
             // 1. Try reading hardware partitions (devinfo, proinfo)
-            Task.Run(async () => {
+            Task.Run(async () =>
+            {
                 // devinfo (Generic/Xiaomi/OPPO)
                 var devinfoPart = Partitions.FirstOrDefault(p => p.Name == "devinfo");
                 if (devinfoPart != null)
@@ -1175,10 +1179,10 @@ namespace LoveAlways.Qualcomm.UI
             // 2. Check A/B partition structure
             bool hasAbSlot = Partitions.Exists(p => p.Name.EndsWith("_a") || p.Name.EndsWith("_b"));
             _currentDeviceInfo.IsAbDevice = hasAbSlot;
-            
+
             // Update basic description
-            string storageDesc = string.Format("Storage: {0} ({1})", 
-                _service.StorageType.ToUpper(), 
+            string storageDesc = string.Format("Storage: {0} ({1})",
+                _service.StorageType.ToUpper(),
                 hasAbSlot ? "A/B Partition" : "Normal Partition");
             UpdateLabelSafe(_storageLabel, storageDesc);
 
@@ -1188,7 +1192,7 @@ namespace LoveAlways.Qualcomm.UI
                 bool isOplus = Partitions.Exists(p => p.Name.StartsWith("my_") || p.Name.Contains("oplus") || p.Name.Contains("oppo"));
                 bool isXiaomi = Partitions.Exists(p => p.Name == "cust" || p.Name == "persist");
                 bool isLenovo = Partitions.Exists(p => p.Name.Contains("lenovo") || p.Name == "proinfo" || p.Name == "lenovocust");
-                
+
                 if (isOplus) _currentDeviceInfo.Brand = "OPPO/Realme";
                 else if (isXiaomi) _currentDeviceInfo.Brand = "Xiaomi/Redmi";
                 else if (isLenovo)
@@ -1197,13 +1201,13 @@ namespace LoveAlways.Qualcomm.UI
                     bool isLegion = Partitions.Exists(p => p.Name.Contains("legion"));
                     _currentDeviceInfo.Brand = isLegion ? "Lenovo (Legion)" : "Lenovo";
                 }
-                
+
                 if (!string.IsNullOrEmpty(_currentDeviceInfo.Brand))
                 {
                     UpdateLabelSafe(_brandLabel, "Brand: " + _currentDeviceInfo.Brand);
                 }
             }
-            
+
             UpdateLabelSafe(_unlockLabel, "Model: Partition Table Read");
         }
 
@@ -1221,77 +1225,77 @@ namespace LoveAlways.Qualcomm.UI
             Log("Read Device Info : Success", Color.Green);
 
             // 1. Core Identity Info
-            string marketName = !string.IsNullOrEmpty(info.MarketName) ? info.MarketName : 
+            string marketName = !string.IsNullOrEmpty(info.MarketName) ? info.MarketName :
                                (!string.IsNullOrEmpty(info.Brand) && !string.IsNullOrEmpty(info.Model) ? info.Brand + " " + info.Model : "Unknown");
             Log(string.Format("- Market Name : {0}", marketName), Color.Blue);
-            
+
             // Product Name
             if (!string.IsNullOrEmpty(info.MarketNameEn) && info.MarketNameEn != marketName)
                 Log(string.Format("- Product Name : {0}", info.MarketNameEn), Color.Blue);
             else if (!string.IsNullOrEmpty(info.DeviceCodename))
                 Log(string.Format("- Product Name : {0}", info.DeviceCodename), Color.Blue);
-            
+
             // Model
             if (!string.IsNullOrEmpty(info.Model))
                 Log(string.Format("- Device Model : {0}", info.Model), Color.Blue);
-            
+
             // Manufacturer
             if (!string.IsNullOrEmpty(info.Brand))
                 Log(string.Format("- Manufacturer : {0}", info.Brand), Color.Blue);
-            
+
             // 2. System Version Info
             if (!string.IsNullOrEmpty(info.AndroidVersion))
-                Log(string.Format("- Android Ver : {0}{1}", info.AndroidVersion, 
+                Log(string.Format("- Android Ver : {0}{1}", info.AndroidVersion,
                     !string.IsNullOrEmpty(info.SdkVersion) ? " [SDK:" + info.SdkVersion + "]" : ""), Color.Blue);
-            
+
             if (!string.IsNullOrEmpty(info.SecurityPatch))
                 Log(string.Format("- Security Patch : {0}", info.SecurityPatch), Color.Blue);
-            
+
             // 3. Device/Product Info
             if (!string.IsNullOrEmpty(info.DevProduct))
                 Log(string.Format("- Chip Platform : {0}", info.DevProduct), Color.Blue);
-            
+
             if (!string.IsNullOrEmpty(info.Product))
                 Log(string.Format("- Product Code : {0}", info.Product), Color.Blue);
-            
+
             // Market Region
             if (!string.IsNullOrEmpty(info.MarketRegion))
                 Log(string.Format("- Market Region : {0}", info.MarketRegion), Color.Blue);
-            
+
             // Region Code
             if (!string.IsNullOrEmpty(info.Region))
                 Log(string.Format("- Region Code : {0}", info.Region), Color.Blue);
-            
+
             // 4. Build Info
             if (!string.IsNullOrEmpty(info.BuildId))
                 Log(string.Format("- Build ID : {0}", info.BuildId), Color.Blue);
-            
+
             if (!string.IsNullOrEmpty(info.DisplayId))
                 Log(string.Format("- Display ID : {0}", info.DisplayId), Color.Blue);
-            
+
             if (!string.IsNullOrEmpty(info.BuiltDate))
                 Log(string.Format("- Build Date : {0}", info.BuiltDate), Color.Blue);
-            
+
             if (!string.IsNullOrEmpty(info.BuildTimestamp))
                 Log(string.Format("- Timestamp : {0}", info.BuildTimestamp), Color.Blue);
-            
+
             // 5. OTA Version Info (Highlighted)
             if (!string.IsNullOrEmpty(info.OtaVersion))
                 Log(string.Format("- OTA Version : {0}", info.OtaVersion), Color.Green);
-            
+
             if (!string.IsNullOrEmpty(info.OtaVersionFull) && info.OtaVersionFull != info.OtaVersion)
                 Log(string.Format("- Full OTA : {0}", info.OtaVersionFull), Color.Green);
-            
+
             // 6. Full Build Fingerprint
             if (!string.IsNullOrEmpty(info.Fingerprint))
                 Log(string.Format("- Build Fingerprint : {0}", info.Fingerprint), Color.Blue);
-            
+
             // 7. Vendor Specific Info (OPLUS)
             if (!string.IsNullOrEmpty(info.OplusProject))
                 Log(string.Format("- OPLUS Project : {0}", info.OplusProject), Color.Blue);
             if (!string.IsNullOrEmpty(info.OplusNvId))
                 Log(string.Format("- OPLUS NV ID : {0}", info.OplusNvId), Color.Blue);
-            
+
             Log("------------------------------------------------", Color.Gray);
         }
 
@@ -1309,7 +1313,7 @@ namespace LoveAlways.Qualcomm.UI
                 string vendor = chipInfo.Vendor;
                 if (vendor == "Unknown")
                     vendor = QualcommDatabase.GetVendorByPkHash(chipInfo.PkHash);
-                
+
                 if (vendor != "Unknown" && chipInfo.ChipName != "Unknown")
                 {
                     return string.Format("{0} ({1})", vendor, chipInfo.ChipName);
@@ -1324,7 +1328,7 @@ namespace LoveAlways.Qualcomm.UI
             if (isOnePlus) return "OnePlus";
             if (isXiaomi) return "Xiaomi";
             if (isOppo) return "OPPO/Realme";
-            
+
             return null;
         }
 
@@ -1372,7 +1376,7 @@ namespace LoveAlways.Qualcomm.UI
                 bool hasVendor = Partitions != null && Partitions.Exists(p => p.Name == "vendor" || p.Name.StartsWith("vendor_"));
                 bool hasSystem = Partitions != null && Partitions.Exists(p => p.Name == "system" || p.Name.StartsWith("system_"));
                 bool hasMyManifest = Partitions != null && Partitions.Exists(p => p.Name.StartsWith("my_manifest"));
-                
+
                 // If no available partitions, return directly
                 if (!hasSuper && !hasVendor && !hasSystem && !hasMyManifest)
                 {
@@ -1394,13 +1398,13 @@ namespace LoveAlways.Qualcomm.UI
                 {
                     // Check cancellation
                     if (ct.IsCancellationRequested) return null;
-                    
+
                     // Check if partition exists
                     if (Partitions == null || !Partitions.Exists(p => p.Name == partName || p.Name.StartsWith(partName + "_")))
                     {
                         return null;
                     }
-                    
+
                     try
                     {
                         // Increase to 30 seconds timeout protection (VIP mode needs more time)
@@ -1438,7 +1442,7 @@ namespace LoveAlways.Qualcomm.UI
                 // Auto identify vendor and select corresponding parsing strategy
                 string detectedVendor = DetectDeviceVendor();
                 Log(string.Format("Detected Device Vendor: {0}", detectedVendor), Color.Blue);
-                
+
                 // Update progress: Vendor identification complete (85%)
                 UpdateProgressBarDirect(_progressBar, 85);
                 UpdateProgressBarDirect(_subProgressBar, 25);
@@ -1494,7 +1498,7 @@ namespace LoveAlways.Qualcomm.UI
                 {
                     Log("Successfully read device build.prop", Color.Green);
                     ApplyBuildPropInfo(buildProp);
-                    
+
                     // Print full device info log
                     PrintFullDeviceLog();
                 }
@@ -1525,7 +1529,7 @@ namespace LoveAlways.Qualcomm.UI
             string detectedVendor = "Unknown";
 
             // 1. First get from device info (if available)
-            if (_currentDeviceInfo != null && !string.IsNullOrEmpty(_currentDeviceInfo.Vendor) && 
+            if (_currentDeviceInfo != null && !string.IsNullOrEmpty(_currentDeviceInfo.Vendor) &&
                 _currentDeviceInfo.Vendor != "Unknown" && !_currentDeviceInfo.Vendor.Contains("Unknown"))
             {
                 detectedVendor = NormalizeVendorName(_currentDeviceInfo.Vendor);
@@ -1543,9 +1547,9 @@ namespace LoveAlways.Qualcomm.UI
                 _logDetail(string.Format("Detected {0} partitions, starting characteristic analysis...", Partitions.Count));
 
                 // Lenovo specific partitions (Prioritize detection)
-                bool hasLenovoMarker = Partitions.Exists(p => 
-                    p.Name == "proinfo" || 
-                    p.Name == "lenovocust" || 
+                bool hasLenovoMarker = Partitions.Exists(p =>
+                    p.Name == "proinfo" ||
+                    p.Name == "lenovocust" ||
                     p.Name.Contains("lenovo"));
                 if (hasLenovoMarker)
                 {
@@ -1554,14 +1558,14 @@ namespace LoveAlways.Qualcomm.UI
                 }
 
                 // OPLUS series - Strict detection: Must have explicit oplus/oppo marker, or at least 2 OPLUS specific partitions
-                bool hasOplusExplicit = Partitions.Exists(p => 
+                bool hasOplusExplicit = Partitions.Exists(p =>
                     p.Name.Contains("oplus") || p.Name.Contains("oppo") || p.Name.Contains("realme"));
                 int oplusSpecificCount = 0;
                 foreach (var p in Partitions)
                 {
                     // OPLUS specific partitions (Xiaomi devices won't have these)
-                    if (p.Name == "my_engineering" || p.Name == "my_carrier" || 
-                        p.Name == "my_stock" || p.Name == "my_region" || 
+                    if (p.Name == "my_engineering" || p.Name == "my_carrier" ||
+                        p.Name == "my_stock" || p.Name == "my_region" ||
                         p.Name == "my_custom" || p.Name == "my_bigball" ||
                         p.Name == "my_preload" || p.Name == "my_company" ||
                         p.Name == "reserve1" || p.Name == "reserve2" ||
@@ -1580,16 +1584,16 @@ namespace LoveAlways.Qualcomm.UI
                 }
 
                 // Xiaomi series detection (After OPLUS strict detection)
-                bool hasXiaomiMarker = Partitions.Exists(p => 
+                bool hasXiaomiMarker = Partitions.Exists(p =>
                     p.Name.Contains("xiaomi") || p.Name.Contains("miui") || p.Name.Contains("redmi"));
                 bool hasCust = Partitions.Exists(p => p.Name == "cust");
                 bool hasPersist = Partitions.Exists(p => p.Name == "persist");
                 bool hasSpunvm = Partitions.Exists(p => p.Name == "spunvm"); // Xiaomi common baseband partition
-                
+
                 // Xiaomi characteristics: Has explicit marker, or cust+persist combination (and not Lenovo/OPLUS)
                 if (hasXiaomiMarker || (hasCust && hasPersist))
                 {
-                    _logDetail(string.Format("Detected Xiaomi characteristics: Explicit marker={0}, cust={1}, persist={2}", 
+                    _logDetail(string.Format("Detected Xiaomi characteristics: Explicit marker={0}, cust={1}, persist={2}",
                         hasXiaomiMarker, hasCust, hasPersist));
                     return "Xiaomi";
                 }
@@ -1615,7 +1619,7 @@ namespace LoveAlways.Qualcomm.UI
             }
 
             // 4. From Chip Vendor field
-            if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.Vendor) && 
+            if (chipInfo != null && !string.IsNullOrEmpty(chipInfo.Vendor) &&
                 chipInfo.Vendor != "Unknown" && !chipInfo.Vendor.Contains("Unknown"))
             {
                 detectedVendor = NormalizeVendorName(chipInfo.Vendor);
@@ -1645,7 +1649,7 @@ namespace LoveAlways.Qualcomm.UI
         private string NormalizeVendorName(string vendor)
         {
             if (string.IsNullOrEmpty(vendor)) return "Unknown";
-            
+
             string v = vendor.ToLower();
             if (v.Contains("oppo") || v.Contains("realme") || v.Contains("oneplus") || v.Contains("oplus"))
                 return "OPLUS";
@@ -1668,15 +1672,15 @@ namespace LoveAlways.Qualcomm.UI
         /// Uses DeviceInfoService generic strategy directly, which reads my_manifest in correct order
         /// Order: system -> system_ext -> product -> vendor -> odm -> my_manifest (High priority overrides low priority)
         /// </summary>
-        private async Task<BuildPropInfo> ReadOplusBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition, 
+        private async Task<BuildPropInfo> ReadOplusBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition,
             string activeSlot, bool hasSuper, long superStart, int sectorSize)
         {
             Log("Using OPLUS specific parsing strategy...", Color.Blue);
-            
+
             // OPLUS device's my_manifest is EROFS filesystem, not plain text
             // Using DeviceInfoService generic strategy (Correctly parses EROFS and merges properties by priority)
             var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "OnePlus");
-            
+
             if (result != null && !string.IsNullOrEmpty(result.MarketName))
             {
                 Log("Successfully read device info from OPLUS partitions", Color.Green);
@@ -1693,14 +1697,14 @@ namespace LoveAlways.Qualcomm.UI
         /// Xiaomi (Xiaomi/Redmi/POCO) specific read strategy
         /// Priority: vendor > product > system
         /// </summary>
-        private async Task<BuildPropInfo> ReadXiaomiBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition, 
+        private async Task<BuildPropInfo> ReadXiaomiBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition,
             string activeSlot, bool hasSuper, long superStart, int sectorSize)
         {
             Log("Using Xiaomi specific parsing strategy...", Color.Blue);
-            
+
             // Xiaomi devices use standard strategy, but prioritize vendor partition
             var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "Xiaomi");
-            
+
             // Xiaomi specific property enhancement: Detect MIUI/HyperOS version
             if (result != null)
             {
@@ -1727,7 +1731,7 @@ namespace LoveAlways.Qualcomm.UI
         /// Lenovo (Lenovo/Motorola) specific read strategy
         /// Priority: lenovocust > proinfo > vendor
         /// </summary>
-        private async Task<BuildPropInfo> ReadLenovoBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition, 
+        private async Task<BuildPropInfo> ReadLenovoBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition,
             string activeSlot, bool hasSuper, long superStart, int sectorSize)
         {
             Log("Using Lenovo specific parsing strategy...", Color.Blue);
@@ -1796,13 +1800,13 @@ namespace LoveAlways.Qualcomm.UI
         /// <summary>
         /// ZTE/Nubia specific read strategy
         /// </summary>
-        private async Task<BuildPropInfo> ReadZteBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition, 
+        private async Task<BuildPropInfo> ReadZteBuildPropAsync(Func<string, long, int, Task<byte[]>> readPartition,
             string activeSlot, bool hasSuper, long superStart, int sectorSize)
         {
             Log("Using ZTE/nubia specific parsing strategy...", Color.Blue);
-            
+
             var result = await _deviceInfoService.ReadBuildPropFromDevice(readPartition, activeSlot, hasSuper, superStart, sectorSize, "ZTE");
-            
+
             // ZTE/Nubia specific processing
             if (result != null)
             {
@@ -1853,7 +1857,7 @@ namespace LoveAlways.Qualcomm.UI
             {
                 // Generic enhancement logic: If market name contains key codename, try to format display
                 string finalMarket = buildProp.MarketName;
-                
+
                 // Generic Lenovo correction
                 if ((finalMarket.Contains("Y700") || finalMarket.Contains("Legion")) && !finalMarket.Contains("Rescue"))
                     finalMarket = "Lenovo Legion Tablet " + finalMarket;
@@ -1882,14 +1886,14 @@ namespace LoveAlways.Qualcomm.UI
                 // Get brand for judgment
                 string brandLower = (buildProp.Brand ?? "").ToLowerInvariant();
                 string manufacturerLower = (buildProp.Manufacturer ?? "").ToLowerInvariant();
-                
+
                 // OPLUS Device (OnePlus/OPPO/Realme) Version Number Cleanup
                 // Original format e.g.: PJD110_14.0.0.801(CN01) -> 14.0.0.801(CN01)
                 bool isOneplus = brandLower.Contains("oneplus") || manufacturerLower.Contains("oneplus");
                 bool isOppo = brandLower.Contains("oppo") || manufacturerLower.Contains("oppo");
                 bool isRealme = brandLower.Contains("realme") || manufacturerLower.Contains("realme");
                 bool isOplus = isOneplus || isOppo || isRealme || brandLower.Contains("oplus");
-                
+
                 if (isOplus)
                 {
                     // Extract version number: "PJD110_14.0.0.801(CN01)" -> "14.0.0.801(CN01)"
@@ -1898,7 +1902,7 @@ namespace LoveAlways.Qualcomm.UI
                     if (versionMatch.Success)
                     {
                         string cleanVersion = versionMatch.Groups[1].Value;
-                        
+
                         // Add system name prefix based on brand
                         if (isOneplus)
                             otaVer = "OxygenOS " + cleanVersion;
@@ -1951,7 +1955,7 @@ namespace LoveAlways.Qualcomm.UI
                 _currentDeviceInfo.AndroidVersion = buildProp.AndroidVersion;
                 _currentDeviceInfo.SdkVersion = buildProp.SdkVersion;
             }
-            
+
             // Device Codename (Use unlockLabel to display internal device codename)
             // Priority: Codename > Device > DeviceName
             string codename = "";
@@ -1961,7 +1965,7 @@ namespace LoveAlways.Qualcomm.UI
                 codename = buildProp.Device;
             else if (!string.IsNullOrEmpty(buildProp.DeviceName))
                 codename = buildProp.DeviceName;
-            
+
             if (!string.IsNullOrEmpty(codename))
             {
                 _currentDeviceInfo.DeviceCodename = codename;
@@ -1983,7 +1987,7 @@ namespace LoveAlways.Qualcomm.UI
                 _currentDeviceInfo.DevProduct = buildProp.DevProduct;
             if (!string.IsNullOrEmpty(buildProp.Product))
                 _currentDeviceInfo.Product = buildProp.Product;
-            
+
             // Build Info
             if (!string.IsNullOrEmpty(buildProp.BuildId))
                 _currentDeviceInfo.BuildId = buildProp.BuildId;
@@ -2036,7 +2040,7 @@ namespace LoveAlways.Qualcomm.UI
                             rmMarket = buildProp.MarketName.Contains("RedMagic") ? buildProp.MarketName : "RedMagic " + buildProp.MarketName;
                         else
                             rmMarket = "RedMagic " + buildProp.Model;
-                        
+
                         _currentDeviceInfo.MarketName = rmMarket;
                         UpdateLabelSafe(_modelLabel, "Model: " + rmMarket);
                     }
@@ -2073,7 +2077,7 @@ namespace LoveAlways.Qualcomm.UI
                 Log("Reading build.prop from device...", Color.Blue);
 
                 await TryReadBuildPropInternalAsync();
-                
+
                 UpdateTotalProgress(1, 1);
                 return _currentDeviceInfo != null && !string.IsNullOrEmpty(_currentDeviceInfo.MarketName);
             }
@@ -2095,9 +2099,9 @@ namespace LoveAlways.Qualcomm.UI
         private string FormatBrandForDisplay(string brand)
         {
             if (string.IsNullOrEmpty(brand)) return "Unknown";
-            
+
             string lower = brand.ToLowerInvariant();
-            
+
             // OnePlus
             if (lower.Contains("oneplus"))
                 return "OnePlus";
@@ -2140,7 +2144,7 @@ namespace LoveAlways.Qualcomm.UI
             // iQOO
             if (lower == "iqoo")
                 return "iQOO";
-            
+
             // Return with first letter capitalized
             return char.ToUpper(brand[0]) + brand.Substring(1).ToLower();
         }
@@ -2171,7 +2175,7 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                
+
                 // Read partition table: Two stages - GPT Read (80%) + Device Info Parse (20%)
                 StartOperationTimer("Read GPT", 100, 0);
                 UpdateProgressBarDirect(_progressBar, 0);
@@ -2180,7 +2184,8 @@ namespace LoveAlways.Qualcomm.UI
 
                 // Progress callback - GPT read mapped to 0-80%
                 int maxLuns = 6;
-                var totalProgress = new Progress<Tuple<int, int>>(t => {
+                var totalProgress = new Progress<Tuple<int, int>>(t =>
+                {
                     double percent = 80.0 * t.Item1 / t.Item2;
                     UpdateProgressBarDirect(_progressBar, percent);
                 });
@@ -2188,7 +2193,7 @@ namespace LoveAlways.Qualcomm.UI
 
                 // Use ReadAllGptAsync with progress
                 var partitions = await _service.ReadAllGptAsync(maxLuns, totalProgress, subProgress, _cts.Token);
-                
+
                 UpdateProgressBarDirect(_progressBar, 80);
                 UpdateProgressBarDirect(_subProgressBar, 100);
 
@@ -2199,14 +2204,14 @@ namespace LoveAlways.Qualcomm.UI
                     UpdateDeviceInfoFromPartitions();  // Update device info (Get more info from partitions)
                     PartitionsLoaded?.Invoke(this, partitions);
                     Log(string.Format("Successfully read {0} partitions", partitions.Count), Color.Green);
-                    
+
                     // After reading partition table, try to read device info (build.prop) - Takes 80-100%
                     var superPart = partitions.Find(p => p.Name.Equals("super", StringComparison.OrdinalIgnoreCase));
                     var systemPart = partitions.Find(p => p.Name.Equals("system", StringComparison.OrdinalIgnoreCase) ||
                                                           p.Name.Equals("system_a", StringComparison.OrdinalIgnoreCase));
                     var vendorPart = partitions.Find(p => p.Name.Equals("vendor", StringComparison.OrdinalIgnoreCase) ||
                                                           p.Name.Equals("vendor_a", StringComparison.OrdinalIgnoreCase));
-                    
+
                     if (superPart != null || systemPart != null || vendorPart != null)
                     {
                         string partType = superPart != null ? "super" : (systemPart != null ? "system" : "vendor");
@@ -2218,10 +2223,10 @@ namespace LoveAlways.Qualcomm.UI
                     {
                         Log("Super/system/vendor partition not detected, skipping device info read", Color.Orange);
                     }
-                    
+
                     UpdateProgressBarDirect(_progressBar, 100);
                     UpdateProgressBarDirect(_subProgressBar, 100);
-                    
+
                     return true;
                 }
                 else
@@ -2374,7 +2379,7 @@ namespace LoveAlways.Qualcomm.UI
 
             int total = partitionsToRead.Count;
             int success = 0;
-            
+
             // Pre-fetch total size of partitions for smooth progress bar
             long totalBytes = 0;
             foreach (var item in partitionsToRead)
@@ -2398,7 +2403,7 @@ namespace LoveAlways.Qualcomm.UI
                     var item = partitionsToRead[i];
                     string partitionName = item.Item1;
                     string outputPath = item.Item2;
-                    
+
                     var p = _service.FindPartition(partitionName);
                     long pSize = p?.Size ?? 0;
 
@@ -2465,10 +2470,10 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                
+
                 // Calculate total steps: Partition write + Patch + Activate
                 int totalSteps = total + (hasPatch ? 1 : 0) + (activateBootLun ? 1 : 0);
-                
+
                 // Pre-fetch total bytes for smooth progress bar
                 long totalBytes = 0;
                 foreach (var item in partitionsToWrite)
@@ -2502,7 +2507,7 @@ namespace LoveAlways.Qualcomm.UI
                     string filePath = item.Item2;
                     int lun = item.Item3;
                     long startSector = item.Item4;
-                    
+
                     long fSize = 0;
                     if (File.Exists(filePath))
                     {
@@ -2534,10 +2539,10 @@ namespace LoveAlways.Qualcomm.UI
 
                     // If LUN and StartSector info exists in XML, use direct write
                     // This ensures writing to position defined in XML, not relying on device GPT
-                    bool useDirectWrite = partitionName == "PrimaryGPT" || partitionName == "BackupGPT" || 
+                    bool useDirectWrite = partitionName == "PrimaryGPT" || partitionName == "BackupGPT" ||
                         partitionName.StartsWith("gpt_main") || partitionName.StartsWith("gpt_backup") ||
                         startSector != 0;  // If explicit start sector, use direct write
-                    
+
                     if (useDirectWrite)
                     {
                         ok = await _service.WriteDirectAsync(partitionName, filePath, lun, startSector, progress, _cts.Token);
@@ -2587,7 +2592,7 @@ namespace LoveAlways.Qualcomm.UI
                 {
                     UpdateLabelSafe(_operationLabel, "Fixing GPT...");
                     Log("Fixing GPT partition table (Sync Primary/Backup + CRC)...", Color.Blue);
-                    
+
                     // Fix GPT for all LUNs (-1 means all LUNs)
                     bool fixOk = await _service.FixGptAsync(-1, _cts.Token);
                     if (fixOk)
@@ -2601,18 +2606,18 @@ namespace LoveAlways.Qualcomm.UI
                 {
                     UpdateTotalProgress(total + (hasPatch ? 1 : 0), totalSteps, currentCompletedBytes);
                     UpdateLabelSafe(_operationLabel, "Reading back partition table to detect slot...");
-                    
+
                     // Read back GPT to detect current slot
                     Log("Reading back GPT to detect current slot...", Color.Blue);
                     var partitions = await _service.ReadAllGptAsync(6, _cts.Token);
-                    
+
                     string currentSlot = _service.CurrentSlot;
                     Log(string.Format("Detected current slot: {0}", currentSlot), Color.Blue);
 
                     // Determine boot LUN based on slot - Strictly follow A/B partition state
                     int bootLun = -1;
                     string bootSlotName = "";
-                    
+
                     if (currentSlot == "a")
                     {
                         bootLun = 1;  // slot_a -> LUN1
@@ -2629,7 +2634,7 @@ namespace LoveAlways.Qualcomm.UI
                         // Check if partitions with _a or _b suffix were written
                         int slotACount = partitionsToWrite.Count(p => p.Item1.EndsWith("_a"));
                         int slotBCount = partitionsToWrite.Count(p => p.Item1.EndsWith("_b"));
-                        
+
                         if (slotACount > slotBCount)
                         {
                             bootLun = 1;
@@ -2716,7 +2721,7 @@ namespace LoveAlways.Qualcomm.UI
 
                     int count = await _service.ApplyPatchXmlAsync(patchFiles[i], _cts.Token);
                     totalPatches += count;
-                    Log(string.Format("[{0}/{1}] {2}: {3} patches", i + 1, patchFiles.Count, 
+                    Log(string.Format("[{0}/{1}] {2}: {3} patches", i + 1, patchFiles.Count,
                         Path.GetFileName(patchFiles[i]), count), Color.Green);
                 }
 
@@ -2772,7 +2777,7 @@ namespace LoveAlways.Qualcomm.UI
 
                     // Erase has no granular progress, directly update sub progress
                     UpdateProgressBarDirect(_subProgressBar, 50);
-                    
+
                     bool ok = await _service.ErasePartitionAsync(partitionName, _cts.Token);
 
                     UpdateProgressBarDirect(_subProgressBar, 100);
@@ -2882,11 +2887,11 @@ namespace LoveAlways.Qualcomm.UI
 
         private bool IsProtectPartitionsEnabled()
         {
-            try 
-            { 
+            try
+            {
                 if (_protectPartitionsCheckbox == null) return false;
                 bool isChecked = _protectPartitionsCheckbox.Checked;
-                return isChecked; 
+                return isChecked;
             }
             catch { return false; }
         }
@@ -2921,16 +2926,16 @@ namespace LoveAlways.Qualcomm.UI
                 Log("Device not connected", Color.Red);
                 return false;
             }
-            
+
             if (!_service.IsPortReleased)
             {
                 // Port not released, check if still available
                 if (_service.IsConnectedFast)
                     return true;
             }
-            
+
             _logDetail("[UI] Attempting quick reconnect...");
-            
+
             // Try to reopen port
             bool success = await _service.EnsurePortOpenAsync(CancellationToken.None);
             if (success)
@@ -2938,11 +2943,11 @@ namespace LoveAlways.Qualcomm.UI
                 _logDetail("[UI] Quick reconnect success");
                 return true;
             }
-            
+
             _logDetail("[UI] Quick reconnect failed");
             return false;
         }
-        
+
         private async Task<bool> EnsureConnectedAsync()
         {
             if (_service == null)
@@ -2950,7 +2955,7 @@ namespace LoveAlways.Qualcomm.UI
                 Log("Device not connected", Color.Red);
                 return false;
             }
-            
+
             // If port is released, try to reopen
             if (_service.IsPortReleased)
             {
@@ -2963,17 +2968,17 @@ namespace LoveAlways.Qualcomm.UI
                 }
                 _logDetail("[UI] Port reopen success");
             }
-            
+
             // Use ValidateConnection to detect if port is truly available
             if (!_service.ValidateConnection())
             {
                 _logDetail("[UI] Port validation failed");
                 return false;
             }
-            
+
             return true;
         }
-        
+
         /// <summary>
         /// Ensure connection available, show error and clear state on failure
         /// </summary>
@@ -2981,7 +2986,7 @@ namespace LoveAlways.Qualcomm.UI
         {
             if (await EnsureConnectedAsync())
                 return true;
-            
+
             // Connection failed, clear state
             Log("Device connection lost, full reconfiguration required", Color.Red);
             SetSkipSaharaChecked(false);
@@ -2996,12 +3001,12 @@ namespace LoveAlways.Qualcomm.UI
         /// </summary>
         public void CancelOperation()
         {
-            if (_cts != null) 
-            { 
+            if (_cts != null)
+            {
                 Log("Canceling operation...", Color.Orange);
-                _cts.Cancel(); 
-                _cts.Dispose(); 
-                _cts = null; 
+                _cts.Cancel();
+                _cts.Dispose();
+                _cts = null;
             }
         }
 
@@ -3012,9 +3017,9 @@ namespace LoveAlways.Qualcomm.UI
         {
             if (_cts != null)
             {
-                try { _cts.Cancel(); } 
+                try { _cts.Cancel(); }
                 catch (Exception ex) { _logDetail?.Invoke($"[UI] Cancel token exception: {ex.Message}"); }
-                try { _cts.Dispose(); } 
+                try { _cts.Dispose(); }
                 catch (Exception ex) { _logDetail?.Invoke($"[UI] Dispose token exception: {ex.Message}"); }
             }
             _cts = new CancellationTokenSource();
@@ -3041,7 +3046,7 @@ namespace LoveAlways.Qualcomm.UI
                 // Calculate real-time speed
                 long bytesDelta = current - _lastBytes;
                 double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
-                
+
                 if (timeDelta >= 0.2 && bytesDelta > 0) // Update every 200ms
                 {
                     double instantSpeed = bytesDelta / timeDelta;
@@ -3049,21 +3054,21 @@ namespace LoveAlways.Qualcomm.UI
                     _currentSpeed = (_currentSpeed > 0) ? (_currentSpeed * 0.6 + instantSpeed * 0.4) : instantSpeed;
                     _lastBytes = current;
                     _lastSpeedUpdate = DateTime.Now;
-                    
+
                     // Update speed display
                     UpdateSpeedDisplayInternal();
-                    
+
                     // Update time
                     var elapsed = _operationStopwatch.Elapsed;
                     string timeText = string.Format("Time: {0:00}:{1:00}", (int)elapsed.TotalMinutes, elapsed.Seconds);
                     UpdateLabelSafe(_timeLabel, timeText);
                 }
-                
+
                 // 1. Calculate sub progress (With decimal precision)
                 double subPercent = (100.0 * current / total);
                 subPercent = Math.Max(0, Math.Min(100, subPercent));
                 UpdateProgressBarDirect(_subProgressBar, subPercent);
-                
+
                 // 2. Calculate total progress (High speed smooth version - Based on total bytes)
                 if (_totalOperationBytes > 0 && _progressBar != null)
                 {
@@ -3084,13 +3089,13 @@ namespace LoveAlways.Qualcomm.UI
                 }
             }
         }
-        
+
         /// <summary>
         /// Update progress bar directly (Supports double precision, anti-flicker optimization)
         /// </summary>
         private int _lastProgressValue = -1;
         private int _lastSubProgressValue = -1;
-        
+
         private void UpdateProgressBarDirect(dynamic progressBar, double percent)
         {
             if (progressBar == null) return;
@@ -3098,21 +3103,22 @@ namespace LoveAlways.Qualcomm.UI
             {
                 // Map 0-100 to 0-10000 for higher precision
                 int intValue = (int)Math.Max(0, Math.Min(10000, percent * 100));
-                
+
                 // Check which progress bar, avoid duplicate updates
                 bool isMainProgress = (progressBar == _progressBar);
                 int lastValue = isMainProgress ? _lastProgressValue : _lastSubProgressValue;
-                
+
                 // Skip update if value unchanged to prevent flicker
                 if (intValue == lastValue) return;
-                
+
                 // Update cached value
                 if (isMainProgress) _lastProgressValue = intValue;
                 else _lastSubProgressValue = intValue;
-                
+
                 if (progressBar.InvokeRequired)
                 {
-                    progressBar.BeginInvoke(new Action(() => {
+                    progressBar.BeginInvoke(new Action(() =>
+                    {
                         if (progressBar.Maximum != 10000) progressBar.Maximum = 10000;
                         if (progressBar.Value != intValue) progressBar.Value = intValue;
                     }));
@@ -3125,11 +3131,11 @@ namespace LoveAlways.Qualcomm.UI
             }
             catch { /* UI progress bar update failure can be ignored */ }
         }
-        
+
         private void UpdateSpeedDisplayInternal()
         {
             if (_speedLabel == null) return;
-            
+
             string speedText;
             if (_currentSpeed >= 1024 * 1024)
                 speedText = string.Format("Speed: {0:F1} MB/s", _currentSpeed / (1024 * 1024));
@@ -3139,10 +3145,10 @@ namespace LoveAlways.Qualcomm.UI
                 speedText = string.Format("Speed: {0:F0} B/s", _currentSpeed);
             else
                 speedText = "Speed: --";
-            
+
             UpdateLabelSafe(_speedLabel, speedText);
         }
-        
+
         /// <summary>
         /// Update sub progress bar (Short) - From percentage
         /// Improvement: Use current step bytes to calculate real speed
@@ -3151,7 +3157,7 @@ namespace LoveAlways.Qualcomm.UI
         {
             percent = Math.Max(0, Math.Min(100, percent));
             UpdateProgressBarDirect(_subProgressBar, percent);
-            
+
             // Estimate transferred bytes based on current step bytes (Not total operation bytes!)
             long currentStepTransferred = 0;
             if (_currentStepBytes > 0)
@@ -3159,7 +3165,7 @@ namespace LoveAlways.Qualcomm.UI
                 // Use current step bytes, not total operation bytes
                 currentStepTransferred = (long)(_currentStepBytes * percent / 100.0);
             }
-            
+
             // Calculate real-time speed (Based on delta)
             if (_operationStopwatch != null)
             {
@@ -3167,11 +3173,11 @@ namespace LoveAlways.Qualcomm.UI
                 var elapsed = _operationStopwatch.Elapsed;
                 string timeText = string.Format("Time: {0:00}:{1:00}", (int)elapsed.TotalMinutes, elapsed.Seconds);
                 UpdateLabelSafe(_timeLabel, timeText);
-                
+
                 // Real-time speed calculation - Based on actual transferred bytes of current step
                 long bytesDelta = currentStepTransferred - _lastBytes;
                 double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
-                
+
                 if (timeDelta >= 0.2 && bytesDelta > 0) // Update every 200ms
                 {
                     double instantSpeed = bytesDelta / timeDelta;
@@ -3179,12 +3185,12 @@ namespace LoveAlways.Qualcomm.UI
                     _currentSpeed = (_currentSpeed > 0) ? (_currentSpeed * 0.7 + instantSpeed * 0.3) : instantSpeed;
                     _lastBytes = currentStepTransferred;
                     _lastSpeedUpdate = DateTime.Now;
-                    
+
                     // Update speed display
                     UpdateSpeedDisplayInternal();
                 }
             }
-            
+
             // Update operation label (Show percentage) - Use total operation bytes to calculate total progress
             if (_totalOperationBytes > 0)
             {
@@ -3201,7 +3207,7 @@ namespace LoveAlways.Qualcomm.UI
                 UpdateLabelSafe(_operationLabel, string.Format("{0} [{1:F2}%]", _currentOperationName, totalProgress));
             }
         }
-        
+
         /// <summary>
         /// Update total progress bar (Long) - Total progress of multi-step operation
         /// </summary>
@@ -3215,13 +3221,13 @@ namespace LoveAlways.Qualcomm.UI
             _totalSteps = totalSteps;
             _completedStepBytes = completedBytes;
             _currentStepBytes = currentStepBytes;
-            
+
             // Reset speed calculation variables (New step starts)
             _lastBytes = 0;
             _lastSpeedUpdate = DateTime.Now;
             UpdateProgressBarDirect(_subProgressBar, 0);
         }
-        
+
         private void UpdateLabelSafe(dynamic label, string text)
         {
             if (label == null) return;
@@ -3234,7 +3240,7 @@ namespace LoveAlways.Qualcomm.UI
             }
             catch { /* UI label update failure can be ignored */ }
         }
-        
+
         /// <summary>
         /// Start timer (Single step operation)
         /// </summary>
@@ -3242,7 +3248,7 @@ namespace LoveAlways.Qualcomm.UI
         {
             StartOperationTimer(operationName, 0, 0, 0);
         }
-        
+
         /// <summary>
         /// Start timer (Multi-step operation)
         /// </summary>
@@ -3258,20 +3264,20 @@ namespace LoveAlways.Qualcomm.UI
             _completedStepBytes = 0;
             _currentStepBytes = totalBytes; // For single file operation, current step bytes = total bytes
             _currentOperationName = operationName;
-            
+
             // Reset progress bar cache (Anti-flicker)
             _lastProgressValue = -1;
             _lastSubProgressValue = -1;
-            
+
             UpdateLabelSafe(_operationLabel, "Current Operation: " + operationName);
             UpdateLabelSafe(_timeLabel, "Time: 00:00");
             UpdateLabelSafe(_speedLabel, "Speed: --");
-            
+
             // Reset progress bar to 0 (Use high precision mode)
             UpdateProgressBarDirect(_progressBar, 0);
             UpdateProgressBarDirect(_subProgressBar, 0);
         }
-        
+
         /// <summary>
         /// Reset sub progress bar (Call before single operation starts)
         /// </summary>
@@ -3283,7 +3289,7 @@ namespace LoveAlways.Qualcomm.UI
             _lastSubProgressValue = -1; // Reset cache to ensure next update takes effect
             UpdateProgressBarDirect(_subProgressBar, 0);
         }
-        
+
         /// <summary>
         /// Stop timer
         /// </summary>
@@ -3301,7 +3307,7 @@ namespace LoveAlways.Qualcomm.UI
             UpdateProgressBarDirect(_progressBar, 100);
             UpdateProgressBarDirect(_subProgressBar, 100);
         }
-        
+
         /// <summary>
         /// End operation and release port (Call after operation completion)
         /// </summary>
@@ -3310,14 +3316,14 @@ namespace LoveAlways.Qualcomm.UI
         {
             IsBusy = false;
             StopOperationTimer();
-            
+
             // Release port to allow other programs to connect to device
             if (releasePort && _service != null)
             {
                 _service.ReleasePort();
             }
         }
-        
+
         /// <summary>
         /// Set whether to keep port open (Used in batch operations)
         /// </summary>
@@ -3325,7 +3331,7 @@ namespace LoveAlways.Qualcomm.UI
         {
             _service?.SetKeepPortOpen(keepOpen);
         }
-        
+
         /// <summary>
         /// Reset all progress displays
         /// </summary>
@@ -3396,7 +3402,7 @@ namespace LoveAlways.Qualcomm.UI
                     _portMonitorTimer.Dispose();
                     _portMonitorTimer = null;
                 }
-                
+
                 CancelOperation();
                 Disconnect();
                 _disposed = true;
@@ -3418,7 +3424,7 @@ namespace LoveAlways.Qualcomm.UI
                 Log("Executing OPLUS VIP Auth (Digest + Sign)...", Color.Blue);
 
                 bool success = await _service.PerformVipAuthManualAsync(digestPath, signaturePath, _cts.Token);
-                
+
                 UpdateTotalProgress(1, 1);
 
                 if (success) Log("VIP auth success, high privilege partitions unlocked", Color.Green);
@@ -3460,9 +3466,9 @@ namespace LoveAlways.Qualcomm.UI
             {
                 IsBusy = true;
                 ResetCancellationToken();
-                
+
                 Log("[Qualcomm] Analyzing OPLUS Super layout deeply...", Color.Blue);
-                
+
                 // 1. Get super partition info
                 var superPart = _service.FindPartition("super");
                 if (superPart == null)
@@ -3474,9 +3480,9 @@ namespace LoveAlways.Qualcomm.UI
                 // 2. Pre-analyze tasks to get total bytes
                 string activeSlot = _service.CurrentSlot;
                 if (activeSlot == "nonexistent" || string.IsNullOrEmpty(activeSlot)) activeSlot = "a";
-                
+
                 string nvId = _currentDeviceInfo?.OplusNvId ?? "";
-                
+
                 var tasks = await new LoveAlways.Qualcomm.Services.OplusSuperFlashManager(s => Log(s, Color.Gray)).PrepareSuperTasksAsync(
                     firmwareRoot, superPart.StartSector, (int)superPart.SectorSize, activeSlot, nvId);
 
@@ -3489,7 +3495,7 @@ namespace LoveAlways.Qualcomm.UI
                 long totalBytes = tasks.Sum(t => t.SizeInBytes);
 
                 StartOperationTimer("OPLUS Super Write", 1, 0, totalBytes);
-                Log(string.Format("[Qualcomm] Starting OPLUS Super dismantle write ({0} images, Total unpacked {1:F2} MB)...", 
+                Log(string.Format("[Qualcomm] Starting OPLUS Super dismantle write ({0} images, Total unpacked {1:F2} MB)...",
                     tasks.Count, totalBytes / 1024.0 / 1024.0), Color.Blue);
 
                 var progress = new Progress<double>(p => UpdateSubProgressFromPercent(p));

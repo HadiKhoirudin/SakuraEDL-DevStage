@@ -7,12 +7,12 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-using System;
 using LoveAlways.MediaTek.Models;
+using System;
 
 namespace LoveAlways.MediaTek.DA
 {
@@ -25,18 +25,18 @@ namespace LoveAlways.MediaTek.DA
         /// Standard load address (DRAM space)
         /// </summary>
         public const uint STANDARD_LOAD_ADDR = 0x68000000;
-        
+
         /// <summary>
         /// Low memory device load address (XFlash protocol)
         /// Reference: https://github.com/bkerler/mtkclient/pull/1563
         /// </summary>
         public const uint LOW_MEM_LOAD_ADDR = 0x4FFF0000;
-        
+
         /// <summary>
         /// DA2 usual load address
         /// </summary>
         public const uint DA2_LOAD_ADDR = 0x40000000;
-        
+
         /// <summary>
         /// DA1 usual load address range
         /// </summary>
@@ -69,16 +69,16 @@ namespace LoveAlways.MediaTek.DA
     public static class XFlashExtensionCommands
     {
         public const uint CMD_RANGE_START = 0x0F0000;
-        public const uint CMD_RANGE_END   = 0x0FFFFF;
+        public const uint CMD_RANGE_END = 0x0FFFFF;
 
         // RPMB operations
-        public const uint CMD_READ_RPMB   = 0x0F0001;
-        public const uint CMD_WRITE_RPMB  = 0x0F0002;
+        public const uint CMD_READ_RPMB = 0x0F0001;
+        public const uint CMD_WRITE_RPMB = 0x0F0002;
 
         // Register access
-        public const uint CMD_READ_REG    = 0x0F0003;
-        public const uint CMD_WRITE_REG   = 0x0F0004;
-        public const uint CMD_READ_REG16  = 0x0F0005;
+        public const uint CMD_READ_REG = 0x0F0003;
+        public const uint CMD_WRITE_REG = 0x0F0004;
+        public const uint CMD_READ_REG16 = 0x0F0005;
         public const uint CMD_WRITE_REG16 = 0x0F0006;
 
         // SEJ (Security Engine) operations
@@ -86,8 +86,8 @@ namespace LoveAlways.MediaTek.DA
         public const uint CMD_SEJ_ENCRYPT = 0x0F0008;
 
         // Memory operations
-        public const uint CMD_READ_MEM    = 0x0F0009;
-        public const uint CMD_WRITE_MEM   = 0x0F000A;
+        public const uint CMD_READ_MEM = 0x0F0009;
+        public const uint CMD_WRITE_MEM = 0x0F000A;
 
         /// <summary>
         /// Check if command is an Extensions command
@@ -164,7 +164,7 @@ namespace LoveAlways.MediaTek.DA
             // Check if it contains hardcoded 0x40000000 address (patched feature)
             // Patched DA2 will force use 0x40000000 as boot_to address
             byte[] hardcodedAddr = { 0x00, 0x00, 0x00, 0x40 };  // 0x40000000 LE
-            
+
             int count = 0;
             for (int i = 0; i < da2Data.Length - 4; i++)
             {
@@ -205,16 +205,16 @@ namespace LoveAlways.MediaTek.DA
     {
         /// <summary>Not loaded</summary>
         NotLoaded,
-        
+
         /// <summary>Loading</summary>
         Loading,
-        
+
         /// <summary>Loaded</summary>
         Loaded,
-        
+
         /// <summary>Not supported</summary>
         NotSupported,
-        
+
         /// <summary>Load failed</summary>
         LoadFailed
     }

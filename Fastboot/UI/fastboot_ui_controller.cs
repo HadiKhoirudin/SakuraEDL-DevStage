@@ -1,23 +1,21 @@
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+using LoveAlways.Fastboot.Common;
+using LoveAlways.Fastboot.Models;
+using LoveAlways.Fastboot.Payload;
+using LoveAlways.Fastboot.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using LoveAlways.Fastboot.Common;
-using LoveAlways.Fastboot.Models;
-using LoveAlways.Fastboot.Payload;
-using LoveAlways.Fastboot.Services;
-using LoveAlways.Qualcomm.Common;
 
 namespace LoveAlways.Fastboot.UI
 {
@@ -76,11 +74,11 @@ namespace LoveAlways.Fastboot.UI
         private long _totalOperationBytes;
         private long _completedBytes;
         private string _currentOperationName;
-        
+
         // Multi-partition flash progress tracking
         private int _flashTotalPartitions;
         private int _flashCurrentPartitionIndex;
-        
+
         // Progress update throttling
         private DateTime _lastProgressUpdate = DateTime.MinValue;
         private double _lastSubProgressValue = -1;
@@ -100,12 +98,12 @@ namespace LoveAlways.Fastboot.UI
         public FastbootDeviceInfo DeviceInfo => _service?.DeviceInfo;
         public List<FastbootPartitionInfo> Partitions => _service?.DeviceInfo?.GetPartitions();
         public int DeviceCount => _cachedDevices?.Count ?? 0;
-        
+
         // Payload state
         public bool IsPayloadLoaded => (_payloadService?.IsLoaded ?? false) || (_remotePayloadService?.IsLoaded ?? false);
         public IReadOnlyList<PayloadPartition> PayloadPartitions => _payloadService?.Partitions;
         public PayloadSummary PayloadSummary => _payloadService?.GetSummary();
-        
+
         // Remote Payload state
         public bool IsRemotePayloadLoaded => _remotePayloadService?.IsLoaded ?? false;
         public IReadOnlyList<RemotePayloadPartition> RemotePayloadPartitions => _remotePayloadService?.Partitions;
@@ -292,8 +290,8 @@ namespace LoveAlways.Fastboot.UI
                 }
 
                 // Set auto-complete
-                _commandComboBox.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
-                _commandComboBox.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
+                //_commandComboBox.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
+                //_commandComboBox.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
             }
             catch { }
         }
@@ -328,8 +326,8 @@ namespace LoveAlways.Fastboot.UI
             }
 
             // Brand/Manufacturer
-            string brand = DeviceInfo.GetVariable("ro.product.brand") 
-                ?? DeviceInfo.GetVariable("manufacturer") 
+            string brand = DeviceInfo.GetVariable("ro.product.brand")
+                ?? DeviceInfo.GetVariable("manufacturer")
                 ?? "Unknown";
             UpdateLabelSafe(_brandLabel, $"Brand: {brand}");
 
@@ -347,8 +345,8 @@ namespace LoveAlways.Fastboot.UI
             UpdateLabelSafe(_chipLabel, $"Chip: {chip}");
 
             // Model
-            string model = DeviceInfo.GetVariable("product") 
-                ?? DeviceInfo.GetVariable("ro.product.model") 
+            string model = DeviceInfo.GetVariable("product")
+                ?? DeviceInfo.GetVariable("ro.product.model")
                 ?? "Unknown";
             UpdateLabelSafe(_modelLabel, $"Model: {model}");
 
@@ -377,10 +375,10 @@ namespace LoveAlways.Fastboot.UI
             UpdateLabelSafe(_unlockLabel, $"Unlock: {unlockStatus}");
 
             // Current slot - support multiple variable names
-            string slot = DeviceInfo.GetVariable("current-slot") 
+            string slot = DeviceInfo.GetVariable("current-slot")
                 ?? DeviceInfo.CurrentSlot;
             string slotCount = DeviceInfo.GetVariable("slot-count");
-            
+
             if (string.IsNullOrEmpty(slot))
             {
                 // Check if A/B partitions are supported
@@ -402,7 +400,7 @@ namespace LoveAlways.Fastboot.UI
         private string MapChipId(string hwRevision)
         {
             if (string.IsNullOrEmpty(hwRevision)) return "Unknown";
-            
+
             // Qualcomm Chip ID Map
             var chipMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -445,14 +443,14 @@ namespace LoveAlways.Fastboot.UI
                 { "mt6983", "Dimensity 9000" },
                 { "mt6895", "Dimensity 8100" },
             };
-            
+
             if (chipMap.TryGetValue(hwRevision, out string chipName))
                 return chipName;
-            
+
             // If not in map, check if it's pure number (possibly unknown Qualcomm ID)
             if (int.TryParse(hwRevision, out _))
                 return $"QC-{hwRevision}";
-            
+
             return hwRevision;
         }
 
@@ -512,7 +510,7 @@ namespace LoveAlways.Fastboot.UI
                 {
                     var devices = await tempService.GetDevicesAsync();
                     _cachedDevices = devices ?? new List<FastbootDeviceListItem>();
-                    
+
                     // Update in UI thread
                     if (_deviceComboBox != null)
                     {
@@ -576,10 +574,10 @@ namespace LoveAlways.Fastboot.UI
         private void UpdateDeviceCountLabel()
         {
             int count = _cachedDevices?.Count ?? 0;
-            string text = count == 0 ? "FB Device: 0" 
-                : count == 1 ? $"FB Device: {_cachedDevices[0].Serial}" 
+            string text = count == 0 ? "FB Device: 0"
+                : count == 1 ? $"FB Device: {_cachedDevices[0].Serial}"
                 : $"FB Devices: {count}";
-            
+
             UpdateLabelSafe(_deviceCountLabel, text);
         }
 
@@ -618,7 +616,7 @@ namespace LoveAlways.Fastboot.UI
                     (current, total) => UpdateProgressWithSpeed(current, total),
                     _logDetail
                 );
-                
+
                 // Subscribe to flash progress events
                 _service.FlashProgressChanged += OnFlashProgressChanged;
 
@@ -629,13 +627,13 @@ namespace LoveAlways.Fastboot.UI
                 {
                     UpdateProgressBar(70);
                     Log("Fastboot device connected successfully", Color.Green);
-                    
+
                     // Update device information labels
                     UpdateDeviceInfoLabels();
-                    
+
                     // Update partition list
                     UpdatePartitionListView();
-                    
+
                     UpdateProgressBar(100);
                     ConnectionStateChanged?.Invoke(this, true);
                     PartitionsLoaded?.Invoke(this, Partitions);
@@ -718,13 +716,13 @@ namespace LoveAlways.Fastboot.UI
                 if (success)
                 {
                     UpdateProgressBar(70);
-                    
+
                     // Update device information labels
                     UpdateDeviceInfoLabels();
-                    
+
                     UpdatePartitionListView();
                     UpdateProgressBar(100);
-                    
+
                     Log($"Successfully read {Partitions?.Count ?? 0} partitions", Color.Green);
                     PartitionsLoaded?.Invoke(this, Partitions);
                 }
@@ -814,7 +812,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 string partName = item.SubItems[0].Text;
                 string filePath = item.SubItems.Count > 3 ? item.SubItems[3].Text : "";
-                
+
                 if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
                 {
                     Log($"Partition {partName} has no image file selected", Color.Orange);
@@ -845,14 +843,14 @@ namespace LoveAlways.Fastboot.UI
 
                 int successCount = 0;
                 int total = partitionsWithFiles.Count;
-                
+
                 // Set progress tracking fields
                 _flashTotalPartitions = total;
 
                 for (int i = 0; i < total; i++)
                 {
                     _flashCurrentPartitionIndex = i;
-                    
+
                     var part = partitionsWithFiles[i];
                     UpdateLabelSafe(_operationLabel, $"Operation: Flashing {part.Item1} ({i + 1}/{total})");
                     // Sub-progress: current partition flash started
@@ -860,14 +858,14 @@ namespace LoveAlways.Fastboot.UI
 
                     var flashStart = DateTime.Now;
                     var fileSize = new FileInfo(part.Item2).Length;
-                    
+
                     bool result = await _service.FlashPartitionAsync(part.Item1, part.Item2, false, _cts.Token);
-                    
+
                     // Sub-progress: current partition flash completed
                     UpdateSubProgressBar(100);
                     // Update total progress
                     UpdateProgressBar(((i + 1) * 100.0) / total);
-                    
+
                     // Calculate and display speed
                     var elapsed = (DateTime.Now - flashStart).TotalSeconds;
                     if (elapsed > 0)
@@ -875,11 +873,11 @@ namespace LoveAlways.Fastboot.UI
                         double speed = fileSize / elapsed;
                         UpdateSpeedLabel(FormatSpeed(speed));
                     }
-                    
+
                     if (result)
                         successCount++;
                 }
-                
+
                 // Reset progress tracking
                 _flashTotalPartitions = 0;
                 _flashCurrentPartitionIndex = 0;
@@ -888,7 +886,7 @@ namespace LoveAlways.Fastboot.UI
                 UpdateSubProgressBar(100);
                 StopOperationTimer();
 
-                Log($"Flash complete: {successCount}/{total} successful", 
+                Log($"Flash complete: {successCount}/{total} successful",
                     successCount == total ? Color.Green : Color.Orange);
 
                 // Execute post-flash additional operations (switch slot, erase Google Lock, etc.)
@@ -959,12 +957,12 @@ namespace LoveAlways.Fastboot.UI
                     UpdateProgressBar((current * 100.0) / total);
                     // Sub-progress: start erase
                     UpdateSubProgressBar(0);
-                    
+
                     if (await _service.ErasePartitionAsync(partName, _cts.Token))
                     {
                         success++;
                     }
-                    
+
                     // Sub-progress: current partition erase complete
                     UpdateSubProgressBar(100);
                     current++;
@@ -974,7 +972,7 @@ namespace LoveAlways.Fastboot.UI
                 UpdateSubProgressBar(100);
                 StopOperationTimer();
 
-                Log($"Erase complete: {success}/{total} successful", 
+                Log($"Erase complete: {success}/{total} successful",
                     success == total ? Color.Green : Color.Orange);
 
                 return success == total;
@@ -1112,7 +1110,7 @@ namespace LoveAlways.Fastboot.UI
             {
                 string fileName = Path.GetFileNameWithoutExtension(imgPath);
                 var fileInfo = new FileInfo(imgPath);
-                
+
                 // Determine partition type
                 bool isLogical = FastbootService.IsLogicalPartition(fileName);
                 bool isModem = FastbootService.IsModemPartition(fileName);
@@ -1238,7 +1236,7 @@ namespace LoveAlways.Fastboot.UI
             if (hasInfo)
             {
                 Log(sb.ToString().Trim(), Color.Cyan);
-                
+
                 // If version name exists, display separately
                 if (!string.IsNullOrEmpty(info.BuildNumber))
                 {
@@ -1423,7 +1421,7 @@ namespace LoveAlways.Fastboot.UI
             foreach (ListViewItem item in _partitionListView.Items)
             {
                 ct.ThrowIfCancellationRequested();
-                
+
                 if (item.Tag is ExtractedImageInfo info && !string.IsNullOrEmpty(info.FilePath))
                 {
                     current++;
@@ -1919,13 +1917,13 @@ namespace LoveAlways.Fastboot.UI
             if (!await EnsureConnectedAsync()) return false;
             return await _service.RebootRecoveryAsync();
         }
-        
+
         // Alias methods (for quick use)
         public Task<bool> RebootAsync() => RebootToSystemAsync();
         public Task<bool> RebootBootloaderAsync() => RebootToBootloaderAsync();
         public Task<bool> RebootFastbootdAsync() => RebootToFastbootdAsync();
         public Task<bool> RebootRecoveryAsync() => RebootToRecoveryAsync();
-        
+
         /// <summary>
         /// OEM EDL - Xiaomi kick to EDL (fastboot oem edl)
         /// </summary>
@@ -1934,7 +1932,7 @@ namespace LoveAlways.Fastboot.UI
             if (!await EnsureConnectedAsync()) return false;
             return await _service.OemEdlAsync();
         }
-        
+
         /// <summary>
         /// Erase FRP (Google Lock)
         /// </summary>
@@ -1943,7 +1941,7 @@ namespace LoveAlways.Fastboot.UI
             if (!await EnsureConnectedAsync()) return false;
             return await _service.EraseFrpAsync();
         }
-        
+
         /// <summary>
         /// Get current slot
         /// </summary>
@@ -1952,7 +1950,7 @@ namespace LoveAlways.Fastboot.UI
             if (!await EnsureConnectedAsync()) return null;
             return await _service.GetCurrentSlotAsync();
         }
-        
+
         /// <summary>
         /// Set active slot
         /// </summary>
@@ -1974,7 +1972,7 @@ namespace LoveAlways.Fastboot.UI
             if (!await EnsureConnectedAsync()) return false;
 
             string method = "flashing unlock";
-            
+
             // Choose unlock method based on checkbox state
             // Command can be retrieved from _commandComboBox
             string selectedCmd = GetSelectedCommand();
@@ -1994,7 +1992,7 @@ namespace LoveAlways.Fastboot.UI
             if (!await EnsureConnectedAsync()) return false;
 
             string method = "flashing lock";
-            
+
             string selectedCmd = GetSelectedCommand();
             if (!string.IsNullOrEmpty(selectedCmd) && selectedCmd.Contains("lock"))
             {
@@ -2014,9 +2012,9 @@ namespace LoveAlways.Fastboot.UI
         public async Task<bool> SwitchSlotAsync()
         {
             if (!await EnsureConnectedAsync()) return false;
-            
+
             bool success = await _service.SwitchSlotAsync();
-            
+
             if (success)
             {
                 await ReadPartitionTableAsync();
@@ -2050,7 +2048,7 @@ namespace LoveAlways.Fastboot.UI
 
                 Log($"Executing command: {command}", Color.Blue);
                 var result = await _service.ExecuteCommandAsync(command, _cts.Token);
-                
+
                 if (!string.IsNullOrEmpty(result))
                 {
                     // Display command execution result
@@ -2080,15 +2078,15 @@ namespace LoveAlways.Fastboot.UI
             {
                 if (_commandComboBox == null) return null;
                 string cmd = _commandComboBox.SelectedItem?.ToString() ?? _commandComboBox.Text;
-                
+
                 if (string.IsNullOrEmpty(cmd)) return null;
-                
+
                 // Automatically remove "fastboot " prefix
                 if (cmd.StartsWith("fastboot ", StringComparison.OrdinalIgnoreCase))
                 {
                     cmd = cmd.Substring(9).Trim();
                 }
-                
+
                 return cmd;
             }
             catch
@@ -2127,7 +2125,7 @@ namespace LoveAlways.Fastboot.UI
             }
             return true;
         }
-        
+
         /// <summary>
         /// Ensure device is connected (async version, supports auto-connect)
         /// </summary>
@@ -2135,7 +2133,7 @@ namespace LoveAlways.Fastboot.UI
         {
             if (_service != null && _service.IsConnected)
                 return true;
-            
+
             // Auto-connect attempt
             string selectedDevice = GetSelectedDevice();
             if (!string.IsNullOrEmpty(selectedDevice))
@@ -2143,7 +2141,7 @@ namespace LoveAlways.Fastboot.UI
                 Log("Auto-connecting to Fastboot device...", Color.Blue);
                 return await ConnectAsync();
             }
-            
+
             // Check for available devices
             if (_cachedDevices != null && _cachedDevices.Count > 0)
             {
@@ -2190,7 +2188,7 @@ namespace LoveAlways.Fastboot.UI
             string timeText = elapsed.Hours > 0
                 ? $"Time: {elapsed:hh\\:mm\\:ss}"
                 : $"Time: {elapsed:mm\\:ss}";
-            
+
             UpdateLabelSafe(_timeLabel, timeText);
         }
 
@@ -2208,10 +2206,10 @@ namespace LoveAlways.Fastboot.UI
                 speedText = $"Speed: {_currentSpeed / 1024:F1} KB/s";
             else
                 speedText = $"Speed: {_currentSpeed:F0} B/s";
-            
+
             UpdateLabelSafe(_speedLabel, speedText);
         }
-        
+
         /// <summary>
         /// Update speed label (using formatted speed string)
         /// </summary>
@@ -2220,59 +2218,59 @@ namespace LoveAlways.Fastboot.UI
             if (_speedLabel == null) return;
             UpdateLabelSafe(_speedLabel, $"Speed: {formattedSpeed}");
         }
-        
+
         /// <summary>
         /// Flash progress callback
         /// </summary>
         private void OnFlashProgressChanged(FlashProgress progress)
         {
             if (progress == null) return;
-            
+
             // Calculate progress value
             double subProgress = progress.Percent;
-            double mainProgress = _flashTotalPartitions > 0 
-                ? (_flashCurrentPartitionIndex * 100.0 + progress.Percent) / _flashTotalPartitions 
+            double mainProgress = _flashTotalPartitions > 0
+                ? (_flashCurrentPartitionIndex * 100.0 + progress.Percent) / _flashTotalPartitions
                 : 0;
-            
+
             // Time interval check
             var now = DateTime.Now;
             bool timeElapsed = (now - _lastProgressUpdate).TotalMilliseconds >= ProgressUpdateIntervalMs;
             bool forceUpdate = progress.Percent >= 95;
-            
+
             // Update anyway (to ensure smoothness)
             if (!forceUpdate && !timeElapsed)
                 return;
-            
+
             _lastProgressUpdate = now;
-            
+
             // Update sub progress bar (current partition progress)
             _lastSubProgressValue = subProgress;
             UpdateSubProgressBar(subProgress);
-            
+
             // Update total progress bar (for multi-partition flashing)
             if (_flashTotalPartitions > 0)
             {
                 _lastMainProgressValue = mainProgress;
                 UpdateProgressBar(mainProgress);
             }
-            
+
             // Update speed display
             if (progress.SpeedKBps > 0)
             {
                 UpdateSpeedLabel(progress.SpeedFormatted);
             }
-            
+
             // Update time in real-time
             UpdateTimeLabel();
         }
-        
+
         /// <summary>
         /// Format speed display
         /// </summary>
         private string FormatSpeed(double bytesPerSecond)
         {
             if (bytesPerSecond <= 0) return "Calculating...";
-            
+
             string[] units = { "B/s", "KB/s", "MB/s", "GB/s" };
             double speed = bytesPerSecond;
             int unitIndex = 0;
@@ -2294,7 +2292,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 int value = Math.Min(100, Math.Max(0, (int)percent));
-                
+
                 if (_progressBar.InvokeRequired)
                 {
                     _progressBar.BeginInvoke(new Action(() =>
@@ -2320,7 +2318,7 @@ namespace LoveAlways.Fastboot.UI
             try
             {
                 int value = Math.Min(100, Math.Max(0, (int)percent));
-                
+
                 if (_subProgressBar.InvokeRequired)
                 {
                     _subProgressBar.BeginInvoke(new Action(() =>
@@ -2350,7 +2348,7 @@ namespace LoveAlways.Fastboot.UI
             // Calculate speed
             long bytesDelta = current - _lastBytes;
             double timeDelta = (DateTime.Now - _lastSpeedUpdate).TotalSeconds;
-            
+
             if (timeDelta >= 0.2 && bytesDelta > 0) // Update every 200ms
             {
                 double instantSpeed = bytesDelta / timeDelta;
@@ -2358,7 +2356,7 @@ namespace LoveAlways.Fastboot.UI
                 _currentSpeed = (_currentSpeed > 0) ? (_currentSpeed * 0.6 + instantSpeed * 0.4) : instantSpeed;
                 _lastBytes = current;
                 _lastSpeedUpdate = DateTime.Now;
-                
+
                 // Update speed and time display
                 UpdateSpeedLabel();
                 UpdateTimeLabel();
@@ -2463,9 +2461,9 @@ namespace LoveAlways.Fastboot.UI
         {
             if (_cts != null)
             {
-                try { _cts.Cancel(); } 
+                try { _cts.Cancel(); }
                 catch (Exception ex) { Debug.WriteLine($"[Fastboot] Cancel token exception: {ex.Message}"); }
-                try { _cts.Dispose(); } 
+                try { _cts.Dispose(); }
                 catch (Exception ex) { Debug.WriteLine($"[Fastboot] Dispose token exception: {ex.Message}"); }
             }
             _cts = new CancellationTokenSource();
@@ -2477,7 +2475,7 @@ namespace LoveAlways.Fastboot.UI
 
         // Store parsed flash tasks
         private List<BatScriptParser.FlashTask> _flashTasks;
-        
+
         /// <summary>
         /// Get currently loaded flash tasks
         /// </summary>
@@ -2637,7 +2635,7 @@ namespace LoveAlways.Fastboot.UI
 
             // Get selected tasks
             var selectedTasks = new List<BatScriptParser.FlashTask>();
-            
+
             try
             {
                 foreach (ListViewItem item in _partitionListView.CheckedItems)
@@ -2661,12 +2659,12 @@ namespace LoveAlways.Fastboot.UI
             {
                 // Keep data: skip userdata related partitions
                 int beforeCount = selectedTasks.Count;
-                selectedTasks = selectedTasks.Where(t => 
+                selectedTasks = selectedTasks.Where(t =>
                     !t.PartitionName.Equals("userdata", StringComparison.OrdinalIgnoreCase) &&
                     !t.PartitionName.Equals("userdata_ab", StringComparison.OrdinalIgnoreCase) &&
                     !t.PartitionName.Equals("metadata", StringComparison.OrdinalIgnoreCase)
                 ).ToList();
-                
+
                 if (selectedTasks.Count < beforeCount)
                 {
                     Log("Keep Data mode: skipping userdata/metadata partitions", Color.Blue);
@@ -2772,7 +2770,7 @@ namespace LoveAlways.Fastboot.UI
 
                     // Sub-progress: current task complete
                     UpdateSubProgressBar(100);
-                    
+
                     if (taskSuccess)
                         success++;
                     else
@@ -2797,7 +2795,7 @@ namespace LoveAlways.Fastboot.UI
                     await _service.LockBootloaderAsync("flashing lock", _cts.Token);
                 }
 
-                Log($"Flashing complete: {success} successful, {failed} failed", 
+                Log($"Flashing complete: {success} successful, {failed} failed",
                     failed == 0 ? Color.Green : Color.Orange);
 
                 return failed == 0;
@@ -2902,7 +2900,7 @@ namespace LoveAlways.Fastboot.UI
                 // Get real URL first (handle redirects)
                 UpdateProgressBar(10);
                 var (realUrl, expiresTime) = await _remotePayloadService.GetRedirectUrlAsync(url, _cts.Token);
-                
+
                 if (string.IsNullOrEmpty(realUrl))
                 {
                     Log("Unable to get download link", Color.Red);
@@ -3117,7 +3115,7 @@ namespace LoveAlways.Fastboot.UI
                         {
                             Log($"Extraction failed: {name}", Color.Red);
                         }
-                        
+
                         // Sub-progress: current partition extraction complete
                         UpdateSubProgressBar(100);
                     }
@@ -3390,7 +3388,7 @@ namespace LoveAlways.Fastboot.UI
                     {
                         Log($"Extraction failed: {name}", Color.Red);
                     }
-                    
+
                     // Sub-progress: current partition extraction complete
                     UpdateSubProgressBar(100);
                 }
@@ -3499,7 +3497,7 @@ namespace LoveAlways.Fastboot.UI
                             Log($"Failed to extract {partition.Name}, skipping flash", Color.Red);
                             continue;
                         }
-                        
+
                         // Sub-progress: extraction complete (50%)
                         UpdateSubProgressBar(50);
 
@@ -3507,12 +3505,12 @@ namespace LoveAlways.Fastboot.UI
                         Log($"Flashing {partition.Name}...", Color.Blue);
                         var flashStart = DateTime.Now;
                         var fileSize = new FileInfo(tempPath).Length;
-                        
+
                         if (await _service.FlashPartitionAsync(partition.Name, tempPath, false, _cts.Token))
                         {
                             success++;
                             Log($"Flash successful: {partition.Name}", Color.Green);
-                            
+
                             // Calculate and display speed
                             var elapsed = (DateTime.Now - flashStart).TotalSeconds;
                             if (elapsed > 0)
@@ -3525,7 +3523,7 @@ namespace LoveAlways.Fastboot.UI
                         {
                             Log($"Flash failed: {partition.Name}", Color.Red);
                         }
-                        
+
                         // Sub-progress: flash complete (100%)
                         UpdateSubProgressBar(100);
 
@@ -3639,7 +3637,7 @@ namespace LoveAlways.Fastboot.UI
                     UpdateProgressBar(overallPercent);
                     // Sub-progress: current partition operation progress
                     UpdateSubProgressBar(e.Percent);
-                    
+
                     // Display different speed according to phase
                     if (e.Phase == RemotePayloadService.StreamFlashPhase.Downloading)
                     {
@@ -3664,7 +3662,7 @@ namespace LoveAlways.Fastboot.UI
                         _cts.Token.ThrowIfCancellationRequested();
 
                         var partition = selectedPartitions[i];
-                        
+
                         UpdateLabelSafe(_operationLabel, $"Operation: Downloading+Flashing {partition.Name} ({i + 1}/{total})");
 
                         // Use stream flash
@@ -3676,12 +3674,12 @@ namespace LoveAlways.Fastboot.UI
                                 var flashStartTime = DateTime.Now;
                                 var fileInfo = new FileInfo(tempPath);
                                 long fileSize = fileInfo.Length;
-                                
+
                                 bool flashSuccess = await _service.FlashPartitionAsync(
                                     partition.Name, tempPath, false, _cts.Token);
-                                
+
                                 var flashElapsed = (DateTime.Now - flashStartTime).TotalSeconds;
-                                
+
                                 return (flashSuccess, fileSize, flashElapsed);
                             },
                             _cts.Token
@@ -3760,22 +3758,22 @@ namespace LoveAlways.Fastboot.UI
         {
             /// <summary>Whether to enable AB dual-slot flash mode (flash both A/B slots simultaneously)</summary>
             public bool ABFlashMode { get; set; } = false;
-            
+
             /// <summary>Whether to enable Power Flash mode (extra processing for Super partition)</summary>
             public bool PowerFlashMode { get; set; } = false;
-            
+
             /// <summary>Whether to enable Pure FBD mode (flash everything under FastbootD)</summary>
             public bool PureFBDMode { get; set; } = false;
-            
+
             /// <summary>Whether to clear user data</summary>
             public bool ClearData { get; set; } = false;
-            
+
             /// <summary>Whether to erase FRP (Google Lock)</summary>
             public bool EraseFrp { get; set; } = true;
-            
+
             /// <summary>Whether to auto reboot</summary>
             public bool AutoReboot { get; set; } = false;
-            
+
             /// <summary>Target slot (used in AB mode, 'a' or 'b')</summary>
             public string TargetSlot { get; set; } = "a";
         }
@@ -3790,14 +3788,14 @@ namespace LoveAlways.Fastboot.UI
             public long FileSize { get; set; }
             public bool IsLogical { get; set; }
             public bool IsModem { get; set; }
-            
+
             /// <summary>Whether it comes from Payload.bin (extract needed first)</summary>
             public bool IsPayloadPartition { get; set; }
             /// <summary>Payload partition info (for extraction)</summary>
             public PayloadPartition PayloadInfo { get; set; }
             /// <summary>Remote Payload partition info</summary>
             public RemotePayloadPartition RemotePayloadInfo { get; set; }
-            
+
             public string FileSizeFormatted
             {
                 get
@@ -3884,7 +3882,7 @@ namespace LoveAlways.Fastboot.UI
                         Log("Device failed to reconnect within 60 seconds", Color.Red);
                         return false;
                     }
-                                        Log("FastbootD device connected", Color.Green);
+                    Log("FastbootD device connected", Color.Green);
                 }
 
                 // Step 3: Delete COW snapshot partitions
@@ -3945,7 +3943,7 @@ namespace LoveAlways.Fastboot.UI
                     }
                 }
 
-                int totalPartitions = options.ABFlashMode 
+                int totalPartitions = options.ABFlashMode
                     ? fbdPartitions.Sum(p => p.IsLogical ? 1 : 2) + modemPartitions.Count * 2
                     : sortedPartitions.Count;
                 int currentPartitionIndex = 0;
@@ -4174,7 +4172,7 @@ namespace LoveAlways.Fastboot.UI
                     // Detect device platform: Qualcomm (abl) vs MediaTek (lk)
                     var devicePlatform = await _service.GetDevicePlatformAsync(ct);
                     bool isQualcommDevice = devicePlatform == FastbootService.DevicePlatform.Qualcomm;
-                    
+
                     if (isQualcommDevice)
                     {
                         Log("Wiping user data...", Color.Blue);
@@ -4251,10 +4249,10 @@ namespace LoveAlways.Fastboot.UI
             for (int i = 0; i < attempts; i++)
             {
                 await Task.Delay(5000, ct);
-                
+
                 // Refresh device list
                 await RefreshDeviceListAsync();
-                
+
                 if (_cachedDevices != null && _cachedDevices.Count > 0)
                 {
                     // Attempt to automatically connect to the first device
@@ -4265,13 +4263,13 @@ namespace LoveAlways.Fastboot.UI
                         _logDetail
                     );
                     _service.FlashProgressChanged += OnFlashProgressChanged;
-                    
+
                     if (await _service.SelectDeviceAsync(device.Serial, ct))
                     {
                         return true;
                     }
                 }
-                
+
                 Log($"Waiting for device... ({(i + 1) * 5}/{timeoutSeconds}s)", null);
             }
             return false;

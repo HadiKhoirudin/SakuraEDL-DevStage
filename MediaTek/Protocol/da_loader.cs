@@ -6,16 +6,16 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
 using DaEntry = LoveAlways.MediaTek.Models.DaEntry;
 
 namespace LoveAlways.MediaTek.Protocol
@@ -32,7 +32,7 @@ namespace LoveAlways.MediaTek.Protocol
         // DA file header magic numbers
         private const uint DA_MAGIC = 0x4D4D4D4D;  // "MMMM"
         private const uint DA_MAGIC_V6 = 0x68766561;  // "hvea" (XML DA)
-        
+
         // DA1/DA2 default signature lengths
         private const int DEFAULT_SIG_LEN = 0x100;
         private const int V6_SIG_LEN = 0x30;
@@ -51,6 +51,7 @@ namespace LoveAlways.MediaTek.Protocol
         /// </summary>
         public (DaEntry da1, DaEntry da2)? ParseDaFile(string filePath, ushort hwCode)
         {
+            Debug.WriteLine("Parsing DA File ...");
             if (!File.Exists(filePath))
             {
                 _log($"[DA] DA file does not exist: {filePath}");
@@ -76,7 +77,7 @@ namespace LoveAlways.MediaTek.Protocol
             {
                 // Check DA file format
                 uint magic = BitConverter.ToUInt32(data, 0);
-                
+
                 if (magic == DA_MAGIC_V6)
                 {
                     return ParseDaV6(data, hwCode);
@@ -116,19 +117,19 @@ namespace LoveAlways.MediaTek.Protocol
             for (int i = 0; i < entryCount; i++)
             {
                 int entryOffset = tableOffset + (i * 0x40);  // 64 bytes per entry
-                
+
                 if (entryOffset + 0x40 > data.Length)
                     break;
 
                 ushort entryHwCode = BitConverter.ToUInt16(data, entryOffset);
-                
+
                 if (entryHwCode == hwCode)
                 {
                     // Found matching entry
                     uint da1Offset = BitConverter.ToUInt32(data, entryOffset + 0x10);
                     uint da1Size = BitConverter.ToUInt32(data, entryOffset + 0x14);
                     uint da1LoadAddr = BitConverter.ToUInt32(data, entryOffset + 0x18);
-                    
+
                     uint da2Offset = BitConverter.ToUInt32(data, entryOffset + 0x20);
                     uint da2Size = BitConverter.ToUInt32(data, entryOffset + 0x24);
                     uint da2LoadAddr = BitConverter.ToUInt32(data, entryOffset + 0x28);
@@ -189,7 +190,7 @@ namespace LoveAlways.MediaTek.Protocol
 
             // Legacy DA files are usually a single DA
             // Needs parsing based on specific format
-            
+
             var da1 = new DaEntry
             {
                 Name = "DA1",
@@ -230,7 +231,7 @@ namespace LoveAlways.MediaTek.Protocol
             // Check upload status
             ushort uploadStatus = _brom.LastUploadStatus;
             _log($"[DA] DA upload status: 0x{uploadStatus:X4}");
-            
+
             // Wait for device to process DA
             _log("[DA] Waiting for device to process DA...");
             await System.Threading.Tasks.Task.Delay(200, ct);
@@ -244,10 +245,10 @@ namespace LoveAlways.MediaTek.Protocol
                 _log("[DA] ⚠ Device has DAA (Download Agent Authentication) enabled");
                 _log("[DA] ⚠ Requires officially signed DA or vulnerability bypass");
                 _log("[DA] Attempting to wait for USB re-enumeration...");
-                
+
                 // Wait for device to process
                 await System.Threading.Tasks.Task.Delay(1500, ct);
-                
+
                 // Return success to let upper layer handle USB re-enumeration
                 return true;
             }
@@ -263,11 +264,11 @@ namespace LoveAlways.MediaTek.Protocol
                 _log($"[DA] JUMP_DA exception: {ex.Message}");
                 _log("[DA] ⚠ Port disconnected - DA may have started execution and re-enumerated USB");
                 _log("[DA] ⚠ Please wait for device to reappear and reconnect");
-                
+
                 // Return special status to let upper layer handle reconnection
                 return true;  // Temporarily return success as DA might indeed be running
             }
-            
+
             if (!success)
             {
                 // JUMP_DA failed, check port status
@@ -277,11 +278,11 @@ namespace LoveAlways.MediaTek.Protocol
                     _log("[DA] ⚠ Device should reappear with a new COM port");
                     return true;  // DA may be running
                 }
-                
+
                 // Try to detect DA ready signal
                 _log("[DA] JUMP_DA failed, checking if DA has started...");
                 await System.Threading.Tasks.Task.Delay(500, ct);
-                
+
                 try
                 {
                     bool daReady = await _brom.TryDetectDaReadyAsync(ct);
@@ -296,7 +297,7 @@ namespace LoveAlways.MediaTek.Protocol
                     _log("[DA] Port status changed, DA may be re-enumerating USB");
                     return true;
                 }
-                
+
                 _log("[DA] DA1 jump execution failed");
                 return false;
             }
@@ -426,7 +427,7 @@ namespace LoveAlways.MediaTek.Protocol
             // Search for security check instruction patterns
             // ARM: MOV R0, #0 (0x00 0x00 0xA0 0xE3)
             // Thumb: MOVS R0, #0 (0x00 0x20)
-            
+
             byte[] armPattern = { 0x00, 0x00, 0xA0, 0xE3 };  // MOV R0, #0
             byte[] thumbPattern = { 0x00, 0x20 };  // MOVS R0, #0
 

@@ -1,10 +1,8 @@
+using LoveAlways.Spreadtrum.Resources;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using LoveAlways.Spreadtrum.Resources;
 
 namespace LoveAlways
 {
@@ -215,7 +213,7 @@ namespace LoveAlways
 
                 Console.WriteLine($"Total {entries.Length} devices");
                 Console.WriteLine();
-                Console.WriteLine("{0,-12} {1,-20} {2,-12} {3,-12} {4,-12}", 
+                Console.WriteLine("{0,-12} {1,-20} {2,-12} {3,-12} {4,-12}",
                     "Chip", "Model", "Brand", "FDL1 Addr", "FDL2 Addr");
                 Console.WriteLine(new string('-', 70));
 

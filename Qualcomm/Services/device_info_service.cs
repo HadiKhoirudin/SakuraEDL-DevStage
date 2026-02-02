@@ -3,21 +3,19 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Qualcomm.Common;
+using LoveAlways.Qualcomm.Database;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Database;
-using LoveAlways.Qualcomm.Models;
 
 namespace LoveAlways.Qualcomm.Services
 {
@@ -272,7 +270,7 @@ namespace LoveAlways.Qualcomm.Services
                 foreach (var line in lines)
                 {
                     if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
-                    
+
                     // Format is usually: start_block block_count
                     var parts = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                     if (parts.Length >= 2)
@@ -358,7 +356,7 @@ namespace LoveAlways.Qualcomm.Services
 
             // Include namespaces required for regular expressions
             // Note: Regex is in System.Text.RegularExpressions
-            
+
             // If content contains many non-printable characters, it might be raw partition data
             // We need to extract valid lines (Enhanced regex)
             string[] lines;
@@ -368,11 +366,11 @@ namespace LoveAlways.Qualcomm.Services
                 // 1. Match standard ro. properties
                 var matches = System.Text.RegularExpressions.Regex.Matches(content, @"(ro|display|persist)\.[a-zA-Z0-9._-]+=[^\r\n\x00\s]+");
                 foreach (System.Text.RegularExpressions.Match m in matches) list.Add(m.Value);
-                
+
                 // 2. Match properties specific to OPLUS/Lenovo/Xiaomi/ZTE
                 var oplusMatches = System.Text.RegularExpressions.Regex.Matches(content, @"(separate\.soft|region|date\.utc|ro\.build\.oplus_nv_id|display\.id\.show|ro\.lenovo\.series|ro\.lenovo\.cpuinfo|ro\.system_ext\.build\.version\.incremental|ro\.zui\.version|ro\.miui\.ui\.version\.name|ro\.miui\.ui\.version\.code|ro\.miui\.region|ro\.build\.MiFavor_version|ro\.build\.display\.id)=[^\r\n\x00\s]+");
                 foreach (System.Text.RegularExpressions.Match m in oplusMatches) list.Add(m.Value);
-                
+
                 lines = list.ToArray();
             }
             else
@@ -410,7 +408,7 @@ namespace LoveAlways.Qualcomm.Services
                         if (string.IsNullOrEmpty(info.Brand) || value != "oplus")
                             info.Brand = value;
                         break;
-                    
+
                     // OPLUS Market Name (Highest priority)
                     case "ro.vendor.oplus.market.name":
                         // This is the most accurate market name, e.g., "OnePlus 12"
@@ -462,7 +460,7 @@ namespace LoveAlways.Qualcomm.Services
                         if (string.IsNullOrEmpty(info.OtaVersion))
                             info.OtaVersion = value;
                         break;
-                    
+
                     // Full incremental version number (Xiaomi: V14.0.8.0.TNJCNXM, General: eng.xxx.20240101)
                     case "ro.build.version.incremental":
                     case "ro.system.build.version.incremental":
@@ -470,7 +468,7 @@ namespace LoveAlways.Qualcomm.Services
                         // Always save Incremental
                         if (string.IsNullOrEmpty(info.Incremental))
                             info.Incremental = value;
-                        
+
                         // Xiaomi device full version number, e.g., "V14.0.8.0.TNJCNXM" or "OS1.0.x.x"
                         if (!string.IsNullOrEmpty(value))
                         {
@@ -527,11 +525,11 @@ namespace LoveAlways.Qualcomm.Services
                         // Always save DisplayId
                         if (string.IsNullOrEmpty(info.DisplayId) && key == "ro.build.display.id")
                             info.DisplayId = value;
-                        
+
                         // If ro.build.display.id.show is already set (contains parentheses), skip OtaVersion setting
                         if (!string.IsNullOrEmpty(info.OtaVersion) && info.OtaVersion.Contains("("))
                             break;
-                        
+
                         // Lenovo ZUIOS handling: TB321FU_CN_OPEN_USER_Q00011.0_V_ZUI_17.0.10.308_ST_251030
                         if (value.Contains("ZUI") || value.Contains("ZUXOS"))
                         {
@@ -563,7 +561,7 @@ namespace LoveAlways.Qualcomm.Services
                                 info.OtaVersion = value;
                         }
                         break;
-                    
+
                     // OPLUS device specific properties
                     case "ro.vendor.oplus.ota.version":
                     case "ro.oem.version":
@@ -591,24 +589,24 @@ namespace LoveAlways.Qualcomm.Services
                             }
                         }
                         break;
-                    
+
                     case "ro.build.oplus_nv_id":
                         info.OplusNvId = value;
                         break;
-                    
+
                     // OPLUS Project ID (multiple sources, in order of priority)
                     case "ro.oplus.image.my_product.type":
                         // Most accurate Project ID source (e.g., 22825)
                         info.OplusProject = value;
                         break;
-                    
+
                     case "ro.separate.soft":
                     case "ro.product.supported_versions":
                         // Fallback Project ID source
                         if (string.IsNullOrEmpty(info.OplusProject))
                             info.OplusProject = value;
                         break;
-                    
+
                     // OPLUS ROM Version
                     case "ro.build.version.oplusrom":
                     case "ro.build.version.oplusrom.display":
@@ -616,14 +614,14 @@ namespace LoveAlways.Qualcomm.Services
                         if (!info.AllProperties.ContainsKey("oplus_rom_version"))
                             info.AllProperties["oplus_rom_version"] = value;
                         break;
-                    
+
                     // OPLUS Region
                     case "ro.oplus.image.my_region.type":
                     case "ro.oplus.pipeline_key":
                         if (!info.AllProperties.ContainsKey("oplus_region"))
                             info.AllProperties["oplus_region"] = value;
                         break;
-                    
+
                     case "ro.lenovo.cpuinfo":
                         info.OplusCpuInfo = value; // Borrow OplusCpuInfo to store CPU info
                         break;
@@ -646,21 +644,21 @@ namespace LoveAlways.Qualcomm.Services
                         if (string.IsNullOrEmpty(info.AndroidVersion))
                             info.AndroidVersion = value;
                         break;
-                    
+
                     case "ro.build.version.sdk":
                     case "ro.vendor.build.version.sdk":
                     case "ro.system.build.version.sdk":
                         if (string.IsNullOrEmpty(info.SdkVersion))
                             info.SdkVersion = value;
                         break;
-                    
+
                     case "ro.build.version.security_patch":
                     case "ro.vendor.build.version.security_patch":
                     case "ro.system.build.version.security_patch":
                         if (string.IsNullOrEmpty(info.SecurityPatch))
                             info.SecurityPatch = value;
                         break;
-                    
+
                     case "ro.product.device":
                     case "ro.product.vendor.device":
                     case "ro.product.odm.device":
@@ -670,30 +668,30 @@ namespace LoveAlways.Qualcomm.Services
                         if (string.IsNullOrEmpty(info.Codename))
                             info.Codename = value;
                         // Also set Device field as a fallback                        if (string.IsNullOrEmpty(info.Device))
-                            info.Device = value;
+                        info.Device = value;
                         break;
-                    
+
                     case "ro.build.id":
                         info.BuildId = value;
                         break;
-                    
+
                     case "ro.build.fingerprint":
                     case "ro.system.build.fingerprint":
                     case "ro.vendor.build.fingerprint":
                         if (string.IsNullOrEmpty(info.Fingerprint))
                             info.Fingerprint = value;
                         break;
-                    
+
                     case "ro.product.name":
                     case "ro.product.vendor.name":
                         if (string.IsNullOrEmpty(info.DeviceName))
                             info.DeviceName = value;
                         // If no Codename, product.name is usually the device codename too                        if (string.IsNullOrEmpty(info.Codename) && !value.Contains(" "))
-                            info.Codename = value;
+                        info.Codename = value;
                         break;
                 }
             }
-            
+
             // If still no Codename, try extracting from Fingerprint
             // Fingerprint format: Brand/device/device:version/... e.g. Xiaomi/polaris/polaris:10/...            if (string.IsNullOrEmpty(info.Codename) && !string.IsNullOrEmpty(info.Fingerprint))
             {
@@ -748,7 +746,7 @@ namespace LoveAlways.Qualcomm.Services
 
                 uint metadataMaxSize = BitConverter.ToUInt32(geometryData, 40);
                 uint metadataSlotCount = BitConverter.ToUInt32(geometryData, 44);
-                
+
                 // 2. Attempt to find active Metadata Header
                 // Possible offsets: 8192 (Slot0, 512B sector), 12288 (Slot0, 4KB sector), 4096 (Early)
                 long[] possibleOffsets = { 8192, 12288, 4096, 16384 };
@@ -779,10 +777,10 @@ namespace LoveAlways.Qualcomm.Services
                 uint headerSize = BitConverter.ToUInt32(metadataData, 8);
                 uint tablesSize = BitConverter.ToUInt32(metadataData, 24);
                 int totalToRead = (int)(headerSize + tablesSize);
-                
-                _logDetail(string.Format("[LP] Header Offset={0}, headerSize={1}, tablesSize={2}, Need to read={3} bytes", 
+
+                _logDetail(string.Format("[LP] Header Offset={0}, headerSize={1}, tablesSize={2}, Need to read={3} bytes",
                     finalOffset, headerSize, tablesSize, totalToRead));
-                
+
                 if (totalToRead > metadataData.Length)
                 {
                     // Limit single read size to prevent timeout                    if (totalToRead > 1024 * 1024)
@@ -790,7 +788,7 @@ namespace LoveAlways.Qualcomm.Services
                         _log(string.Format("LP Metadata too large ({0} bytes), limited to 1MB", totalToRead));
                         totalToRead = 1024 * 1024;
                     }
-                    
+
                     metadataData = readFromDevice(finalOffset, totalToRead);
                     if (metadataData == null)
                     {
@@ -848,7 +846,7 @@ namespace LoveAlways.Qualcomm.Services
                     if (numExtents > 0 && firstExtent < extents.Count)
                     {
                         var ext = extents[(int)firstExtent];
-                        
+
                         // [Precise calculation logic]
                         // targetData is the offset within LP based on 512 bytes
                         // We need to convert it to the absolute sector of the physical disk
@@ -866,7 +864,7 @@ namespace LoveAlways.Qualcomm.Services
                         };
 
                         partitions.Add(lp);
-                        _logDetail(string.Format("Logical Partition [{0}]: Physical Sector={1}, Size={2}MB", 
+                        _logDetail(string.Format("Logical Partition [{0}]: Physical Sector={1}, Size={2}MB",
                             lp.Name, lp.AbsoluteSector, lp.Size / 1024 / 1024));
                     }
                 }
@@ -885,7 +883,7 @@ namespace LoveAlways.Qualcomm.Services
         /// </summary>
         public string DetectFileSystem(byte[] data)
         {
-            if (data == null || data.Length < 512) 
+            if (data == null || data.Length < 512)
             {
                 _log(string.Format("  Data too short: {0} bytes", data?.Length ?? 0));
                 return "unknown";
@@ -895,18 +893,18 @@ namespace LoveAlways.Qualcomm.Services
             string debugInfo = "";
             if (data.Length >= 4)
             {
-                debugInfo += string.Format("@0={0:X2}{1:X2}{2:X2}{3:X2}", 
+                debugInfo += string.Format("@0={0:X2}{1:X2}{2:X2}{3:X2}",
                     data[0], data[1], data[2], data[3]);
             }
             if (data.Length >= 1028)
             {
-                debugInfo += string.Format(" @1024={0:X2}{1:X2}{2:X2}{3:X2}", 
+                debugInfo += string.Format(" @1024={0:X2}{1:X2}{2:X2}{3:X2}",
                     data[1024], data[1025], data[1026], data[1027]);
             }
             if (data.Length >= 1082)
             {
                 // EXT4 magic position: 1024 + 56 = 1080
-                debugInfo += string.Format(" @1080={0:X2}{1:X2}", 
+                debugInfo += string.Format(" @1080={0:X2}{1:X2}",
                     data[1080], data[1081]);
             }
             _logDetail(string.Format("  Magic: {0}", debugInfo));
@@ -947,7 +945,7 @@ namespace LoveAlways.Qualcomm.Services
             if (data.Length >= 1024 + 58)
             {
                 ushort ext4Magic = BitConverter.ToUInt16(data, 1024 + 56);
-                if (ext4Magic == EXT4_MAGIC) 
+                if (ext4Magic == EXT4_MAGIC)
                 {
                     return "ext4";
                 }
@@ -995,7 +993,7 @@ namespace LoveAlways.Qualcomm.Services
                     _log("  → Partition data is empty");
                     return "empty";
                 }
-                
+
                 // Detect Xiaomi specific signature header (S72_, S27_ etc.)
                 // These signature headers indicate the partition has signature/AVB data, real filesystem follows
                 if (data.Length >= 4)
@@ -1029,8 +1027,8 @@ namespace LoveAlways.Qualcomm.Services
         /// <param name="vendorName">Device manufacturer name (Optional, for filtering partitions)</param>
         /// <returns>Parsed build.prop information</returns>
         public async Task<BuildPropInfo> ReadBuildPropFromDevice(
-            Func<string, long, int, Task<byte[]>> readPartition, 
-            string activeSlot = "", 
+            Func<string, long, int, Task<byte[]>> readPartition,
+            string activeSlot = "",
             bool hasSuper = true,
             long superStartSector = 0,
             int physicalSectorSize = 512,
@@ -1043,13 +1041,14 @@ namespace LoveAlways.Qualcomm.Services
                 if (hasSuper)
                 {
                     _log("Parsing build.prop from Super partition logical volumes...");
-                    
+
                     // Use Task.Run to execute sync operation on thread pool, avoiding UI thread deadlock
                     // Set 5 second timeout to prevent hanging
-                    var superReadTask = Task.Run(() => 
+                    var superReadTask = Task.Run(() =>
                     {
                         // Wrap delegate to match LP parser requirements (reading from super partition offset)
-                        DeviceReadDelegate readFromSuper = (offset, size) => {
+                        DeviceReadDelegate readFromSuper = (offset, size) =>
+                        {
                             try
                             {
                                 var task = readPartition("super", offset, size);
@@ -1068,7 +1067,7 @@ namespace LoveAlways.Qualcomm.Services
                         };
                         return ReadBuildPropFromSuper(readFromSuper, activeSlot, superStartSector, physicalSectorSize);
                     });
-                    
+
                     // Global timeout 30 seconds
                     var completedTask = await Task.WhenAny(superReadTask, Task.Delay(30000)).ConfigureAwait(false);
                     if (completedTask == superReadTask)
@@ -1084,9 +1083,9 @@ namespace LoveAlways.Qualcomm.Services
 
                 // If basic info already obtained from Super, only scan enhanced partitions
                 // If Super read failed, scan all physical partitions
-                bool hasBasicInfo = finalInfo != null && 
+                bool hasBasicInfo = finalInfo != null &&
                     (!string.IsNullOrEmpty(finalInfo.Model) || !string.IsNullOrEmpty(finalInfo.MarketName));
-                
+
                 if (hasBasicInfo)
                 {
                     _log("Basic info obtained from Super, skipping physical partition scan");
@@ -1095,12 +1094,12 @@ namespace LoveAlways.Qualcomm.Services
 
                 _log("Scanning physical partitions to extract build.prop...");
                 var searchPartitions = new List<string>();
-                
+
                 // Filter invalid slot values
                 string normalizedSlot = activeSlot;
-                if (string.IsNullOrEmpty(normalizedSlot) || 
-                    normalizedSlot == "undefined" || 
-                    normalizedSlot == "unknown" || 
+                if (string.IsNullOrEmpty(normalizedSlot) ||
+                    normalizedSlot == "undefined" ||
+                    normalizedSlot == "unknown" ||
                     normalizedSlot == "nonexistent")
                 {
                     normalizedSlot = "";
@@ -1118,7 +1117,7 @@ namespace LoveAlways.Qualcomm.Services
                     searchPartitions.Add("system");
                     searchPartitions.Add("vendor");
                 }
-                
+
                 // Other standalone physical partitions
                 if (!string.IsNullOrEmpty(slotSuffix))
                 {
@@ -1127,7 +1126,7 @@ namespace LoveAlways.Qualcomm.Services
                 searchPartitions.Add("my_manifest");
                 searchPartitions.Add("cust");
                 searchPartitions.Add("lenovocust");
-                
+
                 // If it's an old device without super, try more partitions
                 if (!hasSuper)
                 {
@@ -1142,7 +1141,7 @@ namespace LoveAlways.Qualcomm.Services
                         searchPartitions.Add("odm" + slotSuffix);
                     searchPartitions.Add("odm");
                 }
-                
+
                 _log(string.Format("  Will scan {0} partitions", searchPartitions.Count));
 
                 foreach (var partName in searchPartitions)
@@ -1152,7 +1151,7 @@ namespace LoveAlways.Qualcomm.Services
                     {
                         if (finalInfo == null) finalInfo = info;
                         else MergeProperties(finalInfo, info);
-                        
+
                         // If core model already obtained, end early
                         if (!string.IsNullOrEmpty(finalInfo.MarketName) || !string.IsNullOrEmpty(finalInfo.Model))
                             break;
@@ -1181,19 +1180,19 @@ namespace LoveAlways.Qualcomm.Services
 
                 // Filter invalid slot values
                 string normalizedSlot = activeSlot;
-                if (string.IsNullOrEmpty(normalizedSlot) || 
-                    normalizedSlot == "undefined" || 
-                    normalizedSlot == "unknown" || 
+                if (string.IsNullOrEmpty(normalizedSlot) ||
+                    normalizedSlot == "undefined" ||
+                    normalizedSlot == "unknown" ||
                     normalizedSlot == "nonexistent")
                 {
                     normalizedSlot = "";
                 }
                 string slotSuffix = string.IsNullOrEmpty(normalizedSlot) ? "" : "_" + normalizedSlot.ToLower().TrimStart('_');
-                
+
                 // 2. Priority sorting: Read from low to high, high priority overwrites low priority
                 // Order: System -> System_ext -> Product -> Vendor -> ODM -> My_manifest
                 var searchList = new List<string> { "system", "system_ext", "product", "vendor", "odm", "my_manifest" };
-                
+
                 foreach (var baseName in searchList)
                 {
                     // Try with and without slot suffix
@@ -1203,15 +1202,15 @@ namespace LoveAlways.Qualcomm.Services
                         var targetPartition = lpPartitions.FirstOrDefault(p => p.Name == name);
                         if (targetPartition == null) continue;
 
-                        _log(string.Format("Parsing build.prop from logical volume {0} (Physical sector: {1})...", 
+                        _log(string.Format("Parsing build.prop from logical volume {0} (Physical sector: {1})...",
                             targetPartition.Name, targetPartition.AbsoluteSector));
-                        
+
                         // Convert relative sector to byte offset in super (ParseLpMetadataFromDevice already calculated RelativeSector)
                         long byteOffsetInSuper = targetPartition.RelativeSector * 512;
-                        
+
                         // Try normal filesystem parsing
                         BuildPropInfo partInfo = null;
-                        
+
                         // Logic fix: Since fsType is not defined here, we probe partition header first
                         var headerData = readFromSuper(byteOffsetInSuper, 4096);
                         if (headerData != null && headerData.Length >= 4096)
@@ -1274,14 +1273,14 @@ namespace LoveAlways.Qualcomm.Services
             if (!string.IsNullOrEmpty(source.AndroidVersion)) target.AndroidVersion = source.AndroidVersion;
             if (!string.IsNullOrEmpty(source.SdkVersion)) target.SdkVersion = source.SdkVersion;
             if (!string.IsNullOrEmpty(source.SecurityPatch)) target.SecurityPatch = source.SecurityPatch;
-            
+
             // 3. OTA version precise merge
             if (!string.IsNullOrEmpty(source.DisplayId)) target.DisplayId = source.DisplayId;
             if (!string.IsNullOrEmpty(source.OtaVersion)) target.OtaVersion = source.OtaVersion;
             if (!string.IsNullOrEmpty(source.OtaVersionFull)) target.OtaVersionFull = source.OtaVersionFull;
             if (!string.IsNullOrEmpty(source.BuildDate)) target.BuildDate = source.BuildDate;
             if (!string.IsNullOrEmpty(source.BuildUtc)) target.BuildUtc = source.BuildUtc;
-            
+
             // 4. Manufacturer specific properties
             if (!string.IsNullOrEmpty(source.OplusProject)) target.OplusProject = source.OplusProject;
             if (!string.IsNullOrEmpty(source.OplusNvId)) target.OplusNvId = source.OplusNvId;
@@ -1304,10 +1303,10 @@ namespace LoveAlways.Qualcomm.Services
             {
                 _log(string.Format("尝试从物理分区 {0} 读取...", partitionName));
                 _log(string.Format("Attempting to read from physical partition {0}...", partitionName));
-                
+
                 // Read header to detect filesystem (with timeout protection)
                 byte[] header = await readPartition(partitionName, 0, 4096);
-                if (header == null) 
+                if (header == null)
                 {
                     _log(string.Format("  → {0}: Cannot read header data", partitionName));
                     return null;
@@ -1315,7 +1314,7 @@ namespace LoveAlways.Qualcomm.Services
 
                 string fsType = DetectFileSystem(header);
                 long fsBaseOffset = 0;  // Actual start offset of the filesystem
-                
+
                 // If sparse format detected, try skipping sparse header and re-detecting
                 if (fsType == "sparse")
                 {
@@ -1331,14 +1330,14 @@ namespace LoveAlways.Qualcomm.Services
                         }
                     }
                 }
-                
+
                 // erofs_raw indicates EROFS magic at offset 0, need to adjust read offset
                 if (fsType == "erofs_raw")
                 {
                     fsType = "erofs";
                     _logDetail(string.Format("  → {0}: Unbounded EROFS filesystem detected", partitionName));
                 }
-                
+
                 // If empty, unknown or signed detected, try searching for filesystem at different offsets
                 // Some devices have signature/AVB data at the partition header, real filesystem follows
                 if (fsType == "unknown" || fsType == "empty" || fsType == "signed")
@@ -1354,7 +1353,7 @@ namespace LoveAlways.Qualcomm.Services
                             string fsAtOffset = DetectFileSystem(dataAtOffset);
                             if (fsAtOffset != "unknown" && fsAtOffset != "empty" && fsAtOffset != "sparse")
                             {
-                                _logDetail(string.Format("  → {0}: Detected {2} filesystem at offset 0x{1:X}", 
+                                _logDetail(string.Format("  → {0}: Detected {2} filesystem at offset 0x{1:X}",
                                     partitionName, offset, fsAtOffset.ToUpper()));
                                 fsType = fsAtOffset;
                                 fsBaseOffset = offset;  // Record the actual offset of the filesystem
@@ -1363,11 +1362,11 @@ namespace LoveAlways.Qualcomm.Services
                         }
                     }
                 }
-                
-                if (fsType == "unknown" || fsType == "sparse" || fsType == "empty" || fsType == "signed") 
+
+                if (fsType == "unknown" || fsType == "sparse" || fsType == "empty" || fsType == "signed")
                 {
                     _log(string.Format("  → {0}: Unrecognized filesystem format, attempting brute force scan...", partitionName));
-                    
+
                     // Brute force scan: Directly search for build.prop properties in partition data
                     var bruteForceResult = await BruteForceScanPartition(partitionName, readPartition);
                     if (bruteForceResult != null)
@@ -1377,20 +1376,21 @@ namespace LoveAlways.Qualcomm.Services
                     }
                     return null;
                 }
-                
-                _logDetail(string.Format("  → {0}: Detected {1} filesystem (Offset=0x{2:X}), parsing...", 
+
+                _logDetail(string.Format("  → {0}: Detected {1} filesystem (Offset=0x{2:X}), parsing...",
                     partitionName, fsType.ToUpper(), fsBaseOffset));
 
                 var lpInfo = new LpPartitionInfo { Name = partitionName, RelativeSector = 0, FileSystem = fsType };
-                
+
                 // Use Task.Run to avoid sync Wait() leading to UI thread deadlock
                 // Set 15 second timeout
                 // Critical fix: Use fsBaseOffset to adjust read offset
                 long capturedBaseOffset = fsBaseOffset;  // Capture offset for closure
                 string capturedPartName = partitionName;  // Capture partition name
-                var parseTask = Task.Run(() => 
+                var parseTask = Task.Run(() =>
                 {
-                    DeviceReadDelegate readDelegate = (offset, size) => {
+                    DeviceReadDelegate readDelegate = (offset, size) =>
+                    {
                         // Add retry mechanism to improve I/O stability
                         for (int retry = 0; retry < 3; retry++)
                         {
@@ -1437,11 +1437,11 @@ namespace LoveAlways.Qualcomm.Services
                 var completedTask = await Task.WhenAny(parseTask, Task.Delay(timeoutMs)).ConfigureAwait(false);
                 if (completedTask == parseTask)
                     return await parseTask.ConfigureAwait(false);
-                
+
                 _log(string.Format("Partition {0} parse timeout ({1}s)", partitionName, timeoutMs / 1000));
             }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 _logDetail($"Parse partition build.prop exception: {ex.Message}");
             }
             return null;
@@ -1458,18 +1458,18 @@ namespace LoveAlways.Qualcomm.Services
                 // Partition might be large, only scan first 16MB
                 const int maxScanSize = 16 * 1024 * 1024;
                 const int chunkSize = 512 * 1024;  // Read 512KB each time
-                
+
                 var foundProps = new List<string>();
-                
+
                 for (long offset = 0; offset < maxScanSize; offset += chunkSize)
                 {
                     byte[] chunk = await readPartition(partitionName, offset, chunkSize);
                     if (chunk == null || chunk.Length == 0)
                         break;
-                    
+
                     // Convert to string and search for properties
                     string content = Encoding.UTF8.GetString(chunk);
-                    
+
                     // Search for common build.prop properties
                     var patterns = new[] {
                         @"ro\.product\.model=[^\r\n\x00]+",
@@ -1484,7 +1484,7 @@ namespace LoveAlways.Qualcomm.Services
                         @"ro\.miui\.ui\.version\.[^\r\n\x00]+",
                         @"ro\.build\.MiFavor_version=[^\r\n\x00]+"
                     };
-                    
+
                     foreach (var pattern in patterns)
                     {
                         var matches = System.Text.RegularExpressions.Regex.Matches(content, pattern);
@@ -1494,11 +1494,11 @@ namespace LoveAlways.Qualcomm.Services
                                 foundProps.Add(m.Value);
                         }
                     }
-                    
+
                     // If enough properties found, end early                    if (foundProps.Count >= 5)
-                        break;
+                    break;
                 }
-                
+
                 if (foundProps.Count > 0)
                 {
                     _log(string.Format("    Brute force scan found {0} properties", foundProps.Count));
@@ -1549,7 +1549,7 @@ namespace LoveAlways.Qualcomm.Services
                 uint metaBlkAddr = BitConverter.ToUInt32(sbData, 0x28);
                 uint blockSize = 1u << blkSzBits;
 
-                _logDetail(string.Format("EROFS: BlockSize={0}, RootNid={1}, MetaBlkAddr={2}", 
+                _logDetail(string.Format("EROFS: BlockSize={0}, RootNid={1}, MetaBlkAddr={2}",
                     blockSize, rootNid, metaBlkAddr));
 
                 // Read root directory inode
@@ -1616,7 +1616,7 @@ namespace LoveAlways.Qualcomm.Services
                 // Parse directory entries and find build.prop or etc directory
                 var entries = ParseErofsDirectoryEntries(dirData, dirSize);
                 _log(string.Format("  EROFS root directory contains {0} entries", entries.Count));
-                
+
                 // Print first few entries for debugging
                 int debugCount = 0;
                 foreach (var entry in entries)
@@ -1672,7 +1672,7 @@ namespace LoveAlways.Qualcomm.Services
         /// Read EROFS compressed data (FLAT_COMPR/FLAT_COMPR_LEGACY)
         /// Supports LZ4 and LZMA compression
         /// </summary>
-        private byte[] ReadErofsCompressedData(DeviceReadDelegate read, byte[] inodeData, bool isExtended, 
+        private byte[] ReadErofsCompressedData(DeviceReadDelegate read, byte[] inodeData, bool isExtended,
             uint rawBlkAddr, uint blockSize, long uncompressedSize, uint metaBlkAddr)
         {
             try
@@ -1681,13 +1681,13 @@ namespace LoveAlways.Qualcomm.Services
                 // - Compressed data stored in consecutive blocks
                 // - Each compressed block has a cluster header describing compression info
                 // - Uses Z_EROFS_COMPR_HEAD_SIZE = 4 bytes header
-                
+
                 long dataOffset = (long)rawBlkAddr * blockSize;
-                
+
                 // Read enough data (compressed is usually smaller, but we read original size)
                 int readSize = (int)Math.Min(uncompressedSize * 2, blockSize * 4);
                 byte[] compressedData = read(dataOffset, readSize);
-                
+
                 if (compressedData == null || compressedData.Length == 0)
                 {
                     _logDetail("Cannot read compressed data");
@@ -1755,11 +1755,11 @@ namespace LoveAlways.Qualcomm.Services
             try
             {
                 long dataOffset = (long)rawBlkAddr * blockSize;
-                
+
                 // Read compressed data (build.prop is usually small, even smaller after compression)
                 int readSize = (int)Math.Min(uncompressedSize * 2, blockSize * 4);
                 byte[] compressedData = read(dataOffset, readSize);
-                
+
                 if (compressedData == null || compressedData.Length == 0)
                     return null;
 
@@ -1811,7 +1811,7 @@ namespace LoveAlways.Qualcomm.Services
             // build.prop should contain a large amount of printable ASCII characters
             int printableCount = 0;
             int checkLen = Math.Min(data.Length, 256);
-            
+
             for (int i = 0; i < checkLen; i++)
             {
                 byte b = data[i];
@@ -1833,7 +1833,7 @@ namespace LoveAlways.Qualcomm.Services
 
             // EROFS directory format: First 8 bytes are nid, 8-9 bytes are nameoff
             ushort firstNameOff = BitConverter.ToUInt16(data, 8);
-            
+
             // nameoff should be a multiple of 12 and not 0
             if (firstNameOff == 0 || firstNameOff % 12 != 0 || firstNameOff > data.Length)
                 return false;
@@ -2658,7 +2658,7 @@ namespace LoveAlways.Qualcomm.Services
             }
             if (!string.IsNullOrEmpty(source.BuildDate)) target.BuiltDate = source.BuildDate;
             if (!string.IsNullOrEmpty(source.BuildUtc)) target.BuildTimestamp = source.BuildUtc;
-            
+
             if (!string.IsNullOrEmpty(source.BootSlot) && string.IsNullOrEmpty(target.CurrentSlot))
             {
                 target.CurrentSlot = source.BootSlot;

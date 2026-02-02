@@ -277,7 +277,7 @@ namespace LoveAlways.Qualcomm.Common
 
             var stream = File.OpenRead(filePath);
             var parser = Create(stream, log);
-            
+
             if (parser == null)
             {
                 stream.Dispose();
@@ -611,7 +611,7 @@ namespace LoveAlways.Qualcomm.Common
         private List<Tuple<string, uint, byte>> ReadExt4Directory(uint inodeNum)
         {
             var entries = new List<Tuple<string, uint, byte>>();
-            
+
             byte[] dirData = ReadExt4InodeData(inodeNum);
             if (dirData == null || dirData.Length < 12)
                 return entries;
@@ -779,7 +779,7 @@ namespace LoveAlways.Qualcomm.Common
         private List<Tuple<string, ulong, byte>> ReadErofsDirectory(ulong nid)
         {
             var entries = new List<Tuple<string, ulong, byte>>();
-            
+
             byte[] inode = ReadErofsInode(nid);
             if (inode == null || inode.Length < 32)
                 return entries;
@@ -794,7 +794,7 @@ namespace LoveAlways.Qualcomm.Common
 
             long dirSize = isExtended ? BitConverter.ToInt64(inode, 0x08) : BitConverter.ToUInt32(inode, 0x08);
             byte[] dirData = ReadErofsInodeData(nid, inode, (int)Math.Min(dirSize, _erofsBlockSize * 4));
-            
+
             if (dirData == null || dirData.Length < 12)
                 return entries;
 
@@ -904,27 +904,27 @@ namespace LoveAlways.Qualcomm.Common
 
                 // EROFS 压缩使用 cluster 概念
                 // 简化实现: 直接读取压缩数据块并尝试解压
-                
+
                 // 方法1: 如果 rawBlkAddr 有效，从该位置读取压缩数据
                 if (rawBlkAddr > 0 && rawBlkAddr != 0xFFFFFFFF)
                 {
                     long dataOffset = (long)rawBlkAddr * _erofsBlockSize;
-                    
+
                     // 读取足够的压缩数据 (通常压缩率约 30-50%)
                     int compressedReadSize = (int)Math.Min(fileSize, _erofsBlockSize * 4);
                     byte[] compressedData = _read(_baseOffset + dataOffset, compressedReadSize);
-                    
+
                     if (compressedData != null && compressedData.Length > 0)
                     {
                         // 尝试 LZ4 解压
                         byte[] decompressed = Lz4Decoder.DecompressErofsBlock(compressedData, (int)fileSize);
                         if (decompressed != null && decompressed.Length > 0)
                         {
-                            _log(string.Format("[EROFS] LZ4 解压成功: {0} -> {1} bytes", 
+                            _log(string.Format("[EROFS] LZ4 解压成功: {0} -> {1} bytes",
                                 compressedData.Length, decompressed.Length));
                             return decompressed;
                         }
-                        
+
                         // 如果 LZ4 解压失败，尝试直接返回数据 (可能是未压缩的)
                         if (compressedData.Length >= fileSize)
                         {
@@ -938,7 +938,7 @@ namespace LoveAlways.Qualcomm.Common
                 // 方法2: 读取压缩索引 (z_erofs_map_blocks 简化版)
                 long inodeOffset = (long)_erofsMetaBlkAddr * _erofsBlockSize + (long)nid * 32;
                 byte[] fullInode = _read(_baseOffset + inodeOffset, inlineDataOffset + 256);
-                
+
                 if (fullInode != null && fullInode.Length > inlineDataOffset)
                 {
                     // 检查内联压缩数据
@@ -947,7 +947,7 @@ namespace LoveAlways.Qualcomm.Common
                     {
                         byte[] inlineData = new byte[availableData];
                         Array.Copy(fullInode, inlineDataOffset, inlineData, 0, availableData);
-                        
+
                         // 尝试解压内联数据
                         byte[] decompressed = Lz4Decoder.DecompressErofsBlock(inlineData, (int)fileSize);
                         if (decompressed != null && decompressed.Length > 0)

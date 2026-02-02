@@ -4,22 +4,20 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using LoveAlways.Spreadtrum.Common;
-using LoveAlways.Spreadtrum.Database;
 using LoveAlways.Spreadtrum.Exploit;
 using LoveAlways.Spreadtrum.Protocol;
 using LoveAlways.Spreadtrum.Services;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LoveAlways.Spreadtrum.UI
 {
@@ -730,7 +728,7 @@ namespace LoveAlways.Spreadtrum.UI
                 SetChipId(chip.ChipId);
                 SetCustomFdl1(null, chip.Fdl1Address);
                 SetCustomFdl2(null, chip.Fdl2Address);
-                
+
                 string exploitInfo = chip.HasExploit ? $" (Has Exploit: {chip.ExploitId})" : "";
                 Log($"[Spreadtrum] Selected Chip: {chip.DisplayName}{exploitInfo}", Color.Cyan);
                 Log($"[Spreadtrum] FDL1 Addr: {chip.Fdl1AddressHex}, FDL2 Addr: {chip.Fdl2AddressHex}", Color.Gray);

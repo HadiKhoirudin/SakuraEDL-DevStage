@@ -4,7 +4,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -31,7 +31,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         private readonly SemaphoreSlim _portLock = new SemaphoreSlim(1, 1);  // Use SemaphoreSlim instead of lock
         private CancellationTokenSource _cts;
         private volatile bool _isDisposed = false;  // Flag whether it is disposed
-        
+
         // Port info (for reconnection)
         private string _portName;
         private int _baudRate = 115200;
@@ -79,7 +79,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         public string CustomFdl2Path { get; private set; }
         public uint CustomFdl1Address { get; private set; }
         public uint CustomFdl2Address { get; private set; }
-        
+
         // Custom execution address (used for signature verification bypass)
         public uint CustomExecAddress { get; private set; }
         public bool UseExecNoVerify { get; set; } = true;  // Enabled by default
@@ -94,17 +94,17 @@ namespace LoveAlways.Spreadtrum.Protocol
             {
                 string platform = SprdPlatform.GetPlatformName(chipId);
                 uint execAddr = SprdPlatform.GetExecAddress(chipId);
-                
+
                 // Set exec_addr automatically
                 if (CustomExecAddress == 0 && execAddr > 0)
                 {
                     CustomExecAddress = execAddr;
                 }
-                
+
                 Log("[FDL] Chip config: {0}", platform);
-                Log("[FDL]   FDL1: 0x{0:X8}, FDL2: 0x{1:X8}", 
+                Log("[FDL]   FDL1: 0x{0:X8}, FDL2: 0x{1:X8}",
                     SprdPlatform.GetFdl1Address(chipId), SprdPlatform.GetFdl2Address(chipId));
-                
+
                 if (execAddr > 0)
                 {
                     Log("[FDL]   exec_addr: 0x{0:X8} (signature bypass required)", execAddr);
@@ -140,10 +140,10 @@ namespace LoveAlways.Spreadtrum.Protocol
                 Log("[FDL] Set exec_addr: 0x{0:X8}", execAddr);
             }
         }
-        
+
         // Custom exec_no_verify file path
         public string CustomExecNoVerifyPath { get; set; }
-        
+
         /// <summary>
         /// Set exec_no_verify file path
         /// </summary>
@@ -155,7 +155,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 Log("[FDL] Set exec_no_verify file: {0}", System.IO.Path.GetFileName(filePath));
             }
         }
-        
+
         /// <summary>
         /// Find custom_exec_no_verify file
         /// Search order: specified path > FDL1 directory > application directory
@@ -163,26 +163,26 @@ namespace LoveAlways.Spreadtrum.Protocol
         private byte[] LoadExecNoVerifyPayload(uint execAddr)
         {
             string execFileName = string.Format("custom_exec_no_verify_{0:x}.bin", execAddr);
-            
+
             // 1. Use specified file
             if (!string.IsNullOrEmpty(CustomExecNoVerifyPath) && System.IO.File.Exists(CustomExecNoVerifyPath))
             {
                 Log("[FDL] Using specified exec_no_verify: {0}", System.IO.Path.GetFileName(CustomExecNoVerifyPath));
                 return System.IO.File.ReadAllBytes(CustomExecNoVerifyPath);
             }
-            
+
             // 2. Search in FDL1 directory (spd_dump format)
             if (!string.IsNullOrEmpty(CustomFdl1Path))
             {
                 string fdl1Dir = System.IO.Path.GetDirectoryName(CustomFdl1Path);
                 string execPath = System.IO.Path.Combine(fdl1Dir, execFileName);
-                
+
                 if (System.IO.File.Exists(execPath))
                 {
                     Log("[FDL] Found exec_no_verify: {0} (FDL directory)", execFileName);
                     return System.IO.File.ReadAllBytes(execPath);
                 }
-                
+
                 // Also search for simplified name
                 execPath = System.IO.Path.Combine(fdl1Dir, "exec_no_verify.bin");
                 if (System.IO.File.Exists(execPath))
@@ -191,17 +191,17 @@ namespace LoveAlways.Spreadtrum.Protocol
                     return System.IO.File.ReadAllBytes(execPath);
                 }
             }
-            
+
             // 3. Search in application directory
             string appDir = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             string appExecPath = System.IO.Path.Combine(appDir, execFileName);
-            
+
             if (System.IO.File.Exists(appExecPath))
             {
                 Log("[FDL] Found exec_no_verify: {0} (App directory)", execFileName);
                 return System.IO.File.ReadAllBytes(appExecPath);
             }
-            
+
             // Also search for simplified name
             appExecPath = System.IO.Path.Combine(appDir, "exec_no_verify.bin");
             if (System.IO.File.Exists(appExecPath))
@@ -209,13 +209,13 @@ namespace LoveAlways.Spreadtrum.Protocol
                 Log("[FDL] Found exec_no_verify.bin (App directory)");
                 return System.IO.File.ReadAllBytes(appExecPath);
             }
-            
+
             // 4. File not found
             Log("[FDL] exec_no_verify file not found, skipping signature bypass");
             Log("[FDL] Tips: Required {0}", execFileName);
             return null;
         }
-        
+
         /// <summary>
         /// Send custom_exec_no_verify payload
         /// Reference spd_dump: Send after fdl1 sent, before EXEC
@@ -223,22 +223,22 @@ namespace LoveAlways.Spreadtrum.Protocol
         private async Task<bool> SendExecNoVerifyPayloadAsync(uint execAddr)
         {
             if (execAddr == 0) return true;  // No need to send
-            
+
             // Load payload
             byte[] payload = LoadExecNoVerifyPayload(execAddr);
-            
+
             if (payload == null || payload.Length == 0)
             {
                 // exec_no_verify file not found, skip
                 return true;
             }
-            
+
             Log("[FDL] Sending custom_exec_no_verify to 0x{0:X8} ({1} bytes)...", execAddr, payload.Length);
-            
-                                                                                               // Note: spd_dump sends the second FDL continuously without re-CONNECT
+
+            // Note: spd_dump sends the second FDL continuously without re-CONNECT
             // Ensure BROM mode (CRC16)
             _hdlc.SetBromMode();
-            
+
             // Send START_DATA
             var startPayload = new byte[8];
             startPayload[0] = (byte)((execAddr >> 24) & 0xFF);
@@ -249,33 +249,33 @@ namespace LoveAlways.Spreadtrum.Protocol
             startPayload[5] = (byte)((payload.Length >> 16) & 0xFF);
             startPayload[6] = (byte)((payload.Length >> 8) & 0xFF);
             startPayload[7] = (byte)(payload.Length & 0xFF);
-            
+
             Log("[FDL] exec_no_verify START_DATA: addr=0x{0:X8}, size={1}", execAddr, payload.Length);
             var startFrame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_START_DATA, startPayload);
             await WriteFrameAsync(startFrame);
-            
+
             if (!await WaitAckAsync(5000))
             {
                 Log("[FDL] exec_no_verify START_DATA failed");
                 return false;
             }
             Log("[FDL] exec_no_verify START_DATA OK");
-            
+
             // Send data - exec_no_verify payload is usually small, send directly
             var midstFrame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_MIDST_DATA, payload);
             await WriteFrameAsync(midstFrame);
-            
+
             if (!await WaitAckAsync(5000))
             {
                 Log("[FDL] exec_no_verify MIDST_DATA failed");
                 return false;
             }
             Log("[FDL] exec_no_verify MIDST_DATA OK");
-            
+
             // Send END_DATA
             var endFrame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_END_DATA);
             await WriteFrameAsync(endFrame);
-            
+
             // Read END_DATA response and log details
             var endResp = await ReadFrameAsyncSafe(5000);
             if (endResp != null && endResp.Length > 0)
@@ -305,7 +305,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 Log("[FDL] exec_no_verify END_DATA no response");
                 Log("[FDL] Warning: END_DATA no response, but continuing attempt to EXEC...");
             }
-            
+
             Log("[FDL] exec_no_verify payload sent successfully");
             return true;
         }
@@ -418,7 +418,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Safely close port
         /// </summary>
@@ -453,17 +453,17 @@ namespace LoveAlways.Spreadtrum.Protocol
             try
             {
                 _cts?.Cancel();
-                
+
                 if (_port != null && _port.IsOpen)
                 {
                     _port.Close();
                 }
                 _port?.Dispose();
                 _port = null;
-                
+
                 _stage = FdlStage.None;
                 SetState(SprdDeviceState.Disconnected);
-                
+
                 Log("[FDL] Disconnected");
             }
             catch (Exception ex)
@@ -486,21 +486,21 @@ namespace LoveAlways.Spreadtrum.Protocol
             // sprdproto only sends one 0x7E then waits for BSL_REP_VER
             await WriteFrameAsyncSafe(new byte[] { 0x7E }, 1000);
             await Task.Delay(100);
-            
+
             // Check for response data
             var response = await ReadFrameAsync(2000);
             if (response != null)
             {
                 Log("[FDL] Received raw data ({0} bytes): {1}", response.Length, BitConverter.ToString(response).Replace("-", " "));
-                
+
                 try
                 {
                     var frame = _hdlc.ParseFrame(response);
-                    
+
                     if (frame.Type == (byte)BslCommand.BSL_REP_VER)
                     {
                         // BROM returns version info, extract version string
-                        string version = frame.Payload != null 
+                        string version = frame.Payload != null
                             ? System.Text.Encoding.ASCII.GetString(frame.Payload).TrimEnd('\0')
                             : "Unknown";
                         Log("[FDL] BROM version: {0}", version);
@@ -525,30 +525,30 @@ namespace LoveAlways.Spreadtrum.Protocol
                     Log("[FDL] Parse response failed: {0}", ex.Message);
                 }
             }
-            
+
             // Method 2: If single 0x7E no response, try sending multiple
             Log("[FDL] Trying multi-byte sync...");
-            try { _port?.DiscardInBuffer(); } 
+            try { _port?.DiscardInBuffer(); }
             catch (Exception ex) { LogDebug("[FDL] Discard buffer exception: {0}", ex.Message); }
-            
+
             for (int i = 0; i < 3; i++)
             {
                 await WriteFrameAsyncSafe(new byte[] { 0x7E }, 500);
                 await Task.Delay(50);
             }
             await Task.Delay(100);
-            
+
             response = await ReadFrameAsync(2000);
             if (response != null)
             {
                 Log("[FDL] Received response ({0} bytes): {1}", response.Length, BitConverter.ToString(response).Replace("-", " "));
-                
+
                 try
                 {
                     var frame = _hdlc.ParseFrame(response);
                     if (frame.Type == (byte)BslCommand.BSL_REP_VER)
                     {
-                        string version = frame.Payload != null 
+                        string version = frame.Payload != null
                             ? System.Text.Encoding.ASCII.GetString(frame.Payload).TrimEnd('\0')
                             : "Unknown";
                         Log("[FDL] BROM version: {0}", version);
@@ -564,12 +564,12 @@ namespace LoveAlways.Spreadtrum.Protocol
                         return true;
                     }
                 }
-                catch (Exception ex) 
-                { 
-                    LogDebug("[FDL] Parse multi-byte response exception: {0}", ex.Message); 
+                catch (Exception ex)
+                {
+                    LogDebug("[FDL] Parse multi-byte response exception: {0}", ex.Message);
                 }
             }
-            
+
             // Method 3: Try to send CONNECT command
             Log("[FDL] Trying to send CONNECT command...");
             _port.DiscardInBuffer();
@@ -582,7 +582,7 @@ namespace LoveAlways.Spreadtrum.Protocol
             if (response != null)
             {
                 Log("[FDL] CONNECT response ({0} bytes): {1}", response.Length, BitConverter.ToString(response).Replace("-", " "));
-                
+
                 try
                 {
                     var frame = _hdlc.ParseFrame(response);
@@ -599,13 +599,13 @@ namespace LoveAlways.Spreadtrum.Protocol
                         else
                         {
                             Log("[FDL] CONNECT ACK (FDL mode)");
-                        _isBromMode = false;
+                            _isBromMode = false;
                         }
                         return true;
                     }
                     else if (frame.Type == (byte)BslCommand.BSL_REP_VER)
                     {
-                        string version = frame.Payload != null 
+                        string version = frame.Payload != null
                             ? System.Text.Encoding.ASCII.GetString(frame.Payload).TrimEnd('\0')
                             : "Unknown";
                         Log("[FDL] BROM version: {0}", version);
@@ -630,9 +630,9 @@ namespace LoveAlways.Spreadtrum.Protocol
             Log("[FDL] Handshake failed - no response");
             return false;
         }
-        
+
         private string _bromVersion = "";
-        
+
         /// <summary>
         /// Whether it's in BROM mode (requires FDL download)
         /// </summary>
@@ -1175,16 +1175,16 @@ namespace LoveAlways.Spreadtrum.Protocol
                 // Determine if 64-bit mode is needed
                 ulong size = (ulong)data.Length;
                 bool useMode64 = (size >> 32) != 0;
-                
+
                 // Build START_DATA payload (Reference SPRDClientCore)
                 // Format: [PartitionName 72-byte Unicode] + [Size 4-byte LE] + [SizeHigh32 4-byte LE, 64-bit only]
                 int payloadSize = useMode64 ? 80 : 76;
                 var startPayload = new byte[payloadSize];
-                
+
                 // Partition name: Unicode encoding
                 var nameBytes = Encoding.Unicode.GetBytes(partitionName);
                 Array.Copy(nameBytes, 0, startPayload, 0, Math.Min(nameBytes.Length, 72));
-                
+
                 // Size: Little Endian
                 BitConverter.GetBytes((uint)(size & 0xFFFFFFFF)).CopyTo(startPayload, 72);
                 if (useMode64)
@@ -1222,15 +1222,15 @@ namespace LoveAlways.Spreadtrum.Protocol
                     if (!await SendDataWithRetryAsync((byte)BslCommand.BSL_CMD_MIDST_DATA, chunk))
                     {
                         failedChunks++;
-                        Log("[FDL] Partition {0} Chunk {1}/{2} write failed (Accumulated failures: {3})", 
+                        Log("[FDL] Partition {0} Chunk {1}/{2} write failed (Accumulated failures: {3})",
                             partitionName, i + 1, totalChunks, failedChunks);
-                        
+
                         if (failedChunks >= maxConsecutiveFailures)
                         {
                             Log("[FDL] Too many consecutive failures, terminating write");
                             return false;
                         }
-                        
+
                         // Try skipping this chunk and continue (Supported by some devices)
                         continue;
                     }
@@ -1276,16 +1276,16 @@ namespace LoveAlways.Spreadtrum.Protocol
             {
                 // Determine if 64-bit mode is needed
                 bool useMode64 = (size >> 32) != 0;
-                
+
                 // Build READ_START payload (Reference SPRDClientCore)
                 // Format: [PartitionName 72-byte Unicode] + [Size 4-byte LE] + [SizeHigh32 4-byte LE, 64-bit only]
                 int payloadSize = useMode64 ? 80 : 76;
                 var payload = new byte[payloadSize];
-                
+
                 // Partition name: Unicode encoding, max 36 characters (72 bytes)
                 var nameBytes = Encoding.Unicode.GetBytes(partitionName);
                 Array.Copy(nameBytes, 0, payload, 0, Math.Min(nameBytes.Length, 72));
-                
+
                 // Size: Little Endian
                 BitConverter.GetBytes((uint)(size & 0xFFFFFFFF)).CopyTo(payload, 72);
                 if (useMode64)
@@ -1293,7 +1293,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                     BitConverter.GetBytes((uint)(size >> 32)).CopyTo(payload, 76);
                 }
 
-                Log("[FDL] READ_START payload: Partition={0}, Size=0x{1:X}, Mode={2}", 
+                Log("[FDL] READ_START payload: Partition={0}, Size=0x{1:X}, Mode={2}",
                     partitionName, size, useMode64 ? "64-bit" : "32-bit");
 
                 // Start reading (with retry)
@@ -1321,7 +1321,7 @@ namespace LoveAlways.Spreadtrum.Protocol
 
                         // Calculate current read size
                         uint nowReadSize = (uint)Math.Min(readChunkSize, size - offset);
-                        
+
                         // Build READ_MIDST payload (Reference spd_dump)
                         // Format: [ReadSize 4-byte LE] + [Offset 4-byte LE] + [OffsetHigh32 4-byte LE, 64-bit only]
                         int midstPayloadSize = useMode64 ? 12 : 8;
@@ -1386,7 +1386,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                         {
                             consecutiveErrors++;
                             Log("[FDL] Read offset=0x{0:X} failed (Consecutive errors: {1})", offset, consecutiveErrors);
-                            
+
                             if (consecutiveErrors >= maxConsecutiveErrors)
                             {
                                 Log("[FDL] Too many consecutive errors, terminating read");
@@ -1396,14 +1396,14 @@ namespace LoveAlways.Spreadtrum.Protocol
                             offset += nowReadSize;
                             continue;
                         }
-                        
+
                         consecutiveErrors = 0;  // Reset error count
                         ms.Write(chunkData, 0, chunkData.Length);
                         offset += (uint)chunkData.Length;
 
                         // Progress callback
                         OnProgress?.Invoke((int)offset, (int)size);
-                        
+
                         // Output log every 10%
                         int progressPercent = (int)(offset * 100 / size);
                         if (progressPercent % 10 == 0 && progressPercent > 0)
@@ -1452,9 +1452,9 @@ namespace LoveAlways.Spreadtrum.Protocol
                 return false;
             }
 
-                Log("[FDL] Partition {0} erase successful", partitionName);
-                return true;
-            }
+            Log("[FDL] Partition {0} erase successful", partitionName);
+            return true;
+        }
 
         #endregion
 
@@ -1469,12 +1469,12 @@ namespace LoveAlways.Spreadtrum.Protocol
         public async Task<bool> DisableTranscodeAsync()
         {
             Log("[FDL] Disabling transcode...");
-            
+
             try
             {
                 var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_DISABLE_TRANSCODE);
                 await WriteFrameAsync(frame);
-                
+
                 var response = await ReadFrameAsyncSafe(3000);
                 if (response != null)
                 {
@@ -1500,7 +1500,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                     }
                     catch { }
                 }
-                
+
                 // Even if no response, attempt to disable transcode
                 _hdlc.DisableTranscode();
                 Log("[FDL] Transcode status set to disabled (No response)");
@@ -1528,27 +1528,27 @@ namespace LoveAlways.Spreadtrum.Protocol
 
             try
             {
-            var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_READ_VERSION);
-            await WriteFrameAsync(frame);
+                var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_READ_VERSION);
+                await WriteFrameAsync(frame);
 
                 var response = await ReadFrameAsyncSafe(5000);
-            if (response != null)
-            {
-                try
+                if (response != null)
                 {
-                    var parsed = _hdlc.ParseFrame(response);
-                    if (parsed.Type == (byte)BslCommand.BSL_REP_VER && parsed.Payload != null)
+                    try
                     {
-                        string version = Encoding.UTF8.GetString(parsed.Payload).TrimEnd('\0');
-                        Log("[FDL] Version: {0}", version);
-                        return version;
+                        var parsed = _hdlc.ParseFrame(response);
+                        if (parsed.Type == (byte)BslCommand.BSL_REP_VER && parsed.Payload != null)
+                        {
+                            string version = Encoding.UTF8.GetString(parsed.Payload).TrimEnd('\0');
+                            Log("[FDL] Version: {0}", version);
+                            return version;
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            Log("[FDL] Read version failed");
-            return null;
+                Log("[FDL] Read version failed");
+                return null;
             }
             catch (Exception ex)
             {
@@ -1566,27 +1566,27 @@ namespace LoveAlways.Spreadtrum.Protocol
 
             try
             {
-            var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_READ_CHIP_TYPE);
-            await WriteFrameAsync(frame);
+                var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_READ_CHIP_TYPE);
+                await WriteFrameAsync(frame);
 
                 var response = await ReadFrameAsyncSafe(5000);
-            if (response != null)
-            {
-                try
+                if (response != null)
                 {
-                    var parsed = _hdlc.ParseFrame(response);
-                    if (parsed.Payload != null && parsed.Payload.Length >= 4)
+                    try
                     {
-                        uint chipId = BitConverter.ToUInt32(parsed.Payload, 0);
-                        Log("[FDL] Chip type: 0x{0:X8} ({1})", chipId, SprdPlatform.GetPlatformName(chipId));
-                        return chipId;
+                        var parsed = _hdlc.ParseFrame(response);
+                        if (parsed.Payload != null && parsed.Payload.Length >= 4)
+                        {
+                            uint chipId = BitConverter.ToUInt32(parsed.Payload, 0);
+                            Log("[FDL] Chip type: 0x{0:X8} ({1})", chipId, SprdPlatform.GetPlatformName(chipId));
+                            return chipId;
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            Log("[FDL] Read chip type failed");
-            return 0;
+                Log("[FDL] Read chip type failed");
+                return 0;
             }
             catch (Exception ex)
             {
@@ -1619,20 +1619,20 @@ namespace LoveAlways.Spreadtrum.Protocol
             try
             {
                 // Method 1: Use READ_PARTITION command
-            var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_READ_PARTITION);
-            await WriteFrameAsync(frame);
+                var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_READ_PARTITION);
+                await WriteFrameAsync(frame);
 
                 var response = await ReadFrameAsyncSafe(10000);
-            if (response != null)
-            {
-                try
+                if (response != null)
                 {
-                    var parsed = _hdlc.ParseFrame(response);
-                    if (parsed.Type == (byte)BslCommand.BSL_REP_PARTITION && parsed.Payload != null)
+                    try
                     {
+                        var parsed = _hdlc.ParseFrame(response);
+                        if (parsed.Type == (byte)BslCommand.BSL_REP_PARTITION && parsed.Payload != null)
+                        {
                             Log("[FDL] READ_PARTITION success");
-                        return ParsePartitionTable(parsed.Payload);
-                    }
+                            return ParsePartitionTable(parsed.Payload);
+                        }
                         else if (parsed.Type == (byte)BslCommand.BSL_REP_UNSUPPORTED_COMMAND)
                         {
                             // FDL2 does not support READ_PARTITION command, use fallback method
@@ -1642,13 +1642,13 @@ namespace LoveAlways.Spreadtrum.Protocol
                         else
                         {
                             Log("[FDL] Partition table response type: 0x{0:X2}", parsed.Type);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log("[FDL] Parse partition table failed: {0}", ex.Message);
                     }
                 }
-                catch (Exception ex)
-                {
-                    Log("[FDL] Parse partition table failed: {0}", ex.Message);
-                }
-            }
 
                 // Method 2: Traverse common partition names
                 Log("[FDL] Trying traverse method...");
@@ -1657,7 +1657,7 @@ namespace LoveAlways.Spreadtrum.Protocol
             catch (Exception ex)
             {
                 Log("[FDL] Read partition table exception: {0}", ex.Message);
-            return null;
+                return null;
             }
         }
 
@@ -1684,10 +1684,10 @@ namespace LoveAlways.Spreadtrum.Protocol
         {
             int failCount = 0;
             int maxConsecutiveFails = 5;  // Considered unsupported after 5 consecutive failures
-            
+
             // Priority common partitions (sorted by probability)
             string[] priorityPartitions = { "boot", "system", "userdata", "cache", "recovery", "misc" };
-            
+
             // Detect priority partitions first to confirm if device supports this command
             foreach (var partName in priorityPartitions)
             {
@@ -1761,7 +1761,7 @@ namespace LoveAlways.Spreadtrum.Protocol
 
                 if (priorityPartitions.Contains(partName))
                     continue;  // Skip already detected ones
-                    
+
                 try
                 {
                     var result = await CheckPartitionExistWithTimeoutAsync(partName, 1500);
@@ -1786,7 +1786,7 @@ namespace LoveAlways.Spreadtrum.Protocol
             Log("[FDL] No partitions found");
             return null;
         }
-        
+
         /// <summary>
         /// Partition existence detection with timeout
         /// </summary>
@@ -1799,13 +1799,13 @@ namespace LoveAlways.Spreadtrum.Protocol
                 {
                     var task = CheckPartitionExistAsync(partitionName);
                     var completedTask = await Task.WhenAny(task, Task.Delay(timeoutMs, cts.Token));
-                    
+
                     if (completedTask == task)
                     {
                         cts.Cancel();
                         return await task;
                     }
-                    
+
                     return null;  // Timeout
                 }
             }
@@ -1837,9 +1837,9 @@ namespace LoveAlways.Spreadtrum.Protocol
                 var startResponse = await ReadFrameAsyncSafe(2000);
                 if (startResponse == null)
                     return false;
-                
+
                 var startParsed = _hdlc.ParseFrame(startResponse);
-                
+
                 if (startParsed.Type == (byte)BslCommand.BSL_REP_ACK)
                 {
                     // 2. READ_START success, send READ_MIDST to read 8 bytes for verification
@@ -1847,7 +1847,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                     var midstPayload = new byte[8];
                     BitConverter.GetBytes((uint)8).CopyTo(midstPayload, 0);  // ReadSize = 8
                     BitConverter.GetBytes((uint)0).CopyTo(midstPayload, 4);  // Offset = 0
-                    
+
                     var midstFrame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_READ_MIDST, midstPayload);
                     if (!await WriteFrameAsyncSafe(midstFrame))
                     {
@@ -1855,12 +1855,12 @@ namespace LoveAlways.Spreadtrum.Protocol
                         await SendReadEndAsync();
                         return false;
                     }
-                    
+
                     var midstResponse = await ReadFrameAsyncSafe(2000);
-                    
+
                     // 3. Send READ_END to finish
                     await SendReadEndAsync();
-                    
+
                     if (midstResponse != null)
                     {
                         var midstParsed = _hdlc.ParseFrame(midstResponse);
@@ -1883,7 +1883,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Send READ_END command
         /// </summary>
@@ -1905,13 +1905,13 @@ namespace LoveAlways.Spreadtrum.Protocol
         private List<SprdPartitionInfo> ParsePartitionTable(byte[] data)
         {
             var partitions = new List<SprdPartitionInfo>();
-            
+
             if (data == null || data.Length == 0)
             {
                 Log("[FDL] Partition table data is empty");
                 return partitions;
             }
-            
+
             // Partition table format (Reference SPRDClientCore):
             // Name: 72 bytes (Unicode, 36 characters)
             // Size: 4 bytes (Little Endian)
@@ -1919,7 +1919,7 @@ namespace LoveAlways.Spreadtrum.Protocol
             const int NameSize = 72;  // 36 chars * 2 bytes (Unicode)
             const int SizeFieldSize = 4;
             const int EntrySize = NameSize + SizeFieldSize;  // 76 bytes
-            
+
             int count = data.Length / EntrySize;
             Log("[FDL] Partition table data size: {0} bytes, expected {1} partitions", data.Length, count);
 
@@ -1966,40 +1966,40 @@ namespace LoveAlways.Spreadtrum.Protocol
 
             try
             {
-            // Build payload: [1-byte operation type] + [unlock data]
-            byte[] payload;
-            if (unlockData != null && unlockData.Length > 0)
-            {
-                payload = new byte[1 + unlockData.Length];
-                payload[0] = relock ? (byte)0x00 : (byte)0x01;  // 0=lock, 1=unlock
-                Array.Copy(unlockData, 0, payload, 1, unlockData.Length);
-            }
-            else
-            {
-                payload = new byte[] { relock ? (byte)0x00 : (byte)0x01 };
-            }
+                // Build payload: [1-byte operation type] + [unlock data]
+                byte[] payload;
+                if (unlockData != null && unlockData.Length > 0)
+                {
+                    payload = new byte[1 + unlockData.Length];
+                    payload[0] = relock ? (byte)0x00 : (byte)0x01;  // 0=lock, 1=unlock
+                    Array.Copy(unlockData, 0, payload, 1, unlockData.Length);
+                }
+                else
+                {
+                    payload = new byte[] { relock ? (byte)0x00 : (byte)0x01 };
+                }
 
-            var frame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_UNLOCK, payload);
-            await WriteFrameAsync(frame);
+                var frame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_UNLOCK, payload);
+                await WriteFrameAsync(frame);
 
                 var response = await ReadFrameAsyncSafe(10000);
-            if (response != null)
-            {
-                try
+                if (response != null)
                 {
-                    var parsed = _hdlc.ParseFrame(response);
-                    if (parsed.Type == (byte)BslCommand.BSL_REP_ACK)
+                    try
                     {
-                        Log($"[FDL] {action} successful");
-                        return true;
+                        var parsed = _hdlc.ParseFrame(response);
+                        if (parsed.Type == (byte)BslCommand.BSL_REP_ACK)
+                        {
+                            Log($"[FDL] {action} successful");
+                            return true;
+                        }
+                        Log("[FDL] {0} response: 0x{1:X2}", action, parsed.Type);
                     }
-                    Log("[FDL] {0} response: 0x{1:X2}", action, parsed.Type);
+                    catch { }
                 }
-                catch { }
-            }
 
-            Log($"[FDL] {action} failed");
-            return false;
+                Log($"[FDL] {action} failed");
+                return false;
             }
             catch (Exception ex)
             {
@@ -2017,26 +2017,26 @@ namespace LoveAlways.Spreadtrum.Protocol
 
             try
             {
-            var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_READ_PUBKEY);
-            await WriteFrameAsync(frame);
+                var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_READ_PUBKEY);
+                await WriteFrameAsync(frame);
 
                 var response = await ReadFrameAsyncSafe(5000);
-            if (response != null)
-            {
-                try
+                if (response != null)
                 {
-                    var parsed = _hdlc.ParseFrame(response);
-                    if (parsed.Payload != null && parsed.Payload.Length > 0)
+                    try
                     {
-                        Log("[FDL] Public key length: {0} bytes", parsed.Payload.Length);
-                        return parsed.Payload;
+                        var parsed = _hdlc.ParseFrame(response);
+                        if (parsed.Payload != null && parsed.Payload.Length > 0)
+                        {
+                            Log("[FDL] Public key length: {0} bytes", parsed.Payload.Length);
+                            return parsed.Payload;
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            Log("[FDL] Read public key failed");
-            return null;
+                Log("[FDL] Read public key failed");
+                return null;
             }
             catch (Exception ex)
             {
@@ -2080,27 +2080,27 @@ namespace LoveAlways.Spreadtrum.Protocol
 
             try
             {
-            var payload = BitConverter.GetBytes(blockId);
-            var frame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_READ_EFUSE, payload);
-            await WriteFrameAsync(frame);
+                var payload = BitConverter.GetBytes(blockId);
+                var frame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_READ_EFUSE, payload);
+                await WriteFrameAsync(frame);
 
                 var response = await ReadFrameAsyncSafe(5000);
-            if (response != null)
-            {
-                try
+                if (response != null)
                 {
-                    var parsed = _hdlc.ParseFrame(response);
-                    if (parsed.Payload != null && parsed.Payload.Length > 0)
+                    try
                     {
-                        Log("[FDL] eFuse data: {0} bytes", parsed.Payload.Length);
-                        return parsed.Payload;
+                        var parsed = _hdlc.ParseFrame(response);
+                        if (parsed.Payload != null && parsed.Payload.Length > 0)
+                        {
+                            Log("[FDL] eFuse data: {0} bytes", parsed.Payload.Length);
+                            return parsed.Payload;
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            Log("[FDL] Read eFuse failed");
-            return null;
+                Log("[FDL] Read eFuse failed");
+                return null;
             }
             catch (Exception ex)
             {
@@ -2122,27 +2122,27 @@ namespace LoveAlways.Spreadtrum.Protocol
 
             try
             {
-            var payload = BitConverter.GetBytes(itemId);
-            var frame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_READ_NVITEM, payload);
-            await WriteFrameAsync(frame);
+                var payload = BitConverter.GetBytes(itemId);
+                var frame = _hdlc.BuildFrame((byte)BslCommand.BSL_CMD_READ_NVITEM, payload);
+                await WriteFrameAsync(frame);
 
                 var response = await ReadFrameAsyncSafe(5000);
-            if (response != null)
-            {
-                try
+                if (response != null)
                 {
-                    var parsed = _hdlc.ParseFrame(response);
-                    if (parsed.Type == (byte)BslCommand.BSL_REP_DATA && parsed.Payload != null)
+                    try
                     {
-                        Log("[FDL] NV item {0} data: {1} bytes", itemId, parsed.Payload.Length);
-                        return parsed.Payload;
+                        var parsed = _hdlc.ParseFrame(response);
+                        if (parsed.Type == (byte)BslCommand.BSL_REP_DATA && parsed.Payload != null)
+                        {
+                            Log("[FDL] NV item {0} data: {1} bytes", itemId, parsed.Payload.Length);
+                            return parsed.Payload;
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            Log("[FDL] Read NV item {0} failed", itemId);
-            return null;
+                Log("[FDL] Read NV item {0} failed", itemId);
+                return null;
             }
             catch (Exception ex)
             {
@@ -2216,25 +2216,25 @@ namespace LoveAlways.Spreadtrum.Protocol
 
             try
             {
-            var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_READ_FLASH_INFO);
-            await WriteFrameAsync(frame);
+                var frame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_READ_FLASH_INFO);
+                await WriteFrameAsync(frame);
 
                 var response = await ReadFrameAsyncSafe(5000);
-            if (response != null)
-            {
-                try
+                if (response != null)
                 {
-                    var parsed = _hdlc.ParseFrame(response);
-                    if (parsed.Type == (byte)BslCommand.BSL_REP_FLASH_INFO && parsed.Payload != null)
+                    try
                     {
-                        return ParseFlashInfo(parsed.Payload);
+                        var parsed = _hdlc.ParseFrame(response);
+                        if (parsed.Type == (byte)BslCommand.BSL_REP_FLASH_INFO && parsed.Payload != null)
+                        {
+                            return ParseFlashInfo(parsed.Payload);
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            Log("[FDL] Read Flash info failed");
-            return null;
+                Log("[FDL] Read Flash info failed");
+                return null;
             }
             catch (Exception ex)
             {
@@ -2319,7 +2319,7 @@ namespace LoveAlways.Spreadtrum.Protocol
             {
                 // Wait for device to switch
                 await Task.Delay(100);
-                
+
                 // Update local baud rate
                 if (_port != null && _port.IsOpen)
                 {
@@ -2390,7 +2390,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 // 4. Try another way: Send reset command then reconnect immediately
                 var resetFrame = _hdlc.BuildCommand((byte)BslCommand.BSL_CMD_RESET);
                 await WriteFrameAsync(resetFrame);
-                
+
                 await Task.Delay(1000);
 
                 // Resync
@@ -2398,7 +2398,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 {
                     await _port.BaseStream.WriteAsync(syncFrame, 0, syncFrame.Length);
                     await Task.Delay(100);
-                    
+
                     if (_port.BytesToRead > 0)
                     {
                         var response = await ReadFrameAsync(1000);
@@ -2720,9 +2720,9 @@ namespace LoveAlways.Spreadtrum.Protocol
                     try
                     {
                         if (_port != null && _port.IsOpen)
-                {
-                    _port.Write(frame, 0, frame.Length);
-                }
+                        {
+                            _port.Write(frame, 0, frame.Length);
+                        }
                     }
                     finally
                     {
@@ -2800,7 +2800,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 Log("[FDL] SafeWriteToPort: Disposed");
                 return false;
             }
-                
+
             // Synchronously acquire lock (wait up to 3 seconds)
             bool lockAcquired = false;
             try
@@ -2811,13 +2811,13 @@ namespace LoveAlways.Spreadtrum.Protocol
                     Log("[FDL] SafeWriteToPort: Lock acquisition timed out");
                     return false;
                 }
-                
+
                 if (_port == null)
                 {
                     Log("[FDL] SafeWriteToPort: Port is null");
                     return false;
                 }
-                
+
                 if (!_port.IsOpen)
                 {
                     Log("[FDL] SafeWriteToPort: Port is closed, trying to reopen...");
@@ -2834,7 +2834,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                         return false;
                     }
                 }
-                    
+
                 _port.DiscardInBuffer();
                 _port.DiscardOutBuffer();
                 _port.Write(data, 0, data.Length);
@@ -2866,10 +2866,10 @@ namespace LoveAlways.Spreadtrum.Protocol
             {
                 try
                 {
-            return await Task.Run(() =>
-            {
-                var ms = new MemoryStream();
-                bool inFrame = false;
+                    return await Task.Run(() =>
+                    {
+                        var ms = new MemoryStream();
+                        bool inFrame = false;
                         int retryCount = 0;
 
                         while (!linkedCts.Token.IsCancellationRequested)
@@ -2928,7 +2928,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                                             ms.WriteByte(b);
                                         }
                                     }
-                                    
+
                                     retryCount = 0;  // Reset retry count
                                 }
                                 else
@@ -2947,7 +2947,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                         // Timeout but partial data exists
                         if (ms.Length > 0)
                             return ms.ToArray();
-                            
+
                         return null;
                     }, linkedCts.Token);
                 }
@@ -3006,19 +3006,19 @@ namespace LoveAlways.Spreadtrum.Protocol
                             {
                                 byte b = buffer[i];
 
-                            if (b == HdlcProtocol.HDLC_FLAG)
-                            {
-                                if (inFrame && ms.Length > 0)
+                                if (b == HdlcProtocol.HDLC_FLAG)
                                 {
+                                    if (inFrame && ms.Length > 0)
+                                    {
                                         ms.WriteByte(b);
-                                    return ms.ToArray();
+                                        return ms.ToArray();
+                                    }
+                                    inFrame = true;
+                                    ms = new MemoryStream();
                                 }
-                                inFrame = true;
-                                ms = new MemoryStream();
-                            }
 
-                            if (inFrame)
-                            {
+                                if (inFrame)
+                                {
                                     ms.WriteByte(b);
                                 }
                             }
@@ -3031,7 +3031,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                     catch
                     {
                         Thread.Sleep(10);
-                }
+                    }
                 }
 
                 return null;
@@ -3072,11 +3072,11 @@ namespace LoveAlways.Spreadtrum.Protocol
                                         // Read all available bytes
                                         byte[] buffer = new byte[bytesToRead];
                                         int read = _port.Read(buffer, 0, bytesToRead);
-                                        
+
                                         for (int i = 0; i < read; i++)
                                         {
                                             byte b = buffer[i];
-                                            
+
                                             if (b == HdlcProtocol.HDLC_FLAG)
                                             {
                                                 if (inFrame && ms.Length > 0)
@@ -3132,7 +3132,7 @@ namespace LoveAlways.Spreadtrum.Protocol
         {
             return await WaitAckWithDetailAsync(timeout, null, verbose);
         }
-        
+
         /// <summary>
         /// Wait for ACK response (Safe version, catches all exceptions)
         /// </summary>
@@ -3161,12 +3161,12 @@ namespace LoveAlways.Spreadtrum.Protocol
             {
                 if (verbose)
                 {
-                    Log("[FDL] {0}Received response ({1} bytes): {2}", 
+                    Log("[FDL] {0}Received response ({1} bytes): {2}",
                         context != null ? context + " " : "",
-                        response.Length, 
+                        response.Length,
                         BitConverter.ToString(response).Replace("-", " "));
                 }
-                
+
                 try
                 {
                     var frame = _hdlc.ParseFrame(response);
@@ -3183,7 +3183,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                         {
                             Log("[FDL] Response data: {0}", BitConverter.ToString(frame.Payload).Replace("-", " "));
                         }
-                        
+
                         // Provide specific error tips
                         switch (frame.Type)
                         {
@@ -3211,7 +3211,7 @@ namespace LoveAlways.Spreadtrum.Protocol
             else
             {
                 if (verbose)
-                Log("[FDL] Wait for response timeout ({0}ms)", timeout);
+                    Log("[FDL] Wait for response timeout ({0}ms)", timeout);
             }
             return false;
         }
@@ -3232,7 +3232,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 {
                     Log("[FDL] Retry {0}/{1}...", attempt, retries);
                     await Task.Delay(RetryDelayMs);
-                    
+
                     // Clear buffer before retry
                     try { _port?.DiscardInBuffer(); } catch { }
                 }
@@ -3240,14 +3240,14 @@ namespace LoveAlways.Spreadtrum.Protocol
                 try
                 {
                     var frame = _hdlc.BuildFrame(command, payload ?? new byte[0]);
-                    
+
                     // Use safe write to avoid throwing exceptions
                     if (!await WriteFrameAsyncSafe(frame))
                     {
                         Log("[FDL] Frame write failed, retrying...");
                         continue;
                     }
-                    
+
                     if (await WaitAckAsyncSafe(timeout))
                         return true;
                 }
@@ -3280,7 +3280,7 @@ namespace LoveAlways.Spreadtrum.Protocol
                 {
                     var frame = _hdlc.BuildFrame(command, data);
                     await WriteFrameAsync(frame);
-                    
+
                     if (await WaitAckAsync(timeout))
                         return true;
                 }
@@ -3410,7 +3410,7 @@ namespace LoveAlways.Spreadtrum.Protocol
 
                 // Safely disconnect
                 SafeDisconnect();
-                
+
                 // Release SemaphoreSlim
                 try
                 {
@@ -3560,8 +3560,8 @@ namespace LoveAlways.Spreadtrum.Protocol
 
         public override string ToString()
         {
-            return string.Format("{0} {1} {2}", FlashTypeName, ManufacturerName, 
-                TotalSize >= 1024 * 1024 * 1024 
+            return string.Format("{0} {1} {2}", FlashTypeName, ManufacturerName,
+                TotalSize >= 1024 * 1024 * 1024
                     ? string.Format("{0:F1} GB", TotalSize / (1024.0 * 1024 * 1024))
                     : string.Format("{0} MB", TotalSize / (1024 * 1024)));
         }

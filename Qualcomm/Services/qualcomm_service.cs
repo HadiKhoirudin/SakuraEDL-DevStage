@@ -7,22 +7,22 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Common;
+using LoveAlways.Qualcomm.Authentication;
+using LoveAlways.Qualcomm.Common;
+using LoveAlways.Qualcomm.Database;
+using LoveAlways.Qualcomm.Models;
+using LoveAlways.Qualcomm.Protocol;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Common;
-using LoveAlways.Qualcomm.Common;
-using LoveAlways.Qualcomm.Database;
-using LoveAlways.Qualcomm.Models;
-using LoveAlways.Qualcomm.Protocol;
-using LoveAlways.Qualcomm.Authentication;
 
 namespace LoveAlways.Qualcomm.Services
 {
@@ -53,7 +53,7 @@ namespace LoveAlways.Qualcomm.Services
         private readonly OplusSuperFlashManager _oplusSuperManager;
         private readonly DeviceInfoService _deviceInfoService;
         private bool _disposed;
-        
+
         // Watchdog Mechanism
         private Watchdog _watchdog;
 
@@ -64,14 +64,14 @@ namespace LoveAlways.Qualcomm.Services
         public string StorageType { get { return _firehose != null ? _firehose.StorageType : "ufs"; } }
         public int SectorSize { get { return _firehose != null ? _firehose.SectorSize : 4096; } }
         public string CurrentSlot { get { return _firehose != null ? _firehose.CurrentSlot : "nonexistent"; } }
-        
+
         // Last used connection parameters (For status display)
         public string LastPortName { get; private set; }
         public string LastStorageType { get; private set; }
 
         // Partition Cache
         private Dictionary<int, List<PartitionInfo>> _partitionCache;
-        
+
         // Port management flags (Release port after operation completion)
         private bool _portClosed = false;          // Is port closed
         private bool _keepPortOpen = false;        // Keep port open (For continuous operation)
@@ -81,28 +81,28 @@ namespace LoveAlways.Qualcomm.Services
         /// State changed event
         /// </summary>
         public event EventHandler<QualcommConnectionState> StateChanged;
-        
+
         /// <summary>
         /// Port disconnected event (Triggered when device disconnects itself)
         /// </summary>
         public event EventHandler PortDisconnected;
-        
+
         /// <summary>
         /// Xiaomi Auth Token Event (Triggered when built-in signature fails, requires popup to show token)
         /// Token Format: Base64 string starting with VQ
         /// </summary>
         public event Action<string> XiaomiAuthTokenRequired;
-        
+
         /// <summary>
         /// Check if truly connected (Validates port state)
         /// </summary>
-        public bool IsConnected 
-        { 
-            get 
-            { 
+        public bool IsConnected
+        {
+            get
+            {
                 if (State != QualcommConnectionState.Ready)
                     return false;
-                    
+
                 // Validate if port is truly available
                 if (_portManager == null || !_portManager.ValidateConnection())
                 {
@@ -111,9 +111,9 @@ namespace LoveAlways.Qualcomm.Services
                     return false;
                 }
                 return true;
-            } 
+            }
         }
-        
+
         /// <summary>
         /// Quick check connection state (No port validation, for high-frequency UI display)
         /// </summary>
@@ -121,7 +121,7 @@ namespace LoveAlways.Qualcomm.Services
         {
             get { return State == QualcommConnectionState.Ready && _portManager != null && _portManager.IsOpen; }
         }
-        
+
         /// <summary>
         /// Validate connection validity
         /// </summary>
@@ -129,10 +129,10 @@ namespace LoveAlways.Qualcomm.Services
         {
             if (State != QualcommConnectionState.Ready)
                 return false;
-                
+
             if (_portManager == null)
                 return false;
-                
+
             // Check if port exists in system
             if (!_portManager.IsPortAvailable())
             {
@@ -140,7 +140,7 @@ namespace LoveAlways.Qualcomm.Services
                 HandlePortDisconnected();
                 return false;
             }
-            
+
             // Validate port connection
             if (!_portManager.ValidateConnection())
             {
@@ -148,10 +148,10 @@ namespace LoveAlways.Qualcomm.Services
                 HandlePortDisconnected();
                 return false;
             }
-            
+
             return true;
         }
-        
+
         /// <summary>
         /// Handle port disconnected (Device disconnected itself)
         /// </summary>
@@ -159,29 +159,29 @@ namespace LoveAlways.Qualcomm.Services
         {
             if (State == QualcommConnectionState.Disconnected)
                 return;
-                
+
             _log("[Qualcomm] Device disconnection detected");
-            
+
             // Cleanup resources (Ignore dispose exceptions, ensure complete cleanup)
             if (_portManager != null)
             {
-                try { _portManager.Close(); } 
+                try { _portManager.Close(); }
                 catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] Close port exception: {ex.Message}"); }
-                try { _portManager.Dispose(); } 
+                try { _portManager.Dispose(); }
                 catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] Dispose port exception: {ex.Message}"); }
                 _portManager = null;
             }
-            
+
             if (_firehose != null)
             {
-                try { _firehose.Dispose(); } 
+                try { _firehose.Dispose(); }
                 catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[QualcommService] Dispose Firehose exception: {ex.Message}"); }
                 _firehose = null;
             }
-            
+
             // Clear partition cache (Cache invalid after device disconnect)
             _partitionCache.Clear();
-            
+
             SetState(QualcommConnectionState.Disconnected);
             PortDisconnected?.Invoke(this, EventArgs.Empty);
         }
@@ -195,30 +195,30 @@ namespace LoveAlways.Qualcomm.Services
             _deviceInfoService = new DeviceInfoService(_log, _logDetail);
             _partitionCache = new Dictionary<int, List<PartitionInfo>>();
             State = QualcommConnectionState.Disconnected;
-            
+
             // Initialize Watchdog
             _watchdog = new Watchdog("Qualcomm", WatchdogManager.DefaultTimeouts.Qualcomm, _logDetail);
             _watchdog.OnTimeout += OnWatchdogTimeout;
         }
-        
+
         /// <summary>
         /// Watchdog timeout handling
         /// </summary>
         private void OnWatchdogTimeout(object sender, WatchdogTimeoutEventArgs e)
         {
             _log($"[Qualcomm] Watchdog timeout: {e.OperationName} (Waited {e.ElapsedTime.TotalSeconds:F1}s)");
-            
+
             // Try to reset if too many timeouts
             if (e.TimeoutCount >= 3)
             {
                 _log("[Qualcomm] Multiple timeouts, attempting to reset connection...");
                 e.ShouldReset = false; // Stop Watchdog
-                
+
                 // Trigger port disconnected event
                 HandlePortDisconnected();
             }
         }
-        
+
         /// <summary>
         /// Feed Watchdog - Call during long operations to reset watchdog timer
         /// </summary>
@@ -226,7 +226,7 @@ namespace LoveAlways.Qualcomm.Services
         {
             _watchdog?.Feed();
         }
-        
+
         /// <summary>
         /// Start Watchdog
         /// </summary>
@@ -234,7 +234,7 @@ namespace LoveAlways.Qualcomm.Services
         {
             _watchdog?.Start(operation);
         }
-        
+
         /// <summary>
         /// Stop Watchdog
         /// </summary>
@@ -274,7 +274,7 @@ namespace LoveAlways.Qualcomm.Services
 
                 // Only perform handshake to get device info (Do not upload Loader)
                 bool infoOk = await _sahara.GetDeviceInfoOnlyAsync(ct);
-                
+
                 if (!infoOk || _sahara.ChipInfo == null)
                 {
                     _log("[Cloud] Cannot get device info");
@@ -283,10 +283,10 @@ namespace LoveAlways.Qualcomm.Services
                 }
 
                 _log("[Cloud] Device info retrieved successfully");
-                
+
                 // Save chip info
                 _cachedChipInfo = _sahara.ChipInfo;
-                
+
                 // Keep port open, will be used later
                 return _sahara.ChipInfo;
             }
@@ -296,7 +296,7 @@ namespace LoveAlways.Qualcomm.Services
                 return null;
             }
         }
-        
+
         /// <summary>
         /// Continue connection with retrieved device info (Upload Loader)
         /// </summary>
@@ -304,7 +304,7 @@ namespace LoveAlways.Qualcomm.Services
         /// <param name="storageType">Storage Type</param>
         /// <param name="authMode">Auth Mode</param>
         /// <param name="ct">Cancellation Token</param>
-        public async Task<bool> ContinueConnectWithLoaderAsync(byte[] loaderData, string storageType = "ufs", 
+        public async Task<bool> ContinueConnectWithLoaderAsync(byte[] loaderData, string storageType = "ufs",
             string authMode = "none", CancellationToken ct = default(CancellationToken))
         {
             try
@@ -316,7 +316,7 @@ namespace LoveAlways.Qualcomm.Services
                 }
 
                 SetState(QualcommConnectionState.SaharaMode);
-                
+
                 // Use existing Sahara client to continue uploading Loader
                 bool uploadOk = await _sahara.UploadLoaderAsync(loaderData, ct);
                 if (!uploadOk)
@@ -413,7 +413,7 @@ namespace LoveAlways.Qualcomm.Services
         /// <param name="digestPath">VIP Digest File Path</param>
         /// <param name="signaturePath">VIP Signature File Path</param>
         /// <param name="ct">取消令牌</param>
-        public async Task<bool> ConnectAsync(string portName, string programmerPath, string storageType = "ufs", 
+        public async Task<bool> ConnectAsync(string portName, string programmerPath, string storageType = "ufs",
             string authMode = "none", string digestPath = "", string signaturePath = "",
             CancellationToken ct = default(CancellationToken))
         {
@@ -446,7 +446,7 @@ namespace LoveAlways.Qualcomm.Services
 
                 // Sahara Handshake
                 SetState(QualcommConnectionState.SaharaMode);
-                
+
                 // Create Sahara Client and pass progress callback
                 Action<double> saharaProgress = null;
                 if (_progress != null)
@@ -497,7 +497,7 @@ namespace LoveAlways.Qualcomm.Services
                 // Perform auth based on user selection (Pre-config auth)
                 string authModeLower = authMode.ToLowerInvariant();
                 bool preConfigAuth = (authModeLower == "vip" || authModeLower == "oplus" || authModeLower == "xiaomi");
-                
+
                 // Xiaomi device auto auth: Even if user selects none, auto perform Xiaomi auth
                 bool isXiaomi = IsXiaomiDevice();
                 if (authModeLower == "none" && isXiaomi)
@@ -515,7 +515,7 @@ namespace LoveAlways.Qualcomm.Services
                 {
                     _log(string.Format("[Qualcomm] Executing {0} Auth (Pre-config)...", authMode.ToUpper()));
                     bool authOk = false;
-                    
+
                     if (authModeLower == "vip" || authModeLower == "oplus")
                     {
                         // VIP Auth must be before configuration
@@ -536,7 +536,7 @@ namespace LoveAlways.Qualcomm.Services
                         xiaomi.OnAuthTokenRequired += token => XiaomiAuthTokenRequired?.Invoke(token);
                         authOk = await xiaomi.AuthenticateAsync(_firehose, programmerPath, ct);
                     }
-                    
+
                     if (authOk)
                     {
                         _log(string.Format("[Qualcomm] {0} Auth success", authMode.ToUpper()));
@@ -564,13 +564,13 @@ namespace LoveAlways.Qualcomm.Services
                 {
                     _log(string.Format("[Qualcomm] Executing {0} Auth (Post-config)...", authMode.ToUpper()));
                     bool authOk = false;
-                    
+
                     if (authModeLower == "oneplus")
                     {
                         var oneplus = new OnePlusAuthStrategy(_log);
                         authOk = await oneplus.AuthenticateAsync(_firehose, programmerPath, ct);
                     }
-                    
+
                     if (authOk)
                         _log(string.Format("[Qualcomm] {0} Auth success", authMode.ToUpper()));
                     else
@@ -580,13 +580,13 @@ namespace LoveAlways.Qualcomm.Services
                 // Save connection parameters
                 LastPortName = portName;
                 LastStorageType = storageType;
-                
+
                 // Register port disconnected event
                 if (_portManager != null)
                 {
                     _portManager.PortDisconnected += (s, e) => HandlePortDisconnected();
                 }
-                
+
                 SetState(QualcommConnectionState.Ready);
                 _log("[Qualcomm] Connected successfully");
 
@@ -657,7 +657,7 @@ namespace LoveAlways.Qualcomm.Services
                     saharaProgress = percent => _progress((long)percent, 100);
                 }
                 _sahara = new SaharaClient(_portManager, _log, _logDetail, saharaProgress);
-                
+
                 bool saharaOk = await _sahara.HandshakeAndUploadAsync(loaderData, "VIP_Loader", ct);
                 if (!saharaOk)
                 {
@@ -698,7 +698,7 @@ namespace LoveAlways.Qualcomm.Services
                     var digestInfo = new System.IO.FileInfo(digestPath);
                     var sigInfo = new System.IO.FileInfo(signaturePath);
                     _log(string.Format("[Qualcomm] Executing VIP Auth (Digest={0}B, Sign={1}B)...", digestInfo.Length, sigInfo.Length));
-                    
+
                     // Send using file path
                     vipAuthOk = await _firehose.PerformVipAuthAsync(digestPath, signaturePath, ct);
                     if (!vipAuthOk)
@@ -797,13 +797,13 @@ namespace LoveAlways.Qualcomm.Services
                 // 保存连接参数
                 LastPortName = portName;
                 LastStorageType = storageType;
-                
+
                 // 注册端口断开事件
                 if (_portManager != null)
                 {
                     _portManager.PortDisconnected += (s, e) => HandlePortDisconnected();
                 }
-                
+
                 SetState(QualcommConnectionState.Ready);
                 _log("[Qualcomm] Firehose direct connect success");
                 return true;
@@ -855,7 +855,7 @@ namespace LoveAlways.Qualcomm.Services
 
             SetState(QualcommConnectionState.Disconnected);
         }
-        
+
         /// <summary>
         /// Release Port (Call after operation, keep device object and state)
         /// </summary>
@@ -874,10 +874,10 @@ namespace LoveAlways.Qualcomm.Services
                 _logDetail("[Qualcomm] Port kept open (Continuous operation mode)");
                 return;
             }
-            
+
             if (_portManager == null || !_portManager.IsOpen)
                 return;
-                
+
             try
             {
                 // Cache chip info (Accessible after port closed)
@@ -885,11 +885,11 @@ namespace LoveAlways.Qualcomm.Services
                 {
                     _cachedChipInfo = _sahara.ChipInfo;
                 }
-                
+
                 // Close port but do not destroy device object
                 _portManager.Close();
                 _portClosed = true;
-                
+
                 _logDetail("[Qualcomm] Port released (Device info retained)");
             }
             catch (Exception ex)
@@ -897,7 +897,7 @@ namespace LoveAlways.Qualcomm.Services
                 _logDetail("[Qualcomm] Release port exception: " + ex.Message);
             }
         }
-        
+
         /// <summary>
         /// Ensure port is open (Call before operation)
         /// </summary>
@@ -908,14 +908,14 @@ namespace LoveAlways.Qualcomm.Services
             // If port is open and available, return directly
             if (_portManager != null && _portManager.IsOpen && !_portClosed)
                 return true;
-                
+
             // If no port name recorded, cannot reopen
             if (string.IsNullOrEmpty(LastPortName))
             {
                 _log("[Qualcomm] Cannot reopen port: No port name recorded");
                 return false;
             }
-            
+
             // Check if port is available in system
             if (_portManager != null && !_portManager.IsPortAvailable())
             {
@@ -923,26 +923,26 @@ namespace LoveAlways.Qualcomm.Services
                 HandlePortDisconnected();
                 return false;
             }
-            
+
             // Reopen port
             try
             {
                 _logDetail(string.Format("[Qualcomm] Reopening port: {0}", LastPortName));
-                
+
                 if (_portManager == null)
                 {
                     _portManager = new SerialPortManager();
                 }
-                
+
                 bool opened = await _portManager.OpenAsync(LastPortName, 3, true, ct);
                 if (!opened)
                 {
                     _log("[Qualcomm] Cannot reopen port");
                     return false;
                 }
-                
+
                 _portClosed = false;
-                
+
                 // Note: Firehose client retained, no need to recreate
                 // If _firehose is null, connection has issues, require full reconnection
                 if (_firehose == null)
@@ -950,7 +950,7 @@ namespace LoveAlways.Qualcomm.Services
                     _log("[Qualcomm] Firehose client lost, require full reconnection");
                     return false;
                 }
-                
+
                 _logDetail("[Qualcomm] Port reopened successfully");
                 return true;
             }
@@ -960,7 +960,7 @@ namespace LoveAlways.Qualcomm.Services
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Set if keep port open (For continuous operation, e.g. batch flashing)
         /// </summary>
@@ -973,7 +973,7 @@ namespace LoveAlways.Qualcomm.Services
             else
                 _logDetail("[Qualcomm] Setting: Allow release port");
         }
-        
+
         /// <summary>
         /// Get chip info (Accessible even if port closed)
         /// </summary>
@@ -983,12 +983,12 @@ namespace LoveAlways.Qualcomm.Services
                 return _sahara.ChipInfo;
             return _cachedChipInfo;
         }
-        
+
         /// <summary>
         /// Is port released
         /// </summary>
         public bool IsPortReleased { get { return _portClosed; } }
-        
+
         /// <summary>
         /// Reset stuck Sahara state
         /// Used when device is stuck in Sahara mode due to other software or boot errors
@@ -999,13 +999,13 @@ namespace LoveAlways.Qualcomm.Services
         public async Task<bool> ResetSaharaAsync(string portName, CancellationToken ct = default(CancellationToken))
         {
             _log("[Qualcomm] Attempting to reset stuck Sahara state...");
-            
+
             try
             {
                 // Ensure previous connection closed
                 Disconnect();
                 await Task.Delay(200, ct);
-                
+
                 // Open port
                 _portManager = new SerialPortManager();
                 bool opened = await _portManager.OpenAsync(portName, 3, true, ct);
@@ -1014,22 +1014,22 @@ namespace LoveAlways.Qualcomm.Services
                     _log("[Qualcomm] Cannot open port");
                     return false;
                 }
-                
+
                 // Create temporary Sahara Client
                 _sahara = new SaharaClient(_portManager, _log, _logDetail, null);
-                
+
                 // Attempt reset
                 bool success = await _sahara.TryResetSaharaAsync(ct);
-                
+
                 if (success)
                 {
                     _log("[Qualcomm] ✓ Sahara state reset");
                     _log("[Qualcomm] Device ready, please click [Connect] to reconnect");
-                    
+
                     // Disconnect after reset success, allow user to reconnect
                     // Save port name for later connection
                     string savedPortName = portName;
-                    
+
                     // Close current connection (Release port resources)
                     if (_portManager != null)
                     {
@@ -1042,7 +1042,7 @@ namespace LoveAlways.Qualcomm.Services
                         _sahara.Dispose();
                         _sahara = null;
                     }
-                    
+
                     // Set to disconnected state, wait for user reconnection
                     SetState(QualcommConnectionState.Disconnected);
                     LastPortName = savedPortName;  // Save port name
@@ -1053,7 +1053,7 @@ namespace LoveAlways.Qualcomm.Services
                     // Close connection
                     Disconnect();
                 }
-                
+
                 return success;
             }
             catch (Exception ex)
@@ -1063,7 +1063,7 @@ namespace LoveAlways.Qualcomm.Services
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Hard Reset Device (Full Reboot)
         /// </summary>
@@ -1072,7 +1072,7 @@ namespace LoveAlways.Qualcomm.Services
         public async Task<bool> HardResetDeviceAsync(string portName, CancellationToken ct = default(CancellationToken))
         {
             _log("[Qualcomm] Sending Hard Reset command...");
-            
+
             try
             {
                 // If Firehose connected, reset via Firehose
@@ -1082,22 +1082,22 @@ namespace LoveAlways.Qualcomm.Services
                     Disconnect();
                     return ok;
                 }
-                
+
                 // Otherwise try reset via Sahara
                 if (_portManager == null || !_portManager.IsOpen)
                 {
                     _portManager = new SerialPortManager();
                     await _portManager.OpenAsync(portName, 3, true, ct);
                 }
-                
+
                 if (_sahara == null)
                 {
                     _sahara = new SaharaClient(_portManager, _log, _logDetail, null);
                 }
-                
+
                 _sahara.SendHardReset();
                 _log("[Qualcomm] Hard Reset command sent, device will reboot");
-                
+
                 await Task.Delay(500, ct);
                 Disconnect();
                 return true;
@@ -1336,7 +1336,7 @@ namespace LoveAlways.Qualcomm.Services
                 if (result)
                 {
                     _log("[Qualcomm] VIP Auth success, high privilege mode activated");
-                    IsVipDevice = true; 
+                    IsVipDevice = true;
                 }
                 else
                 {
@@ -1365,7 +1365,7 @@ namespace LoveAlways.Qualcomm.Services
                 return false;
             }
 
-            _log(string.Format("[Qualcomm] Starting VIP Auth (Digest={0}B, Sign={1}B)...", 
+            _log(string.Format("[Qualcomm] Starting VIP Auth (Digest={0}B, Sign={1}B)...",
                 digestData?.Length ?? 0, signatureData?.Length ?? 0));
             try
             {
@@ -1447,7 +1447,7 @@ namespace LoveAlways.Qualcomm.Services
             }
 
             _log(string.Format("[Qualcomm] Using Chimera signature: {0} ({1})", signData.Name, signData.Platform));
-            _log(string.Format("[Qualcomm] Digest: {0} Bytes, Signature: {1} Bytes", 
+            _log(string.Format("[Qualcomm] Digest: {0} Bytes, Signature: {1} Bytes",
                 signData.DigestSize, signData.SignatureSize));
 
             return await PerformVipAuthAsync(signData.Digest, signData.Signature, ct);
@@ -1533,7 +1533,7 @@ namespace LoveAlways.Qualcomm.Services
         /// <param name="subProgress">Sub Progress Callback (0-100)</param>
         /// <param name="ct">Cancellation Token</param>
         public async Task<List<PartitionInfo>> ReadAllGptAsync(
-            int maxLuns, 
+            int maxLuns,
             IProgress<Tuple<int, int>> totalProgress,
             IProgress<double> subProgress,
             CancellationToken ct = default(CancellationToken))
@@ -1550,16 +1550,17 @@ namespace LoveAlways.Qualcomm.Services
             if (subProgress != null) subProgress.Report(0);
 
             // LUN progress callback - Realtime update progress
-            var lunProgress = new Progress<int>(lun => {
+            var lunProgress = new Progress<int>(lun =>
+            {
                 if (totalProgress != null) totalProgress.Report(Tuple.Create(lun, maxLuns));
                 if (subProgress != null) subProgress.Report(100.0 * lun / maxLuns);
             });
 
             var partitions = await _firehose.ReadGptPartitionsAsync(IsVipDevice, ct, lunProgress);
-            
+
             // Report intermediate progress
             if (subProgress != null) subProgress.Report(80);
-            
+
             if (partitions != null && partitions.Count > 0)
             {
                 allPartitions.AddRange(partitions);
@@ -1711,13 +1712,14 @@ namespace LoveAlways.Qualcomm.Services
             return success;
         }
 
-        private bool IsOplusDevice 
-        { 
-            get { 
+        private bool IsOplusDevice
+        {
+            get
+            {
                 if (IsVipDevice) return true;
                 if (ChipInfo != null && (ChipInfo.Vendor == "OPPO" || ChipInfo.Vendor == "Realme" || ChipInfo.Vendor == "OnePlus")) return true;
                 return false;
-            } 
+            }
         }
 
         /// <summary>
@@ -1733,7 +1735,7 @@ namespace LoveAlways.Qualcomm.Services
             if (startSector < 0)
             {
                 _logDetail(string.Format("[Qualcomm] Write: {0} -> LUN{1} @ NUM_DISK_SECTORS{2}", label, lun, startSector));
-                
+
                 // Use official NUM_DISK_SECTORS-N format, let device calculate absolute address
                 return await _firehose.FlashPartitionWithNegativeSectorAsync(
                     label, filePath, lun, startSector, progress, ct);
@@ -1806,7 +1808,7 @@ namespace LoveAlways.Qualcomm.Services
             {
                 int actualSize = Math.Min(size, data.Length - offsetInSector);
                 if (actualSize <= 0) return null;
-                
+
                 byte[] result = new byte[actualSize];
                 Array.Copy(data, offsetInSector, result, 0, actualSize);
                 return result;
@@ -2033,7 +2035,7 @@ namespace LoveAlways.Qualcomm.Services
                 activeSlot = "a";
 
             var tasks = await _oplusSuperManager.PrepareSuperTasksAsync(firmwareRoot, superPart.StartSector, (int)superPart.SectorSize, activeSlot, nvId);
-            
+
             if (tasks.Count == 0)
             {
                 _log("[Qualcomm] No available Super logical partition images found");
@@ -2051,9 +2053,10 @@ namespace LoveAlways.Qualcomm.Services
                 if (ct.IsCancellationRequested) break;
 
                 _log(string.Format("[Qualcomm] Writing {0} [{1}] to physical sector {2}...", task.PartitionName, Path.GetFileName(task.FilePath), task.PhysicalSector));
-                
+
                 // Nested progress calculation
-                var taskProgress = new Progress<double>(p => {
+                var taskProgress = new Progress<double>(p =>
+                {
                     if (progress != null)
                     {
                         double currentTaskWeight = (double)task.SizeInBytes / totalBytes;
@@ -2063,12 +2066,12 @@ namespace LoveAlways.Qualcomm.Services
                 });
 
                 bool success = await _firehose.FlashPartitionFromFileAsync(
-                    task.PartitionName, 
-                    task.FilePath, 
-                    superPart.Lun, 
-                    task.PhysicalSector, 
-                    taskProgress, 
-                    ct, 
+                    task.PartitionName,
+                    task.FilePath,
+                    superPart.Lun,
+                    task.PhysicalSector,
+                    taskProgress,
+                    ct,
                     IsVipDevice);
 
                 if (!success)

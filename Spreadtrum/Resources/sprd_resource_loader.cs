@@ -4,7 +4,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -27,10 +27,10 @@ namespace LoveAlways.Spreadtrum.Resources
 
         // Resource package filename
         private const string PAK_FILENAME = "sprd_resources.pak";
-        
+
         // Embedded resource name prefix
         private const string EMBEDDED_PREFIX = "LoveAlways.Spreadtrum.Resources.";
-        
+
         /// <summary>
         /// Exploit payload filenames
         /// </summary>
@@ -149,13 +149,13 @@ namespace LoveAlways.Spreadtrum.Resources
             // Based on Prepare_Exploit function logic in iReverse project
             if (fdl1Address == 0x5000 || fdl1Address == 0x00005000)
                 return "0x4ee8";
-            
+
             if (fdl1Address == 0x65000800)
                 return "0x65015f08";
-            
+
             if (fdl1Address == 0x65000000)
                 return "0x65015f48";
-            
+
             return null;
         }
 
@@ -231,7 +231,7 @@ namespace LoveAlways.Spreadtrum.Resources
         private static byte[] LoadEmbeddedResource(string resourceName)
         {
             string fullName = EMBEDDED_PREFIX + resourceName;
-            
+
             try
             {
                 using (Stream stream = _assembly.GetManifestResourceStream(fullName))

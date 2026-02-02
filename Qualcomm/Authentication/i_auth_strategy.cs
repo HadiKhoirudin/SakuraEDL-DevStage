@@ -4,13 +4,13 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Qualcomm.Protocol;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Qualcomm.Protocol;
 
 namespace LoveAlways.Qualcomm.Authentication
 {
@@ -24,13 +24,13 @@ namespace LoveAlways.Qualcomm.Authentication
         /// </summary>
         string Name { get; }
 
-    /// <summary>
-    /// Perform Authentication
-    /// </summary>
-    /// <param name="client">Firehose Client</param>
-    /// <param name="programmerPath">Programmer File Path</param>
-    /// <param name="ct">Cancellation Token</param>
-    /// <returns>True if authentication succeeded</returns>
+        /// <summary>
+        /// Perform Authentication
+        /// </summary>
+        /// <param name="client">Firehose Client</param>
+        /// <param name="programmerPath">Programmer File Path</param>
+        /// <param name="ct">Cancellation Token</param>
+        /// <returns>True if authentication succeeded</returns>
         Task<bool> AuthenticateAsync(FirehoseClient client, string programmerPath, CancellationToken ct = default(CancellationToken));
     }
 }

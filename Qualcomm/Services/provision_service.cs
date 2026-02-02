@@ -6,7 +6,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -234,7 +234,7 @@ namespace LoveAlways.Qualcomm.Services
                     ParseEmmcConfig(emmcConfig, config);
                 }
 
-                _log(string.Format("[Provision] Parse complete: {0}, {1} LUNs", 
+                _log(string.Format("[Provision] Parse complete: {0}, {1} LUNs",
                     config.StorageType, config.UfsLuns.Count));
             }
             catch (Exception ex)
@@ -463,19 +463,19 @@ namespace LoveAlways.Qualcomm.Services
         {
             var attr = element.Attribute(name);
             if (attr == null) return defaultValue;
-            
+
             string value = attr.Value;
-            
+
             // Support hex
             if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
                 if (int.TryParse(value.Substring(2), System.Globalization.NumberStyles.HexNumber, null, out int hexResult))
                     return hexResult;
             }
-            
+
             if (int.TryParse(value, out int result))
                 return result;
-                
+
             return defaultValue;
         }
 
@@ -483,19 +483,19 @@ namespace LoveAlways.Qualcomm.Services
         {
             var attr = element.Attribute(name);
             if (attr == null) return defaultValue;
-            
+
             string value = attr.Value;
-            
+
             // 支持 16 进制
             if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
                 if (long.TryParse(value.Substring(2), System.Globalization.NumberStyles.HexNumber, null, out long hexResult))
                     return hexResult;
             }
-            
+
             if (long.TryParse(value, out long result))
                 return result;
-                
+
             return defaultValue;
         }
 
@@ -503,14 +503,14 @@ namespace LoveAlways.Qualcomm.Services
         {
             var attr = element.Attribute(name);
             if (attr == null) return defaultValue;
-            
+
             string value = attr.Value.ToLowerInvariant();
-            
+
             if (value == "1" || value == "true" || value == "yes")
                 return true;
             if (value == "0" || value == "false" || value == "no")
                 return false;
-                
+
             return defaultValue;
         }
 
@@ -538,9 +538,9 @@ namespace LoveAlways.Qualcomm.Services
                 sb.AppendLine(string.Format("  Boot Enable: {0}", config.UfsGlobal.BootEnable ? "Yes" : "No"));
                 sb.AppendLine(string.Format("  Boot LUN: {0}", config.UfsGlobal.BootLun));
                 sb.AppendLine(string.Format("  Write Protect: {0}", GetWriteProtectDescription(config.UfsGlobal.WriteProtect)));
-                sb.AppendLine(string.Format("  Write Booster: {0}", 
-                    config.UfsGlobal.WriteBoosterBufferSize > 0 
-                        ? string.Format("{0:F2} GB", config.UfsGlobal.WriteBoosterBufferSize * 4096.0 / 1024 / 1024 / 1024) 
+                sb.AppendLine(string.Format("  Write Booster: {0}",
+                    config.UfsGlobal.WriteBoosterBufferSize > 0
+                        ? string.Format("{0:F2} GB", config.UfsGlobal.WriteBoosterBufferSize * 4096.0 / 1024 / 1024 / 1024)
                         : "Not configured"));
                 sb.AppendLine();
 

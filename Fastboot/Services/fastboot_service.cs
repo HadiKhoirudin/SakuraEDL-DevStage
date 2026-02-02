@@ -1,20 +1,18 @@
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using LoveAlways.Common;
 using LoveAlways.Fastboot.Common;
 using LoveAlways.Fastboot.Models;
 using LoveAlways.Fastboot.Protocol;
-using LoveAlways.Fastboot.Transport;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LoveAlways.Fastboot.Services
 {
@@ -30,7 +28,7 @@ namespace LoveAlways.Fastboot.Services
 
         private FastbootNativeService _nativeService;
         private bool _disposed;
-        
+
         // Watchdog
         private Watchdog _watchdog;
 
@@ -48,7 +46,7 @@ namespace LoveAlways.Fastboot.Services
         /// Whether a device is connected
         /// </summary>
         public bool IsConnected => _nativeService?.IsConnected ?? false;
-        
+
         /// <summary>
         /// Flashing progress event
         /// </summary>
@@ -59,19 +57,19 @@ namespace LoveAlways.Fastboot.Services
             _log = log ?? (msg => { });
             _progress = progress;
             _logDetail = logDetail ?? (msg => { });
-            
+
             // Initialize watchdog
             _watchdog = new Watchdog("Fastboot", WatchdogManager.DefaultTimeouts.Fastboot, _logDetail);
             _watchdog.OnTimeout += OnWatchdogTimeout;
         }
-        
+
         /// <summary>
         /// Watchdog timeout handler
         /// </summary>
         private void OnWatchdogTimeout(object sender, WatchdogTimeoutEventArgs e)
         {
             _log($"[Fastboot] Watchdog timeout: {e.OperationName}");
-            
+
             if (e.TimeoutCount >= 2)
             {
                 _log("[Fastboot] Multiple timeouts, disconnecting");
@@ -79,17 +77,17 @@ namespace LoveAlways.Fastboot.Services
                 Disconnect();
             }
         }
-        
+
         /// <summary>
         /// Feed watchdog
         /// </summary>
         public void FeedWatchdog() => _watchdog?.Feed();
-        
+
         /// <summary>
         /// Start watchdog
         /// </summary>
         public void StartWatchdog(string operation) => _watchdog?.Start(operation);
-        
+
         /// <summary>
         /// Stop watchdog
         /// </summary>
@@ -108,7 +106,7 @@ namespace LoveAlways.Fastboot.Services
             {
                 // Use native USB enumeration
                 var nativeDevices = FastbootClient.GetDevices();
-                
+
                 foreach (var device in nativeDevices)
                 {
                     devices.Add(new FastbootDeviceListItem
@@ -132,34 +130,34 @@ namespace LoveAlways.Fastboot.Services
         public async Task<bool> SelectDeviceAsync(string serial, CancellationToken ct = default)
         {
             _log($"[Fastboot] Selecting device: {serial}");
-            
+
             // Disconnect old connection
             Disconnect();
-            
+
             // Create new native service
             _nativeService = new FastbootNativeService(_log, _logDetail);
             _nativeService.ProgressChanged += OnNativeProgressChanged;
-            
+
             // Connect to device
             bool success = await _nativeService.ConnectAsync(serial, ct);
-            
+
             if (success)
             {
                 _log($"[Fastboot] Device: {DeviceInfo?.Product ?? "Unknown"}");
                 _log($"[Fastboot] Secure Boot: {(DeviceInfo?.SecureBoot == true ? "Enabled" : "Disabled")}");
-                
+
                 if (DeviceInfo?.HasABPartition == true)
                 {
                     _log($"[Fastboot] Current Slot: {DeviceInfo.CurrentSlot}");
                 }
-                
+
                 _log($"[Fastboot] Fastbootd Mode: {(DeviceInfo?.IsFastbootd == true ? "Yes" : "No")}");
                 _log($"[Fastboot] Partition Count: {DeviceInfo?.PartitionSizes?.Count ?? 0}");
             }
-            
+
             return success;
         }
-        
+
         /// <summary>
         /// Native progress callback
         /// </summary>
@@ -176,7 +174,7 @@ namespace LoveAlways.Fastboot.Services
                 SpeedKBps = e.SpeedBps / 1024.0,
                 Percent = e.Percent  // Pass actual progress value
             };
-            
+
             FlashProgressChanged?.Invoke(progress);
         }
 
@@ -195,7 +193,7 @@ namespace LoveAlways.Fastboot.Services
             {
                 _log("[Fastboot] Reading device info...");
                 bool result = await _nativeService.RefreshDeviceInfoAsync(ct);
-                
+
                 if (result && DeviceInfo != null)
                 {
                     _log($"[Fastboot] Device: {DeviceInfo.Product ?? "Unknown"}");
@@ -205,14 +203,14 @@ namespace LoveAlways.Fastboot.Services
                         _log($"[Fastboot] Current Slot: {DeviceInfo.CurrentSlot}");
                     _log($"[Fastboot] Variable Count: {DeviceInfo.RawVariables?.Count ?? 0}");
                     _log($"[Fastboot] Partition Count: {DeviceInfo.PartitionSizes?.Count ?? 0}");
-                    
+
                     // Hint about bootloader mode limitations
                     if (!DeviceInfo.IsFastbootd && DeviceInfo.PartitionSizes?.Count == 0)
                     {
                         _log("[Fastboot] Hint: Bootloader mode does not support reading partition list. Enter Fastbootd mode to view them.");
                     }
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -239,11 +237,11 @@ namespace LoveAlways.Fastboot.Services
         #endregion
 
         #region Partition Operations
-        
+
         /// <summary>
         /// Flash partition
         /// </summary>
-        public async Task<bool> FlashPartitionAsync(string partitionName, string imagePath, 
+        public async Task<bool> FlashPartitionAsync(string partitionName, string imagePath,
             bool disableVerity = false, CancellationToken ct = default)
         {
             if (_nativeService == null || !_nativeService.IsConnected)
@@ -264,7 +262,7 @@ namespace LoveAlways.Fastboot.Services
                 _log($"[Fastboot] Flashing {partitionName} ({FormatSize(fileInfo.Length)})...");
 
                 bool result = await _nativeService.FlashPartitionAsync(partitionName, imagePath, disableVerity, ct);
-                
+
                 if (result)
                 {
                     _log($"[Fastboot] {partitionName} flashed successfully");
@@ -273,7 +271,7 @@ namespace LoveAlways.Fastboot.Services
                 {
                     _log($"[Fastboot] {partitionName} flashing failed");
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -282,7 +280,7 @@ namespace LoveAlways.Fastboot.Services
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Format file size
         /// </summary>
@@ -324,7 +322,7 @@ namespace LoveAlways.Fastboot.Services
                 {
                     _log($"[Fastboot] {partitionName} erase failed");
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -353,9 +351,9 @@ namespace LoveAlways.Fastboot.Services
                 ct.ThrowIfCancellationRequested();
 
                 var (partName, imagePath) = partitions[i];
-                
+
                 _progress?.Invoke(i, total);
-                
+
                 if (await FlashPartitionAsync(partName, imagePath, false, ct))
                 {
                     success++;
@@ -538,7 +536,7 @@ namespace LoveAlways.Fastboot.Services
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Switch A/B slot
         /// </summary>
@@ -560,7 +558,7 @@ namespace LoveAlways.Fastboot.Services
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Get current slot
         /// </summary>
@@ -609,7 +607,7 @@ namespace LoveAlways.Fastboot.Services
                 return null;
             }
         }
-        
+
         /// <summary>
         /// OEM EDL - Xiaomi kick to EDL (fastboot oem edl)
         /// </summary>
@@ -633,7 +631,7 @@ namespace LoveAlways.Fastboot.Services
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Erase FRP partition (Google Lock)
         /// </summary>
@@ -676,7 +674,7 @@ namespace LoveAlways.Fastboot.Services
                 return null;
             }
         }
-        
+
         /// <summary>
         /// Execute arbitrary command (used for shortcut command feature)
         /// </summary>
@@ -692,7 +690,7 @@ namespace LoveAlways.Fastboot.Services
             {
                 _log($"[Fastboot] Executing: {command}");
                 string result = null;
-                
+
                 // Parse command
                 if (command.StartsWith("getvar ", StringComparison.OrdinalIgnoreCase))
                 {
@@ -770,7 +768,7 @@ namespace LoveAlways.Fastboot.Services
                     result = await _nativeService.ExecuteOemCommandAsync(command, ct);
                     _log($"[Fastboot] Response: {result ?? "OKAY"}");
                 }
-                
+
                 return result ?? "OKAY";
             }
             catch (Exception ex)
@@ -861,7 +859,7 @@ namespace LoveAlways.Fastboot.Services
                 // Fallback detection: via product or hardware information
                 string hardware = await _nativeService.GetVariableAsync("hw-revision", ct);
                 string product = DeviceInfo?.Product ?? await _nativeService.GetVariableAsync("product", ct);
-                
+
                 if (!string.IsNullOrEmpty(product))
                 {
                     string p = product.ToLower();
@@ -963,7 +961,7 @@ namespace LoveAlways.Fastboot.Services
             try
             {
                 _log("[Fastboot] Deleting COW snapshot partitions...");
-                
+
                 // COW partition naming rules: PartitionName_cow, PartitionName_cow-img
                 var cowSuffixes = new[] { "_cow", "_cow-img" };
                 int deletedCount = 0;
@@ -1024,7 +1022,7 @@ namespace LoveAlways.Fastboot.Services
             {
                 // Build partition name with slot
                 string targetPartition = $"{partitionName}_{slot}";
-                
+
                 var fileInfo = new FileInfo(imagePath);
                 _log($"[Fastboot] Flashing {Path.GetFileName(imagePath)} -> {targetPartition} ({FormatSize(fileInfo.Length)})");
 
@@ -1039,7 +1037,7 @@ namespace LoveAlways.Fastboot.Services
                 try
                 {
                     bool result = await _nativeService.FlashPartitionAsync(targetPartition, imagePath, false, ct);
-                    
+
                     if (result)
                     {
                         _logDetail($"[Fastboot] {targetPartition} flashed successfully");
@@ -1048,7 +1046,7 @@ namespace LoveAlways.Fastboot.Services
                     {
                         _log($"[Fastboot] {targetPartition} flashing failed");
                     }
-                    
+
                     return result;
                 }
                 finally
@@ -1130,10 +1128,10 @@ namespace LoveAlways.Fastboot.Services
 
                 // 3. Format userdata (-w equivalent)
                 // Note: Native protocol might not support -w, need to implement via format command
-                
+
                 bool success = eraseUserdata || eraseMetadata;
                 _log(success ? "[Fastboot] User data wipe complete" : "[Fastboot] User data wipe failed");
-                
+
                 return success;
             }
             catch (Exception ex)

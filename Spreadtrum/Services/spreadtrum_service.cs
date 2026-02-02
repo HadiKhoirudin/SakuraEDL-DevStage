@@ -4,10 +4,14 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Common;
+using LoveAlways.Spreadtrum.Common;
+using LoveAlways.Spreadtrum.Exploit;
+using LoveAlways.Spreadtrum.Protocol;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -16,10 +20,6 @@ using System.IO.Ports;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.Common;
-using LoveAlways.Spreadtrum.Common;
-using LoveAlways.Spreadtrum.Exploit;
-using LoveAlways.Spreadtrum.Protocol;
 
 namespace LoveAlways.Spreadtrum.Services
 {
@@ -110,13 +110,13 @@ namespace LoveAlways.Spreadtrum.Services
 
         // Watchdog
         private Watchdog _watchdog;
-        
+
         public SpreadtrumService()
         {
             _pacParser = new PacParser(msg => Log(msg, Color.Gray));
             _portDetector = new SprdPortDetector();
             _exploitService = new SprdExploitService((msg, color) => Log(msg, color));
-            
+
             _portDetector.OnLog += msg => Log(msg, Color.Gray);
             _portDetector.OnDeviceConnected += dev => OnDeviceConnected?.Invoke(dev);
             _portDetector.OnDeviceDisconnected += dev => OnDeviceDisconnected?.Invoke(dev);
@@ -124,20 +124,20 @@ namespace LoveAlways.Spreadtrum.Services
             // Exploit events
             _exploitService.OnVulnerabilityDetected += result => OnVulnerabilityDetected?.Invoke(result);
             _exploitService.OnExploitCompleted += result => OnExploitCompleted?.Invoke(result);
-            
+
             // Initialize watchdog
-            _watchdog = new Watchdog("Spreadtrum", WatchdogManager.DefaultTimeouts.Spreadtrum, 
+            _watchdog = new Watchdog("Spreadtrum", WatchdogManager.DefaultTimeouts.Spreadtrum,
                 msg => Log(msg, Color.Gray));
             _watchdog.OnTimeout += OnWatchdogTimeout;
         }
-        
+
         /// <summary>
         /// Watchdog timeout handling
         /// </summary>
         private void OnWatchdogTimeout(object sender, WatchdogTimeoutEventArgs e)
         {
             Log($"[Spreadtrum] Watchdog timeout: {e.OperationName} (Waiting {e.ElapsedTime.TotalSeconds:F1}s)", Color.Orange);
-            
+
             if (e.TimeoutCount >= 3)
             {
                 Log("[Spreadtrum] Multiple timeouts, disconnecting", Color.Red);
@@ -145,17 +145,17 @@ namespace LoveAlways.Spreadtrum.Services
                 Disconnect();
             }
         }
-        
+
         /// <summary>
         /// Feed watchdog
         /// </summary>
         public void FeedWatchdog() => _watchdog?.Feed();
-        
+
         /// <summary>
         /// Start watchdog
         /// </summary>
         public void StartWatchdog(string operation) => _watchdog?.Start(operation);
-        
+
         /// <summary>
         /// Stop watchdog
         /// </summary>
@@ -200,14 +200,14 @@ namespace LoveAlways.Spreadtrum.Services
                 _client.OnLog += msg => Log(msg, Color.White);
                 _client.OnProgress += (current, total) => OnProgress?.Invoke(current, total);
                 _client.OnStateChanged += state => OnStateChanged?.Invoke(state);
-                
+
                 // Apply saved settings to new client
                 ApplyClientConfiguration();
 
                 Log(string.Format("[Spreadtrum] Connecting device: {0}", comPort), Color.Cyan);
 
                 bool success = await _client.ConnectAsync(comPort, baudRate);
-                
+
                 if (success)
                 {
                     Log("[Spreadtrum] Device connected successfully", Color.Green);
@@ -225,26 +225,26 @@ namespace LoveAlways.Spreadtrum.Services
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Apply saved settings to FdlClient
         /// </summary>
         private void ApplyClientConfiguration()
         {
             if (_client == null) return;
-            
+
             // Apply chip ID (this will automatically set exec_addr)
             if (ChipId > 0)
             {
                 _client.SetChipId(ChipId);
             }
-            
+
             // Apply custom FDL configuration
             if (!string.IsNullOrEmpty(CustomFdl1Path) || CustomFdl1Address > 0)
             {
                 _client.SetCustomFdl1(CustomFdl1Path, CustomFdl1Address);
             }
-            
+
             if (!string.IsNullOrEmpty(CustomFdl2Path) || CustomFdl2Address > 0)
             {
                 _client.SetCustomFdl2(CustomFdl2Path, CustomFdl2Address);
@@ -304,11 +304,11 @@ namespace LoveAlways.Spreadtrum.Services
             if (IsBromMode || CurrentStage == FdlStage.None)
             {
                 Log("[Spreadtrum] Device in BROM mode, starting FDL download...", Color.Yellow);
-                
+
                 // Get FDL1 data and address
                 byte[] fdl1Data = null;
                 uint fdl1Addr = 0;
-                
+
                 // Prioritize custom FDL1
                 if (!string.IsNullOrEmpty(CustomFdl1Path) && File.Exists(CustomFdl1Path))
                 {
@@ -345,7 +345,7 @@ namespace LoveAlways.Spreadtrum.Services
                     {
                         fdl1Addr = chipInfo.Fdl1Address;
                         Log($"[Spreadtrum] Chip {chipInfo.ChipName} FDL1 Address: 0x{fdl1Addr:X}", Color.Cyan);
-                        
+
                         // Try finding device specific FDL
                         var deviceFdls = Database.SprdFdlDatabase.GetDeviceNames(chipInfo.ChipName);
                         if (deviceFdls.Length > 0)
@@ -378,7 +378,7 @@ namespace LoveAlways.Spreadtrum.Services
             {
                 byte[] fdl2Data = null;
                 uint fdl2Addr = 0;
-                
+
                 // Prioritize custom FDL2
                 if (!string.IsNullOrEmpty(CustomFdl2Path) && File.Exists(CustomFdl2Path))
                 {
@@ -485,24 +485,24 @@ namespace LoveAlways.Spreadtrum.Services
                 if (CurrentPac.XmlConfig != null)
                 {
                     Log(string.Format("[Spreadtrum] XML Config: {0}", CurrentPac.XmlConfig.ConfigType), Color.Gray);
-                    
+
                     if (CurrentPac.XmlConfig.Fdl1Config != null)
                     {
-                        Log(string.Format("[Spreadtrum] FDL1: {0} @ 0x{1:X}", 
-                            CurrentPac.XmlConfig.Fdl1Config.FileName, 
+                        Log(string.Format("[Spreadtrum] FDL1: {0} @ 0x{1:X}",
+                            CurrentPac.XmlConfig.Fdl1Config.FileName,
                             CurrentPac.XmlConfig.Fdl1Config.Address), Color.Gray);
                     }
-                    
+
                     if (CurrentPac.XmlConfig.Fdl2Config != null)
                     {
-                        Log(string.Format("[Spreadtrum] FDL2: {0} @ 0x{1:X}", 
-                            CurrentPac.XmlConfig.Fdl2Config.FileName, 
+                        Log(string.Format("[Spreadtrum] FDL2: {0} @ 0x{1:X}",
+                            CurrentPac.XmlConfig.Fdl2Config.FileName,
                             CurrentPac.XmlConfig.Fdl2Config.Address), Color.Gray);
                     }
 
                     if (CurrentPac.XmlConfig.EraseConfig != null)
                     {
-                        Log(string.Format("[Spreadtrum] Erase Config: All={0}, UserData={1}", 
+                        Log(string.Format("[Spreadtrum] Erase Config: All={0}, UserData={1}",
                             CurrentPac.XmlConfig.EraseConfig.EraseAll,
                             CurrentPac.XmlConfig.EraseConfig.EraseUserData), Color.Gray);
                     }
@@ -570,10 +570,10 @@ namespace LoveAlways.Spreadtrum.Services
                 if (fdl1Entry != null)
                 {
                     Log("[Spreadtrum] Downloading FDL1...", Color.White);
-                    
+
                     string tempFdl1 = Path.Combine(Path.GetTempPath(), "fdl1.bin");
                     _pacParser.ExtractFile(CurrentPac.FilePath, fdl1Entry, tempFdl1);
-                    
+
                     byte[] fdl1Data = File.ReadAllBytes(tempFdl1);
                     uint fdl1Addr = fdl1Entry.Address != 0 ? fdl1Entry.Address : SprdPlatform.GetFdl1Address(0);
 
@@ -582,7 +582,7 @@ namespace LoveAlways.Spreadtrum.Services
                         Log("[Spreadtrum] FDL1 download failed", Color.Red);
                         return false;
                     }
-                    
+
                     File.Delete(tempFdl1);
                 }
 
@@ -591,10 +591,10 @@ namespace LoveAlways.Spreadtrum.Services
                 if (fdl2Entry != null)
                 {
                     Log("[Spreadtrum] Downloading FDL2...", Color.White);
-                    
+
                     string tempFdl2 = Path.Combine(Path.GetTempPath(), "fdl2.bin");
                     _pacParser.ExtractFile(CurrentPac.FilePath, fdl2Entry, tempFdl2);
-                    
+
                     byte[] fdl2Data = File.ReadAllBytes(tempFdl2);
                     uint fdl2Addr = fdl2Entry.Address != 0 ? fdl2Entry.Address : SprdPlatform.GetFdl2Address(0);
 
@@ -603,7 +603,7 @@ namespace LoveAlways.Spreadtrum.Services
                         Log("[Spreadtrum] FDL2 download failed", Color.Red);
                         return false;
                     }
-                    
+
                     File.Delete(tempFdl2);
                 }
 
@@ -623,7 +623,7 @@ namespace LoveAlways.Spreadtrum.Services
                 foreach (var entry in CurrentPac.Files)
                 {
                     // Skip FDL, XML, etc.
-                    if (entry.Type == PacFileType.FDL1 || 
+                    if (entry.Type == PacFileType.FDL1 ||
                         entry.Type == PacFileType.FDL2 ||
                         entry.Type == PacFileType.XML ||
                         entry.Size == 0)
@@ -632,7 +632,7 @@ namespace LoveAlways.Spreadtrum.Services
                     }
 
                     // If partition list specified, check if included
-                    if (selectedPartitions != null && 
+                    if (selectedPartitions != null &&
                         !selectedPartitions.Contains(entry.PartitionName))
                     {
                         continue;
@@ -653,7 +653,7 @@ namespace LoveAlways.Spreadtrum.Services
                     }
 
                     currentPartition++;
-                    Log(string.Format("[Spreadtrum] Flashing partition ({0}/{1}): {2}", 
+                    Log(string.Format("[Spreadtrum] Flashing partition ({0}/{1}): {2}",
                         currentPartition, totalPartitions, entry.PartitionName), Color.White);
 
                     // Extract partition data
@@ -663,7 +663,7 @@ namespace LoveAlways.Spreadtrum.Services
                     // Handle Sparse Image
                     string dataFile = tempFile;
                     bool isSparse = SparseHandler.IsSparseImage(tempFile);
-                    
+
                     if (isSparse)
                     {
                         Log(string.Format("[Spreadtrum] Sparse Image detected, decompressing..."), Color.Gray);
@@ -681,7 +681,7 @@ namespace LoveAlways.Spreadtrum.Services
 
                     // Write partition
                     bool success = await _client.WritePartitionAsync(entry.PartitionName, partitionData, cancellationToken);
-                    
+
                     // Clean temporary files
                     if (isSparse)
                     {
@@ -769,7 +769,7 @@ namespace LoveAlways.Spreadtrum.Services
                 Log(string.Format("[Spreadtrum] Reading partition: {0}", partitionName), Color.White);
 
                 byte[] data = await _client.ReadPartitionAsync(partitionName, size);
-                
+
                 if (data != null)
                 {
                     File.WriteAllBytes(outputPath, data);
@@ -801,9 +801,9 @@ namespace LoveAlways.Spreadtrum.Services
             try
             {
                 Log(string.Format("[Spreadtrum] Erasing partition: {0}", partitionName), Color.White);
-                
+
                 bool success = await _client.ErasePartitionAsync(partitionName);
-                
+
                 if (success)
                 {
                     Log(string.Format("[Spreadtrum] Partition {0} erase success", partitionName), Color.Green);
@@ -877,8 +877,8 @@ namespace LoveAlways.Spreadtrum.Services
         {
             if (CachedPartitions == null)
                 return 0;
-            
-            var partition = CachedPartitions.FirstOrDefault(p => 
+
+            var partition = CachedPartitions.FirstOrDefault(p =>
                 p.Name.Equals(partitionName, StringComparison.OrdinalIgnoreCase));
             return partition?.Size ?? 0;
         }
@@ -1002,10 +1002,10 @@ namespace LoveAlways.Spreadtrum.Services
 
             // Convert IMEI string to NV data format
             byte[] imeiData = ConvertImeiToNvData(newImei);
-            
+
             // Write NV item 0 (IMEI)
             bool result = await _client.WriteNvItemAsync(0, imeiData);
-            
+
             if (result)
             {
                 Log("[Spreadtrum] IMEI write success", Color.Green);
@@ -1237,7 +1237,7 @@ namespace LoveAlways.Spreadtrum.Services
             foreach (var kvp in partitionFiles)
             {
                 ct.ThrowIfCancellationRequested();
-                
+
                 current++;
                 Log(string.Format("[Spreadtrum] Flash progress ({0}/{1}): {2}", current, total, kvp.Key), Color.White);
 
@@ -1247,7 +1247,7 @@ namespace LoveAlways.Spreadtrum.Services
                 }
             }
 
-            Log(string.Format("[Spreadtrum] Batch flash complete: {0}/{1} success", success, total), 
+            Log(string.Format("[Spreadtrum] Batch flash complete: {0}/{1} success", success, total),
                 success == total ? Color.Green : Color.Orange);
 
             return success == total;
@@ -1301,7 +1301,7 @@ namespace LoveAlways.Spreadtrum.Services
                 ct.ThrowIfCancellationRequested();
 
                 // Check if calibration partition
-                bool isCalibration = CalibrationPartitions.Any(c => 
+                bool isCalibration = CalibrationPartitions.Any(c =>
                     partition.Name.ToLower().Contains(c.ToLower()));
 
                 if (!isCalibration)
@@ -1310,10 +1310,10 @@ namespace LoveAlways.Spreadtrum.Services
                 Log(string.Format("[Spreadtrum] Backing up: {0}", partition.Name), Color.White);
 
                 string outputPath = Path.Combine(outputDir, partition.Name + ".bin");
-                
+
                 // Read partition data
                 byte[] data = await _client.ReadPartitionAsync(partition.Name, partition.Size, ct);
-                
+
                 if (data != null && data.Length > 0)
                 {
                     File.WriteAllBytes(outputPath, data);
@@ -1365,7 +1365,7 @@ namespace LoveAlways.Spreadtrum.Services
                 string partitionName = Path.GetFileNameWithoutExtension(backupFile);
 
                 // Verify if calibration partition
-                bool isCalibration = CalibrationPartitions.Any(c => 
+                bool isCalibration = CalibrationPartitions.Any(c =>
                     partitionName.ToLower().Contains(c.ToLower()));
 
                 if (!isCalibration)
@@ -1421,7 +1421,7 @@ namespace LoveAlways.Spreadtrum.Services
             {
                 // Send force download command
                 bool result = await _client.EnterForceDownloadAsync();
-                
+
                 if (result)
                 {
                     Log("[Spreadtrum] Entered force download mode", Color.Green);
@@ -1473,8 +1473,8 @@ namespace LoveAlways.Spreadtrum.Services
                 // Erase userdata
                 if (eraseUserData)
                 {
-                    var userData = partitions.Find(p => 
-                        p.Name.ToLower().Contains("userdata") || 
+                    var userData = partitions.Find(p =>
+                        p.Name.ToLower().Contains("userdata") ||
                         p.Name.ToLower() == "data");
                     if (userData != null)
                     {
@@ -1507,7 +1507,7 @@ namespace LoveAlways.Spreadtrum.Services
 
                     Log(string.Format("[Spreadtrum] Erasing: {0}", partName), Color.White);
                     bool success = await _client.ErasePartitionAsync(partName);
-                    
+
                     if (success)
                     {
                         erased++;
@@ -1567,7 +1567,7 @@ namespace LoveAlways.Spreadtrum.Services
                 }
 
                 // Determine security status
-                if (string.IsNullOrEmpty(info.PublicKeyHash) || 
+                if (string.IsNullOrEmpty(info.PublicKeyHash) ||
                     info.PublicKeyHash.All(c => c == '0' || c == 'F' || c == 'f'))
                 {
                     info.IsSecureBootEnabled = false;
@@ -1713,7 +1713,7 @@ namespace LoveAlways.Spreadtrum.Services
                 {
                     // Use signature bypass exploit to unlock
                     Log("[Spreadtrum] Attempting signature bypass unlock...", Color.Yellow);
-                    
+
                     // First check device vulnerability
                     var vulnCheck = _exploitService.CheckVulnerability(0, "");
                     if (vulnCheck.HasVulnerability)
@@ -1721,7 +1721,7 @@ namespace LoveAlways.Spreadtrum.Services
                         var exploitResult = await _exploitService.TryExploitAsync(
                             _client.GetPort(),
                             0);  // chipId=0 means auto-detection
-                        
+
                         if (exploitResult.Success)
                         {
                             // Send unlock command
@@ -1836,7 +1836,7 @@ namespace LoveAlways.Spreadtrum.Services
 
                 // Write to FRP (Factory Reset Protection) partition
                 bool frpResult = await _client.WritePartitionAsync("frp", unlockFlag);
-                
+
                 // Write to misc partition
                 bool miscResult = await _client.WritePartitionAsync("misc", unlockFlag);
 
@@ -1882,17 +1882,17 @@ namespace LoveAlways.Spreadtrum.Services
         {
             Disconnect();
             _portDetector?.Dispose();
-            
+
             // Release CancellationTokenSource (ignore exceptions, ensure full cleanup)
             if (_cts != null)
             {
-                try { _cts.Cancel(); } 
+                try { _cts.Cancel(); }
                 catch (ObjectDisposedException) { /* Already disposed, ignore */ }
-                try { _cts.Dispose(); } 
+                try { _cts.Dispose(); }
                 catch (ObjectDisposedException) { /* Already disposed, ignore */ }
                 _cts = null;
             }
-            
+
             // Release watchdog
             _watchdog?.Dispose();
         }
@@ -1904,10 +1904,10 @@ namespace LoveAlways.Spreadtrum.Services
         {
             if (_cts != null)
             {
-                try { _cts.Cancel(); } 
+                try { _cts.Cancel(); }
                 catch (ObjectDisposedException) { /* Already disposed, ignore */ }
                 catch (Exception ex) { Log($"[Spreadtrum] Cancel token exception: {ex.Message}", Color.Gray); }
-                try { _cts.Dispose(); } 
+                try { _cts.Dispose(); }
                 catch (Exception ex) { Log($"[Spreadtrum] Dispose token exception: {ex.Message}", Color.Gray); }
             }
             _cts = new CancellationTokenSource();

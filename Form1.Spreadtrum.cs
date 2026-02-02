@@ -3,6 +3,9 @@
 // Spreadtrum/Unisoc Module Partial Class
 // ============================================================================
 
+using LoveAlways.Spreadtrum.Common;
+using LoveAlways.Spreadtrum.Protocol;
+using LoveAlways.Spreadtrum.UI;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -10,10 +13,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using LoveAlways.Spreadtrum.UI;
-using LoveAlways.Spreadtrum.Common;
-using LoveAlways.Spreadtrum.Protocol;
-using LoveAlways.Spreadtrum.Exploit;
 
 namespace LoveAlways
 {
@@ -22,7 +21,7 @@ namespace LoveAlways
         // ========== Spreadtrum Controller ==========
         private SpreadtrumUIController _spreadtrumController;
         private uint _selectedChipId = 0;
-        
+
         /// <summary>
         /// Safe UI Update Invoke (Handle Window Closed)
         /// </summary>
@@ -32,7 +31,7 @@ namespace LoveAlways
             {
                 if (IsDisposed || !IsHandleCreated)
                     return;
-                    
+
                 if (InvokeRequired)
                     Invoke(action);
                 else
@@ -41,13 +40,13 @@ namespace LoveAlways
             catch (ObjectDisposedException) { }
             catch (InvalidOperationException) { }
         }
-        
+
         // Custom FDL Configuration
         private string _customFdl1Path = null;
         private string _customFdl2Path = null;
         private uint _customFdl1Addr = 0;
         private uint _customFdl2Addr = 0;
-        
+
         // Detected Device
         private string _detectedSprdPort = null;
         private LoveAlways.Spreadtrum.Common.SprdDeviceMode _detectedSprdMode = LoveAlways.Spreadtrum.Common.SprdDeviceMode.Unknown;
@@ -62,19 +61,19 @@ namespace LoveAlways
                 {
                     _sprdChipList = new Dictionary<string, uint>();
                     _sprdChipList.Add("Auto Detect", 0);
-                    
+
                     // Load Chips by Series from Database
                     var chipsBySeries = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetChipsBySeries();
                     foreach (var series in chipsBySeries.OrderBy(s => s.Key))
                     {
                         // Add Series Separator
                         _sprdChipList.Add($"── {series.Key} ──", 0xFFFF);
-                        
+
                         // Add Chips in Series
                         foreach (var chip in series.Value.OrderBy(c => c.ChipName))
                         {
-                            string displayName = chip.HasExploit 
-                                ? $"{chip.ChipName} ★" 
+                            string displayName = chip.HasExploit
+                                ? $"{chip.ChipName} ★"
                                 : chip.ChipName;
                             _sprdChipList.Add(displayName, chip.ChipId);
                         }
@@ -111,7 +110,7 @@ namespace LoveAlways
                 AppendLog($"[Spreadtrum] Initialize Failed: {ex.Message}", Color.Red);
             }
         }
-        
+
         /// <summary>
         /// Scan and Show All COM Ports in Device Manager (For Debugging)
         /// </summary>
@@ -121,41 +120,41 @@ namespace LoveAlways
             {
                 var detector = new SprdPortDetector();
                 detector.OnLog += msg => AppendLog(msg, Color.Gray);
-                
+
                 AppendLog("[Device Manager] Scanning all COM ports...", Color.Cyan);
                 var ports = detector.ScanAllComPorts();
-                
+
                 if (ports.Count == 0)
                 {
                     AppendLog("[Device Manager] No COM ports found", Color.Orange);
                     return;
                 }
-                
+
                 AppendLog(string.Format("[Device Manager] Found {0} COM ports:", ports.Count), Color.Green);
-                
+
                 foreach (var port in ports)
                 {
                     string sprdFlag = port.IsSprdDetected ? " ★Spreadtrum★" : "";
                     Color color = port.IsSprdDetected ? Color.Lime : Color.White;
-                    
-                    AppendLog(string.Format("  {0}: VID={1:X4} PID={2:X4}{3}", 
+
+                    AppendLog(string.Format("  {0}: VID={1:X4} PID={2:X4}{3}",
                         port.ComPort, port.Vid, port.Pid, sprdFlag), color);
                     AppendLog(string.Format("    Name: {0}", port.Name), Color.Gray);
-                    
+
                     if (!string.IsNullOrEmpty(port.HardwareId))
                     {
                         AppendLog(string.Format("    HW ID: {0}", port.HardwareId), Color.DarkGray);
                     }
                 }
-                
+
                 // Stats
                 int sprdCount = 0;
                 foreach (var p in ports)
                 {
                     if (p.IsSprdDetected) sprdCount++;
                 }
-                
-                AppendLog(string.Format("[Device Manager] Total: {0} ports, {1} identified as Spreadtrum", 
+
+                AppendLog(string.Format("[Device Manager] Total: {0} ports, {1} identified as Spreadtrum",
                     ports.Count, sprdCount), Color.Cyan);
             }
             catch (Exception ex)
@@ -178,7 +177,7 @@ namespace LoveAlways
             sprdSelectChip.Items.Clear();
             sprdSelectChip.Items.AddRange(items.ToArray());
             sprdSelectChip.SelectedIndex = 0; // Default "Auto Detect"
-            
+
             // Initialize Device Selection Empty
             sprdSelectDevice.Items.Clear();
             sprdSelectDevice.Items.Add("Auto Detect");
@@ -196,21 +195,21 @@ namespace LoveAlways
                 Invoke(new Action(() => UpdateDeviceList(chipName)));
                 return;
             }
-            
+
             // Prepare Device List
             var items = new List<object>();
             items.Add("Auto Detect");
-            
+
             if (!string.IsNullOrEmpty(chipName) && chipName != "Auto Detect")
             {
                 // Scan device directories with FDL files directly from file system
                 var deviceDirs = ScanFdlDeviceDirectories(chipName);
-                
+
                 foreach (var deviceName in deviceDirs.OrderBy(d => d))
                 {
                     items.Add(deviceName);
                 }
-                
+
                 if (deviceDirs.Count > 0)
                 {
                     AppendLog($"[Spreadtrum] Available Devices: {deviceDirs.Count}", Color.Gray);
@@ -220,11 +219,11 @@ namespace LoveAlways
                     AppendLog($"[Spreadtrum] {chipName} No Available Device FDL", Color.Orange);
                 }
             }
-            
+
             // Update at once
             sprdSelectDevice.Items.Clear();
             sprdSelectDevice.Items.AddRange(items.ToArray());
-            
+
             // Set Default Selection
             if (sprdSelectDevice.Items.Count > 0)
             {
@@ -239,16 +238,16 @@ namespace LoveAlways
         {
             var result = new List<string>();
             string baseDir = GetSprdResourcesBasePath();
-            
+
             // Get search path by chip
             var searchPaths = GetChipSearchPaths(chipName);
-            
+
             foreach (var searchPath in searchPaths)
             {
                 string fullPath = Path.Combine(baseDir, searchPath);
                 if (!Directory.Exists(fullPath))
                     continue;
-                
+
                 // Iterate subdirectories
                 foreach (var dir in Directory.GetDirectories(fullPath))
                 {
@@ -258,7 +257,7 @@ namespace LoveAlways
                     {
                         string deviceName = Path.GetFileName(dir);
                         // Exclude purely numeric or special directories
-                        if (!string.IsNullOrEmpty(deviceName) && 
+                        if (!string.IsNullOrEmpty(deviceName) &&
                             !deviceName.All(char.IsDigit) &&
                             deviceName != "max" && deviceName != "1" && deviceName != "2")
                         {
@@ -267,7 +266,7 @@ namespace LoveAlways
                     }
                 }
             }
-            
+
             return result.Distinct().ToList();
         }
 
@@ -277,7 +276,7 @@ namespace LoveAlways
         private List<string> GetChipSearchPaths(string chipName)
         {
             var paths = new List<string>();
-            
+
             switch (chipName.ToUpper())
             {
                 case "SC8541E":
@@ -322,7 +321,7 @@ namespace LoveAlways
                     paths.Add(chipName.ToLower());
                     break;
             }
-            
+
             return paths;
         }
 
@@ -341,14 +340,14 @@ namespace LoveAlways
                 // 3. Parent directory
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "SprdResources", "sprd_fdls")
             };
-            
+
             foreach (var path in candidates)
             {
                 string fullPath = Path.GetFullPath(path);
                 if (Directory.Exists(fullPath))
                     return fullPath;
             }
-            
+
             // Default return first (may not exist)
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SprdResources", "sprd_fdls");
         }
@@ -360,16 +359,16 @@ namespace LoveAlways
         {
             string fdl1 = null;
             string fdl2 = null;
-            
+
             string baseDir = GetSprdResourcesBasePath();
             var searchPaths = GetChipSearchPaths(chipName);
-            
+
             foreach (var searchPath in searchPaths)
             {
                 string deviceDir = Path.Combine(baseDir, searchPath, deviceName);
                 if (!Directory.Exists(deviceDir))
                     continue;
-                
+
                 // Find FDL1
                 var fdl1Files = Directory.GetFiles(deviceDir, "fdl1*.bin", SearchOption.AllDirectories);
                 if (fdl1Files.Length > 0)
@@ -377,18 +376,18 @@ namespace LoveAlways
                     // Prefer signed version
                     fdl1 = fdl1Files.FirstOrDefault(f => f.Contains("-sign")) ?? fdl1Files[0];
                 }
-                
+
                 // Find FDL2
                 var fdl2Files = Directory.GetFiles(deviceDir, "fdl2*.bin", SearchOption.AllDirectories);
                 if (fdl2Files.Length > 0)
                 {
                     fdl2 = fdl2Files.FirstOrDefault(f => f.Contains("-sign")) ?? fdl2Files[0];
                 }
-                
+
                 if (fdl1 != null || fdl2 != null)
                     break;
             }
-            
+
             return (fdl1, fdl2);
         }
 
@@ -401,14 +400,14 @@ namespace LoveAlways
             sprdSelectChip.SelectedIndexChanged += (s, e) =>
             {
                 string selected = sprdSelectChip.SelectedValue?.ToString() ?? "";
-                
+
                 // Remove ★ mark
                 string chipName = selected.Replace(" ★", "").Trim();
-                
+
                 // Skip Separator
                 if (selected.StartsWith("──"))
                     return;
-                
+
                 if (SprdChipList.TryGetValue(selected, out uint chipId) && chipId != 0xFFFF)
                 {
                     _selectedChipId = chipId;
@@ -422,24 +421,24 @@ namespace LoveAlways
                             AppendLog($"[Spreadtrum] Select Chip: {chipInfo.DisplayName}{exploitInfo}", Color.Cyan);
                             AppendLog($"[Spreadtrum] Default Addr - FDL1: {chipInfo.Fdl1AddressHex}, FDL2: {chipInfo.Fdl2AddressHex}", Color.Gray);
                             AppendLog($"[Spreadtrum] Tip: You can select FDL files below to override default config", Color.Gray);
-                            
+
                             _spreadtrumController?.SetChipId(chipId);
-                            
+
                             // Set FDL Default Address (Keep selected file path)
                             _customFdl1Addr = chipInfo.Fdl1Address;
                             _customFdl2Addr = chipInfo.Fdl2Address;
                             _spreadtrumController?.SetCustomFdl1(_customFdl1Path, _customFdl1Addr);
                             _spreadtrumController?.SetCustomFdl2(_customFdl2Path, _customFdl2Addr);
-                            
+
                             // Keep FDL inputs enabled, use chip default address
                             SetFdlInputsEnabled(false, clearPaths: false);
-                            
+
                             // Auto fill address (Only when address box is empty)
                             if (string.IsNullOrEmpty(input5.Text))
                                 input5.Text = chipInfo.Fdl1AddressHex;
                             if (string.IsNullOrEmpty(input10.Text))
                                 input10.Text = chipInfo.Fdl2AddressHex;
-                            
+
                             // Update Device List
                             UpdateDeviceList(chipInfo.ChipName);
                         }
@@ -452,19 +451,19 @@ namespace LoveAlways
                             AppendLog($"[Spreadtrum] Default Addr - FDL1: 0x{fdl1Addr:X}, FDL2: 0x{fdl2Addr:X}", Color.Gray);
                             AppendLog($"[Spreadtrum] Tip: You can select FDL files below to override default config", Color.Gray);
                             _spreadtrumController?.SetChipId(chipId);
-                            
+
                             // Set FDL Default Address (Keep selected file path)
                             _customFdl1Addr = fdl1Addr;
                             _customFdl2Addr = fdl2Addr;
                             _spreadtrumController?.SetCustomFdl1(_customFdl1Path, _customFdl1Addr);
                             _spreadtrumController?.SetCustomFdl2(_customFdl2Path, _customFdl2Addr);
-                            
+
                             SetFdlInputsEnabled(false, clearPaths: false);
                             if (string.IsNullOrEmpty(input5.Text))
                                 input5.Text = $"0x{fdl1Addr:X}";
                             if (string.IsNullOrEmpty(input10.Text))
                                 input10.Text = $"0x{fdl2Addr:X}";
-                            
+
                             // Update Device List
                             UpdateDeviceList(chipName);
                         }
@@ -474,28 +473,28 @@ namespace LoveAlways
                         // Auto Detect Mode, fully enable custom FDL input
                         AppendLog("[Spreadtrum] Chip set to Auto Detect, please config FDL manually", Color.Gray);
                         _spreadtrumController?.SetChipId(0);
-                        
+
                         // Enable all FDL inputs
                         SetFdlInputsEnabled(true, clearPaths: true);
-                        
+
                         // Clear Address
                         input5.Text = "";
                         input10.Text = "";
-                        
+
                         // Clear Device List
                         UpdateDeviceList(null);
                     }
                 }
             };
-            
+
             // Device Selection Changed
             // Double Click Device Selector = Scan All COM Ports (Debug)
             sprdSelectDevice.DoubleClick += (s, e) => SprdScanAllComPorts();
-            
+
             sprdSelectDevice.SelectedIndexChanged += (s, e) =>
             {
                 string selected = sprdSelectDevice.SelectedValue?.ToString() ?? "";
-                
+
                 if (selected == "Auto Detect" || string.IsNullOrEmpty(selected))
                 {
                     _customFdl1Path = null;
@@ -505,35 +504,35 @@ namespace LoveAlways
                     AppendLog("[Spreadtrum] Device set to Auto Detect", Color.Gray);
                     return;
                 }
-                
+
                 // Device name is directory name
                 string deviceName = selected;
-                
+
                 // Get currently selected chip name
                 string chipSelected = sprdSelectChip.SelectedValue?.ToString() ?? "";
                 string chipName = chipSelected.Replace(" ★", "").Trim();
-                
+
                 // Find FDL files directly from file system
                 var fdlPaths = FindDeviceFdlFiles(chipName, deviceName);
-                
+
                 if (fdlPaths.fdl1 != null || fdlPaths.fdl2 != null)
                 {
                     AppendLog($"[Spreadtrum] Select Device: {deviceName}", Color.Cyan);
-                    
+
                     if (fdlPaths.fdl1 != null)
                     {
                         _customFdl1Path = fdlPaths.fdl1;
                         input2.Text = Path.GetFileName(fdlPaths.fdl1);
                         AppendLog($"[Spreadtrum] FDL1: {Path.GetFileName(fdlPaths.fdl1)}", Color.Gray);
                     }
-                    
+
                     if (fdlPaths.fdl2 != null)
                     {
                         _customFdl2Path = fdlPaths.fdl2;
                         input4.Text = Path.GetFileName(fdlPaths.fdl2);
                         AppendLog($"[Spreadtrum] FDL2: {Path.GetFileName(fdlPaths.fdl2)}", Color.Gray);
                     }
-                    
+
                     // Update Controller
                     _spreadtrumController?.SetCustomFdl1(_customFdl1Path, _customFdl1Addr);
                     _spreadtrumController?.SetCustomFdl2(_customFdl2Path, _customFdl2Addr);
@@ -548,7 +547,7 @@ namespace LoveAlways
             sprdInputPac.DoubleClick += (s, e) => SprdBrowsePac();
 
             // ========== FDL Custom Config ==========
-            
+
             // FDL1 File Browse (Double Click input2)
             input2.DoubleClick += (s, e) =>
             {
@@ -647,14 +646,14 @@ namespace LoveAlways
                 SafeInvoke(() =>
                 {
                     AppendLog($"[Spreadtrum] Device Detected: {dev.ComPort} ({dev.Mode})", Color.Green);
-                    
+
                     // Save Detected Port
                     _detectedSprdPort = dev.ComPort;
                     _detectedSprdMode = dev.Mode;
-                    
+
                     // Update Right Info Panel
                     UpdateSprdInfoPanel();
-                    
+
                     if (dev.Mode == LoveAlways.Spreadtrum.Common.SprdDeviceMode.Download)
                     {
                         AppendLog($"[Spreadtrum] Device entered Download Mode", Color.Cyan);
@@ -668,11 +667,11 @@ namespace LoveAlways
                 SafeInvoke(() =>
                 {
                     AppendLog($"[Spreadtrum] Device Disconnected: {dev.ComPort}", Color.Orange);
-                    
+
                     // Clear Detected Port
                     _detectedSprdPort = null;
                     _detectedSprdMode = LoveAlways.Spreadtrum.Common.SprdDeviceMode.Unknown;
-                    
+
                     // Update Right Info Panel
                     UpdateSprdInfoPanel();
                 });
@@ -703,10 +702,10 @@ namespace LoveAlways
                         item.Tag = file;
 
                         // Default select non-FDL/XML/Userdata files
-                        bool shouldCheck = file.Type != PacFileType.FDL1 && 
+                        bool shouldCheck = file.Type != PacFileType.FDL1 &&
                                           file.Type != PacFileType.FDL2 &&
                                           file.Type != PacFileType.XML;
-                        
+
                         // If Skip Userdata is checked
                         if (sprdChkSkipUserdata.Checked && file.Type == PacFileType.UserData)
                             shouldCheck = false;
@@ -851,7 +850,7 @@ namespace LoveAlways
                     {
                         AppendLog($"[Spreadtrum] Flash Partition: {partitionName} <- {Path.GetFileName(ofd.FileName)}", Color.Cyan);
                         bool success = await _spreadtrumController.FlashImageFileAsync(partitionName, ofd.FileName);
-                        
+
                         if (success)
                         {
                             MessageBox.Show($"Partition {partitionName} flashed successfully!", "Completed", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -952,7 +951,7 @@ namespace LoveAlways
 
             // Get Selected Partition Name
             var partitions = GetSprdSelectedPartitions();
-            
+
             // When no partition selected, provide selection
             if (partitions.Count == 0)
             {
@@ -964,14 +963,14 @@ namespace LoveAlways
                         "Write Partition",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Question);
-                    
+
                     if (confirm == DialogResult.Yes)
                     {
                         await SprdWriteEntirePacAsync();
                     }
                     return;
                 }
-                
+
                 AppendLog("[Spreadtrum] Please select partition to write in partition table", Color.Orange);
                 return;
             }
@@ -998,7 +997,7 @@ namespace LoveAlways
             using (var fbd = new FolderBrowserDialog())
             {
                 fbd.Description = $"Select directory containing {partitions.Count} partition images\n(File name must match partition name, e.g. boot.img)";
-                
+
                 if (fbd.ShowDialog() != DialogResult.OK) return;
 
                 string inputDir = fbd.SelectedPath;
@@ -1009,7 +1008,7 @@ namespace LoveAlways
                     // Auto Find Matched Files
                     string imgPath = System.IO.Path.Combine(inputDir, $"{partName}.img");
                     string binPath = System.IO.Path.Combine(inputDir, $"{partName}.bin");
-                    string filePath = System.IO.File.Exists(imgPath) ? imgPath : 
+                    string filePath = System.IO.File.Exists(imgPath) ? imgPath :
                                      (System.IO.File.Exists(binPath) ? binPath : null);
 
                     if (filePath == null)
@@ -1026,7 +1025,7 @@ namespace LoveAlways
                         fail++;
                 }
 
-                AppendLog($"[Spreadtrum] Write Complete: {success} Success, {fail} Failed, {skip} Skipped", 
+                AppendLog($"[Spreadtrum] Write Complete: {success} Success, {fail} Failed, {skip} Skipped",
                     fail > 0 ? Color.Orange : Color.Green);
             }
         }
@@ -1260,7 +1259,7 @@ namespace LoveAlways
                     AppendLog("[Spreadtrum] (Hold Volume Down while Power Off, then connect USB)", Color.Gray);
                     return;
                 }
-                
+
                 AppendLog($"[Spreadtrum] Connecting device: {_detectedSprdPort}...", Color.Cyan);
                 bool connected = await _spreadtrumController.ConnectDeviceAsync(_detectedSprdPort);
                 if (!connected)
@@ -1283,10 +1282,10 @@ namespace LoveAlways
             if (_spreadtrumController.IsBromMode)
             {
                 AppendLog("[Spreadtrum] Device in BROM mode, downloading FDL...", Color.Yellow);
-                
+
                 // Check FDL Source Priority: PAC > Custom FDL > Database Chip Config
                 bool hasFdlConfig = false;
-                
+
                 // Method 1: FDL in PAC (Highest Priority)
                 if (_spreadtrumController.CurrentPac != null)
                 {
@@ -1300,7 +1299,7 @@ namespace LoveAlways
                     AppendLog("[Spreadtrum] Using Custom FDL File...", Color.Cyan);
                     AppendLog($"[Spreadtrum] FDL1: {System.IO.Path.GetFileName(_customFdl1Path)}", Color.Gray);
                     AppendLog($"[Spreadtrum] FDL2: {System.IO.Path.GetFileName(_customFdl2Path)}", Color.Gray);
-                    
+
                     // If chip selected, use chip address config
                     if (_selectedChipId > 0 && _selectedChipId != 0xFFFF)
                     {
@@ -1332,7 +1331,7 @@ namespace LoveAlways
                     {
                         AppendLog($"[Spreadtrum] Using Chip Config: {chipInfo.ChipName}", Color.Cyan);
                         AppendLog($"[Spreadtrum] FDL1 Addr: {chipInfo.Fdl1AddressHex}, FDL2 Addr: {chipInfo.Fdl2AddressHex}", Color.Gray);
-                        
+
                         // Check if there is device FDL file for this chip
                         var devices = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetDeviceNames(chipInfo.ChipName);
                         if (devices.Length > 0)
@@ -1343,7 +1342,7 @@ namespace LoveAlways
                             {
                                 string fdl1Path = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetFdlPath(deviceFdl, true);
                                 string fdl2Path = LoveAlways.Spreadtrum.Database.SprdFdlDatabase.GetFdlPath(deviceFdl, false);
-                                
+
                                 if (System.IO.File.Exists(fdl1Path) && System.IO.File.Exists(fdl2Path))
                                 {
                                     AppendLog($"[Spreadtrum] Using Device FDL: {deviceFdl.DeviceName}", Color.Gray);
@@ -1353,7 +1352,7 @@ namespace LoveAlways
                                 }
                             }
                         }
-                        
+
                         if (!hasFdlConfig)
                         {
                             // Database has no FDL, prompt user to select manually
@@ -1363,7 +1362,7 @@ namespace LoveAlways
                         }
                     }
                 }
-                
+
                 if (!hasFdlConfig)
                 {
                     AppendLog("[Spreadtrum] Error: No available FDL config", Color.Red);
@@ -1373,7 +1372,7 @@ namespace LoveAlways
                     AppendLog("[Spreadtrum]   3. Select Chip Model (Database needs corresponding FDL)", Color.Gray);
                     return;
                 }
-                
+
                 // Initialize Device (Download FDL1 and FDL2)
                 AppendLog("[Spreadtrum] Initializing Device (Downloading FDL)...", Color.Yellow);
                 bool initialized = await _spreadtrumController.InitializeDeviceAsync();
@@ -1432,7 +1431,7 @@ namespace LoveAlways
             using (var fbd = new FolderBrowserDialog())
             {
                 fbd.Description = $"Select directory to save {partitions.Count} partitions";
-                
+
                 if (fbd.ShowDialog() != DialogResult.OK) return;
 
                 string outputDir = fbd.SelectedPath;
@@ -1442,14 +1441,14 @@ namespace LoveAlways
                 {
                     string outputPath = System.IO.Path.Combine(outputDir, $"{partName}.img");
                     AppendLog($"[Spreadtrum] Reading {partName}...", Color.Cyan);
-                    
+
                     if (await _spreadtrumController.ReadPartitionToFileAsync(partName, outputPath, size))
                         success++;
                     else
                         fail++;
                 }
 
-                AppendLog($"[Spreadtrum] Read Complete: {success} Success, {fail} Failed", 
+                AppendLog($"[Spreadtrum] Read Complete: {success} Success, {fail} Failed",
                     fail > 0 ? Color.Orange : Color.Green);
             }
         }
@@ -1460,30 +1459,30 @@ namespace LoveAlways
         private List<(string name, uint size)> GetSprdSelectedPartitions()
         {
             var result = new List<(string name, uint size)>();
-            
+
             // Checked first, otherwise use blue selected
-            var items = sprdListPartitions.CheckedItems.Count > 0 
-                ? (System.Collections.IEnumerable)sprdListPartitions.CheckedItems 
+            var items = sprdListPartitions.CheckedItems.Count > 0
+                ? (System.Collections.IEnumerable)sprdListPartitions.CheckedItems
                 : sprdListPartitions.SelectedItems;
 
             foreach (ListViewItem item in items)
             {
                 string partName = item.Text;
-                
+
                 // Get Partition Size (Prefer real size from controller)
                 uint size = _spreadtrumController.GetPartitionSize(partName);
-                
+
                 // If not, parse from list
                 if (size == 0 && item.SubItems.Count > 2)
                     TryParseSize(item.SubItems[2].Text, out size);
-                
+
                 // Default 100MB
                 if (size == 0)
                     size = 100 * 1024 * 1024;
-                
+
                 result.Add((partName, size));
             }
-            
+
             return result;
         }
 
@@ -1497,7 +1496,7 @@ namespace LoveAlways
                 return false;
 
             sizeText = sizeText.Trim().ToUpper();
-            
+
             try
             {
                 if (sizeText.EndsWith("GB"))
@@ -1556,7 +1555,7 @@ namespace LoveAlways
 
             // Confirm Erase
             string partNames = string.Join(", ", partitions.ConvertAll(p => p.name));
-            string message = partitions.Count == 1 
+            string message = partitions.Count == 1
                 ? $"Are you sure to erase partition \"{partitions[0].name}\"?"
                 : $"Are you sure to erase {partitions.Count} partitions?\n\n{partNames}";
 
@@ -1580,7 +1579,7 @@ namespace LoveAlways
 
             if (partitions.Count > 1)
             {
-                AppendLog($"[Spreadtrum] Erase Complete: {success} Success, {fail} Failed", 
+                AppendLog($"[Spreadtrum] Erase Complete: {success} Success, {fail} Failed",
                     fail > 0 ? Color.Orange : Color.Green);
             }
         }
@@ -1631,7 +1630,7 @@ namespace LoveAlways
                 return false;
 
             text = text.Trim();
-            
+
             // Remove 0x or 0X prefix
             if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 text = text.Substring(2);
@@ -1686,10 +1685,10 @@ namespace LoveAlways
                     else
                     {
                         AppendLog("[Spreadtrum] Secure Boot: Enabled", Color.Yellow);
-                        
+
                         if (secInfo.IsEfuseLocked)
                             AppendLog("[Spreadtrum]   eFuse: Locked", Color.Gray);
-                        
+
                         if (secInfo.IsAntiRollbackEnabled)
                             AppendLog($"[Spreadtrum]   Anti-Rollback: Enabled (Ver {secInfo.SecurityVersion})", Color.Gray);
                     }
@@ -1788,9 +1787,9 @@ namespace LoveAlways
                 {
                     chipName = LoveAlways.Spreadtrum.Protocol.SprdPlatform.GetPlatformName(chipId);
                 }
-                
+
                 string stageStr = _spreadtrumController.CurrentStage.ToString();
-                
+
                 uiLabel9.Text = "Platform: Spreadtrum";
                 uiLabel11.Text = $"Chip: {chipName}";
                 uiLabel13.Text = $"Stage: {stageStr}";
@@ -1917,7 +1916,7 @@ namespace LoveAlways
             }
 
             AppendLog("[Spreadtrum] Reading IMEI...", Color.Cyan);
-            
+
             string imei = await _spreadtrumController.ReadImeiAsync();
             if (!string.IsNullOrEmpty(imei))
             {
@@ -1926,7 +1925,7 @@ namespace LoveAlways
                 {
                     uiLabel10.Text = $"IMEI: {imei}";
                 });
-                
+
                 // Copy to clipboard
                 Clipboard.SetText(imei);
                 AppendLog("[Spreadtrum] IMEI copied to clipboard", Color.Gray);
@@ -2025,7 +2024,7 @@ namespace LoveAlways
             menu.Items.Add("-");
             menu.Items.Add("Read Custom NV Item...", null, async (s, e) => await SprdReadCustomNvAsync());
             menu.Items.Add("Write Custom NV Item...", null, async (s, e) => await SprdWriteCustomNvAsync());
-            
+
             // Show menu at button position
             menu.Show(Cursor.Position);
             return Task.CompletedTask;
@@ -2043,11 +2042,11 @@ namespace LoveAlways
             {
                 string hexStr = BitConverter.ToString(data).Replace("-", ":");
                 AppendLog($"[Spreadtrum] {itemName}: {hexStr}", Color.Green);
-                
+
                 // Copy to clipboard
                 Clipboard.SetText(hexStr);
                 AppendLog("[Spreadtrum] Copied to clipboard", Color.Gray);
-                
+
                 MessageBox.Show($"{itemName}:\n\n{hexStr}\n\nCopied to clipboard", "NV Read", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
@@ -2073,7 +2072,7 @@ namespace LoveAlways
             // Parse MAC Address Format
             input = input.Trim().ToUpper().Replace("-", ":").Replace(" ", ":");
             string[] parts = input.Split(':');
-            
+
             if (parts.Length != expectedLength)
             {
                 MessageBox.Show($"Format Error!\n\nShould be {expectedLength} bytes", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -2162,7 +2161,7 @@ namespace LoveAlways
             {
                 string hexStr = BitConverter.ToString(data).Replace("-", " ");
                 AppendLog($"[Spreadtrum] NV[{itemId}]: {hexStr}", Color.Green);
-                
+
                 // Try decode as string
                 string asciiStr = "";
                 try
@@ -2172,13 +2171,13 @@ namespace LoveAlways
                 catch { }
 
                 Clipboard.SetText(hexStr);
-                
+
                 string msg = $"NV[{itemId}] Length: {data.Length} bytes\n\n";
                 msg += $"HEX: {hexStr}\n\n";
                 if (!string.IsNullOrEmpty(asciiStr) && asciiStr.All(c => c >= 0x20 && c < 0x7F))
                     msg += $"ASCII: {asciiStr}\n\n";
                 msg += "HEX copied to clipboard";
-                
+
                 MessageBox.Show(msg, "NV Read", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
@@ -2281,7 +2280,7 @@ namespace LoveAlways
             // Get Current Lock Status
             AppendLog("[Spreadtrum] Checking Bootloader Status...", Color.Cyan);
             var blStatus = await _spreadtrumController.GetBootloaderStatusAsync();
-            
+
             if (blStatus == null)
             {
                 AppendLog("[Spreadtrum] Failed to get Bootloader Status", Color.Red);
@@ -2363,7 +2362,7 @@ namespace LoveAlways
                 }
 
                 unlockCode = unlockCode.Trim().ToUpper();
-                
+
                 // Validate Format
                 if (unlockCode.Length != 16 || !System.Text.RegularExpressions.Regex.IsMatch(unlockCode, "^[0-9A-F]+$"))
                 {

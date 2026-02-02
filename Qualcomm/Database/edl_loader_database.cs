@@ -5,7 +5,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -61,26 +61,26 @@ namespace LoveAlways.Qualcomm.Database
         {
             return new string[0]; // No longer using local database
         }
- 
+
         [Obsolete("Use CloudLoaderService")]
         public static LoaderInfo[] GetByBrand(string brand)
         {
             return new LoaderInfo[0]; // No longer using local database
         }
- 
+
         [Obsolete("Use CloudLoaderService")]
         public static LoaderInfo[] GetByChip(string chip)
         {
             return new LoaderInfo[0]; // No longer using local database
         }
- 
+
         [Obsolete("Use CloudLoaderService")]
         public static byte[] LoadLoader(string id)
         {
             // No longer loading from local PAK, return null
             return null;
         }
- 
+
         [Obsolete("Use CloudLoaderService")]
         public static bool IsPakAvailable()
         {

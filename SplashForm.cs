@@ -1,9 +1,9 @@
+using LoveAlways.Common;
+using Sunny.UI;
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
-using System.Diagnostics;
-using Sunny.UI;
-using LoveAlways.Common;
 
 namespace LoveAlways
 {
@@ -27,10 +27,10 @@ namespace LoveAlways
         {
             InitializeComponent();
             DoubleBuffered = true;
-            
+
             // Read performance configuration
             _lowPerformanceMode = PerformanceConfig.LowPerformanceMode;
-            
+
             // Start with slightly transparent background, then fade in (low performance mode stays opaque)
             this.Opacity = _lowPerformanceMode ? 1.0 : 0.85;
 
@@ -42,7 +42,7 @@ namespace LoveAlways
             _timer.Interval = PerformanceConfig.AnimationInterval;
             _timer.Tick += Timer_Tick;
             _timer.Start();
-            
+
             // Low performance mode reduces animation steps
             if (_lowPerformanceMode)
             {
@@ -178,7 +178,7 @@ namespace LoveAlways
             Point spinnerCenter = new Point(r.Width / 2, r.Height * 2 / 3);
             Rectangle spinnerRect = new Rectangle(spinnerCenter.X - spinnerSize / 2, spinnerCenter.Y - spinnerSize / 2, spinnerSize, spinnerSize);
 
-            DrawSpinner(g, spinnerRect, _angle);      
+            DrawSpinner(g, spinnerRect, _angle);
 
             // subtle glossy overlay on spinner
             using (var overlay = new SolidBrush(Color.FromArgb(20, Color.White)))

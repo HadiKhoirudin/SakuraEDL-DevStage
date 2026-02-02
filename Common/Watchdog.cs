@@ -4,7 +4,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -93,7 +93,7 @@ namespace LoveAlways.Common
         private readonly Action<string> _log;
         private readonly Stopwatch _stopwatch;
         private readonly object _lock = new object();
-        
+
         private string _currentOperation;
         private int _timeoutCount;
         private bool _disposed;
@@ -226,7 +226,7 @@ namespace LoveAlways.Common
         public void Dispose()
         {
             Task taskToWait = null;
-            
+
             lock (_lock)
             {
                 if (_disposed) return;
@@ -237,7 +237,7 @@ namespace LoveAlways.Common
                 State = WatchdogState.Stopped;
                 taskToWait = _monitorTask;
             }
-            
+
             // Wait for task completion outside lock to avoid deadlock
             if (taskToWait != null)
             {
@@ -255,7 +255,7 @@ namespace LoveAlways.Common
                     // Ignore disposed exception
                 }
             }
-            
+
             lock (_lock)
             {
                 _cts?.Dispose();

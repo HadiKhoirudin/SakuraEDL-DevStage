@@ -4,18 +4,18 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.MediaTek.Common;
+using LoveAlways.MediaTek.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
 using System.Threading;
 using System.Threading.Tasks;
-using LoveAlways.MediaTek.Common;
-using LoveAlways.MediaTek.Models;
 
 namespace LoveAlways.MediaTek.Protocol
 {
@@ -145,7 +145,7 @@ namespace LoveAlways.MediaTek.Protocol
 
                 // Read data
                 byte[] data = await ReadBytesAsync((int)length, timeoutMs, ct);
-                
+
                 // Verify checksum (if enabled)
                 if (_checksumLevel == ChecksumAlgorithm.CRC32 && data != null)
                 {
@@ -448,7 +448,7 @@ namespace LoveAlways.MediaTek.Protocol
         /// <summary>
         /// Read partition data (Binary protocol)
         /// </summary>
-        public async Task<byte[]> ReadPartitionAsync(string partitionName, ulong offset, ulong size, 
+        public async Task<byte[]> ReadPartitionAsync(string partitionName, ulong offset, ulong size,
             EmmcPartitionType partType = EmmcPartitionType.User, CancellationToken ct = default)
         {
             _log($"[XFlash] Reading partition: {partitionName}, offset: 0x{offset:X}, size: {size}");

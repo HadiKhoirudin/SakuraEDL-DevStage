@@ -1,6 +1,6 @@
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 using System;
@@ -87,7 +87,7 @@ namespace LoveAlways.Fastboot.Payload
                 AllowAutoRedirect = false, // Handle redirects manually
                 AutomaticDecompression = DecompressionMethods.None // No automatic decompression
             };
-            
+
             _httpClient = new HttpClient(handler);
             _httpClient.Timeout = TimeSpan.FromMinutes(30);
             SetUserAgent(null); // Use default User-Agent
@@ -99,11 +99,11 @@ namespace LoveAlways.Fastboot.Payload
         public void SetUserAgent(string userAgent)
         {
             _httpClient.DefaultRequestHeaders.Clear();
-            
+
             string ua = string.IsNullOrEmpty(userAgent)
                 ? "LoveAlways/1.0 (Payload Extractor)"
                 : userAgent;
-            
+
             _httpClient.DefaultRequestHeaders.Add("User-Agent", ua);
             _httpClient.DefaultRequestHeaders.Add("Accept", "*/*");
             _httpClient.DefaultRequestHeaders.Add("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
@@ -184,7 +184,7 @@ namespace LoveAlways.Fastboot.Payload
                 // 1. Get total file size (using HEAD request)
                 var headRequest = new HttpRequestMessage(HttpMethod.Head, url);
                 var headResponse = await _httpClient.SendAsync(headRequest, HttpCompletionOption.ResponseHeadersRead, ct);
-                
+
                 if (!headResponse.IsSuccessStatusCode)
                 {
                     // HEAD request failed, try GET request and read only the header
@@ -192,7 +192,7 @@ namespace LoveAlways.Fastboot.Payload
                     var getRequest = new HttpRequestMessage(HttpMethod.Get, url);
                     getRequest.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 0);
                     var getResponse = await _httpClient.SendAsync(getRequest, HttpCompletionOption.ResponseHeadersRead, ct);
-                    
+
                     if (getResponse.Content.Headers.ContentRange?.Length != null)
                     {
                         _totalSize = getResponse.Content.Headers.ContentRange.Length.Value;
@@ -282,33 +282,33 @@ namespace LoveAlways.Fastboot.Payload
                 int totalOps = partition.Operations.Count;
                 int processedOps = 0;
                 long downloadedBytes = 0;
-                
+
                 // Speed calculation related
                 var startTime = DateTime.Now;
                 var lastSpeedUpdateTime = startTime;
                 long lastSpeedUpdateBytes = 0;
                 double currentSpeed = 0;
-                
+
                 using (var outputStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write))
                 {
                     // Pre-allocate file size
                     outputStream.SetLength((long)partition.Size);
-                    
+
                     foreach (var operation in partition.Operations)
                     {
                         ct.ThrowIfCancellationRequested();
-                        
+
                         byte[] decompressedData = null;
-                        
+
                         if (operation.DataLength > 0)
                         {
                             // Download operation data
                             long absStart = _dataStartOffset + (long)operation.DataOffset;
                             long absEnd = absStart + (long)operation.DataLength - 1;
-                            
+
                             byte[] compressedData = await FetchRangeAsync(_currentUrl, absStart, absEnd, ct);
                             downloadedBytes += compressedData.Length;
-                            
+
                             // Decompress data
                             decompressedData = DecompressData(operation.Type, compressedData,
                                 (long)operation.DstNumBlocks * _blockSize);
@@ -319,19 +319,19 @@ namespace LoveAlways.Fastboot.Payload
                             long totalBlocks = (long)operation.DstNumBlocks;
                             decompressedData = new byte[totalBlocks * _blockSize];
                         }
-                        
+
                         if (decompressedData != null)
                         {
                             // Write to target position
                             long dstOffset = (long)operation.DstStartBlock * _blockSize;
                             outputStream.Seek(dstOffset, SeekOrigin.Begin);
-                            outputStream.Write(decompressedData, 0, 
+                            outputStream.Write(decompressedData, 0,
                                 Math.Min(decompressedData.Length, (int)((long)operation.DstNumBlocks * _blockSize)));
                         }
-                        
+
                         processedOps++;
                         double percent = 100.0 * processedOps / totalOps;
-                        
+
                         // Calculate speed (update once per second)
                         var now = DateTime.Now;
                         var timeSinceLastUpdate = (now - lastSpeedUpdateTime).TotalSeconds;
@@ -351,9 +351,9 @@ namespace LoveAlways.Fastboot.Payload
                                 currentSpeed = downloadedBytes / elapsed;
                             }
                         }
-                        
+
                         var elapsedTime = now - startTime;
-                        
+
                         _progress?.Invoke(processedOps, totalOps);
                         ExtractProgressChanged?.Invoke(this, new RemoteExtractProgress
                         {
@@ -365,14 +365,14 @@ namespace LoveAlways.Fastboot.Payload
                             SpeedBytesPerSecond = currentSpeed,
                             ElapsedTime = elapsedTime
                         });
-                        
+
                         if (processedOps % 50 == 0)
                         {
                             _logDetail($"Progress: {processedOps}/{totalOps} ({percent:F1}%)");
                         }
                     }
                 }
-                
+
                 var totalTime = DateTime.Now - startTime;
                 double avgSpeed = downloadedBytes / Math.Max(totalTime.TotalSeconds, 0.1);
                 _log($"✓ Extraction complete: {Path.GetFileName(outputPath)}");
@@ -405,10 +405,10 @@ namespace LoveAlways.Fastboot.Payload
             public long TotalBytes { get; set; }
             public double DownloadSpeedBytesPerSecond { get; set; }
             public double FlashSpeedBytesPerSecond { get; set; }
-            
+
             public string DownloadSpeedFormatted => FormatSpeed(DownloadSpeedBytesPerSecond);
             public string FlashSpeedFormatted => FormatSpeed(FlashSpeedBytesPerSecond);
-            
+
             private static string FormatSpeed(double speed)
             {
                 if (speed <= 0) return "Calculating...";
@@ -422,14 +422,14 @@ namespace LoveAlways.Fastboot.Payload
                 return $"{speed:F2} {units[unitIndex]}";
             }
         }
-        
+
         public enum StreamFlashPhase
         {
             Downloading,
             Flashing,
             Completed
         }
-        
+
         /// <summary>
         /// Stream flash progress event
         /// </summary>
@@ -442,7 +442,7 @@ namespace LoveAlways.Fastboot.Payload
         /// <param name="flashCallback">Flash callback, parameters: temporary file path, returns: whether successful, bytes flashed, time taken</param>
         /// <param name="ct">Cancellation token</param>
         public async Task<bool> ExtractAndFlashPartitionAsync(
-            string partitionName, 
+            string partitionName,
             Func<string, Task<(bool success, long bytesFlashed, double elapsedSeconds)>> flashCallback,
             CancellationToken ct = default)
         {
@@ -463,7 +463,7 @@ namespace LoveAlways.Fastboot.Payload
 
             // Create temporary file
             string tempPath = Path.Combine(Path.GetTempPath(), $"payload_{partitionName}_{Guid.NewGuid():N}.img");
-            
+
             try
             {
                 _log($"Starting download '{partitionName}' ({FormatSize((long)partition.Size)})");
@@ -508,12 +508,12 @@ namespace LoveAlways.Fastboot.Payload
                         {
                             long dstOffset = (long)operation.DstStartBlock * _blockSize;
                             outputStream.Seek(dstOffset, SeekOrigin.Begin);
-                            outputStream.Write(decompressedData, 0, 
+                            outputStream.Write(decompressedData, 0,
                                 Math.Min(decompressedData.Length, (int)((long)operation.DstNumBlocks * _blockSize)));
                         }
 
                         processedOps++;
-                        
+
                         // Calculate download speed
                         var now = DateTime.Now;
                         var timeSinceLastUpdate = (now - lastSpeedUpdateTime).TotalSeconds;
@@ -529,9 +529,9 @@ namespace LoveAlways.Fastboot.Payload
                             var elapsed = (now - downloadStartTime).TotalSeconds;
                             if (elapsed > 0.1) downloadSpeed = downloadedBytes / elapsed;
                         }
-                        
+
                         double downloadPercent = 50.0 * processedOps / totalOps; // Download takes 50%
-                        
+
                         StreamFlashProgressChanged?.Invoke(this, new StreamFlashProgressEventArgs
                         {
                             PartitionName = partitionName,
@@ -544,13 +544,13 @@ namespace LoveAlways.Fastboot.Payload
                         });
                     }
                 }
-                
+
                 var downloadTime = DateTime.Now - downloadStartTime;
                 _log($"Download complete: {FormatSize(downloadedBytes)}, time taken: {downloadTime.TotalSeconds:F1}s");
-                
+
                 // Flash phase
                 _log($"Starting to flash '{partitionName}'...");
-                
+
                 StreamFlashProgressChanged?.Invoke(this, new StreamFlashProgressEventArgs
                 {
                     PartitionName = partitionName,
@@ -563,9 +563,9 @@ namespace LoveAlways.Fastboot.Payload
                 });
 
                 var (flashSuccess, bytesFlashed, flashElapsed) = await flashCallback(tempPath);
-                
+
                 double flashSpeed = flashElapsed > 0 ? bytesFlashed / flashElapsed : 0;
-                
+
                 StreamFlashProgressChanged?.Invoke(this, new StreamFlashProgressEventArgs
                 {
                     PartitionName = partitionName,
@@ -642,14 +642,14 @@ namespace LoveAlways.Fastboot.Payload
         #endregion
 
         #region Private Methods - ZIP Parsing
-        
+
         private async Task ParseZipStructureAsync(string url, CancellationToken ct)
         {
             // Read file tail to find EOCD
             int readSize = (int)Math.Min(65536, _totalSize);
             long startOffset = _totalSize - readSize;
             byte[] tailData = await FetchRangeAsync(url, startOffset, _totalSize - 1, ct);
-            
+
             // Find EOCD signature
             int eocdPos = -1;
             for (int i = tailData.Length - 22; i >= 0; i--)
@@ -660,14 +660,14 @@ namespace LoveAlways.Fastboot.Payload
                     break;
                 }
             }
-            
+
             if (eocdPos < 0)
                 throw new Exception("Unable to find ZIP EOCD record");
 
             long eocdOffset = startOffset + eocdPos;
             bool isZip64 = false;
             long zip64EocdOffset = 0;
-            
+
             // Check for ZIP64
             if (eocdPos >= 20)
             {
@@ -700,7 +700,7 @@ namespace LoveAlways.Fastboot.Payload
             // Download central directory
             byte[] centralDirData = await FetchRangeAsync(url, centralDirOffset,
                 centralDirOffset + centralDirSize - 1, ct);
-            
+
             // Find payload.bin
             int pos = 0;
             while (pos < centralDirData.Length - 4)
@@ -716,7 +716,7 @@ namespace LoveAlways.Fastboot.Payload
                 uint localHeaderOffset = BitConverter.ToUInt32(centralDirData, pos + 42);
 
                 string filename = Encoding.UTF8.GetString(centralDirData, pos + 46, filenameLen);
-                
+
                 // Process ZIP64 extra fields
                 if (uncompressedSize == 0xFFFFFFFF || compressedSize == 0xFFFFFFFF || localHeaderOffset == 0xFFFFFFFF)
                 {
@@ -755,13 +755,13 @@ namespace LoveAlways.Fastboot.Payload
                 {
                     // Read local file header
                     byte[] lfhData = await FetchRangeAsync(url, localHeaderOffset, localHeaderOffset + 30, ct);
-                    
+
                     if (BitConverter.ToUInt32(lfhData, 0) != ZIP_LOCAL_FILE_HEADER_SIG)
                         throw new Exception("Local file header signature mismatch");
 
                     ushort lfhFilenameLen = BitConverter.ToUInt16(lfhData, 26);
                     ushort lfhExtraLen = BitConverter.ToUInt16(lfhData, 28);
-                    
+
                     _payloadDataOffset = localHeaderOffset + 30 + lfhFilenameLen + lfhExtraLen;
                     _logDetail($"payload.bin data offset: 0x{_payloadDataOffset:X}");
                     return;
@@ -781,7 +781,7 @@ namespace LoveAlways.Fastboot.Payload
         {
             // Read Payload header (24 bytes for v2)
             byte[] headerData = await FetchRangeAsync(url, _payloadDataOffset, _payloadDataOffset + 23, ct);
-            
+
             // Verify Magic
             uint magic = ReadBigEndianUInt32(headerData, 0);
             if (magic != PAYLOAD_MAGIC)
@@ -798,7 +798,7 @@ namespace LoveAlways.Fastboot.Payload
             // Download Manifest
             long manifestOffset = _payloadDataOffset + payloadHeaderLen;
             _log($"Downloading Manifest ({FormatSize((long)manifestLen)})...");
-            byte[] manifestData = await FetchRangeAsync(url, manifestOffset, 
+            byte[] manifestData = await FetchRangeAsync(url, manifestOffset,
                 manifestOffset + (long)manifestLen - 1, ct);
 
             // Parse Manifest
@@ -946,13 +946,13 @@ namespace LoveAlways.Fastboot.Payload
 
             // Use ResponseHeadersRead to avoid pre-buffering the entire response
             var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            
+
             if (response.StatusCode != HttpStatusCode.PartialContent && response.StatusCode != HttpStatusCode.OK)
                 throw new Exception($"HTTP {(int)response.StatusCode}");
 
             // Calculate the number of bytes to read
             long bytesToRead = end - start + 1;
-            
+
             // If the server supports Range requests (206), read content directly
             if (response.StatusCode == HttpStatusCode.PartialContent)
             {
@@ -988,7 +988,7 @@ namespace LoveAlways.Fastboot.Payload
                         if (read == 0) throw new Exception("Unable to skip to specified position");
                         skipped += read;
                     }
-                    
+
                     // Read data in the specified range
                     byte[] buffer = new byte[bytesToRead];
                     int totalRead = 0;
@@ -1261,7 +1261,7 @@ namespace LoveAlways.Fastboot.Payload
         public double Percent { get; set; }
         public double SpeedBytesPerSecond { get; set; }
         public TimeSpan ElapsedTime { get; set; }
-        
+
         /// <summary>
         /// Formatted speed display
         /// </summary>
@@ -1270,7 +1270,7 @@ namespace LoveAlways.Fastboot.Payload
             get
             {
                 if (SpeedBytesPerSecond <= 0) return "Calculating...";
-                
+
                 string[] units = { "B/s", "KB/s", "MB/s", "GB/s" };
                 double speed = SpeedBytesPerSecond;
                 int unitIndex = 0;

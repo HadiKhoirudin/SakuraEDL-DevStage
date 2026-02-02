@@ -3,7 +3,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -82,7 +82,7 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 // Read Sparse Header
                 var header = ReadSparseHeader(reader);
-                
+
                 Log("[Sparse] Version: {0}.{1}", header.MajorVersion, header.MinorVersion);
                 Log("[Sparse] Block Size: {0}", header.BlockSize);
                 Log("[Sparse] Total Blocks: {0}", header.TotalBlocks);
@@ -173,7 +173,7 @@ namespace LoveAlways.Spreadtrum.Common
 
                     // Check if all zeros
                     bool isZero = IsZeroBlock(blockBuffer, read);
-                    
+
                     // Check if fill block
                     uint fillValue;
                     bool isFill = IsFillBlock(blockBuffer, read, out fillValue);
@@ -290,7 +290,7 @@ namespace LoveAlways.Spreadtrum.Common
         {
             byte[] fillBytes = BitConverter.GetBytes(value);
             byte[] buffer = new byte[4096];
-            
+
             // Fill buffer
             for (int i = 0; i < buffer.Length; i += 4)
             {
@@ -332,7 +332,7 @@ namespace LoveAlways.Spreadtrum.Common
         private bool IsFillBlock(byte[] data, int length, out uint fillValue)
         {
             fillValue = 0;
-            
+
             if (length < 4)
                 return false;
 

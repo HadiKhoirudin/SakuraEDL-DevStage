@@ -32,13 +32,13 @@ namespace LoveAlways.Qualcomm.Common
         public uint blocks;             // 块数
         public uint meta_blkaddr;       // 元数据区起始块
         public uint xattr_blkaddr;      // xattr 区起始块
-        
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
         public byte[] uuid;             // UUID
-        
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
         public byte[] volume_name;      // 卷名
-        
+
         public uint feature_incompat;   // 不兼容特性
         public ushort available_compr_algs; // 可用压缩算法
         public ushort extra_devices;    // 额外设备数
@@ -48,7 +48,7 @@ namespace LoveAlways.Qualcomm.Common
         public uint xattr_prefix_start; // xattr 前缀起始
         public ulong packed_nid;        // 打包 Inode 节点号
         public byte xattr_filter_reserved;
-        
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 23)]
         public byte[] reserved2;
     }
@@ -90,7 +90,7 @@ namespace LoveAlways.Qualcomm.Common
         public ulong i_mtime;
         public uint i_mtime_nsec;
         public uint i_nlink;
-        
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
         public byte[] i_reserved2;
     }
@@ -523,10 +523,10 @@ namespace LoveAlways.Qualcomm.Common
                 // 对于压缩数据，我们尝试读取 inode.i_u 指向的数据块
                 // 这可能是压缩后的数据，但对于 build.prop 这样的小文件
                 // 有时候数据是内联的或者只有少量压缩块
-                
+
                 long dataOffset = (long)inode.i_u * _blockSize;
                 int readSize = Math.Min(size * 2, 128 * 1024); // 读取更多以覆盖压缩开销
-                
+
                 _stream.Seek(dataOffset, SeekOrigin.Begin);
                 byte[] data = new byte[readSize];
                 int actualRead = _stream.Read(data, 0, readSize);
@@ -535,7 +535,7 @@ namespace LoveAlways.Qualcomm.Common
                 {
                     // 尝试在原始数据中查找 build.prop 内容
                     string content = System.Text.Encoding.UTF8.GetString(data, 0, actualRead);
-                    
+
                     // 如果能找到 ro. 开头的属性，说明数据可能未压缩或部分可读
                     if (content.Contains("ro.") || content.Contains("build.prop"))
                     {
@@ -571,7 +571,7 @@ namespace LoveAlways.Qualcomm.Common
             // 内联数据紧跟 Inode 之后
             long inodeOffset = GetInodeOffset(nid);
             int inodeSize = IsExtendedInode(inode.i_format) ? 64 : 32;
-            
+
             // xattr 大小
             int xattrSize = 0;
             if (inode.i_xattr_icount > 0)
@@ -583,10 +583,10 @@ namespace LoveAlways.Qualcomm.Common
             int alignedSize = (inodeSize + xattrSize + 3) & ~3;
 
             long dataOffset = inodeOffset + alignedSize;
-            
+
             // 检查内联部分
             int tailSize = _blockSize - (int)(dataOffset % _blockSize);
-            
+
             if (size <= tailSize)
             {
                 // 完全内联
@@ -599,16 +599,16 @@ namespace LoveAlways.Qualcomm.Common
             {
                 // 部分内联 + 外部块
                 byte[] data = new byte[size];
-                
+
                 // 读取内联部分
                 _stream.Seek(dataOffset, SeekOrigin.Begin);
                 _stream.Read(data, 0, tailSize);
-                
+
                 // 读取外部块
                 long blockAddr = (long)inode.i_u * _blockSize;
                 _stream.Seek(blockAddr, SeekOrigin.Begin);
                 _stream.Read(data, tailSize, size - tailSize);
-                
+
                 return data;
             }
         }

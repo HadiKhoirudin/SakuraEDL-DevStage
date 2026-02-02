@@ -4,7 +4,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -44,7 +44,7 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 // Remove BOM and null characters
                 string xmlContent = CleanXmlContent(xmlData);
-                
+
                 var doc = XDocument.Parse(xmlContent);
                 var config = new SprdXmlConfig();
 
@@ -118,9 +118,9 @@ namespace LoveAlways.Spreadtrum.Common
             var product = root.Element("Product") ?? root.Element("ProductInfo");
             if (product != null)
             {
-                config.ProductName = GetAttributeOrElement(product, "name") ?? 
+                config.ProductName = GetAttributeOrElement(product, "name") ??
                                      GetAttributeOrElement(product, "Name");
-                config.Version = GetAttributeOrElement(product, "version") ?? 
+                config.Version = GetAttributeOrElement(product, "version") ??
                                 GetAttributeOrElement(product, "Version");
                 Log("[XML] Product: {0}, Version: {1}", config.ProductName, config.Version);
             }
@@ -163,27 +163,27 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 var fileInfo = new SprdXmlFileInfo
                 {
-                    ID = GetAttributeOrElement(fileNode, "ID") ?? 
+                    ID = GetAttributeOrElement(fileNode, "ID") ??
                          GetAttributeOrElement(fileNode, "id"),
-                    Name = GetAttributeOrElement(fileNode, "Name") ?? 
+                    Name = GetAttributeOrElement(fileNode, "Name") ??
                            GetAttributeOrElement(fileNode, "name") ??
                            GetAttributeOrElement(fileNode, "PARTITION_NAME"),
-                    FileName = GetAttributeOrElement(fileNode, "IDAlias") ?? 
+                    FileName = GetAttributeOrElement(fileNode, "IDAlias") ??
                                GetAttributeOrElement(fileNode, "FileName") ??
                                GetAttributeOrElement(fileNode, "File"),
-                    Type = ParseFileType(GetAttributeOrElement(fileNode, "Type") ?? 
+                    Type = ParseFileType(GetAttributeOrElement(fileNode, "Type") ??
                                         GetAttributeOrElement(fileNode, "type")),
-                    Block = GetAttributeOrElement(fileNode, "Block") ?? 
+                    Block = GetAttributeOrElement(fileNode, "Block") ??
                             GetAttributeOrElement(fileNode, "block"),
-                    Flag = ParseFlag(GetAttributeOrElement(fileNode, "Flag") ?? 
+                    Flag = ParseFlag(GetAttributeOrElement(fileNode, "Flag") ??
                                     GetAttributeOrElement(fileNode, "flag")),
                     CheckFlag = ParseCheckFlag(GetAttributeOrElement(fileNode, "CheckFlag")),
-                    IsSelected = ParseBool(GetAttributeOrElement(fileNode, "Selected") ?? 
+                    IsSelected = ParseBool(GetAttributeOrElement(fileNode, "Selected") ??
                                           GetAttributeOrElement(fileNode, "Use"), true)
                 };
 
                 // Parse address
-                string addrStr = GetAttributeOrElement(fileNode, "Base") ?? 
+                string addrStr = GetAttributeOrElement(fileNode, "Base") ??
                                 GetAttributeOrElement(fileNode, "Address") ??
                                 GetAttributeOrElement(fileNode, "LoadAddr");
                 if (!string.IsNullOrEmpty(addrStr))
@@ -192,7 +192,7 @@ namespace LoveAlways.Spreadtrum.Common
                 }
 
                 // Parse size
-                string sizeStr = GetAttributeOrElement(fileNode, "Size") ?? 
+                string sizeStr = GetAttributeOrElement(fileNode, "Size") ??
                                 GetAttributeOrElement(fileNode, "Length");
                 if (!string.IsNullOrEmpty(sizeStr))
                 {
@@ -222,12 +222,12 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 config.Fdl1Config = new SprdFdlConfig
                 {
-                    FileName = GetAttributeOrElement(fdl1, "File") ?? 
+                    FileName = GetAttributeOrElement(fdl1, "File") ??
                                GetAttributeOrElement(fdl1, "FileName") ??
                                fdl1.Value,
-                    Address = ParseHexOrDecimal(GetAttributeOrElement(fdl1, "Base") ?? 
+                    Address = ParseHexOrDecimal(GetAttributeOrElement(fdl1, "Base") ??
                                                GetAttributeOrElement(fdl1, "Address") ?? "0"),
-                    BaudRate = ParseInt(GetAttributeOrElement(fdl1, "Baud") ?? 
+                    BaudRate = ParseInt(GetAttributeOrElement(fdl1, "Baud") ??
                                        GetAttributeOrElement(fdl1, "BaudRate"), 115200)
                 };
                 Log("[XML] FDL1: {0} @ 0x{1:X}", config.Fdl1Config.FileName, config.Fdl1Config.Address);
@@ -239,12 +239,12 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 config.Fdl2Config = new SprdFdlConfig
                 {
-                    FileName = GetAttributeOrElement(fdl2, "File") ?? 
+                    FileName = GetAttributeOrElement(fdl2, "File") ??
                                GetAttributeOrElement(fdl2, "FileName") ??
                                fdl2.Value,
-                    Address = ParseHexOrDecimal(GetAttributeOrElement(fdl2, "Base") ?? 
+                    Address = ParseHexOrDecimal(GetAttributeOrElement(fdl2, "Base") ??
                                                GetAttributeOrElement(fdl2, "Address") ?? "0"),
-                    BaudRate = ParseInt(GetAttributeOrElement(fdl2, "Baud") ?? 
+                    BaudRate = ParseInt(GetAttributeOrElement(fdl2, "Baud") ??
                                        GetAttributeOrElement(fdl2, "BaudRate"), 921600)
                 };
                 Log("[XML] FDL2: {0} @ 0x{1:X}", config.Fdl2Config.FileName, config.Fdl2Config.Address);
@@ -263,10 +263,10 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 var operation = new SprdPartitionOperation
                 {
-                    PartitionName = GetAttributeOrElement(op, "Partition") ?? 
+                    PartitionName = GetAttributeOrElement(op, "Partition") ??
                                    GetAttributeOrElement(op, "Name"),
-                    Operation = ParseOperationType(GetAttributeOrElement(op, "Op") ?? 
-                                                  GetAttributeOrElement(op, "Operation") ?? 
+                    Operation = ParseOperationType(GetAttributeOrElement(op, "Op") ??
+                                                  GetAttributeOrElement(op, "Operation") ??
                                                   GetAttributeOrElement(op, "Type")),
                     Priority = ParseInt(GetAttributeOrElement(op, "Priority"), 0),
                     IsEnabled = ParseBool(GetAttributeOrElement(op, "Enable"), true)
@@ -360,16 +360,16 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 var partInfo = new SprdXmlPartitionInfo
                 {
-                    Name = GetAttributeOrElement(part, "id") ?? 
+                    Name = GetAttributeOrElement(part, "id") ??
                            GetAttributeOrElement(part, "Name") ??
                            GetAttributeOrElement(part, "name"),
-                    Size = ParseHexOrDecimal(GetAttributeOrElement(part, "size") ?? 
+                    Size = ParseHexOrDecimal(GetAttributeOrElement(part, "size") ??
                                             GetAttributeOrElement(part, "Size") ?? "0"),
-                    Offset = ParseHexOrDecimal(GetAttributeOrElement(part, "offset") ?? 
+                    Offset = ParseHexOrDecimal(GetAttributeOrElement(part, "offset") ??
                                               GetAttributeOrElement(part, "Offset") ?? "0"),
-                    Type = GetAttributeOrElement(part, "type") ?? 
+                    Type = GetAttributeOrElement(part, "type") ??
                            GetAttributeOrElement(part, "Type") ?? "unknown",
-                    FileSystem = GetAttributeOrElement(part, "fs") ?? 
+                    FileSystem = GetAttributeOrElement(part, "fs") ??
                                 GetAttributeOrElement(part, "FileSystem"),
                     IsReadOnly = ParseBool(GetAttributeOrElement(part, "readonly"), false)
                 };
@@ -489,10 +489,10 @@ namespace LoveAlways.Spreadtrum.Common
             }
 
             string content = System.Text.Encoding.UTF8.GetString(data, start, data.Length - start);
-            
+
             // Remove null characters
             content = content.Replace("\0", "");
-            
+
             // Remove invalid XML characters
             content = RemoveInvalidXmlChars(content);
 
@@ -793,8 +793,8 @@ namespace LoveAlways.Spreadtrum.Common
             // Add other selected files
             foreach (var file in Files)
             {
-                if (file.Type != SprdXmlFileType.FDL1 && 
-                    file.Type != SprdXmlFileType.FDL2 && 
+                if (file.Type != SprdXmlFileType.FDL1 &&
+                    file.Type != SprdXmlFileType.FDL2 &&
                     file.IsSelected)
                 {
                     order.Add(file);

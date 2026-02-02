@@ -6,7 +6,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -483,7 +483,7 @@ namespace LoveAlways.Qualcomm.Database
         public static string GetChipName(uint hwId)
         {
             string name;
-            
+
             // 1. Direct search for full HWID
             if (MsmIds.TryGetValue(hwId, out name))
                 return name;
@@ -495,12 +495,12 @@ namespace LoveAlways.Qualcomm.Database
                 if (MsmIds.TryGetValue(withE1, out name))
                     return name;
             }
-            
+
             // 3. Try low 24 bits + E1
             uint low24WithE1 = ((hwId & 0x00FFFF00) >> 8) | 0xE1;
             if (low24WithE1 != hwId && MsmIds.TryGetValue(low24WithE1, out name))
                 return name;
-            
+
             // 4. Iterate to find (for handling non-standard formats)
             uint msmPart = hwId & 0x00FFFFF0;  // Extract core identification part
             foreach (var kvp in MsmIds)
@@ -511,7 +511,7 @@ namespace LoveAlways.Qualcomm.Database
 
             return "Unknown";
         }
-        
+
         /// <summary>
         /// Get Chip Codename by HWID (returns only codes like SM/SDM/MSM)
         /// </summary>
@@ -520,12 +520,12 @@ namespace LoveAlways.Qualcomm.Database
             string fullName = GetChipName(hwId);
             if (fullName == "Unknown")
                 return null;
-            
+
             // Extract the part before the parentheses
             int parenIndex = fullName.IndexOf('(');
             if (parenIndex > 0)
                 return fullName.Substring(0, parenIndex).Trim();
-            
+
             return fullName;
         }
 
@@ -623,11 +623,11 @@ namespace LoveAlways.Qualcomm.Database
         public static QualcommDatabaseStats GetStats()
         {
             var stats = new QualcommDatabaseStats();
-            
+
             stats.TotalChips = MsmIds.Count;
             stats.TotalVendors = VendorIds.Count;
             stats.TotalPkHashPrefixes = PkHashVendorPrefix.Count;
-            
+
             // Count chips by series
             var seriesCounts = new Dictionary<string, int>();
             foreach (var kvp in MsmIds)
@@ -638,7 +638,7 @@ namespace LoveAlways.Qualcomm.Database
                 seriesCounts[series]++;
             }
             stats.ChipsBySeries = seriesCounts;
-            
+
             return stats;
         }
 
@@ -652,47 +652,47 @@ namespace LoveAlways.Qualcomm.Database
 
             // Extract chip codename prefix
             string codename = chipName.Split(' ')[0].Split('(')[0].Trim();
-            
+
             // Snapdragon 8 Series (Flagship)
-            if (codename.StartsWith("SM8") || codename.StartsWith("SDM8") || 
+            if (codename.StartsWith("SM8") || codename.StartsWith("SDM8") ||
                 codename.Contains("855") || codename.Contains("865") || codename.Contains("888"))
                 return "Snapdragon 8 Series (Flagship)";
-            
+
             // Snapdragon 7 Series (Upper Mid-Range)
             if (codename.StartsWith("SM7") || codename.StartsWith("SDM7") ||
                 codename.Contains("765") || codename.Contains("778") || codename.Contains("780"))
                 return "Snapdragon 7 Series (Upper Mid-Range)";
-            
+
             // Snapdragon 6 Series (Mid-Range)
             if (codename.StartsWith("SM6") || codename.StartsWith("SDM6") ||
                 codename.Contains("660") || codename.Contains("675") || codename.Contains("690"))
                 return "Snapdragon 6 Series (Mid-Range)";
-            
+
             // Snapdragon 4 Series (Entry-Level)
             if (codename.StartsWith("SM4") || codename.StartsWith("SDM4") ||
                 codename.Contains("MSM8917") || codename.Contains("MSM8937"))
                 return "Snapdragon 4 Series (Entry-Level)";
-            
+
             // MDM/SDX Baseband
             if (codename.StartsWith("MDM") || codename.StartsWith("SDX"))
                 return "Modem/Baseband (MDM/SDX)";
-            
+
             // SC/QCS IoT
             if (codename.StartsWith("SC") || codename.StartsWith("QCS") || codename.StartsWith("QCM"))
                 return "IoT/Compute (SC/QCS)";
-            
+
             // Wearable
             if (codename.StartsWith("SW") || codename.StartsWith("SDW") || codename.Contains("Wear"))
                 return "Wearable (Snapdragon Wear)";
-            
+
             // XR
             if (codename.StartsWith("XR") || codename.StartsWith("SXR"))
                 return "XR/VR";
-            
+
             // Legacy MSM 系列
             if (codename.StartsWith("MSM") || codename.StartsWith("APQ"))
                 return "Legacy MSM/APQ";
-            
+
             return "Other";
         }
 
@@ -702,7 +702,7 @@ namespace LoveAlways.Qualcomm.Database
         public static QualcommChipIdentification IdentifyChip(uint hwId)
         {
             var result = new QualcommChipIdentification { HwId = hwId };
-            
+
             // 1. Exact match
             if (MsmIds.TryGetValue(hwId, out string name))
             {
@@ -711,7 +711,7 @@ namespace LoveAlways.Qualcomm.Database
                 result.Confidence = 100;
                 return result;
             }
-            
+
             // 2. Try normalizing HWID format (adding/removing E1 suffix)
             uint[] variants = new uint[]
             {
@@ -721,7 +721,7 @@ namespace LoveAlways.Qualcomm.Database
                 hwId >> 8,                            // Right shift 8 bits
                 (hwId & 0x00FFFFFF),                  // Take low 24 bits
             };
-            
+
             foreach (var variant in variants)
             {
                 if (variant != hwId && MsmIds.TryGetValue(variant, out name))
@@ -732,7 +732,7 @@ namespace LoveAlways.Qualcomm.Database
                     return result;
                 }
             }
-            
+
             // 3. Fuzzy match - compare core identification parts
             uint msmCore = (hwId >> 4) & 0x00FFFF;
             foreach (var kvp in MsmIds)
@@ -746,12 +746,12 @@ namespace LoveAlways.Qualcomm.Database
                     return result;
                 }
             }
-            
+
             // 4. Feature-based guessing
             result.ChipName = GuessChipByFeatures(hwId);
             result.MatchType = result.ChipName != "Unknown" ? "Guess" : "Unknown";
             result.Confidence = result.ChipName != "Unknown" ? 30 : 0;
-            
+
             return result;
         }
 
@@ -764,26 +764,26 @@ namespace LoveAlways.Qualcomm.Database
             uint suffix = hwId & 0xFF;
             if (suffix != 0xE1 && suffix != 0xE2)
                 return "Unknown";
-            
+
             // Guess by HWID range
             uint idPart = (hwId >> 8) & 0xFFFF;
-            
+
             // SM8xxx range
             if (idPart >= 0x1CA && idPart <= 0x2FF)
                 return "SM8xxx Series (Flagship, Exact Model Unknown)";
-            
+
             // SM7xxx range
             if (idPart >= 0x190 && idPart <= 0x1C9)
                 return "SM7xxx Series (Upper Mid-Range, Exact Model Unknown)";
-            
+
             // SM6xxx range
             if (idPart >= 0x10E && idPart <= 0x18F)
                 return "SM6xxx Series (Mid-Range, Exact Model Unknown)";
-            
+
             // SDX Modem range
             if (idPart >= 0x160 && idPart <= 0x285 && ((hwId >> 4) & 0xF) >= 0x5)
                 return "SDX Series (Modem, Exact Model Unknown)";
-            
+
             return "Unknown";
         }
 
@@ -816,9 +816,9 @@ namespace LoveAlways.Qualcomm.Database
             string chipName = GetChipName(hwId);
             if (chipName == "Unknown")
                 return false;
-            
+
             // 检查是否为 SM8450+ (8 Gen 1 及以后)
-            return chipName.Contains("8 Gen") || chipName.Contains("8Gen") || 
+            return chipName.Contains("8 Gen") || chipName.Contains("8Gen") ||
                    chipName.Contains("8 Elite") || chipName.Contains("8Elite") ||
                    chipName.Contains("8s Gen") || chipName.Contains("8sGen") ||
                    chipName.Contains("SM8450") || chipName.Contains("SM8475") ||
@@ -835,11 +835,11 @@ namespace LoveAlways.Qualcomm.Database
             string chipName = GetChipName(hwId);
             if (chipName == "Unknown")
                 return true; // 假设支持
-            
+
             // 非常旧的芯片可能使用 DMSS/Streaming 协议
             if (chipName.Contains("MSM72") || chipName.Contains("MSM73"))
                 return false;
-            
+
             return true;
         }
 
@@ -851,13 +851,13 @@ namespace LoveAlways.Qualcomm.Database
             string chipName = GetChipName(hwId);
             if (chipName == "Unknown")
                 return true; // 假设支持
-            
+
             // MSM8916 及以后的芯片都支持 Firehose
             // 旧芯片使用 SBL/EHostDL
             if (chipName.Contains("MSM890") || chipName.Contains("MSM891") ||
                 chipName.Contains("MSM72") || chipName.Contains("MSM73"))
                 return false;
-            
+
             return true;
         }
 
@@ -873,12 +873,12 @@ namespace LoveAlways.Qualcomm.Database
         public int TotalVendors { get; set; }
         public int TotalPkHashPrefixes { get; set; }
         public Dictionary<string, int> ChipsBySeries { get; set; }
-        
+
         public QualcommDatabaseStats()
         {
             ChipsBySeries = new Dictionary<string, int>();
         }
-        
+
         public override string ToString()
         {
             var sb = new System.Text.StringBuilder();
@@ -904,10 +904,10 @@ namespace LoveAlways.Qualcomm.Database
         public string ChipName { get; set; }
         public string MatchType { get; set; }  // Exact, Variant, Fuzzy, Guess, Unknown
         public int Confidence { get; set; }    // 0-100
-        
+
         public override string ToString()
         {
-            return string.Format("{0} (HWID: 0x{1:X8}, Match: {2}, Confidence: {3}%)", 
+            return string.Format("{0} (HWID: 0x{1:X8}, Match: {2}, Confidence: {3}%)",
                 ChipName, HwId, MatchType, Confidence);
         }
     }

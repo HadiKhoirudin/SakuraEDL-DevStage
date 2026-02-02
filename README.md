@@ -24,11 +24,18 @@ Supports Qualcomm EDL (9008), MediaTek (MTK), Spreadtrum (SPD/Unisoc), and Fastb
 |:---:|:---:|:---:|:---:|
 | Qualcomm + MTK + Spreadtrum | XFlash + XML Protocol | Flash + Unbrick + Decrypt | Auto Loader Matching |
 
+## 📸 Screenshoot
+
+[![image.png](https://i.postimg.cc/tCPTj0xB/image.png)](https://postimg.cc/svjyYNKW)
+
 ---
 
 ## ✨ Features
 
 ### 🆕 v3.0 New Features
+- **Note From Me (Hadi Khoirudin, S.Kom) - 02/02/2026**
+  - This is forked version is not ready for production and I'm just tring to translate them & create small fix as I can / available
+  - Use this as an learning resources
 
 #### 🔧 Full MediaTek (MTK) Support
 - **BROM/Preloader Mode Flashing**

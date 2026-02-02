@@ -4,7 +4,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -126,7 +126,7 @@ namespace LoveAlways.Common
         {
             string fullMessage = $"{message}: {ex.Message}";
             Log(LogLevel.Error, fullMessage, category, Color.Red, showInUI);
-            
+
             // Write detailed stack trace to file
             WriteToFile(LogLevel.Error, $"Exception Details: {ex}", category);
         }
@@ -138,7 +138,7 @@ namespace LoveAlways.Common
         {
             string fullMessage = ex != null ? $"{message}: {ex.Message}" : message;
             Log(LogLevel.Fatal, fullMessage, category, Color.DarkRed, true);
-            
+
             if (ex != null)
             {
                 WriteToFile(LogLevel.Fatal, $"Fatal Exception Details: {ex}", category);
@@ -192,7 +192,7 @@ namespace LoveAlways.Common
             };
 
             string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
-            
+
             if (string.IsNullOrEmpty(category))
                 return $"[{timestamp}] [{levelStr}] {message}";
             else

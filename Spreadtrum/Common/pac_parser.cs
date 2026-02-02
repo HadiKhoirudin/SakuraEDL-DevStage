@@ -3,7 +3,7 @@
 // ============================================================================
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Eng Translation by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
+// Eng Translation & some fixes by iReverse - HadiKIT - Hadi Khoirudin, S.Kom.
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -11,7 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace LoveAlways.Spreadtrum.Common
@@ -44,7 +43,7 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 // Parse PAC header
                 var header = ParseHeader(reader);
-                
+
                 // Verify file size
                 var fileInfo = new FileInfo(pacFilePath);
                 ulong expectedSize = ((ulong)header.HiSize << 32) + header.LoSize;
@@ -167,7 +166,7 @@ namespace LoveAlways.Spreadtrum.Common
             {
                 // BP_R2 format - using szPartitionInfo
                 byte[] partitionInfo = reader.ReadBytes(24);
-                
+
                 // Parse partition info (Little-endian reversed)
                 entry.HiSize = ParseReversedUInt32(partitionInfo, 0);
                 entry.LoSize = ParseReversedUInt32(partitionInfo, 4);
@@ -213,7 +212,7 @@ namespace LoveAlways.Spreadtrum.Common
                     {
                         int toRead = (int)Math.Min(buffer.Length, remaining);
                         int read = fs.Read(buffer, 0, toRead);
-                        
+
                         if (read == 0)
                             break;
 
@@ -245,7 +244,7 @@ namespace LoveAlways.Spreadtrum.Common
             for (int i = 0; i < pac.Files.Count; i++)
             {
                 var entry = pac.Files[i];
-                
+
                 if (string.IsNullOrEmpty(entry.FileName) || entry.Size == 0)
                     continue;
 
@@ -260,7 +259,7 @@ namespace LoveAlways.Spreadtrum.Common
         /// </summary>
         public PacFileEntry GetFdl1(PacInfo pac)
         {
-            return pac.Files.Find(f => 
+            return pac.Files.Find(f =>
                 f.PartitionName.Equals("FDL", StringComparison.OrdinalIgnoreCase) ||
                 f.Type == PacFileType.FDL1);
         }
@@ -269,7 +268,7 @@ namespace LoveAlways.Spreadtrum.Common
         /// </summary>
         public PacFileEntry GetFdl2(PacInfo pac)
         {
-            return pac.Files.Find(f => 
+            return pac.Files.Find(f =>
                 f.PartitionName.Equals("FDL2", StringComparison.OrdinalIgnoreCase) ||
                 f.Type == PacFileType.FDL2);
         }
@@ -284,8 +283,8 @@ namespace LoveAlways.Spreadtrum.Common
             var xmlParser = new XmlConfigParser(msg => _log?.Invoke(msg));
 
             // Find all XML files
-            var xmlFiles = pac.Files.Where(f => 
-                f.Type == PacFileType.XML || 
+            var xmlFiles = pac.Files.Where(f =>
+                f.Type == PacFileType.XML ||
                 f.FileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
@@ -302,7 +301,7 @@ namespace LoveAlways.Spreadtrum.Common
                         {
                             config.ProductionSettings = config.ProductionSettings ?? new Dictionary<string, string>();
                             config.ProductionSettings["SourceFile"] = xmlFile.FileName;
-                            
+
                             pac.AllXmlConfigs.Add(config);
                             Log("[PAC] Parse XML config: {0} ({1})", xmlFile.FileName, config.ConfigType);
 
@@ -382,15 +381,15 @@ namespace LoveAlways.Spreadtrum.Common
                 using (var fs = new FileStream(pacFilePath, FileMode.Open, FileAccess.Read))
                 {
                     fs.Seek((long)entry.DataOffset, SeekOrigin.Begin);
-                    
+
                     byte[] data = new byte[entry.Size];
                     int read = fs.Read(data, 0, (int)entry.Size);
-                    
+
                     if (read < (int)entry.Size)
                     {
                         Array.Resize(ref data, read);
                     }
-                    
+
                     return data;
                 }
             }
@@ -406,8 +405,8 @@ namespace LoveAlways.Spreadtrum.Common
         /// </summary>
         public List<PacFileEntry> GetXmlFiles(PacInfo pac)
         {
-            return pac.Files.Where(f => 
-                f.Type == PacFileType.XML || 
+            return pac.Files.Where(f =>
+                f.Type == PacFileType.XML ||
                 f.FileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
@@ -543,7 +542,7 @@ namespace LoveAlways.Spreadtrum.Common
                     if (xmlFile.Type == SprdXmlFileType.FDL1 || xmlFile.Type == SprdXmlFileType.FDL2)
                         continue;
 
-                    var pacFile = Files.Find(f => 
+                    var pacFile = Files.Find(f =>
                         f.PartitionName.Equals(xmlFile.Name, StringComparison.OrdinalIgnoreCase) ||
                         f.FileName.Equals(xmlFile.FileName, StringComparison.OrdinalIgnoreCase));
 
@@ -555,8 +554,8 @@ namespace LoveAlways.Spreadtrum.Common
             // 4. 添加剩余文件
             foreach (var file in Files)
             {
-                if (!order.Contains(file) && 
-                    file.Type != PacFileType.FDL1 && 
+                if (!order.Contains(file) &&
+                    file.Type != PacFileType.FDL1 &&
                     file.Type != PacFileType.FDL2 &&
                     file.Type != PacFileType.XML &&
                     file.Size > 0)
