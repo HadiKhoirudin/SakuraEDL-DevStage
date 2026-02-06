@@ -639,85 +639,6 @@ namespace LoveAlways.MediaTek.Database
                 Codename = "rubens"
             });
 
-            // ═══════════════════════════════════════════════════════════════
-            // V6 New chips (BROM patched, requires V6 Loader)
-            // Reference: mtkclient brom_config.py
-            // These chips require Preloader mode + signed Loader
-            // ═══════════════════════════════════════════════════════════════
-
-            // ═══════════════════════════════════════════════════════════════
-            // Note: HW Codes below conflict with existing chips, needs device validation
-            // Temporarily commented out to avoid overwriting verified chip configurations
-            // ═══════════════════════════════════════════════════════════════
-
-            // MT6781 (Helio G96) - HW Code 0x0788 conflicts with MT6873
-            // MT6789 (Helio G99) - HW Code 0x0813 conflicts with MT6833
-            // MT6855 (Dimensity 930) - HW Code 0x0886 conflicts with MT6885
-            // MT6879 (Dimensity 920) - HW Code 0x0959 conflicts with MT6877 Preloader
-            // MT6886 (Dimensity 7050) - HW Code 0x0996 conflicts with MT6895
-            //
-            // TODO: Real device validation needed for these chips' HW Codes
-            // These might be aliases for Preloader mode, need to add to _preloaderAliases
-
-            // MT6897 (Dimensity 8300) - V6 protocol
-            // TODO: Needs verification of real HW Code, 0x0950 conflicts with MT6989
-            // Temporarily commented out, waiting for device validation
-            /*
-            AddChip(new MtkChipRecord
-            {
-                HwCode = 0x????,  // To be verified
-                ChipName = "MT6897",
-                Description = "Dimensity 8300",
-                WatchdogAddr = 0x1C007000,
-                UartAddr = 0x11001000,
-                BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x02000000,
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
-                Is64Bit = true,
-                BromPatched = true,
-                RequiresLoader = true,
-                HasExploit = true,
-                ExploitType = "AllinoneSignature",
-                Codename = "mt6897"
-            });
-            */
-
-            // MT8168, MT8183, MT8185 - HW Code conflict, temporarily commented out
-            // MT8168/MT8183's 0x0699 conflicts with MT6739
-            // MT8185's 0x0717 conflicts with MT6765
-            // TODO: Real HW Code validation needed
-
-            // MT8188 - V6 protocol
-            // TODO: Needs verification of real HW Code, 0x0950 conflicts with MT6989
-            // Temporarily commented out, waiting for device validation
-            /*
-            AddChip(new MtkChipRecord
-            {
-                HwCode = 0x????,  // To be verified
-                ChipName = "MT8188",
-                Description = "IoT/Tablet flagship chip",
-                WatchdogAddr = 0x1C007000,
-                UartAddr = 0x11001000,
-                BromPayloadAddr = 0x100A00,
-                DaPayloadAddr = 0x40000000,
-                CqDmaBase = 0x10212000,
-                DaMode = (int)DaMode.Xml,
-                Is64Bit = true,
-                BromPatched = true,
-                RequiresLoader = true,
-                Codename = "mt8188"
-            });
-            */
-
-            // MT8195, MT6769, MT6769V, MT6769Z, MT6750 - HW Code conflict, temporarily commented out
-            // MT8195's 0x0816 conflicts with MT6893
-            // MT6769's 0x0707 conflicts with MT6762 (might be different names for the same chip)
-            // MT6769V's 0x0725 conflicts with MT6765 variant
-            // MT6769Z's 0x0562 conflicts with MT6761
-            // MT6750's 0x0326 conflicts with MT6755
-            // TODO: Verify if these are different market names for the same chip
-
             // MT6580 (Entry-level chip)
             AddChip(new MtkChipRecord
             {
@@ -871,6 +792,538 @@ namespace LoveAlways.MediaTek.Database
                 DaMode = (int)DaMode.XFlash,
                 Is64Bit = true,
                 Codename = "mt8176"
+            });
+
+
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1129,
+                ChipName = "MT6855",
+                Description = "Dimensity 8100",
+                WatchdogAddr = 0x1c007000,
+                UartAddr = 0x11001000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                CqDmaBase = 0x10212000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara",
+                BromPatched = true,
+                RequiresLoader = true,
+                Codename = ""
+            });
+
+            // MT2523 (Smartwatch)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x2523,
+                ChipName = "MT2523",
+                Description = "Smartwatch chip",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11005000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x2008000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT2625 (Smartwatch)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x2625,
+                ChipName = "MT2625",
+                Description = "Smartwatch chip",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11005000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x4001000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT2601 (Smartwatch)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x2601,
+                ChipName = "MT2601",
+                Description = "Smartwatch chip",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11005000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x2008000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT3967
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x3967,
+                ChipName = "MT3967",
+                Description = "",
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT6255
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x6255,
+                ChipName = "MT6255",
+                Description = "",
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT6280
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x6280,
+                ChipName = "MT6280",
+                Description = "",
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT6516
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x6516,
+                ChipName = "MT6516",
+                Description = "",
+                WatchdogAddr = 0x10003000,
+                UartAddr = 0x10023000,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT6570 (alternative HW code 0x0633)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0633,
+                ChipName = "MT6570",
+                Description = "MT6570/MT8321 variant",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = false,
+                HasExploit = true,
+                ExploitType = "Carbonara"
+            });
+
+            // MT6571
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x6571,
+                ChipName = "MT6571",
+                Description = "",
+                WatchdogAddr = 0x10007400,
+                DaPayloadAddr = 0x2009000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT6573/MT6260
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x6573,
+                ChipName = "MT6573",
+                Description = "MT6573/MT6260",
+                WatchdogAddr = 0x70025000,
+                DaPayloadAddr = 0x90006000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT6575/MT6577
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x6575,
+                ChipName = "MT6575",
+                Description = "MT6575/MT6577/MT8317",
+                WatchdogAddr = 0xC0000000,
+                UartAddr = 0xC1009000,
+                DaPayloadAddr = 0xC2001000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT6583/MT6589
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x6583,
+                ChipName = "MT6583",
+                Description = "MT6583/MT6589",
+                WatchdogAddr = 0x10000000,
+                UartAddr = 0x11006000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x12001000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT6752 (specific HW code)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x6752,
+                ChipName = "MT6752",
+                Description = "Helio series",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = true
+            });
+
+            // MT6758 (Helio P30)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0688,
+                ChipName = "MT6758",
+                Description = "Helio P30",
+                WatchdogAddr = 0x10211000,
+                UartAddr = 0x11020000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara"
+            });
+
+            // MT6768 (Helio P65/G85) - HW code 0x0707
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0707,
+                ChipName = "MT6768",
+                Description = "Helio P65/G85",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara"
+            });
+
+            // MT6779 (Helio P90) - HW code 0x0725
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0725,
+                ChipName = "MT6779",
+                Description = "Helio P90",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara"
+            });
+
+            // MT6781 (Helio G96)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1066,
+                ChipName = "MT6781",
+                Description = "Helio G96",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara"
+            });
+
+            // MT6789 (Helio G99) - HW code 0x1208
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1208,
+                ChipName = "MT6789",
+                Description = "Helio G99",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara"
+            });
+
+            // MT6799 (Helio X30/X35)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0562,
+                ChipName = "MT6799",
+                Description = "Helio X30/X35",
+                WatchdogAddr = 0x10211000,
+                UartAddr = 0x11020000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara"
+            });
+
+            // MT6835 (Dimensity 6100+)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1209,
+                ChipName = "MT6835",
+                Description = "Dimensity 6100+",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11002000,
+                DaPayloadAddr = 0x2001000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara"
+            });
+
+            // MT6878 (Dimensity 7300)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1375,
+                ChipName = "MT6878",
+                Description = "Dimensity 7300",
+                WatchdogAddr = 0x1C00A000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x2010000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "Carbonara"
+            });
+
+            // MT6886 (Dimensity 7200 Ultra)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1229,
+                ChipName = "MT6886",
+                Description = "Dimensity 7200 Ultra",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x2001000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "AllinoneSignature"
+            });
+
+            // MT6897 (Dimensity 8300 Ultra)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1203,
+                ChipName = "MT6897",
+                Description = "Dimensity 8300 Ultra",
+                WatchdogAddr = 0x1C007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "AllinoneSignature"
+            });
+
+            // MT6993 (Dimensity 9500)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x1471,
+                ChipName = "MT6993",
+                Description = "Dimensity 9500",
+                WatchdogAddr = 0x1C010000,
+                UartAddr = 0x16010000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.Xml,
+                Is64Bit = true,
+                HasExploit = true,
+                ExploitType = "AllinoneSignature"
+            });
+
+            // MT8127 (Tablet chip)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x8127,
+                ChipName = "MT8127",
+                Description = "Tablet chip MT8127/MT3367",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT8135
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x8135,
+                ChipName = "MT8135",
+                Description = "",
+                WatchdogAddr = 0x10000000,
+                UartAddr = 0x11002000,
+                DaPayloadAddr = 0x12001000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT8167 (Tablet)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x8167,
+                ChipName = "MT8167",
+                Description = "MT8167/MT8516/MT8362",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11005000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true
+            });
+
+            // MT8168/MT6357
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x8168,
+                ChipName = "MT8168",
+                Description = "MT8168/MT6357",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true
+            });
+
+            // MT8195 (Chromebook)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0930,
+                ChipName = "MT8195",
+                Description = "Chromebook chip",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11001200,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true
+            });
+
+            // MT8512
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x8512,
+                ChipName = "MT8512",
+                Description = "",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x111000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true
+            });
+
+            // MT8518 (Voice Assistant)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x8518,
+                ChipName = "MT8518",
+                Description = "Voice Assistant chip",
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true
+            });
+
+            // MT8590/MT7683/MT8521/MT7623
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x8590,
+                ChipName = "MT8590",
+                Description = "MT8590/MT7683/MT8521/MT7623",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT8695
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x8695,
+                ChipName = "MT8695",
+                Description = "",
+                WatchdogAddr = 0x10007000,
+                UartAddr = 0x11002000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true
+            });
+
+            // MT8696
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0908,
+                ChipName = "MT8696",
+                Description = "",
+                WatchdogAddr = 0x10007000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true
+            });
+
+            // MT0571
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0571,
+                ChipName = "MT0571",
+                Description = "",
+                WatchdogAddr = 0x10007000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT0598 (ELBRUS)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0598,
+                ChipName = "MT0598",
+                Description = "ELBRUS/MT0598",
+                WatchdogAddr = 0x10211000,
+                UartAddr = 0x11020000,
+                BromPayloadAddr = 0x100A00,
+                DaPayloadAddr = 0x201000,
+                DaMode = (int)DaMode.Legacy,
+                Is64Bit = false
+            });
+
+            // MT0992 (MT6880/MT6890)
+            AddChip(new MtkChipRecord
+            {
+                HwCode = 0x0992,
+                ChipName = "MT6880",
+                Description = "MT6880/MT6890",
+                WatchdogAddr = 0x10007000,
+                DaMode = (int)DaMode.XFlash,
+                Is64Bit = true
             });
 
             // ═══════════════════════════════════════════════════════════════

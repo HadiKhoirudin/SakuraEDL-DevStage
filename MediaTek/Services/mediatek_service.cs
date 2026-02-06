@@ -634,14 +634,14 @@ namespace LoveAlways.MediaTek.Services
             }
 
             // Check if DA mode matches
-            var chipDaMode = MtkDaDatabase.GetDaMode(hwCode);
+            //var chipDaMode = MtkDaDatabase.GetDaMode(hwCode);
             var daDaMode = (DaMode)da1.DaType;
 
-            if (daDaMode != chipDaMode)
-            {
-                Log($"[MediaTek] ⚠ DA mode mismatch: Chip requires {chipDaMode}, DA file is {daDaMode}", Color.Orange);
-                Log("[MediaTek] Suggest using correct format DA file", Color.Orange);
-            }
+            //if (daDaMode != chipDaMode)
+            //{
+            //    Log($"[MediaTek] ⚠ DA mode mismatch: Chip requires {chipDaMode}, DA file is {daDaMode}", Color.Orange);
+            //    Log("[MediaTek] Suggest using correct format DA file", Color.Orange);
+            //}
 
             Log($"[MediaTek] DA Mode: {daDaMode}, Load address: 0x{da1.LoadAddr:X8}", Color.Gray);
 
@@ -904,7 +904,7 @@ namespace LoveAlways.MediaTek.Services
             OnStateChanged?.Invoke(MtkDeviceState.Da2Loaded);
 
             // 7. Initialize XFlash client (if needed)
-            await InitializeXFlashClientAsync(ct);
+            //await InitializeXFlashClientAsync(ct);
 
             // 8. Check and execute AllinoneSignature exploit (DA2 level)
             string chipExploitType = MtkChipDatabase.GetExploitType(_bromClient.HwCode);

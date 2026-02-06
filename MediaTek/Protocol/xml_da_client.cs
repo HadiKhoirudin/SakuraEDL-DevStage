@@ -13,8 +13,10 @@
 using LoveAlways.MediaTek.Common;
 using LoveAlways.MediaTek.Models;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
+using System.Security.AccessControl;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -283,8 +285,27 @@ namespace LoveAlways.MediaTek.Protocol
                 catch (Exception ex)
                 {
                     _log($"[XML] Failed to parse response: {ex.Message}");
+                    Debug.WriteLine($"Error XML Response : \n{response}\n");
                     return null;
                 }
+            }
+            finally
+            {
+                _portLock.Release();
+            }
+        }
+
+        private async Task<bool> SendCommandAsyncRuntime(string xmlCmd, CancellationToken ct = default)
+        {
+            await _portLock.WaitAsync(ct);
+            try
+            {
+                await XSendInternalAsync(xmlCmd, ct);
+
+                string response = await XRecvInternalAsync(DEFAULT_TIMEOUT_MS, ct);
+                if (string.IsNullOrEmpty(response)) return false;
+
+                return response.Contains("OK");
             }
             finally
             {
@@ -506,28 +527,11 @@ namespace LoveAlways.MediaTek.Protocol
                             "</adv>" +
                             "</da>";
 
-                var response = await SendCommandAsync(cmd, ct);
-                if (response != null)
+                var response = await SendCommandAsyncRuntime(cmd, ct);
+                if (response)
                 {
-                    var statusNode = response.SelectSingleNode("//status");
-                    if (statusNode != null)
-                    {
-                        string status = statusNode.InnerText.ToUpper();
-                        if (status == "OK" || status == "SUCCESS")
-                        {
-                            _logDetail("[XML] ✓ Runtime parameters set successfully");
-                            return true;
-                        }
-                    }
-
-                    // Check for message node
-                    var msgNode = response.SelectSingleNode("//message");
-                    if (msgNode != null)
-                    {
-                        _logDetail($"[XML] Runtime parameter response: {msgNode.InnerText}");
-                    }
-
-                    return true; // Assume success even without explicit OK
+                    _logDetail("[XML] ✓ Runtime parameters set successfully");
+                    return true;
                 }
 
                 return false;
@@ -938,7 +942,7 @@ namespace LoveAlways.MediaTek.Protocol
             _log($"[XML] Uploading DA2: {da2.Data.Length} bytes");
 
             // 0. Handle prior messages (CMD:END, CMD:START, etc.)
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 2; i++)
             {
                 try
                 {
@@ -1065,7 +1069,7 @@ namespace LoveAlways.MediaTek.Protocol
             await Task.Delay(100, ct);
 
             // Check if serial port has data
-            _log($"[XML] Serial port buffer: {_port.BytesToRead} bytes");
+            //_log($"[XML] Serial port buffer: {_port.BytesToRead} bytes");
 
             bool deviceReady = false;
 
@@ -1073,7 +1077,7 @@ namespace LoveAlways.MediaTek.Protocol
             {
                 byte[] rawResp = new byte[Math.Min(_port.BytesToRead, 256)];
                 int rawRead = _port.Read(rawResp, 0, rawResp.Length);
-                _log($"[XML] Raw response ({rawRead} bytes): {BitConverter.ToString(rawResp, 0, rawRead).Replace("-", " ")}");
+                //_log($"[XML] Raw response ({rawRead} bytes): {BitConverter.ToString(rawResp, 0, rawRead).Replace("-", " ")}");
 
                 // Check for "OK" response
                 if (rawRead >= 3 && rawResp[0] == 0xEF && rawResp[1] == 0xEE)
@@ -1109,20 +1113,16 @@ namespace LoveAlways.MediaTek.Protocol
             int totalChunks = (da2.Data.Length + packetLength - 1) / packetLength;
             int chunkIndex = 0;
 
-            while (offset < da2.Data.Length)
+            while (offset <= da2.Data.Length)
             {
                 int remaining = da2.Data.Length - offset;
+
+                if (remaining <= 0) break;
+
                 int chunkSize = Math.Min(remaining, packetLength);
 
                 byte[] chunk = new byte[chunkSize];
                 Array.Copy(da2.Data, offset, chunk, 0, chunkSize);
-
-                // First block: show more info
-                if (chunkIndex == 0)
-                {
-                    _log($"[XML] Sending first chunk: {chunkSize} bytes");
-                    _logDetail($"[XML] First 16 bytes: {BitConverter.ToString(chunk, 0, Math.Min(16, chunk.Length)).Replace("-", " ")}");
-                }
 
                 // Send data block using XML header format
                 await XSendBinaryAsync(chunk, ct);
@@ -1136,18 +1136,18 @@ namespace LoveAlways.MediaTek.Protocol
                 }
 
                 // Wait for device ACK
-                await Task.Delay(10, ct); // Brief wait
+                await Task.Delay(15, ct); // Brief wait
 
                 if (_port.BytesToRead > 0)
                 {
-                    byte[] rawAck = new byte[Math.Min(_port.BytesToRead, 64)];
+                    byte[] rawAck = new byte[Math.Min(_port.BytesToRead, 144)];
                     int ackRead = _port.Read(rawAck, 0, rawAck.Length);
                     string ackStr = Encoding.ASCII.GetString(rawAck, 0, ackRead).TrimEnd('\0');
 
-                    if (chunkIndex <= 3)
-                    {
+                    //if (chunkIndex <= 3)
+                    //{
                         _log($"[XML] Chunk {chunkIndex} ACK ({ackRead} bytes): {BitConverter.ToString(rawAck, 0, ackRead).Replace("-", " ")}");
-                    }
+                    //}
 
                     // Check for ERR
                     if (ackStr.Contains("ERR"))
@@ -1164,31 +1164,6 @@ namespace LoveAlways.MediaTek.Protocol
                             _log($"[XML] Error details: {errStr}");
                         }
 
-                        // Check if rawAck already contains XML error message
-                        // Format: OK(15) + ERR(16) + XML(header 12 + data)
-                        if (ackRead > 31)
-                        {
-                            // Parse XML part - find XML header (skip OK + ERR packets)
-                            for (int i = 0; i < ackRead - 12; i++)
-                            {
-                                if (rawAck[i] == 0xEF && rawAck[i + 1] == 0xEE && rawAck[i + 2] == 0xEE && rawAck[i + 3] == 0xFE)
-                                {
-                                    if (i + 12 < ackRead)
-                                    {
-                                        int xmlLen = rawAck[i + 8] | (rawAck[i + 9] << 8) | (rawAck[i + 10] << 16) | (rawAck[i + 11] << 24);
-                                        int payloadStart = i + 12;
-                                        int payloadLen = Math.Min(xmlLen, ackRead - payloadStart);
-                                        if (payloadLen > 0)
-                                        {
-                                            string xmlPart = Encoding.UTF8.GetString(rawAck, payloadStart, payloadLen);
-                                            _log($"[XML] Error message: {xmlPart}");
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-
                         return false;
                     }
 
@@ -1199,12 +1174,12 @@ namespace LoveAlways.MediaTek.Protocol
                         await SendOkAsync(ct);
 
                         // Wait for second ACK
-                        await Task.Delay(10, ct);
+                        await Task.Delay(20, ct);
+
                         if (_port.BytesToRead > 0)
                         {
                             byte[] ack2 = new byte[_port.BytesToRead];
                             _port.Read(ack2, 0, ack2.Length);
-                            // Continue to next chunk
                         }
                     }
 
@@ -1221,34 +1196,34 @@ namespace LoveAlways.MediaTek.Protocol
             _log($"[XML] DA2 data transmission complete: {offset} bytes");
 
             // 4. Wait for final confirmation
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 4; i++)
             {
                 string finalMsg = await XRecvAsync(1000, ct);
                 if (!string.IsNullOrEmpty(finalMsg))
                 {
                     _logDetail($"[XML] Final response: {finalMsg.Substring(0, Math.Min(100, finalMsg.Length))}...");
 
+                    await SendOkAsync(ct);
+
                     if (finalMsg.Contains("CMD:END"))
                     {
-                        await SendOkAsync(ct);
-
                         if (finalMsg.Contains("OK") || finalMsg.Contains("result>OK"))
                         {
-                            _log("[XML] ✓ DA2 upload successful");
                             State = MtkDeviceState.Da2Loaded;
                             return true;
                         }
                     }
                     else if (finalMsg.Contains("CMD:START") || finalMsg.Contains("CMD:PROGRESS-REPORT"))
                     {
-                        await SendOkAsync(ct);
+                        State = MtkDeviceState.Da2Loaded;
+                        return true;
                     }
                 }
             }
 
-            _log("[XML] ✓ DA2 upload complete (assuming success)");
-            State = MtkDeviceState.Da2Loaded;
-            return true;
+            _log("[XML] ✗ DA2 upload Error");
+            State = MtkDeviceState.Error;
+            return false;
         }
 
         /// <summary>
@@ -1310,7 +1285,7 @@ namespace LoveAlways.MediaTek.Protocol
                 _port.BaseStream.Flush();
 
                 // Short delay to ensure separate transfer
-                await Task.Delay(1, ct);
+                await Task.Delay(10, ct);
 
                 _port.Write(data, 0, data.Length);
                 _port.BaseStream.Flush();

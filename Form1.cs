@@ -278,10 +278,10 @@ namespace LoveAlways
 
                 // 启动端口自动检测定时器 (每2秒检测一次，只在端口列表变化时才刷新)
 
-                _portRefreshTimer = new System.Windows.Forms.Timer();
-                _portRefreshTimer.Interval = 5000;
-                _portRefreshTimer.Tick += (s, e) => RefreshPortsIfIdle();
-                _portRefreshTimer.Start();
+                //_portRefreshTimer = new System.Windows.Forms.Timer();
+                //_portRefreshTimer.Interval = 5000;
+                //_portRefreshTimer.Tick += (s, e) => RefreshPortsIfIdle();
+                //_portRefreshTimer.Start();
 
                 AppendLog("[Qualcomm] Module initialized", Color.Green);
             }
@@ -299,47 +299,44 @@ namespace LoveAlways
         /// </summary>
         private void RefreshPortsIfIdle()
         {
-            Task.Run(() =>
+            try
             {
-                try
+                // If currently on Fastboot tab, do not refresh Qualcomm ports
+                if (_isOnFastbootTab)
+                    return;
+
+                // If operation in progress, do not refresh
+                if (_qualcommController != null && _qualcommController.HasPendingOperation)
+                    return;
+
+                // Get current port list for change detection
+                var ports = LoveAlways.Qualcomm.Common.PortDetector.DetectAllPorts();
+                var edlPorts = LoveAlways.Qualcomm.Common.PortDetector.DetectEdlPorts();
+                string currentPortList = string.Join(",", ports.ConvertAll(p => p.PortName));
+
+                // Refresh only if port list changed
+                if (currentPortList != _lastPortList)
                 {
-                    // If currently on Fastboot tab, do not refresh Qualcomm ports
-                    if (_isOnFastbootTab)
-                        return;
+                    bool hadEdl = _lastEdlCount > 0;
+                    bool newEdlDetected = edlPorts.Count > 0 && !hadEdl;
+                    _lastPortList = currentPortList;
 
-                    // If operation in progress, do not refresh
-                    if (_qualcommController != null && _qualcommController.HasPendingOperation)
-                        return;
+                    // Silent refresh, returns EDL port count
+                    int edlCount = _qualcommController?.RefreshPorts(silent: true) ?? 0;
 
-                    // Get current port list for change detection
-                    var ports = LoveAlways.Qualcomm.Common.PortDetector.DetectAllPorts();
-                    var edlPorts = LoveAlways.Qualcomm.Common.PortDetector.DetectEdlPorts();
-                    string currentPortList = string.Join(",", ports.ConvertAll(p => p.PortName));
-
-                    // Refresh only if port list changed
-                    if (currentPortList != _lastPortList)
+                    // Prompt when new EDL device detected
+                    if (newEdlDetected && edlPorts.Count > 0)
                     {
-                        bool hadEdl = _lastEdlCount > 0;
-                        bool newEdlDetected = edlPorts.Count > 0 && !hadEdl;
-                        _lastPortList = currentPortList;
-
-                        // Silent refresh, returns EDL port count
-                        int edlCount = _qualcommController?.RefreshPorts(silent: true) ?? 0;
-
-                        // Prompt when new EDL device detected
-                        if (newEdlDetected && edlPorts.Count > 0)
-                        {
-                            AppendLog($"Detected EDL Device: {edlPorts[0].PortName} - {edlPorts[0].Description}", Color.LimeGreen);
-                        }
-
-                        _lastEdlCount = edlCount;
+                        AppendLog($"Detected EDL Device: {edlPorts[0].PortName} - {edlPorts[0].Description}", Color.LimeGreen);
                     }
+
+                    _lastEdlCount = edlCount;
                 }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"EDL 端口检测异常: {ex.Message}");
-                }
-            });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"EDL 端口检测异常: {ex.Message}");
+            }
         }
 
         private void UpdateAuthMode()
@@ -3399,154 +3396,151 @@ namespace LoveAlways
         /// </summary>
         private void OnTabPageChanged(object sender, EventArgs e)
         {
-            Task.Run(() =>
+            try
             {
-                try
+                ClearLogs();
+
+                // Get selected tab
+                int selectedIndex = tabs1.SelectedIndex;
+                var selectedTab = tabs1.Pages[selectedIndex];
+
+                // tabPage3 is Fastboot
+                if (selectedTab == tabPage3)
                 {
+                    // Switch to Fastboot Tab
+                    _isOnFastbootTab = true;
+
+                    // Stop other monitors
+                    _portRefreshTimer?.Stop();
+                    _mtkController?.StopPortMonitoring();
                     ClearLogs();
 
-                    // Get selected tab
-                    int selectedIndex = tabs1.SelectedIndex;
-                    var selectedTab = tabs1.Pages[selectedIndex];
+                    _spreadtrumController?.StopDeviceMonitor();
+                    ClearLogs();
 
-                    // tabPage3 is Fastboot
-                    if (selectedTab == tabPage3)
+                    // Update Fastboot Device Info
+                    if (_fastbootController != null)
                     {
-                        // Switch to Fastboot Tab
-                        _isOnFastbootTab = true;
+                        // Start Fastboot Monitor
+                        _fastbootController.StartDeviceMonitoring();
+                        _fastbootController.UpdateDeviceInfoLabels();
 
-                        // Stop other monitors
-                        _portRefreshTimer?.Stop();
-                        _mtkController?.StopPortMonitoring();
-                        ClearLogs();
-
-                        _spreadtrumController?.StopDeviceMonitor();
-                        ClearLogs();
-
-                        // Update Fastboot Device Info
-                        if (_fastbootController != null)
+                        // Update Device Count
+                        int deviceCount = _fastbootController.DeviceCount;
+                        if (deviceCount == 0)
                         {
-                            // Start Fastboot Monitor
-                            _fastbootController.StartDeviceMonitoring();
-                            _fastbootController.UpdateDeviceInfoLabels();
-
-                            // Update Device Count
-                            int deviceCount = _fastbootController.DeviceCount;
-                            if (deviceCount == 0)
-                            {
-                                uiLabel4.Text = "FB Dev: 0";
-                            }
-                            else if (deviceCount == 1)
-                            {
-                                uiLabel4.Text = $"FB Dev: Connected";
-                            }
-                            else
-                            {
-                                uiLabel4.Text = $"FB Dev: {deviceCount}";
-                            }
+                            uiLabel4.Text = "FB Dev: 0";
                         }
-                    }
-                    // tabPage2 is Qualcomm (EDL)
-                    else if (selectedTab == tabPage2)
-                    {
-                        // Switch to Qualcomm Tab
-                        _isOnFastbootTab = false;
-
-                        // Stop other monitors
-                        _fastbootController?.StopDeviceMonitoring();
-                        ClearLogs();
-
-                        _mtkController?.StopPortMonitoring();
-                        ClearLogs();
-
-                        _spreadtrumController?.StopDeviceMonitor();
-                        ClearLogs();
-
-                        // Start Qualcomm Port Refresh
-                        _portRefreshTimer?.Start();
-
-                        // Refresh Qualcomm Ports to ComboBox
-                        _qualcommController?.RefreshPorts(silent: true);
-
-                        // Restore Qualcomm Device Info
-                        if (_qualcommController != null && _qualcommController.IsConnected)
+                        else if (deviceCount == 1)
                         {
-                            // Qualcomm controller auto updates, no extra action needed
+                            uiLabel4.Text = $"FB Dev: Connected";
                         }
                         else
                         {
-                            // Reset to Wait Connection
-                            uiLabel9.Text = "Brand: Waiting";
-                            uiLabel11.Text = "Chip: Waiting";
-                            uiLabel3.Text = "Model: Waiting";
-                            uiLabel10.Text = "Serial: Waiting";
-                            uiLabel13.Text = "Storage: Waiting";
-                            uiLabel14.Text = "State: Waiting";
-                            uiLabel12.Text = "OTA: Waiting";
+                            uiLabel4.Text = $"FB Dev: {deviceCount}";
                         }
                     }
-                    // tabPage4 is MTK
-                    else if (selectedTab == tabPage4)
+                }
+                // tabPage2 is Qualcomm (EDL)
+                else if (selectedTab == tabPage2)
+                {
+                    // Switch to Qualcomm Tab
+                    _isOnFastbootTab = false;
+
+                    // Stop other monitors
+                    _fastbootController?.StopDeviceMonitoring();
+                    ClearLogs();
+
+                    _mtkController?.StopPortMonitoring();
+                    ClearLogs();
+
+                    _spreadtrumController?.StopDeviceMonitor();
+                    ClearLogs();
+
+                    // Start Qualcomm Port Refresh
+                    _portRefreshTimer?.Start();
+
+                    // Refresh Qualcomm Ports to ComboBox
+                    _qualcommController?.RefreshPorts(silent: true);
+
+                    // Restore Qualcomm Device Info
+                    if (_qualcommController != null && _qualcommController.IsConnected)
                     {
-                        // Switch to MTK Tab
-                        _isOnFastbootTab = false;
-
-                        // Stop other monitors
-                        _fastbootController?.StopDeviceMonitoring();
-                        ClearLogs();
-
-                        _portRefreshTimer?.Stop();
-
-                        _spreadtrumController?.StopDeviceMonitor();
-                        ClearLogs();
-
-                        // Start MTK Port Monitor
-                        _mtkController?.StartPortMonitoring();
-
-                        // Update Right Info Panel for MTK
-                        UpdateMtkInfoPanel();
-                    }
-                    // tabPage5 is Spreadtrum
-                    else if (selectedTab == tabPage5)
-                    {
-                        // Switch to Spreadtrum Tab
-                        _isOnFastbootTab = false;
-
-                        // Stop other monitors
-                        _fastbootController?.StopDeviceMonitoring();
-                        ClearLogs();
-
-                        _portRefreshTimer?.Stop();
-
-                        _mtkController?.StopPortMonitoring();
-                        ClearLogs();
-
-                        // Start SPD Device Monitor and Refresh
-                        _spreadtrumController?.RefreshDevices();
-
-                        // Update Right Info Panel for SPD
-                        UpdateSprdInfoPanel();
+                        // Qualcomm controller auto updates, no extra action needed
                     }
                     else
                     {
-                        // Other Tabs
-                        _isOnFastbootTab = false;
-                        // Stop All Monitors
-                        _fastbootController?.StopDeviceMonitoring();
-                        ClearLogs();
-
-                        _mtkController?.StopPortMonitoring();
-                        ClearLogs();
-
-                        _spreadtrumController?.StopDeviceMonitor();
-                        ClearLogs();
+                        // Reset to Wait Connection
+                        uiLabel9.Text = "Brand: Waiting";
+                        uiLabel11.Text = "Chip: Waiting";
+                        uiLabel3.Text = "Model: Waiting";
+                        uiLabel10.Text = "Serial: Waiting";
+                        uiLabel13.Text = "Storage: Waiting";
+                        uiLabel14.Text = "State: Waiting";
+                        uiLabel12.Text = "OTA: Waiting";
                     }
                 }
-                catch (Exception ex)
+                // tabPage4 is MTK
+                else if (selectedTab == tabPage4)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Tab Switch Exception: {ex.Message}");
+                    // Switch to MTK Tab
+                    _isOnFastbootTab = false;
+
+                    // Stop other monitors
+                    _fastbootController?.StopDeviceMonitoring();
+                    ClearLogs();
+
+                    _portRefreshTimer?.Stop();
+
+                    _spreadtrumController?.StopDeviceMonitor();
+                    ClearLogs();
+
+                    // Start MTK Port Monitor
+                    _mtkController?.StartPortMonitoring();
+
+                    // Update Right Info Panel for MTK
+                    UpdateMtkInfoPanel();
                 }
-            });
+                // tabPage5 is Spreadtrum
+                else if (selectedTab == tabPage5)
+                {
+                    // Switch to Spreadtrum Tab
+                    _isOnFastbootTab = false;
+
+                    // Stop other monitors
+                    _fastbootController?.StopDeviceMonitoring();
+                    ClearLogs();
+
+                    _portRefreshTimer?.Stop();
+
+                    _mtkController?.StopPortMonitoring();
+                    ClearLogs();
+
+                    // Start SPD Device Monitor and Refresh
+                    _spreadtrumController?.RefreshDevices();
+
+                    // Update Right Info Panel for SPD
+                    UpdateSprdInfoPanel();
+                }
+                else
+                {
+                    // Other Tabs
+                    _isOnFastbootTab = false;
+                    // Stop All Monitors
+                    _fastbootController?.StopDeviceMonitoring();
+                    ClearLogs();
+
+                    _mtkController?.StopPortMonitoring();
+                    ClearLogs();
+
+                    _spreadtrumController?.StopDeviceMonitor();
+                    ClearLogs();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Tab Switch Exception: {ex.Message}");
+            }
         }
 
         /// <summary>

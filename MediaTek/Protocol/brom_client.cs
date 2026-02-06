@@ -37,8 +37,8 @@ namespace LoveAlways.MediaTek.Protocol
 
         // Configuration
         private const int DEFAULT_TIMEOUT_MS = 5000;
-        private const int HANDSHAKE_TIMEOUT_MS = 30000;
-        private const int MAX_PACKET_SIZE = 4096;
+        private const int DEFAULT_READ_TIMEOUT_MS = 3000;
+        private const int DEFAULT_WRITE_TIMEOUT_MS = 5000;
 
         // Protocol Status
         public bool IsConnected { get; private set; }
@@ -104,8 +104,8 @@ namespace LoveAlways.MediaTek.Protocol
 
                 _port = new SerialPort(portName, baudRate, Parity.None, 8, StopBits.One)
                 {
-                    ReadTimeout = DEFAULT_TIMEOUT_MS,
-                    WriteTimeout = DEFAULT_TIMEOUT_MS,
+                    ReadTimeout = DEFAULT_READ_TIMEOUT_MS,
+                    WriteTimeout = DEFAULT_WRITE_TIMEOUT_MS,
                     DtrEnable = true,
                     RtsEnable = true,
                     ReadBufferSize = 16 * 1024 * 1024,  // 16MB buffer
@@ -113,7 +113,7 @@ namespace LoveAlways.MediaTek.Protocol
                 };
 
                 _port.Open();
-                await Task.Delay(100, ct);
+                //await Task.Delay(100, ct);
 
                 // Clear buffers
                 _port.DiscardInBuffer();
@@ -234,8 +234,8 @@ namespace LoveAlways.MediaTek.Protocol
                     }
 
                     // Dynamic retry interval: fast initially, then longer
-                    int delayMs = tries < 20 ? 50 : (tries < 50 ? 100 : 200);
-                    await Task.Delay(delayMs, ct);
+                    //int delayMs = tries < 20 ? 50 : (tries < 50 ? 100 : 200);
+                    //await Task.Delay(delayMs, ct);
                 }
                 catch (TimeoutException)
                 {

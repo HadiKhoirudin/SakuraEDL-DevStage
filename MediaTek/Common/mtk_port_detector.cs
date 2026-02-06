@@ -311,7 +311,7 @@ namespace LoveAlways.MediaTek.Common
                 _removeWatcher.EventArrived += OnDeviceRemovedEvent;
                 _removeWatcher.Start();
 
-                _log("[MediaTek Port] Device monitoring started");
+                //_log("[MediaTek Port] Device monitoring started");
             }
             catch (Exception ex)
             {
@@ -340,7 +340,7 @@ namespace LoveAlways.MediaTek.Common
                 _removeWatcher = null;
 
                 _isMonitoring = false;
-                _log("[MediaTek Port] Device monitoring stopped");
+                //_log("[MediaTek Port] Device monitoring stopped");
             }
             catch { }
         }
@@ -361,7 +361,7 @@ namespace LoveAlways.MediaTek.Common
                 var portInfo = ParseMtkDevice(deviceId, name, caption);
                 if (portInfo != null)
                 {
-                    _log($"[MediaTek Port] Device detected: {portInfo.ComPort} ({portInfo.Description})");
+                    //_log($"[MediaTek Port] Device detected: {portInfo.ComPort} ({portInfo.Description})");
                     OnDeviceArrived?.Invoke(portInfo);
                 }
             }
@@ -382,7 +382,7 @@ namespace LoveAlways.MediaTek.Common
                 if (comMatch.Success)
                 {
                     string comPort = $"COM{comMatch.Groups[1].Value}";
-                    _log($"[MediaTek Port] Device removed: {comPort}");
+                    //_log($"[MediaTek Port] Device removed: {comPort}");
                     OnDeviceRemoved?.Invoke(comPort);
                 }
             }

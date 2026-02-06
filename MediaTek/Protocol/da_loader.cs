@@ -11,9 +11,11 @@
 
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DaEntry = LoveAlways.MediaTek.Models.DaEntry;
@@ -75,17 +77,7 @@ namespace LoveAlways.MediaTek.Protocol
 
             try
             {
-                // Check DA file format
-                uint magic = BitConverter.ToUInt32(data, 0);
-
-                if (magic == DA_MAGIC_V6)
-                {
-                    return ParseDaV6(data, hwCode);
-                }
-                else
-                {
-                    return ParseDaLegacy(data, hwCode);
-                }
+                return ParseDa(data, hwCode);
             }
             catch (Exception ex)
             {
@@ -97,88 +89,193 @@ namespace LoveAlways.MediaTek.Protocol
         /// <summary>
         /// Parse V6 (XML) format DA file
         /// </summary>
-        private (DaEntry da1, DaEntry da2)? ParseDaV6(byte[] data, ushort hwCode)
+        private (DaEntry da1, DaEntry da2)? ParseDa(byte[] data, ushort hwCode)
         {
             _log($"[DA] Parsing V6 DA file (HW Code: 0x{hwCode:X4})");
 
-            // V6 DA file header structure
-            // Offset 0x00: Magic "hvea"
-            // Offset 0x04: Version
-            // Offset 0x08: Number of DA entries
-            // Offset 0x0C: DA entry table offset
-
-            int entryCount = BitConverter.ToInt32(data, 0x08);
-            int tableOffset = BitConverter.ToInt32(data, 0x0C);
-
-            DaEntry da1 = null;
-            DaEntry da2 = null;
-
-            // Iterate through DA entries to find matching HW Code
-            for (int i = 0; i < entryCount; i++)
+            try
             {
-                int entryOffset = tableOffset + (i * 0x40);  // 64 bytes per entry
+                // Periksa apakah ini benar-benar DA V6 berdasarkan referensi
+                string dataString = Encoding.ASCII.GetString(data);
 
-                if (entryOffset + 0x40 > data.Length)
-                    break;
-
-                ushort entryHwCode = BitConverter.ToUInt16(data, entryOffset);
-
-                if (entryHwCode == hwCode)
+                using (var bootldr = new MemoryStream(data))
                 {
-                    // Found matching entry
-                    uint da1Offset = BitConverter.ToUInt32(data, entryOffset + 0x10);
-                    uint da1Size = BitConverter.ToUInt32(data, entryOffset + 0x14);
-                    uint da1LoadAddr = BitConverter.ToUInt32(data, entryOffset + 0x18);
+                    // Baca jumlah entri DA dari offset 0x68 (seperti di referensi)
+                    bootldr.Seek(0x68, SeekOrigin.Begin);
+                    var buffer = new byte[4];
+                    bootldr.Read(buffer, 0, 4);
+                    int count_da = BitConverter.ToInt32(buffer, 0);
 
-                    uint da2Offset = BitConverter.ToUInt32(data, entryOffset + 0x20);
-                    uint da2Size = BitConverter.ToUInt32(data, entryOffset + 0x24);
-                    uint da2LoadAddr = BitConverter.ToUInt32(data, entryOffset + 0x28);
+                    _log($"[DA] Found {count_da} DA entries in file");
 
-                    // Extract DA1
-                    if (da1Offset > 0 && da1Size > 0 && da1Offset + da1Size <= data.Length)
+                    DaEntry da1 = null;
+                    DaEntry da2 = null;
+
+                    // Iterasi melalui semua entri DA (struktur 0xDC per entri)
+                    for (int i = 0; i < count_da; i++)
                     {
-                        da1 = new DaEntry
+                        // Baca data entri DA (220 bytes = 0xDC)
+                        bootldr.Seek(0x6C + (i * 0xDC), SeekOrigin.Begin);
+                        var BufferGet = new byte[0xDC];
+                        bootldr.Read(BufferGet, 0, 0xDC);
+
+                        // Parse struktur DA menggunakan offset yang sama seperti di referensi
+                        using (var sh = new MemoryStream(BufferGet))
                         {
-                            Name = "DA1",
-                            LoadAddr = da1LoadAddr,
-                            SignatureLen = V6_SIG_LEN,
-                            Data = new byte[da1Size],
-                            Version = 6,
-                            DaType = (int)DaMode.Xml
-                        };
-                        Array.Copy(data, da1Offset, da1.Data, 0, da1Size);
+                            // Parse header DA (20 byte pertama)
+                            var headerBuffer = new byte[20];
+                            sh.Read(headerBuffer, 0, 20);
+
+                            ushort magic = BitConverter.ToUInt16(headerBuffer, 0);
+                            ushort entryHwCode = BitConverter.ToUInt16(headerBuffer, 2);
+                            ushort hw_sub_code = BitConverter.ToUInt16(headerBuffer, 4);
+                            ushort hw_version = BitConverter.ToUInt16(headerBuffer, 6);
+                            ushort sw_version = BitConverter.ToUInt16(headerBuffer, 8);
+                            ushort reserved1 = BitConverter.ToUInt16(headerBuffer, 10);
+                            ushort pagesize = BitConverter.ToUInt16(headerBuffer, 12);
+                            ushort reserved3 = BitConverter.ToUInt16(headerBuffer, 14);
+                            ushort entry_region_index = BitConverter.ToUInt16(headerBuffer, 16);
+                            ushort entry_region_count = BitConverter.ToUInt16(headerBuffer, 18);
+
+                            _log($"[DA] Entry {i}: HW=0x{entryHwCode:X4}, Sub=0x{hw_sub_code:X4}, " +
+                                 $"Ver={hw_version}.{sw_version}, Regions={entry_region_count}");
+
+                            if (entryHwCode == hwCode)
+                            {
+                                _log($"[DA] Found matching entry for HW Code 0x{hwCode:X4}");
+
+                                List<EntryRegion> regions = new List<EntryRegion>();
+
+                                for (int j = 0; j < entry_region_count; j++)
+                                {
+                                    var regionBuffer = new byte[20];
+                                    sh.Read(regionBuffer, 0, 20);
+
+                                    uint m_buf = BitConverter.ToUInt32(regionBuffer, 0);
+                                    uint m_len = BitConverter.ToUInt32(regionBuffer, 4);
+                                    uint m_start_addr = BitConverter.ToUInt32(regionBuffer, 8);
+                                    uint m_start_offset = BitConverter.ToUInt32(regionBuffer, 12);
+                                    uint m_sig_len = BitConverter.ToUInt32(regionBuffer, 16);
+
+                                    regions.Add(new EntryRegion
+                                    {
+                                        m_buf = m_buf,
+                                        m_len = m_len,
+                                        m_start_addr = m_start_addr,
+                                        m_start_offset = m_start_offset,
+                                        m_sig_len = m_sig_len
+                                    });
+
+                                    _log($"[DA] Region {j}: Buf=0x{m_buf:X8}, Len={m_len}, " +
+                                         $"Addr=0x{m_start_addr:X8}, SigLen={m_sig_len}");
+                                }
+
+                                if (regions.Count > 1)
+                                {
+                                    var region0 = regions[1];
+                                    if (region0.m_buf > 0 && region0.m_len > 0 &&
+                                        region0.m_buf + region0.m_len <= data.Length)
+                                    {
+                                        da1 = new DaEntry
+                                        {
+                                            Name = "DA1",
+                                            LoadAddr = region0.m_start_addr,
+                                            SignatureLen = (int)region0.m_sig_len,
+                                            Data = new byte[region0.m_len],
+                                            Version = dataString.Contains("MTK_DA_v6") ? 6 : 5,
+                                            DaType = dataString.Contains("MTK_DA_v6") ? (int)DaMode.Xml : (int)DaMode.XFlash
+                                        };
+                                        Array.Copy(data, (int)region0.m_buf, da1.Data, 0, (int)region0.m_len);
+                                        File.WriteAllBytes("DA1.bin", da1.Data);
+                                        _log($"[DA] Extracted DA1: Address=0x{da1.LoadAddr:X8}, Size={da1.Data.Length}");
+                                    }
+
+                                    var region1 = regions[2];
+                                    if (region1.m_buf > 0 && region1.m_len > 0 &&
+                                        region1.m_buf + region1.m_len <= data.Length)
+                                    {
+                                        da2 = new DaEntry
+                                        {
+                                            Name = "DA2",
+                                            LoadAddr = region1.m_start_addr,
+                                            SignatureLen = (int)region1.m_sig_len,
+                                            Data = new byte[region1.m_len - (int)region1.m_sig_len],
+                                            Version = dataString.Contains("MTK_DA_v6") ? 6 : 5,
+                                            DaType = dataString.Contains("MTK_DA_v6") ? (int)DaMode.Xml : (int)DaMode.XFlash
+                                        };
+                                        Array.Copy(data, (int)region1.m_buf, da2.Data, 0, (int)region1.m_len - (int)region1.m_sig_len);
+                                        File.WriteAllBytes("DA2.bin", da2.Data);
+                                        _log($"[DA] Extracted DA2: Address=0x{da2.LoadAddr:X8}, Size={da2.Data.Length}");
+                                    }
+                                }
+                                else
+                                {
+                                    var region0 = regions[0];
+                                    if (region0.m_buf > 0 && region0.m_len > 0 &&
+                                        region0.m_buf + region0.m_len <= data.Length)
+                                    {
+                                        da1 = new DaEntry
+                                        {
+                                            Name = "DA1",
+                                            LoadAddr = region0.m_start_addr,
+                                            SignatureLen = (int)region0.m_sig_len,
+                                            Data = new byte[region0.m_len],
+                                            Version = dataString.Contains("MTK_DA_v6") ? 6 : 5,
+                                            DaType = dataString.Contains("MTK_DA_v6") ? (int)DaMode.Xml : (int)DaMode.XFlash
+                                        };
+                                        Array.Copy(data, (int)region0.m_buf, da1.Data, 0, (int)region0.m_len);
+                                        File.WriteAllBytes("DA1.bin", da1.Data);
+                                        _log($"[DA] Extracted DA1: Address=0x{da1.LoadAddr:X8}, Size={da1.Data.Length}");
+                                    }
+
+                                    var region1 = regions[1];
+                                    if (region1.m_buf > 0 && region1.m_len > 0 &&
+                                        region1.m_buf + region1.m_len <= data.Length)
+                                    {
+                                        da2 = new DaEntry
+                                        {
+                                            Name = "DA2",
+                                            LoadAddr = region1.m_start_addr,
+                                            SignatureLen = (int)region1.m_sig_len,
+                                            Data = new byte[region1.m_len - (int)region1.m_sig_len],
+                                            Version = dataString.Contains("MTK_DA_v6") ? 6 : 5,
+                                            DaType = dataString.Contains("MTK_DA_v6") ? (int)DaMode.Xml : (int)DaMode.XFlash
+                                        };
+                                        Array.Copy(data, (int)region1.m_buf, da2.Data, 0, (int)region1.m_len - (int)region1.m_sig_len);
+                                        File.WriteAllBytes("DA2.bin", da2.Data);
+                                        _log($"[DA] Extracted DA2: Address=0x{da2.LoadAddr:X8}, Size={da2.Data.Length}");
+                                    }
+                                }
+
+                                break;
+                            }
+                        }
                     }
 
-                    // Extract DA2
-                    if (da2Offset > 0 && da2Size > 0 && da2Offset + da2Size <= data.Length)
+                    if (da1 == null)
                     {
-                        da2 = new DaEntry
-                        {
-                            Name = "DA2",
-                            LoadAddr = da2LoadAddr,
-                            SignatureLen = V6_SIG_LEN,
-                            Data = new byte[da2Size],
-                            Version = 6,
-                            DaType = (int)DaMode.Xml
-                        };
-                        Array.Copy(data, da2Offset, da2.Data, 0, da2Size);
+                        _log($"[DA] Could not find DA for HW Code 0x{hwCode:X4}");
+                        return null;
                     }
 
-                    break;
+                    return (da1, da2);
                 }
             }
-
-            if (da1 == null)
+            catch (Exception ex)
             {
-                _log($"[DA] Could not find DA for HW Code 0x{hwCode:X4}");
+                _log($"[DA] Error parsing V6 DA file: {ex.Message}");
                 return null;
             }
+        }
 
-            _log($"[DA] Found DA1: Address=0x{da1.LoadAddr:X8}, Size={da1.Data.Length}");
-            if (da2 != null)
-                _log($"[DA] Found DA2: Address=0x{da2.LoadAddr:X8}, Size={da2.Data.Length}");
-
-            return (da1, da2);
+        // Helper class untuk merepresentasikan entry_region
+        public class EntryRegion
+        {
+            public uint m_buf;          // Offset file
+            public uint m_len;          // Ukuran data
+            public uint m_start_addr;   // Alamat load
+            public uint m_start_offset; // Offset start
+            public uint m_sig_len;      // Panjang signature
         }
 
         /// <summary>
@@ -328,6 +425,8 @@ namespace LoveAlways.MediaTek.Protocol
             }
 
             _log("[DA] ✓ DA2 uploaded successfully");
+
+
             return true;
         }
 

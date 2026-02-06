@@ -71,12 +71,12 @@ namespace LoveAlways.MediaTek.UI
             _portDetector.OnDeviceArrived += port =>
             {
                 Log($"[MediaTek] Device Detected: {port.ComPort} ({port.Description})", Color.Cyan);
-                OnPortDetected?.Invoke(port);
+                //OnPortDetected?.Invoke(port);
             };
             _portDetector.OnDeviceRemoved += portName =>
             {
                 Log($"[MediaTek] Device Removed: {portName}", Color.Orange);
-                OnPortRemoved?.Invoke(portName);
+                //OnPortRemoved?.Invoke(portName);
             };
         }
 
@@ -95,7 +95,7 @@ namespace LoveAlways.MediaTek.UI
         /// </summary>
         public void StartPortMonitoring()
         {
-            _portDetector.StartMonitoring();
+            Task.Run(_portDetector.StartMonitoring);
             //Log("[MediaTek] Device Monitoring Started", Color.Gray);
         }
 
@@ -104,7 +104,7 @@ namespace LoveAlways.MediaTek.UI
         /// </summary>
         public void StopPortMonitoring()
         {
-            _portDetector.StopMonitoring();
+            Task.Run(_portDetector.StopMonitoring);
         }
 
         /// <summary>

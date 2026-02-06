@@ -8,6 +8,7 @@
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+using LoveAlways.Qualcomm.Common;
 using LoveAlways.Spreadtrum.Common;
 using LoveAlways.Spreadtrum.Exploit;
 using LoveAlways.Spreadtrum.Protocol;
@@ -141,7 +142,7 @@ namespace LoveAlways.Spreadtrum.UI
         /// </summary>
         public void StopDeviceMonitor()
         {
-            _service.StopDeviceMonitor();
+            Task.Run(_service.StopDeviceMonitor);
         }
 
         /// <summary>
@@ -158,7 +159,9 @@ namespace LoveAlways.Spreadtrum.UI
         public IReadOnlyList<SprdDeviceInfo> RefreshDevices()
         {
             Log("[Spreadtrum] Scanning ports...", Color.Gray);
-            _service.StartDeviceMonitor(); // Restarting monitor will trigger scan
+
+            Task.Run(_service.StartDeviceMonitor);
+
             var devices = _service.GetConnectedDevices();
             if (devices.Count > 0)
             {
